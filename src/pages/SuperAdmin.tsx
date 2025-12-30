@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -36,6 +37,15 @@ interface Profile {
   created_at: string;
 }
 
+interface UserRole {
+  id: string;
+  user_id: string;
+  role: 'admin' | 'technician' | 'super_admin';
+  created_at: string;
+}
+
+const AVAILABLE_ROLES = ['admin', 'technician', 'super_admin'] as const;
+
 const SuperAdmin = () => {
   const { roles } = useAuth();
   const queryClient = useQueryClient();
@@ -43,8 +53,10 @@ const SuperAdmin = () => {
   const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
+  const [selectedUserRoles, setSelectedUserRoles] = useState<string[]>([]);
   
   const [companyForm, setCompanyForm] = useState({
     name: '',
@@ -82,6 +94,19 @@ const SuperAdmin = () => {
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data as Profile[];
+    },
+    enabled: isSuperAdmin,
+  });
+
+  // Fetch all user roles
+  const { data: allUserRoles = [] } = useQuery({
+    queryKey: ['all-user-roles'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('user_roles')
+        .select('*');
+      if (error) throw error;
+      return data as UserRole[];
     },
     enabled: isSuperAdmin,
   });
@@ -158,8 +183,57 @@ const SuperAdmin = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-profiles'] });
-      toast.success('User updated');
+      toast.success('User company updated');
       setAssignDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast.error('Failed: ' + error.message);
+    },
+  });
+
+  // Update user roles mutation
+  const updateRolesMutation = useMutation({
+    mutationFn: async ({ userId, newRoles }: { userId: string; newRoles: string[] }) => {
+      // Get current roles for this user
+      const currentRoles = allUserRoles.filter(r => r.user_id === userId);
+      const currentRoleNames = currentRoles.map(r => r.role);
+      
+      // Roles to add
+      const rolesToAdd = newRoles.filter(r => !currentRoleNames.includes(r as any));
+      // Roles to remove
+      const rolesToRemove = currentRoleNames.filter(r => !newRoles.includes(r));
+      
+      // Add new roles
+      for (const role of rolesToAdd) {
+        const { error } = await (supabase as any)
+          .from('user_roles')
+          .insert({ user_id: userId, role });
+        if (error && !error.message.includes('duplicate')) throw error;
+      }
+      
+      // Remove old roles
+      for (const role of rolesToRemove) {
+        const { error } = await (supabase as any)
+          .from('user_roles')
+          .delete()
+          .eq('user_id', userId)
+          .eq('role', role);
+        if (error) throw error;
+      }
+      
+      // Also update the profile role field to match primary role
+      const primaryRole = newRoles.includes('admin') ? 'admin' : 
+                         newRoles.includes('technician') ? 'technician' : 'technician';
+      await (supabase as any)
+        .from('profiles')
+        .update({ role: primaryRole })
+        .eq('id', userId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-user-roles'] });
+      queryClient.invalidateQueries({ queryKey: ['all-profiles'] });
+      toast.success('User roles updated');
+      setRolesDialogOpen(false);
     },
     onError: (error: any) => {
       toast.error('Failed: ' + error.message);
@@ -191,9 +265,28 @@ const SuperAdmin = () => {
     setAssignDialogOpen(true);
   };
 
+  const handleManageRoles = (user: Profile) => {
+    setSelectedUser(user);
+    const userRolesList = allUserRoles.filter(r => r.user_id === user.id).map(r => r.role);
+    setSelectedUserRoles(userRolesList);
+    setRolesDialogOpen(true);
+  };
+
+  const handleRoleToggle = (role: string) => {
+    setSelectedUserRoles(prev => 
+      prev.includes(role) 
+        ? prev.filter(r => r !== role)
+        : [...prev, role]
+    );
+  };
+
   const getCompanyName = (companyId: string | null) => {
     if (!companyId) return 'Unassigned';
     return companies.find(c => c.id === companyId)?.name || 'Unknown';
+  };
+
+  const getUserRoles = (userId: string) => {
+    return allUserRoles.filter(r => r.user_id === userId).map(r => r.role);
   };
 
   const filteredCompanies = companies.filter(c =>
@@ -225,7 +318,7 @@ const SuperAdmin = () => {
             <Shield className="w-8 h-8 text-primary" />
             Super Admin
           </h1>
-          <p className="text-muted-foreground mt-1">Manage companies and users</p>
+          <p className="text-muted-foreground mt-1">Manage companies, users, and roles</p>
         </div>
       </div>
 
@@ -413,30 +506,64 @@ const SuperAdmin = () => {
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Company</TableHead>
-                      <TableHead>Role</TableHead>
+                      <TableHead>Roles</TableHead>
                       <TableHead>Created</TableHead>
-                      <TableHead className="w-24">Actions</TableHead>
+                      <TableHead className="w-32">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredProfiles.map((profile) => (
-                      <TableRow key={profile.id}>
-                        <TableCell className="font-medium">{profile.full_name || '-'}</TableCell>
-                        <TableCell>{profile.email}</TableCell>
-                        <TableCell>
-                          <Badge variant={profile.company_id ? 'default' : 'secondary'}>
-                            {getCompanyName(profile.company_id)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="capitalize">{profile.role}</TableCell>
-                        <TableCell>{format(new Date(profile.created_at), 'MMM d, yyyy')}</TableCell>
-                        <TableCell>
-                          <Button variant="ghost" size="icon" onClick={() => handleAssignUser(profile)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredProfiles.map((profile) => {
+                      const userRoles = getUserRoles(profile.id);
+                      return (
+                        <TableRow key={profile.id}>
+                          <TableCell className="font-medium">{profile.full_name || '-'}</TableCell>
+                          <TableCell>{profile.email}</TableCell>
+                          <TableCell>
+                            <Badge variant={profile.company_id ? 'default' : 'secondary'}>
+                              {getCompanyName(profile.company_id)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                              {userRoles.length > 0 ? (
+                                userRoles.map(role => (
+                                  <Badge 
+                                    key={role} 
+                                    variant={role === 'super_admin' ? 'destructive' : role === 'admin' ? 'default' : 'secondary'}
+                                    className="text-xs"
+                                  >
+                                    {role.replace('_', ' ')}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <span className="text-muted-foreground text-sm">No roles</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{format(new Date(profile.created_at), 'MMM d, yyyy')}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleAssignUser(profile)}
+                                title="Assign to Company"
+                              >
+                                <Building2 className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => handleManageRoles(profile)}
+                                title="Manage Roles"
+                              >
+                                <UserCog className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                     {filteredProfiles.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
@@ -450,7 +577,7 @@ const SuperAdmin = () => {
             </CardContent>
           </Card>
 
-          {/* Assign User Dialog */}
+          {/* Assign User to Company Dialog */}
           <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
             <DialogContent>
               <DialogHeader>
@@ -495,6 +622,69 @@ const SuperAdmin = () => {
                   >
                     {assignUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     Save
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Manage User Roles Dialog */}
+          <Dialog open={rolesDialogOpen} onOpenChange={setRolesDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Manage User Roles</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">User</p>
+                  <p className="font-medium">{selectedUser?.full_name || selectedUser?.email}</p>
+                </div>
+                <div className="space-y-3">
+                  <Label>Roles</Label>
+                  {AVAILABLE_ROLES.map((role) => (
+                    <div key={role} className="flex items-center space-x-3 p-3 rounded-lg border">
+                      <Checkbox
+                        id={role}
+                        checked={selectedUserRoles.includes(role)}
+                        onCheckedChange={() => handleRoleToggle(role)}
+                      />
+                      <div className="flex-1">
+                        <label 
+                          htmlFor={role} 
+                          className="font-medium capitalize cursor-pointer"
+                        >
+                          {role.replace('_', ' ')}
+                        </label>
+                        <p className="text-xs text-muted-foreground">
+                          {role === 'super_admin' && 'Full access to all companies and users'}
+                          {role === 'admin' && 'Manage company settings, technicians, and view all data'}
+                          {role === 'technician' && 'Standard access to quotes, invoices, and time tracking'}
+                        </p>
+                      </div>
+                      {role === 'super_admin' && (
+                        <Badge variant="destructive" className="text-xs">Powerful</Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setRolesDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    disabled={updateRolesMutation.isPending}
+                    onClick={() => {
+                      if (selectedUser) {
+                        updateRolesMutation.mutate({
+                          userId: selectedUser.id,
+                          newRoles: selectedUserRoles,
+                        });
+                      }
+                    }}
+                  >
+                    {updateRolesMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Save Roles
                   </Button>
                 </div>
               </div>
