@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreHorizontal } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -229,6 +230,15 @@ const Quotes = () => {
     }
   };
 
+  const handleStatusChange = async (quoteId: string, newStatus: string) => {
+    try {
+      await updateQuote.mutateAsync({ id: quoteId, status: newStatus } as any);
+      toast.success(`Quote marked as ${newStatus}`);
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -419,6 +429,45 @@ const Quotes = () => {
                     )}
                   </div>
                   <div className="flex gap-1">
+                    {/* Status change dropdown */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" title="Change Status">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusChange(quote.id, 'sent')}
+                          disabled={quote.status === 'sent'}
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          Mark as Sent
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusChange(quote.id, 'accepted')}
+                          disabled={quote.status === 'accepted'}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2 text-success" />
+                          Mark as Accepted
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusChange(quote.id, 'rejected')}
+                          disabled={quote.status === 'rejected'}
+                        >
+                          <XCircle className="w-4 h-4 mr-2 text-destructive" />
+                          Mark as Rejected
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusChange(quote.id, 'draft')}
+                          disabled={quote.status === 'draft'}
+                        >
+                          Reset to Draft
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Button 
                       variant="ghost" 
                       size="icon" 
