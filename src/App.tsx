@@ -13,6 +13,7 @@ import TimeClock from "./pages/TimeClock";
 import Technicians from "./pages/Technicians";
 import Company from "./pages/Company";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import SuperAdmin from "./pages/SuperAdmin";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/technicians" element={<Technicians />} />
               <Route path="/company" element={<Company />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/profile" element={<Profile />} />
               <Route path="/super-admin" element={<SuperAdmin />} />
             </Route>
             
