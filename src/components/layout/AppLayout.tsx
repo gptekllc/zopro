@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useStore } from '@/store/useStore';
+import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -32,11 +33,11 @@ interface AppLayoutProps {
 }
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'tech'] },
-  { icon: Users, label: 'Customers', path: '/customers', roles: ['admin', 'tech'] },
-  { icon: FileText, label: 'Quotes', path: '/quotes', roles: ['admin', 'tech'] },
-  { icon: Receipt, label: 'Invoices', path: '/invoices', roles: ['admin', 'tech', 'customer'] },
-  { icon: Clock, label: 'Time Clock', path: '/timeclock', roles: ['admin', 'tech'] },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'technician'] },
+  { icon: Users, label: 'Customers', path: '/customers', roles: ['admin', 'technician'] },
+  { icon: FileText, label: 'Quotes', path: '/quotes', roles: ['admin', 'technician'] },
+  { icon: Receipt, label: 'Invoices', path: '/invoices', roles: ['admin', 'technician', 'customer'] },
+  { icon: Clock, label: 'Time Clock', path: '/timeclock', roles: ['admin', 'technician'] },
   { icon: UserCog, label: 'Technicians', path: '/technicians', roles: ['admin'] },
   { icon: Building2, label: 'Company', path: '/company', roles: ['admin'] },
 ];
@@ -45,20 +46,26 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, company, logout } = useStore();
+  const { profile, roles, signOut } = useAuth();
+  const { data: company } = useCompany();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 
+  const userRoles = roles.map(r => r.role);
   const filteredNavItems = navItems.filter(item => 
-    currentUser && item.roles.includes(currentUser.role)
+    item.roles.some(role => userRoles.includes(role as any)) || userRoles.length === 0
   );
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | null) => {
+    if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
+
+  const displayName = profile?.full_name || profile?.email || 'User';
+  const primaryRole = roles[0]?.role || 'user';
 
   return (
     <div className="min-h-screen bg-background">
@@ -81,7 +88,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar className="w-8 h-8">
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                  {currentUser ? getInitials(currentUser.name) : 'U'}
+                  {getInitials(profile?.full_name)}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -122,7 +129,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               </div>
               <div>
                 <h1 className="font-bold text-lg">Service App</h1>
-                <p className="text-xs text-sidebar-foreground/60">{company?.name}</p>
+                <p className="text-xs text-sidebar-foreground/60">{company?.name || 'No Company'}</p>
               </div>
             </div>
             <button
@@ -161,12 +168,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             <div className="flex items-center gap-3 p-3 rounded-lg bg-sidebar-accent">
               <Avatar className="w-10 h-10">
                 <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm">
-                  {currentUser ? getInitials(currentUser.name) : 'U'}
+                  {getInitials(profile?.full_name)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{currentUser?.name}</p>
-                <p className="text-xs text-sidebar-foreground/60 capitalize">{currentUser?.role}</p>
+                <p className="font-medium truncate">{displayName}</p>
+                <p className="text-xs text-sidebar-foreground/60 capitalize">{primaryRole}</p>
               </div>
               <Button
                 variant="ghost"
