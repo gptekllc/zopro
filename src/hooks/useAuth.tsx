@@ -13,7 +13,7 @@ interface Profile {
 }
 
 interface UserRole {
-  role: 'admin' | 'technician' | 'customer';
+  role: 'admin' | 'technician' | 'super_admin';
 }
 
 interface AuthContextType {
@@ -23,6 +23,7 @@ interface AuthContextType {
   roles: UserRole[];
   isLoading: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const isAdmin = roles.some(r => r.role === 'admin');
+  const isSuperAdmin = roles.some(r => r.role === 'super_admin');
 
   const fetchProfile = async (userId: string) => {
     // Using type assertion since types may be out of sync
@@ -159,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roles,
         isLoading,
         isAdmin,
+        isSuperAdmin,
         signIn,
         signUp,
         signOut,

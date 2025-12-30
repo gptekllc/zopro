@@ -24,6 +24,7 @@ import {
   X,
   UserCog,
   Building2,
+  Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -33,13 +34,14 @@ interface AppLayoutProps {
 }
 
 const navItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'technician'] },
+  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'technician', 'super_admin'] },
   { icon: Users, label: 'Customers', path: '/customers', roles: ['admin', 'technician'] },
   { icon: FileText, label: 'Quotes', path: '/quotes', roles: ['admin', 'technician'] },
   { icon: Receipt, label: 'Invoices', path: '/invoices', roles: ['admin', 'technician', 'customer'] },
   { icon: Clock, label: 'Time Clock', path: '/timeclock', roles: ['admin', 'technician'] },
   { icon: UserCog, label: 'Technicians', path: '/technicians', roles: ['admin'] },
   { icon: Building2, label: 'Company', path: '/company', roles: ['admin'] },
+  { icon: Shield, label: 'Super Admin', path: '/super-admin', roles: ['super_admin'] },
 ];
 
 const AppLayout = ({ children }: AppLayoutProps) => {
