@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from '@/hooks/useInvoices';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
+import { useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2 } from 'lucide-react';
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -27,6 +28,12 @@ const Invoices = () => {
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
   const deleteInvoice = useDeleteInvoice();
+  const emailDocument = useEmailDocument();
+  const downloadDocument = useDownloadDocument();
+  
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [selectedInvoiceForEmail, setSelectedInvoiceForEmail] = useState<string | null>(null);
+  const [emailRecipient, setEmailRecipient] = useState('');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -196,6 +203,35 @@ const Invoices = () => {
 
   const getCustomerName = (customerId: string) => {
     return customers.find(c => c.id === customerId)?.name || 'Unknown';
+  };
+
+  const getCustomerEmail = (customerId: string) => {
+    return customers.find(c => c.id === customerId)?.email || '';
+  };
+
+  const handleDownload = (invoiceId: string) => {
+    downloadDocument.mutate({ type: 'invoice', documentId: invoiceId });
+  };
+
+  const handleOpenEmailDialog = (invoiceId: string, customerId: string) => {
+    setSelectedInvoiceForEmail(invoiceId);
+    setEmailRecipient(getCustomerEmail(customerId));
+    setEmailDialogOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!selectedInvoiceForEmail || !emailRecipient) {
+      toast.error('Please enter a recipient email');
+      return;
+    }
+    await emailDocument.mutateAsync({
+      type: 'invoice',
+      documentId: selectedInvoiceForEmail,
+      recipientEmail: emailRecipient,
+    });
+    setEmailDialogOpen(false);
+    setSelectedInvoiceForEmail(null);
+    setEmailRecipient('');
   };
 
   if (isLoading) {
@@ -388,6 +424,22 @@ const Invoices = () => {
                     )}
                   </div>
                   <div className="flex gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDownload(invoice.id)}
+                      title="Download PDF"
+                    >
+                      <FileDown className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleOpenEmailDialog(invoice.id, invoice.customer_id)}
+                      title="Email Invoice"
+                    >
+                      <Mail className="w-4 h-4" />
+                    </Button>
                     {invoice.status !== 'paid' && (
                       <Button variant="ghost" size="icon" onClick={() => handleMarkPaid(invoice.id)} title="Mark as Paid">
                         <CheckCircle className="w-4 h-4 text-success" />
@@ -416,6 +468,39 @@ const Invoices = () => {
           </p>
         </div>
       )}
+
+      {/* Email Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Email Invoice</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Recipient Email</Label>
+              <Input
+                type="email"
+                value={emailRecipient}
+                onChange={(e) => setEmailRecipient(e.target.value)}
+                placeholder="customer@example.com"
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setEmailDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1" 
+                onClick={handleSendEmail}
+                disabled={emailDocument.isPending || !emailRecipient}
+              >
+                {emailDocument.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Send Email
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

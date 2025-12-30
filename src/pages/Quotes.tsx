@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote } from '@/hooks/useQuotes';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
+import { useConvertQuoteToInvoice, useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2 } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -27,6 +28,13 @@ const Quotes = () => {
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
   const deleteQuote = useDeleteQuote();
+  const convertToInvoice = useConvertQuoteToInvoice();
+  const emailDocument = useEmailDocument();
+  const downloadDocument = useDownloadDocument();
+  
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [selectedQuoteForEmail, setSelectedQuoteForEmail] = useState<string | null>(null);
+  const [emailRecipient, setEmailRecipient] = useState('');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -174,7 +182,8 @@ const Quotes = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': return 'bg-success/10 text-success';
+      case 'approved': 
+      case 'accepted': return 'bg-success/10 text-success';
       case 'sent': return 'bg-primary/10 text-primary';
       case 'rejected': return 'bg-destructive/10 text-destructive';
       default: return 'bg-muted text-muted-foreground';
@@ -183,6 +192,41 @@ const Quotes = () => {
 
   const getCustomerName = (customerId: string) => {
     return customers.find(c => c.id === customerId)?.name || 'Unknown';
+  };
+
+  const getCustomerEmail = (customerId: string) => {
+    return customers.find(c => c.id === customerId)?.email || '';
+  };
+
+  const handleDownload = (quoteId: string) => {
+    downloadDocument.mutate({ type: 'quote', documentId: quoteId });
+  };
+
+  const handleOpenEmailDialog = (quoteId: string, customerId: string) => {
+    setSelectedQuoteForEmail(quoteId);
+    setEmailRecipient(getCustomerEmail(customerId));
+    setEmailDialogOpen(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!selectedQuoteForEmail || !emailRecipient) {
+      toast.error('Please enter a recipient email');
+      return;
+    }
+    await emailDocument.mutateAsync({
+      type: 'quote',
+      documentId: selectedQuoteForEmail,
+      recipientEmail: emailRecipient,
+    });
+    setEmailDialogOpen(false);
+    setSelectedQuoteForEmail(null);
+    setEmailRecipient('');
+  };
+
+  const handleConvertToInvoice = async (quoteId: string) => {
+    if (confirm('Convert this quote to an invoice?')) {
+      await convertToInvoice.mutateAsync({ quoteId });
+    }
   };
 
   if (isLoading) {
@@ -375,6 +419,33 @@ const Quotes = () => {
                     )}
                   </div>
                   <div className="flex gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleDownload(quote.id)}
+                      title="Download PDF"
+                    >
+                      <FileDown className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleOpenEmailDialog(quote.id, quote.customer_id)}
+                      title="Email Quote"
+                    >
+                      <Mail className="w-4 h-4" />
+                    </Button>
+                    {quote.status === 'accepted' && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleConvertToInvoice(quote.id)}
+                        title="Convert to Invoice"
+                        disabled={convertToInvoice.isPending}
+                      >
+                        <ArrowRight className="w-4 h-4 text-success" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(quote)}>
                       <Edit className="w-4 h-4" />
                     </Button>
@@ -398,6 +469,39 @@ const Quotes = () => {
           </p>
         </div>
       )}
+
+      {/* Email Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Email Quote</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Recipient Email</Label>
+              <Input
+                type="email"
+                value={emailRecipient}
+                onChange={(e) => setEmailRecipient(e.target.value)}
+                placeholder="customer@example.com"
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setEmailDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1" 
+                onClick={handleSendEmail}
+                disabled={emailDocument.isPending || !emailRecipient}
+              >
+                {emailDocument.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Send Email
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
