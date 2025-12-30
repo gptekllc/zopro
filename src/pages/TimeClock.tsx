@@ -1,21 +1,25 @@
 import { useState, useEffect } from 'react';
-import { useStore } from '@/store/useStore';
+import { useTimeEntries, useActiveTimeEntry, useClockIn, useClockOut } from '@/hooks/useTimeEntries';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Clock, Play, Square, Timer, Calendar } from 'lucide-react';
-import { format, differenceInMinutes, differenceInHours } from 'date-fns';
+import { Clock, Play, Square, Timer, Calendar, Loader2 } from 'lucide-react';
+import { format, differenceInMinutes } from 'date-fns';
 import { toast } from 'sonner';
 
 const TimeClock = () => {
-  const { timeEntries, currentUser, clockIn, clockOut, getActiveTimeEntry } = useStore();
+  const { user, profile } = useAuth();
+  const { data: timeEntries = [], isLoading } = useTimeEntries();
+  const { data: activeEntry } = useActiveTimeEntry();
+  const clockIn = useClockIn();
+  const clockOut = useClockOut();
+  
   const [notes, setNotes] = useState('');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
-  
-  const activeEntry = getActiveTimeEntry();
 
   // Filter entries for current user
-  const userEntries = timeEntries.filter(e => e.userId === currentUser?.id);
+  const userEntries = timeEntries.filter(e => e.user_id === user?.id);
   
   // Calculate weekly hours
   const today = new Date();
@@ -23,10 +27,10 @@ const TimeClock = () => {
   weekStart.setDate(today.getDate() - today.getDay());
   weekStart.setHours(0, 0, 0, 0);
   
-  const weeklyEntries = userEntries.filter(e => new Date(e.clockIn) >= weekStart);
+  const weeklyEntries = userEntries.filter(e => new Date(e.clock_in) >= weekStart);
   const weeklyMinutes = weeklyEntries.reduce((total, entry) => {
-    const clockOutTime = entry.clockOut ? new Date(entry.clockOut) : new Date();
-    return total + differenceInMinutes(clockOutTime, new Date(entry.clockIn));
+    const clockOutTime = entry.clock_out ? new Date(entry.clock_out) : new Date();
+    return total + differenceInMinutes(clockOutTime, new Date(entry.clock_in));
   }, 0);
   const weeklyHours = Math.floor(weeklyMinutes / 60);
   const weeklyMins = weeklyMinutes % 60;
@@ -40,7 +44,7 @@ const TimeClock = () => {
 
     const updateTimer = () => {
       const now = new Date();
-      const start = new Date(activeEntry.clockIn);
+      const start = new Date(activeEntry.clock_in);
       const diff = now.getTime() - start.getTime();
       
       const hours = Math.floor(diff / 3600000);
@@ -57,25 +61,42 @@ const TimeClock = () => {
     return () => clearInterval(interval);
   }, [activeEntry]);
 
-  const handleClockIn = () => {
-    clockIn(notes);
-    setNotes('');
-    toast.success('Clocked in successfully!');
+  const handleClockIn = async () => {
+    try {
+      await clockIn.mutateAsync(notes || undefined);
+      setNotes('');
+      toast.success('Clocked in successfully!');
+    } catch (error) {
+      toast.error('Failed to clock in');
+    }
   };
 
-  const handleClockOut = () => {
-    clockOut(notes);
-    setNotes('');
-    toast.success('Clocked out successfully!');
+  const handleClockOut = async () => {
+    if (!activeEntry) return;
+    try {
+      await clockOut.mutateAsync({ id: activeEntry.id, notes: notes || undefined });
+      setNotes('');
+      toast.success('Clocked out successfully!');
+    } catch (error) {
+      toast.error('Failed to clock out');
+    }
   };
 
-  const formatDuration = (entry: typeof timeEntries[0]) => {
-    if (!entry.clockOut) return 'Active';
-    const mins = differenceInMinutes(new Date(entry.clockOut), new Date(entry.clockIn));
+  const formatDuration = (entry: typeof userEntries[0]) => {
+    if (!entry.clock_out) return 'Active';
+    const mins = differenceInMinutes(new Date(entry.clock_out), new Date(entry.clock_in));
     const hrs = Math.floor(mins / 60);
     const remainingMins = mins % 60;
     return `${hrs}h ${remainingMins}m`;
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -96,7 +117,7 @@ const TimeClock = () => {
             <p className="text-5xl font-bold font-mono mb-2">{elapsedTime}</p>
             {activeEntry && (
               <p className="text-sm opacity-80">
-                Started at {format(new Date(activeEntry.clockIn), 'h:mm a')}
+                Started at {format(new Date(activeEntry.clock_in), 'h:mm a')}
               </p>
             )}
           </div>
@@ -114,17 +135,27 @@ const TimeClock = () => {
             {activeEntry ? (
               <Button
                 onClick={handleClockOut}
+                disabled={clockOut.isPending}
                 className="w-full h-14 text-lg bg-destructive hover:bg-destructive/90"
               >
-                <Square className="w-5 h-5 mr-2" />
+                {clockOut.isPending ? (
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                  <Square className="w-5 h-5 mr-2" />
+                )}
                 Clock Out
               </Button>
             ) : (
               <Button
                 onClick={handleClockIn}
+                disabled={clockIn.isPending}
                 className="w-full h-14 text-lg"
               >
-                <Play className="w-5 h-5 mr-2" />
+                {clockIn.isPending ? (
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                  <Play className="w-5 h-5 mr-2" />
+                )}
                 Clock In
               </Button>
             )}
@@ -164,11 +195,11 @@ const TimeClock = () => {
               >
                 <div>
                   <p className="font-medium">
-                    {format(new Date(entry.clockIn), 'EEEE, MMM d')}
+                    {format(new Date(entry.clock_in), 'EEEE, MMM d')}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {format(new Date(entry.clockIn), 'h:mm a')}
-                    {entry.clockOut && ` - ${format(new Date(entry.clockOut), 'h:mm a')}`}
+                    {format(new Date(entry.clock_in), 'h:mm a')}
+                    {entry.clock_out && ` - ${format(new Date(entry.clock_out), 'h:mm a')}`}
                   </p>
                   {entry.notes && (
                     <p className="text-sm text-muted-foreground mt-1">{entry.notes}</p>
@@ -176,7 +207,7 @@ const TimeClock = () => {
                 </div>
                 <div className="text-right">
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    entry.clockOut 
+                    entry.clock_out 
                       ? 'bg-muted text-muted-foreground' 
                       : 'bg-success/10 text-success'
                   }`}>

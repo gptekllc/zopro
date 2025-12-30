@@ -1,26 +1,47 @@
-import { useStore } from '@/store/useStore';
+import { useAuth } from '@/hooks/useAuth';
+import { useUpdateProfile } from '@/hooks/useProfiles';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, User, Save } from 'lucide-react';
+import { Settings as SettingsIcon, User, Save, Loader2 } from 'lucide-react';
 
 const Settings = () => {
-  const { currentUser, updateUser } = useStore();
+  const { user, profile } = useAuth();
+  const updateProfile = useUpdateProfile();
+  
   const [formData, setFormData] = useState({
-    name: currentUser?.name || '',
-    email: currentUser?.email || '',
-    phone: currentUser?.phone || '',
+    full_name: '',
+    email: '',
+    phone: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        full_name: profile.full_name || '',
+        email: profile.email || '',
+        phone: profile.phone || '',
+      });
+    }
+  }, [profile]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentUser) {
-      updateUser(currentUser.id, formData);
+    if (!user) return;
+    
+    try {
+      await updateProfile.mutateAsync({
+        id: user.id,
+        full_name: formData.full_name,
+        phone: formData.phone,
+      });
       toast.success('Profile updated successfully');
+    } catch (error) {
+      toast.error('Failed to update profile');
     }
   };
 
@@ -48,12 +69,12 @@ const Settings = () => {
           <div className="flex items-center gap-4 mb-6">
             <Avatar className="w-20 h-20">
               <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                {currentUser ? getInitials(currentUser.name) : 'U'}
+                {profile?.full_name ? getInitials(profile.full_name) : 'U'}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h3 className="font-semibold text-lg">{currentUser?.name}</h3>
-              <p className="text-muted-foreground capitalize">{currentUser?.role}</p>
+              <h3 className="font-semibold text-lg">{profile?.full_name || 'Unnamed User'}</h3>
+              <p className="text-muted-foreground capitalize">User</p>
             </div>
           </div>
 
@@ -62,8 +83,8 @@ const Settings = () => {
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                value={formData.full_name}
+                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
               />
             </div>
 
@@ -73,8 +94,10 @@ const Settings = () => {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                disabled
+                className="bg-muted"
               />
+              <p className="text-xs text-muted-foreground">Email cannot be changed here</p>
             </div>
 
             <div className="space-y-2">
@@ -86,8 +109,12 @@ const Settings = () => {
               />
             </div>
 
-            <Button type="submit" className="gap-2">
-              <Save className="w-4 h-4" />
+            <Button type="submit" className="gap-2" disabled={updateProfile.isPending}>
+              {updateProfile.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
               Save Changes
             </Button>
           </form>
