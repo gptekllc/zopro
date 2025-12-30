@@ -1,1 +1,4 @@
 project_id = "emscfiinctuysscrarlg"
+
+[functions.generate-pdf]
+verify_jwt = true
