@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { useStore } from '@/store/useStore';
+import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote } from '@/hooks/useQuotes';
+import { useCustomers } from '@/hooks/useCustomers';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,22 +9,34 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
-import { QuoteLineItem } from '@/types';
+
+interface LineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+}
 
 const Quotes = () => {
-  const { quotes, customers, currentUser, addQuote, updateQuote, deleteQuote } = useStore();
+  const { profile } = useAuth();
+  const { data: quotes = [], isLoading } = useQuotes();
+  const { data: customers = [] } = useCustomers();
+  const createQuote = useCreateQuote();
+  const updateQuote = useUpdateQuote();
+  const deleteQuote = useDeleteQuote();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
   const [formData, setFormData] = useState<{
     customerId: string;
-    items: QuoteLineItem[];
+    items: LineItem[];
     notes: string;
-    status: 'draft' | 'sent' | 'approved' | 'rejected';
+    status: string;
     validDays: number;
   }>({
     customerId: '',
@@ -33,8 +47,10 @@ const Quotes = () => {
   });
 
   const filteredQuotes = quotes.filter(q => {
-    const matchesSearch = q.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.quoteNumber.toLowerCase().includes(searchQuery.toLowerCase());
+    const customer = customers.find(c => c.id === q.customer_id);
+    const customerName = customer?.name || '';
+    const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      q.quote_number.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || q.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -66,7 +82,7 @@ const Quotes = () => {
     }
   };
 
-  const handleItemChange = (id: string, field: keyof QuoteLineItem, value: string | number) => {
+  const handleItemChange = (id: string, field: keyof LineItem, value: string | number) => {
     setFormData({
       ...formData,
       items: formData.items.map(item =>
@@ -75,62 +91,84 @@ const Quotes = () => {
     });
   };
 
-  const calculateTotal = (items: QuoteLineItem[]) => {
+  const calculateTotal = (items: LineItem[]) => {
     return items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const customer = customers.find(c => c.id === formData.customerId);
-    if (!customer) {
+    if (!formData.customerId) {
       toast.error('Please select a customer');
       return;
     }
 
-    if (editingQuote) {
-      updateQuote(editingQuote, {
-        customerId: formData.customerId,
-        customerName: customer.name,
-        items: formData.items,
-        notes: formData.notes,
-        status: formData.status,
-        validUntil: addDays(new Date(), formData.validDays),
-      });
-      toast.success('Quote updated successfully');
-    } else {
-      addQuote({
-        customerId: formData.customerId,
-        customerName: customer.name,
-        items: formData.items,
-        notes: formData.notes,
-        status: formData.status,
-        validUntil: addDays(new Date(), formData.validDays),
-        createdBy: currentUser?.id || '',
-      });
-      toast.success('Quote created successfully');
+    const subtotal = calculateTotal(formData.items);
+    const quoteData = {
+      customer_id: formData.customerId,
+      notes: formData.notes || null,
+      status: formData.status,
+      valid_until: format(addDays(new Date(), formData.validDays), 'yyyy-MM-dd'),
+      subtotal,
+      tax: 0,
+      total: subtotal,
+    };
+
+    try {
+      const itemsData = formData.items.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        total: item.quantity * item.unitPrice,
+      }));
+
+      if (editingQuote) {
+        await updateQuote.mutateAsync({
+          id: editingQuote,
+          ...quoteData,
+          items: itemsData,
+        } as any);
+        toast.success('Quote updated successfully');
+      } else {
+        await createQuote.mutateAsync({
+          ...quoteData,
+          items: itemsData,
+        } as any);
+        toast.success('Quote created successfully');
+      }
+      
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      toast.error(editingQuote ? 'Failed to update quote' : 'Failed to create quote');
     }
-    
-    setIsDialogOpen(false);
-    resetForm();
   };
 
   const handleEdit = (quote: typeof quotes[0]) => {
     setFormData({
-      customerId: quote.customerId,
-      items: quote.items,
+      customerId: quote.customer_id,
+      items: quote.items?.map((item: any) => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: Number(item.unit_price),
+      })) || [{ id: '1', description: '', quantity: 1, unitPrice: 0 }],
       notes: quote.notes || '',
-      status: quote.status,
+      status: quote.status as any,
       validDays: 30,
     });
     setEditingQuote(quote.id);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this quote?')) {
-      deleteQuote(id);
-      toast.success('Quote deleted');
+      try {
+        await deleteQuote.mutateAsync(id);
+        toast.success('Quote deleted');
+      } catch (error) {
+        toast.error('Failed to delete quote');
+      }
     }
   };
 
@@ -142,6 +180,18 @@ const Quotes = () => {
       default: return 'bg-muted text-muted-foreground';
     }
   };
+
+  const getCustomerName = (customerId: string) => {
+    return customers.find(c => c.id === customerId)?.name || 'Unknown';
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -204,7 +254,7 @@ const Quotes = () => {
                   </Button>
                 </div>
                 
-                {formData.items.map((item, idx) => (
+                {formData.items.map((item) => (
                   <div key={item.id} className="flex gap-2 items-start">
                     <Input
                       placeholder="Description"
@@ -256,7 +306,8 @@ const Quotes = () => {
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="flex-1">
+                <Button type="submit" className="flex-1" disabled={createQuote.isPending || updateQuote.isPending}>
+                  {(createQuote.isPending || updateQuote.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {editingQuote ? 'Update' : 'Create'} Quote
                 </Button>
               </div>
@@ -302,12 +353,12 @@ const Quotes = () => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{quote.quoteNumber}</h3>
+                      <h3 className="font-semibold">{quote.quote_number}</h3>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(quote.status)}`}>
                         {quote.status}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground">{quote.customerName}</p>
+                    <p className="text-sm text-muted-foreground">{getCustomerName(quote.customer_id)}</p>
                   </div>
                 </div>
 
@@ -315,11 +366,13 @@ const Quotes = () => {
                   <div className="text-right hidden sm:block">
                     <p className="font-semibold flex items-center gap-1">
                       <DollarSign className="w-4 h-4" />
-                      {calculateTotal(quote.items).toLocaleString()}
+                      {Number(quote.total).toLocaleString()}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Valid until {format(new Date(quote.validUntil), 'MMM d, yyyy')}
-                    </p>
+                    {quote.valid_until && (
+                      <p className="text-xs text-muted-foreground">
+                        Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(quote)}>

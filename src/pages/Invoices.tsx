@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { useStore } from '@/store/useStore';
+import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from '@/hooks/useInvoices';
+import { useCustomers } from '@/hooks/useCustomers';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,22 +9,34 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle } from 'lucide-react';
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2 } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
-import { QuoteLineItem } from '@/types';
+
+interface LineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+}
 
 const Invoices = () => {
-  const { invoices, customers, currentUser, addInvoice, updateInvoice, deleteInvoice } = useStore();
+  const { profile } = useAuth();
+  const { data: invoices = [], isLoading } = useInvoices();
+  const { data: customers = [] } = useCustomers();
+  const createInvoice = useCreateInvoice();
+  const updateInvoice = useUpdateInvoice();
+  const deleteInvoice = useDeleteInvoice();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<string | null>(null);
   const [formData, setFormData] = useState<{
     customerId: string;
-    items: QuoteLineItem[];
+    items: LineItem[];
     notes: string;
-    status: 'draft' | 'sent' | 'paid' | 'overdue';
+    status: string;
     dueDays: number;
   }>({
     customerId: '',
@@ -33,8 +47,10 @@ const Invoices = () => {
   });
 
   const filteredInvoices = invoices.filter(inv => {
-    const matchesSearch = inv.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase());
+    const customer = customers.find(c => c.id === inv.customer_id);
+    const customerName = customer?.name || '';
+    const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inv.invoice_number.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -66,7 +82,7 @@ const Invoices = () => {
     }
   };
 
-  const handleItemChange = (id: string, field: keyof QuoteLineItem, value: string | number) => {
+  const handleItemChange = (id: string, field: keyof LineItem, value: string | number) => {
     setFormData({
       ...formData,
       items: formData.items.map(item =>
@@ -75,68 +91,98 @@ const Invoices = () => {
     });
   };
 
-  const calculateTotal = (items: QuoteLineItem[]) => {
+  const calculateTotal = (items: LineItem[]) => {
     return items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const customer = customers.find(c => c.id === formData.customerId);
-    if (!customer) {
+    if (!formData.customerId) {
       toast.error('Please select a customer');
       return;
     }
 
-    if (editingInvoice) {
-      updateInvoice(editingInvoice, {
-        customerId: formData.customerId,
-        customerName: customer.name,
-        items: formData.items,
-        notes: formData.notes,
-        status: formData.status,
-        dueDate: addDays(new Date(), formData.dueDays),
-      });
-      toast.success('Invoice updated successfully');
-    } else {
-      addInvoice({
-        customerId: formData.customerId,
-        customerName: customer.name,
-        items: formData.items,
-        notes: formData.notes,
-        status: formData.status,
-        dueDate: addDays(new Date(), formData.dueDays),
-        createdBy: currentUser?.id || '',
-      });
-      toast.success('Invoice created successfully');
+    const subtotal = calculateTotal(formData.items);
+    const invoiceData = {
+      customer_id: formData.customerId,
+      notes: formData.notes || null,
+      status: formData.status,
+      due_date: format(addDays(new Date(), formData.dueDays), 'yyyy-MM-dd'),
+      subtotal,
+      tax: 0,
+      total: subtotal,
+    };
+
+    try {
+      const itemsData = formData.items.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+        total: item.quantity * item.unitPrice,
+      }));
+
+      if (editingInvoice) {
+        await updateInvoice.mutateAsync({
+          id: editingInvoice,
+          ...invoiceData,
+          items: itemsData,
+        } as any);
+        toast.success('Invoice updated successfully');
+      } else {
+        await createInvoice.mutateAsync({
+          ...invoiceData,
+          items: itemsData,
+        } as any);
+        toast.success('Invoice created successfully');
+      }
+      
+      setIsDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      toast.error(editingInvoice ? 'Failed to update invoice' : 'Failed to create invoice');
     }
-    
-    setIsDialogOpen(false);
-    resetForm();
   };
 
   const handleEdit = (invoice: typeof invoices[0]) => {
     setFormData({
-      customerId: invoice.customerId,
-      items: invoice.items,
+      customerId: invoice.customer_id,
+      items: invoice.items?.map((item: any) => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: Number(item.unit_price),
+      })) || [{ id: '1', description: '', quantity: 1, unitPrice: 0 }],
       notes: invoice.notes || '',
-      status: invoice.status,
+      status: invoice.status as any,
       dueDays: 30,
     });
     setEditingInvoice(invoice.id);
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this invoice?')) {
-      deleteInvoice(id);
-      toast.success('Invoice deleted');
+      try {
+        await deleteInvoice.mutateAsync(id);
+        toast.success('Invoice deleted');
+      } catch (error) {
+        toast.error('Failed to delete invoice');
+      }
     }
   };
 
-  const handleMarkPaid = (id: string) => {
-    updateInvoice(id, { status: 'paid', paidDate: new Date() });
-    toast.success('Invoice marked as paid');
+  const handleMarkPaid = async (id: string) => {
+    try {
+      await updateInvoice.mutateAsync({
+        id,
+        status: 'paid',
+        paid_at: new Date().toISOString(),
+      });
+      toast.success('Invoice marked as paid');
+    } catch (error) {
+      toast.error('Failed to update invoice');
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -147,6 +193,18 @@ const Invoices = () => {
       default: return 'bg-muted text-muted-foreground';
     }
   };
+
+  const getCustomerName = (customerId: string) => {
+    return customers.find(c => c.id === customerId)?.name || 'Unknown';
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -261,7 +319,8 @@ const Invoices = () => {
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="flex-1">
+                <Button type="submit" className="flex-1" disabled={createInvoice.isPending || updateInvoice.isPending}>
+                  {(createInvoice.isPending || updateInvoice.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {editingInvoice ? 'Update' : 'Create'} Invoice
                 </Button>
               </div>
@@ -307,12 +366,12 @@ const Invoices = () => {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{invoice.invoiceNumber}</h3>
+                      <h3 className="font-semibold">{invoice.invoice_number}</h3>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(invoice.status)}`}>
                         {invoice.status}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground">{invoice.customerName}</p>
+                    <p className="text-sm text-muted-foreground">{getCustomerName(invoice.customer_id)}</p>
                   </div>
                 </div>
 
@@ -320,11 +379,13 @@ const Invoices = () => {
                   <div className="text-right hidden sm:block">
                     <p className="font-semibold flex items-center gap-1">
                       <DollarSign className="w-4 h-4" />
-                      {calculateTotal(invoice.items).toLocaleString()}
+                      {Number(invoice.total).toLocaleString()}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Due {format(new Date(invoice.dueDate), 'MMM d, yyyy')}
-                    </p>
+                    {invoice.due_date && (
+                      <p className="text-xs text-muted-foreground">
+                        Due {format(new Date(invoice.due_date), 'MMM d, yyyy')}
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     {invoice.status !== 'paid' && (

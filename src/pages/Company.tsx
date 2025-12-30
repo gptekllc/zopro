@@ -1,28 +1,58 @@
-import { useState } from 'react';
-import { useStore } from '@/store/useStore';
+import { useState, useEffect } from 'react';
+import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Save } from 'lucide-react';
+import { Building2, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Company = () => {
-  const { company, updateCompany } = useStore();
+  const { data: company, isLoading } = useCompany();
+  const updateCompany = useUpdateCompany();
+  
   const [formData, setFormData] = useState({
-    name: company?.name || '',
-    address: company?.address || '',
-    phone: company?.phone || '',
-    email: company?.email || '',
-    industry: company?.industry || 'general',
+    name: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
+    phone: '',
+    email: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (company) {
+      setFormData({
+        name: company.name || '',
+        address: company.address || '',
+        city: company.city || '',
+        state: company.state || '',
+        zip: company.zip || '',
+        phone: company.phone || '',
+        email: company.email || '',
+      });
+    }
+  }, [company]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateCompany(formData);
-    toast.success('Company settings saved successfully');
+    if (!company?.id) return;
+    try {
+      await updateCompany.mutateAsync({ id: company.id, ...formData });
+      toast.success('Company settings saved successfully');
+    } catch (error) {
+      toast.error('Failed to save company settings');
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fade-in max-w-2xl">
@@ -52,30 +82,39 @@ const Company = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="industry">Industry</Label>
-              <Select
-                value={formData.industry}
-                onValueChange={(value) => setFormData({ ...formData, industry: value as typeof formData.industry })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="plumbing">Plumbing</SelectItem>
-                  <SelectItem value="hvac">HVAC</SelectItem>
-                  <SelectItem value="electrical">Electrical</SelectItem>
-                  <SelectItem value="general">General Services</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="address">Address</Label>
               <Input
                 id="address"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
               />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="city">City</Label>
+                <Input
+                  id="city"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="state">State</Label>
+                <Input
+                  id="state"
+                  value={formData.state}
+                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="zip">ZIP</Label>
+                <Input
+                  id="zip"
+                  value={formData.zip}
+                  onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -98,8 +137,12 @@ const Company = () => {
               </div>
             </div>
 
-            <Button type="submit" className="w-full sm:w-auto gap-2">
-              <Save className="w-4 h-4" />
+            <Button type="submit" className="w-full sm:w-auto gap-2" disabled={updateCompany.isPending}>
+              {updateCompany.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
               Save Changes
             </Button>
           </form>
