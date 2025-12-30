@@ -1,11 +1,19 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { useStore } from '@/store/useStore';
+import { useAuth } from '@/hooks/useAuth';
 import AppLayout from '@/components/layout/AppLayout';
 
 const ProtectedRoute = () => {
-  const isAuthenticated = useStore((state) => state.isAuthenticated);
+  const { user, isLoading } = useAuth();
 
-  if (!isAuthenticated) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) {
     return <Navigate to="/" replace />;
   }
 
