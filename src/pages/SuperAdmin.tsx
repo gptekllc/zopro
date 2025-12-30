@@ -174,16 +174,39 @@ const SuperAdmin = () => {
 
   // Assign user to company mutation
   const assignUserMutation = useMutation({
-    mutationFn: async ({ userId, companyId }: { userId: string; companyId: string | null }) => {
+    mutationFn: async ({ userId, companyId, userEmail, userName }: { 
+      userId: string; 
+      companyId: string | null;
+      userEmail: string;
+      userName: string | null;
+    }) => {
       const { error } = await (supabase as any)
         .from('profiles')
         .update({ company_id: companyId })
         .eq('id', userId);
       if (error) throw error;
+
+      // Get company name for notification
+      const companyName = companyId ? companies.find(c => c.id === companyId)?.name : null;
+
+      // Send email notification
+      try {
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            type: 'company_assigned',
+            recipientEmail: userEmail,
+            recipientName: userName || 'User',
+            companyName,
+          },
+        });
+      } catch (emailError) {
+        console.error('Failed to send notification email:', emailError);
+        // Don't fail the mutation if email fails
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-profiles'] });
-      toast.success('User company updated');
+      toast.success('User company updated and notification sent');
       setAssignDialogOpen(false);
     },
     onError: (error: any) => {
@@ -193,7 +216,12 @@ const SuperAdmin = () => {
 
   // Update user roles mutation
   const updateRolesMutation = useMutation({
-    mutationFn: async ({ userId, newRoles }: { userId: string; newRoles: string[] }) => {
+    mutationFn: async ({ userId, newRoles, userEmail, userName }: { 
+      userId: string; 
+      newRoles: string[];
+      userEmail: string;
+      userName: string | null;
+    }) => {
       // Get current roles for this user
       const currentRoles = allUserRoles.filter(r => r.user_id === userId);
       const currentRoleNames = currentRoles.map(r => r.role);
@@ -228,11 +256,27 @@ const SuperAdmin = () => {
         .from('profiles')
         .update({ role: primaryRole })
         .eq('id', userId);
+
+      // Send email notification
+      try {
+        await supabase.functions.invoke('send-notification', {
+          body: {
+            type: 'roles_changed',
+            recipientEmail: userEmail,
+            recipientName: userName || 'User',
+            roles: newRoles,
+            previousRoles: currentRoleNames,
+          },
+        });
+      } catch (emailError) {
+        console.error('Failed to send notification email:', emailError);
+        // Don't fail the mutation if email fails
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-user-roles'] });
       queryClient.invalidateQueries({ queryKey: ['all-profiles'] });
-      toast.success('User roles updated');
+      toast.success('User roles updated and notification sent');
       setRolesDialogOpen(false);
     },
     onError: (error: any) => {
@@ -616,6 +660,8 @@ const SuperAdmin = () => {
                         assignUserMutation.mutate({
                           userId: selectedUser.id,
                           companyId: selectedCompanyId === 'none' ? null : selectedCompanyId,
+                          userEmail: selectedUser.email,
+                          userName: selectedUser.full_name,
                         });
                       }
                     }}
@@ -679,6 +725,8 @@ const SuperAdmin = () => {
                         updateRolesMutation.mutate({
                           userId: selectedUser.id,
                           newRoles: selectedUserRoles,
+                          userEmail: selectedUser.email,
+                          userName: selectedUser.full_name,
                         });
                       }
                     }}

@@ -25,6 +25,7 @@ import {
   UserCog,
   Building2,
   Shield,
+  User,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -96,6 +97,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => navigate('/profile')}>
+              <User className="w-4 h-4 mr-2" /> Profile
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate('/settings')}>
               <Settings className="w-4 h-4 mr-2" /> Settings
             </DropdownMenuItem>
