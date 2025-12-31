@@ -4,7 +4,7 @@ project_id = "emscfiinctuysscrarlg"
 verify_jwt = true
 
 [functions.send-notification]
-verify_jwt = true
+verify_jwt = false
 
 [functions.invite-team-member]
 verify_jwt = true
