@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
+import Jobs from "./pages/Jobs";
 import Quotes from "./pages/Quotes";
 import Invoices from "./pages/Invoices";
 import TimeClock from "./pages/TimeClock";
@@ -36,6 +37,7 @@ const App = () => (
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/customers" element={<Customers />} />
+              <Route path="/jobs" element={<Jobs />} />
               <Route path="/quotes" element={<Quotes />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/timeclock" element={<TimeClock />} />

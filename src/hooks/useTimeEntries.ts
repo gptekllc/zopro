@@ -216,3 +216,26 @@ export function useUpdateTimeEntry() {
     },
   });
 }
+
+export function useDeleteTimeEntry() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('time_entries')
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['active_time_entry'] });
+      toast.success('Time entry deleted');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to delete: ' + error.message);
+    },
+  });
+}
