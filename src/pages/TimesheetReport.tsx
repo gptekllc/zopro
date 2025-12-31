@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react';
-import { useTimeEntries, TimeEntry } from '@/hooks/useTimeEntries';
+import { useTimeEntries, TimeEntry, useDeleteTimeEntry } from '@/hooks/useTimeEntries';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Download, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, Trash2, FileText } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, differenceInMinutes, isSameDay } from 'date-fns';
 
 const TimesheetReport = () => {
@@ -13,12 +14,14 @@ const TimesheetReport = () => {
   const { data: company } = useCompany();
   const { data: timeEntries = [], isLoading: loadingEntries } = useTimeEntries();
   const { data: profiles = [], isLoading: loadingProfiles } = useProfiles();
+  const deleteTimeEntry = useDeleteTimeEntry();
   
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
+  const [numWeeks, setNumWeeks] = useState(1);
 
   const canViewAll = roles.some(r => r.role === 'admin' || r.role === 'manager');
 
-  const weekEnd = endOfWeek(weekStart, { weekStartsOn: 0 });
+  const weekEnd = endOfWeek(addWeeks(weekStart, numWeeks - 1), { weekStartsOn: 0 });
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
   // Group entries by user and day
@@ -121,10 +124,21 @@ const TimesheetReport = () => {
             {company?.timezone && <span className="ml-2 text-xs">({company.timezone})</span>}
           </p>
         </div>
-        <Button onClick={exportToCSV} variant="outline">
-          <Download className="w-4 h-4 mr-2" />
-          Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={exportToCSV} variant="outline">
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+          <select 
+            className="border rounded px-2 py-1 text-sm"
+            value={numWeeks}
+            onChange={(e) => setNumWeeks(Number(e.target.value))}
+          >
+            <option value={1}>1 Week</option>
+            <option value={2}>2 Weeks</option>
+            <option value={4}>4 Weeks</option>
+          </select>
+        </div>
       </div>
 
       {/* Week Navigation */}

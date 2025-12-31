@@ -26,6 +26,7 @@ import {
   Building2,
   Shield,
   User,
+  Briefcase,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
@@ -37,6 +38,7 @@ interface AppLayoutProps {
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'technician', 'super_admin'] },
   { icon: Users, label: 'Customers', path: '/customers', roles: ['admin', 'technician'] },
+  { icon: Briefcase, label: 'Jobs', path: '/jobs', roles: ['admin', 'technician'] },
   { icon: FileText, label: 'Quotes', path: '/quotes', roles: ['admin', 'technician'] },
   { icon: Receipt, label: 'Invoices', path: '/invoices', roles: ['admin', 'technician', 'customer'] },
   { icon: Clock, label: 'Time Clock', path: '/timeclock', roles: ['admin', 'technician'] },
