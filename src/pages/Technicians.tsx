@@ -1,29 +1,45 @@
 import { useState } from 'react';
 import { useProfiles, useUpdateProfile } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, UserCog, Mail, Phone, Edit, Shield, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Search, UserCog, Mail, Phone, Edit, Shield, Loader2, UserPlus, Copy, Link2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+
+const AVAILABLE_ROLES = ['admin', 'manager', 'technician', 'customer'] as const;
+type AppRole = typeof AVAILABLE_ROLES[number];
 
 const Technicians = () => {
   const { user, profile: currentProfile } = useAuth();
   const { data: profiles = [], isLoading } = useProfiles();
+  const { data: company } = useCompany();
   const updateProfile = useUpdateProfile();
+  const queryClient = useQueryClient();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [joinCodes, setJoinCodes] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
     phone: '',
     role: 'technician',
   });
+  
+  // Add member form state
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState<AppRole>('technician');
 
   // Filter to show only technicians and admins
   const teamMembers = profiles.filter(p => p.role === 'admin' || p.role === 'technician');
@@ -32,6 +48,71 @@ const Technicians = () => {
     (p.full_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
     p.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Invite member mutation
+  const inviteMemberMutation = useMutation({
+    mutationFn: async ({ email, full_name, role }: { email: string; full_name: string; role: AppRole }) => {
+      if (!currentProfile?.company_id) throw new Error('No company ID');
+      
+      const { data, error } = await supabase.functions.invoke('invite-team-member', {
+        body: {
+          email,
+          full_name,
+          role,
+          company_id: currentProfile.company_id,
+        },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['team_members'] });
+      toast.success(data?.message || 'Team member invited successfully');
+      setIsAddDialogOpen(false);
+      setNewMemberEmail('');
+      setNewMemberName('');
+      setNewMemberRole('technician');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to invite member: ' + error.message);
+    },
+  });
+
+  // Fetch join codes
+  const fetchJoinCodes = async () => {
+    if (!currentProfile?.company_id) return;
+    const { data } = await (supabase as any)
+      .from('company_join_codes')
+      .select('*')
+      .eq('company_id', currentProfile.company_id)
+      .eq('is_active', true);
+    setJoinCodes(data || []);
+  };
+
+  const handleOpenAddDialog = () => {
+    fetchJoinCodes();
+    setIsAddDialogOpen(true);
+  };
+
+  const copyJoinCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success('Join code copied to clipboard!');
+  };
+
+  const handleInviteMember = () => {
+    if (!newMemberEmail.trim()) {
+      toast.error('Email is required');
+      return;
+    }
+    inviteMemberMutation.mutate({
+      email: newMemberEmail.trim(),
+      full_name: newMemberName.trim(),
+      role: newMemberRole,
+    });
+  };
 
   const resetForm = () => {
     setFormData({ full_name: '', email: '', phone: '', role: 'technician' });
@@ -100,79 +181,197 @@ const Technicians = () => {
           <p className="text-muted-foreground mt-1">{teamMembers.length} team members</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) resetForm();
-        }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Edit Team Member</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  disabled
-                  className="bg-muted"
-                />
-                <p className="text-xs text-muted-foreground">Email cannot be changed here</p>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Role</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => setFormData({ ...formData, role: value })}
-                  disabled={editingUser === user?.id}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="technician">Technician</SelectItem>
-                  </SelectContent>
-                </Select>
-                {editingUser === user?.id && (
-                  <p className="text-xs text-muted-foreground">You cannot change your own role</p>
-                )}
-              </div>
-              
-              <div className="flex gap-3 pt-4">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" className="flex-1" disabled={updateProfile.isPending}>
-                  {updateProfile.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Update Member
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleOpenAddDialog}>
+          <UserPlus className="w-4 h-4 mr-2" />
+          Add Member
+        </Button>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) resetForm();
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Team Member</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name *</Label>
+              <Input
+                id="name"
+                value={formData.full_name}
+                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">Email cannot be changed here</p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select
+                value={formData.role}
+                onValueChange={(value) => setFormData({ ...formData, role: value })}
+                disabled={editingUser === user?.id}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="manager">Manager</SelectItem>
+                  <SelectItem value="technician">Technician</SelectItem>
+                </SelectContent>
+              </Select>
+              {editingUser === user?.id && (
+                <p className="text-xs text-muted-foreground">You cannot change your own role</p>
+              )}
+            </div>
+            
+            <div className="flex gap-3 pt-4">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="flex-1" disabled={updateProfile.isPending}>
+                {updateProfile.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Update Member
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Member Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Team Member</DialogTitle>
+            <DialogDescription>
+              Invite someone to join your company.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs defaultValue="invite" className="mt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="invite">Share Join Code</TabsTrigger>
+              <TabsTrigger value="manual">Manual Add</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="invite" className="space-y-4 pt-4">
+              <div className="text-sm text-muted-foreground">
+                Share your company's join code with team members.
+              </div>
+              
+              {joinCodes.length > 0 ? (
+                <div className="space-y-2">
+                  {joinCodes.map((code) => (
+                    <div 
+                      key={code.id} 
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Link2 className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-mono font-bold text-lg tracking-wider">{code.code}</span>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => copyJoinCode(code.code)}
+                      >
+                        <Copy className="w-4 h-4 mr-1" />
+                        Copy
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  No active join codes. Create one from Company settings.
+                </div>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="manual" className="space-y-4 pt-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="newName">Full Name</Label>
+                  <Input
+                    id="newName"
+                    value={newMemberName}
+                    onChange={(e) => setNewMemberName(e.target.value)}
+                    placeholder="John Doe"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newEmail">Email *</Label>
+                  <Input
+                    id="newEmail"
+                    type="email"
+                    value={newMemberEmail}
+                    onChange={(e) => setNewMemberEmail(e.target.value)}
+                    placeholder="john@example.com"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newRole">Role</Label>
+                  <Select value={newMemberRole} onValueChange={(v) => setNewMemberRole(v as AppRole)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AVAILABLE_ROLES.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          <span className="capitalize">{role}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The user will be added to your company and receive an email to set their password.
+              </p>
+              <Button 
+                onClick={handleInviteMember} 
+                className="w-full"
+                disabled={inviteMemberMutation.isPending || !newMemberEmail.trim()}
+              >
+                {inviteMemberMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add Team Member
+              </Button>
+            </TabsContent>
+          </Tabs>
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Search */}
       <div className="relative max-w-md">

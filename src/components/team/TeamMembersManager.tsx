@@ -146,6 +146,37 @@ const TeamMembersManager = () => {
     },
   });
 
+  // Invite member mutation
+  const inviteMemberMutation = useMutation({
+    mutationFn: async ({ email, full_name, role }: { email: string; full_name: string; role: AppRole }) => {
+      if (!profile?.company_id) throw new Error('No company ID');
+      
+      const { data, error } = await supabase.functions.invoke('invite-team-member', {
+        body: {
+          email,
+          full_name,
+          role,
+          company_id: profile.company_id,
+        },
+      });
+      
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['team_members'] });
+      toast.success(data?.message || 'Team member invited successfully');
+      setIsAddDialogOpen(false);
+      setNewMemberEmail('');
+      setNewMemberName('');
+      setNewMemberRole('technician');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to invite member: ' + error.message);
+    },
+  });
+
   // Fetch join codes when opening add dialog
   const fetchJoinCodes = async () => {
     if (!profile?.company_id) return;
@@ -167,9 +198,17 @@ const TeamMembersManager = () => {
     toast.success('Join code copied to clipboard!');
   };
 
-  // Note: Creating auth users requires admin SDK (edge function). 
-  // For now, we'll create a "pending invite" by letting admins share join codes.
-  // Users sign up themselves and use the join code.
+  const handleInviteMember = () => {
+    if (!newMemberEmail.trim()) {
+      toast.error('Email is required');
+      return;
+    }
+    inviteMemberMutation.mutate({
+      email: newMemberEmail.trim(),
+      full_name: newMemberName.trim(),
+      role: newMemberRole,
+    });
+  };
 
   const handleRoleChange = (member: TeamMember) => {
     setSelectedMember(member);
@@ -409,7 +448,7 @@ const TeamMembersManager = () => {
           <Tabs defaultValue="invite" className="mt-4">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="invite">Share Join Code</TabsTrigger>
-              <TabsTrigger value="manual" disabled>Manual Add</TabsTrigger>
+              <TabsTrigger value="manual">Manual Add</TabsTrigger>
             </TabsList>
             
             <TabsContent value="invite" className="space-y-4 pt-4">
@@ -464,13 +503,14 @@ const TeamMembersManager = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="newMemberEmail">Email</Label>
+                  <Label htmlFor="newMemberEmail">Email *</Label>
                   <Input
                     id="newMemberEmail"
                     type="email"
                     value={newMemberEmail}
                     onChange={(e) => setNewMemberEmail(e.target.value)}
                     placeholder="john@example.com"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -490,8 +530,17 @@ const TeamMembersManager = () => {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
-                Note: Manual user creation requires email verification. The user will receive an invite email.
+                The user will be created and added to your company. They'll receive an email to set their password.
               </p>
+              <Button 
+                onClick={handleInviteMember} 
+                className="w-full"
+                disabled={inviteMemberMutation.isPending || !newMemberEmail.trim()}
+              >
+                {inviteMemberMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add Team Member
+              </Button>
             </TabsContent>
           </Tabs>
           
