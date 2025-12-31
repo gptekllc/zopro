@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,7 +11,8 @@ interface PendingRequestViewProps {
 }
 
 const PendingRequestView = ({ onStartNew }: PendingRequestViewProps) => {
-  const { user } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const { data: pendingRequest, isLoading, refetch } = useQuery({
     queryKey: ['my-join-request', user?.id],
@@ -32,14 +34,28 @@ const PendingRequestView = ({ onStartNew }: PendingRequestViewProps) => {
     refetchInterval: 10000, // Poll every 10 seconds to check for approval
   });
 
-  const handleRefresh = () => {
-    refetch().then(() => {
-      // If the request was approved, the profile should now have company_id
-      // Reload the page to trigger the ProtectedRoute check
-      if (pendingRequest?.status === 'approved') {
-        window.location.reload();
-      }
-    });
+  // Effect to check if profile has been updated with company_id
+  useEffect(() => {
+    if (profile?.company_id && !isNavigating) {
+      // Profile now has company_id, user is fully set up - reload to enter app
+      setIsNavigating(true);
+      window.location.href = '/dashboard';
+    }
+  }, [profile?.company_id, isNavigating]);
+
+  const handleContinueToDashboard = async () => {
+    setIsNavigating(true);
+    // Refresh profile to get updated company_id
+    await refreshProfile();
+    // Give a moment for state to update, then force navigation
+    setTimeout(() => {
+      window.location.href = '/dashboard';
+    }, 500);
+  };
+
+  const handleRefresh = async () => {
+    await refetch();
+    await refreshProfile();
   };
 
   if (isLoading) {
@@ -104,9 +120,17 @@ const PendingRequestView = ({ onStartNew }: PendingRequestViewProps) => {
                   <> You've been assigned the role of <strong>{pendingRequest.assigned_role}</strong>.</>
                 )}
               </p>
-              <Button onClick={() => window.location.reload()} className="w-full">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Continue to Dashboard
+              <Button 
+                onClick={handleContinueToDashboard} 
+                className="w-full"
+                disabled={isNavigating}
+              >
+                {isNavigating ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                {isNavigating ? 'Redirecting...' : 'Continue to Dashboard'}
               </Button>
             </CardContent>
           </Card>
