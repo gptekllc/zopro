@@ -188,6 +188,13 @@ Deno.serve(async (req) => {
           .eq('customer_id', customerId)
           .order('created_at', { ascending: false });
 
+        // Fetch quotes for this customer
+        const { data: quotes } = await adminClient
+          .from('quotes')
+          .select('id, quote_number, status, total, created_at, valid_until, notes')
+          .eq('customer_id', customerId)
+          .order('created_at', { ascending: false });
+
         console.log('Token verified successfully for customer:', customer.name);
 
         return new Response(
@@ -202,6 +209,7 @@ Deno.serve(async (req) => {
             },
             invoices: invoices || [],
             jobs: jobs || [],
+            quotes: quotes || [],
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -415,6 +423,86 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ html, invoiceNumber: invoice.invoice_number }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'approve-quote') {
+      const { quoteId, customerId, token } = body;
+      
+      if (!quoteId || !customerId || !token) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify token first
+      try {
+        const tokenData = JSON.parse(atob(token));
+        
+        if (tokenData.customerId !== customerId) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid token' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const expiresAt = new Date(tokenData.expiresAt);
+        if (expiresAt < new Date()) {
+          return new Response(
+            JSON.stringify({ error: 'Token expired' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch {
+        return new Response(
+          JSON.stringify({ error: 'Invalid token format' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify quote belongs to customer and update status
+      const { data: quote, error: quoteError } = await adminClient
+        .from('quotes')
+        .select('*')
+        .eq('id', quoteId)
+        .eq('customer_id', customerId)
+        .single();
+
+      if (quoteError || !quote) {
+        console.error('Quote not found or access denied:', quoteError);
+        return new Response(
+          JSON.stringify({ error: 'Quote not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (quote.status === 'approved') {
+        return new Response(
+          JSON.stringify({ success: true, message: 'Quote already approved' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update quote status to approved
+      const { error: updateError } = await adminClient
+        .from('quotes')
+        .update({ status: 'approved', updated_at: new Date().toISOString() })
+        .eq('id', quoteId);
+
+      if (updateError) {
+        console.error('Failed to update quote:', updateError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to approve quote' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Quote approved:', quote.quote_number);
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Quote approved successfully' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
