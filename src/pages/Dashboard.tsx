@@ -10,19 +10,24 @@ import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
-  const { profile, user, roles } = useAuth();
+  const { profile, user, roles, isLoading: authLoading } = useAuth();
   const { data: invoices = [], isLoading: loadingInvoices } = useInvoices();
   const { data: quotes = [], isLoading: loadingQuotes } = useQuotes();
   const { data: customers = [], isLoading: loadingCustomers } = useCustomers();
   const { data: timeEntries = [], isLoading: loadingTime } = useTimeEntries();
   const { data: jobs = [], isLoading: loadingJobs } = useJobs();
 
-  const isLoading = loadingInvoices || loadingQuotes || loadingCustomers || loadingTime || loadingJobs;
+  const isLoading =
+    authLoading || loadingInvoices || loadingQuotes || loadingCustomers || loadingTime || loadingJobs;
 
-  // Technician-only dashboard view (based on roles table, not profile.role)
+  const isAdminOrManager = roles.some((r) =>
+    r.role === 'admin' || r.role === 'manager' || r.role === 'super_admin'
+  );
+
+  // Technician-only dashboard view (based on roles table)
   const isTechnician =
     roles.some((r) => r.role === 'technician') &&
-    !roles.some((r) => r.role === 'admin' || r.role === 'manager' || r.role === 'super_admin');
+    !isAdminOrManager;
 
   // Filter invoices for technician view - only show invoices they created
   const visibleInvoices = isTechnician 
@@ -131,7 +136,7 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {/* Today's Time Entries - Only for Admins/Managers */}
-        {!isTechnician && (
+        {isAdminOrManager && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
