@@ -3,9 +3,11 @@ import { useInvoices } from '@/hooks/useInvoices';
 import { useQuotes } from '@/hooks/useQuotes';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useTimeEntries } from '@/hooks/useTimeEntries';
+import { useJobs } from '@/hooks/useJobs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, FileText, Users, Clock, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
+import { DollarSign, FileText, Users, Clock, TrendingUp, AlertCircle, Loader2, Briefcase } from 'lucide-react';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
   const { profile, user, roles } = useAuth();
@@ -13,8 +15,9 @@ const Dashboard = () => {
   const { data: quotes = [], isLoading: loadingQuotes } = useQuotes();
   const { data: customers = [], isLoading: loadingCustomers } = useCustomers();
   const { data: timeEntries = [], isLoading: loadingTime } = useTimeEntries();
+  const { data: jobs = [], isLoading: loadingJobs } = useJobs();
 
-  const isLoading = loadingInvoices || loadingQuotes || loadingCustomers || loadingTime;
+  const isLoading = loadingInvoices || loadingQuotes || loadingCustomers || loadingTime || loadingJobs;
 
   // Technician-only dashboard view (based on roles table, not profile.role)
   const isTechnician =
@@ -47,12 +50,25 @@ const Dashboard = () => {
     return entryDate.toDateString() === today.toDateString();
   });
 
+  // Recent activity - technicians see only their own items
+  const recentInvoices = isTechnician
+    ? invoices.filter(i => i.created_by === user?.id).slice(0, 5)
+    : invoices.slice(0, 5);
+  
+  const recentQuotes = isTechnician
+    ? quotes.filter(q => q.created_by === user?.id).slice(0, 5)
+    : quotes.slice(0, 5);
+  
+  const recentJobs = isTechnician
+    ? jobs.filter(j => j.created_by === user?.id || j.assigned_to === user?.id).slice(0, 5)
+    : jobs.slice(0, 5);
+
   // Stats for technician vs admin/manager
   const stats = isTechnician ? [
     { title: 'My Revenue', value: `$${totalRevenue.toLocaleString()}`, icon: DollarSign, iconBg: 'bg-success' },
     { title: 'My Pending Invoices', value: pendingInvoices.length, subtext: `$${pendingAmount.toLocaleString()}`, icon: FileText, iconBg: 'bg-warning' },
     { title: 'My Active Quotes', value: activeQuotes.length, icon: TrendingUp, iconBg: 'bg-primary' },
-    { title: 'My Time Today', value: todayEntries.length, icon: Clock, iconBg: 'bg-accent' },
+    { title: 'My Jobs', value: jobs.filter(j => j.created_by === user?.id || j.assigned_to === user?.id).length, icon: Briefcase, iconBg: 'bg-accent' },
   ] : [
     { title: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}`, icon: DollarSign, iconBg: 'bg-success' },
     { title: 'Pending Invoices', value: pendingInvoices.length, subtext: `$${pendingAmount.toLocaleString()}`, icon: FileText, iconBg: 'bg-warning' },
@@ -97,47 +113,151 @@ const Dashboard = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {overdueInvoices.length > 0 && (
-          <Card className="border-destructive/50 bg-destructive/5">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
-                <div>
-                  <p className="font-medium text-destructive">Overdue Invoices</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    You have {overdueInvoices.length} overdue invoice(s).
-                  </p>
-                </div>
+      {overdueInvoices.length > 0 && (
+        <Card className="border-destructive/50 bg-destructive/5">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
+              <div>
+                <p className="font-medium text-destructive">Overdue Invoices</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  You have {overdueInvoices.length} overdue invoice(s).
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        {/* Today's Time Entries - Only for Admins/Managers */}
+        {!isTechnician && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Today's Time Entries
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {todayEntries.slice(0, 5).map((entry) => (
+                  <div key={entry.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                    <div>
+                      <p className="font-medium">{entry.user?.full_name || 'User'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(entry.clock_in), 'h:mm a')}
+                        {entry.clock_out && ` - ${format(new Date(entry.clock_out), 'h:mm a')}`}
+                      </p>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${entry.clock_out ? 'bg-muted text-muted-foreground' : 'bg-success/10 text-success'}`}>
+                      {entry.clock_out ? 'Completed' : 'Active'}
+                    </span>
+                  </div>
+                ))}
+                {todayEntries.length === 0 && <p className="text-center text-muted-foreground py-4">No time entries today</p>}
               </div>
             </CardContent>
           </Card>
         )}
 
+        {/* Recent Invoices */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              {isTechnician ? "My Time Entries Today" : "Today's Time Entries"}
+              <FileText className="w-5 h-5" />
+              {isTechnician ? 'My Recent Invoices' : 'Recent Invoices'}
             </CardTitle>
+            <Link to="/invoices" className="text-sm text-primary hover:underline">View all</Link>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {todayEntries.map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between py-2 border-b last:border-0">
+              {recentInvoices.map((invoice) => (
+                <div key={invoice.id} className="flex items-center justify-between py-2 border-b last:border-0">
                   <div>
-                    <p className="font-medium">{entry.user?.full_name || 'User'}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(entry.clock_in), 'h:mm a')}
-                      {entry.clock_out && ` - ${format(new Date(entry.clock_out), 'h:mm a')}`}
-                    </p>
+                    <p className="font-medium">{invoice.invoice_number}</p>
+                    <p className="text-sm text-muted-foreground">{invoice.customer?.name}</p>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${entry.clock_out ? 'bg-muted text-muted-foreground' : 'bg-success/10 text-success'}`}>
-                    {entry.clock_out ? 'Completed' : 'Active'}
-                  </span>
+                  <div className="text-right">
+                    <p className="font-medium">${Number(invoice.total).toLocaleString()}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      invoice.status === 'paid' ? 'bg-success/10 text-success' :
+                      invoice.status === 'overdue' ? 'bg-destructive/10 text-destructive' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {invoice.status}
+                    </span>
+                  </div>
                 </div>
               ))}
-              {todayEntries.length === 0 && <p className="text-center text-muted-foreground py-4">No time entries today</p>}
+              {recentInvoices.length === 0 && <p className="text-center text-muted-foreground py-4">No invoices yet</p>}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Quotes */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" />
+              {isTechnician ? 'My Recent Quotes' : 'Recent Quotes'}
+            </CardTitle>
+            <Link to="/quotes" className="text-sm text-primary hover:underline">View all</Link>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentQuotes.map((quote) => (
+                <div key={quote.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div>
+                    <p className="font-medium">{quote.quote_number}</p>
+                    <p className="text-sm text-muted-foreground">{quote.customer?.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">${Number(quote.total).toLocaleString()}</p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      quote.status === 'sent' ? 'bg-primary/10 text-primary' :
+                      quote.status === 'rejected' || quote.status === 'expired' ? 'bg-destructive/10 text-destructive' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {quote.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {recentQuotes.length === 0 && <p className="text-center text-muted-foreground py-4">No quotes yet</p>}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Jobs */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Briefcase className="w-5 h-5" />
+              {isTechnician ? 'My Recent Jobs' : 'Recent Jobs'}
+            </CardTitle>
+            <Link to="/jobs" className="text-sm text-primary hover:underline">View all</Link>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentJobs.map((job) => (
+                <div key={job.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                  <div>
+                    <p className="font-medium">{job.job_number}</p>
+                    <p className="text-sm text-muted-foreground">{job.title}</p>
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      job.status === 'completed' || job.status === 'paid' ? 'bg-success/10 text-success' :
+                      job.status === 'in_progress' ? 'bg-primary/10 text-primary' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {job.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {recentJobs.length === 0 && <p className="text-center text-muted-foreground py-4">No jobs yet</p>}
             </div>
           </CardContent>
         </Card>
