@@ -1,22 +1,31 @@
 import { useState, useEffect } from 'react';
-import { useTimeEntries, useActiveTimeEntry, useClockIn, useClockOut } from '@/hooks/useTimeEntries';
+import { useTimeEntries, useActiveTimeEntry, useClockIn, useClockOut, useUpdateTimeEntry, TimeEntry } from '@/hooks/useTimeEntries';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Clock, Play, Square, Timer, Calendar, Loader2 } from 'lucide-react';
+import { Clock, Play, Square, Timer, Calendar, Loader2, Eye, Pencil } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
 import { toast } from 'sonner';
+import { TimeEntryDialog } from '@/components/timeclock/TimeEntryDialog';
 
 const TimeClock = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, roles } = useAuth();
+  const { data: company } = useCompany();
   const { data: timeEntries = [], isLoading } = useTimeEntries();
   const { data: activeEntry } = useActiveTimeEntry();
   const clockIn = useClockIn();
   const clockOut = useClockOut();
+  const updateTimeEntry = useUpdateTimeEntry();
   
   const [notes, setNotes] = useState('');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
+  const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Check if user can edit entries (admin or manager)
+  const canEdit = roles.some(r => r.role === 'admin' || r.role === 'manager');
 
   // Filter entries for current user
   const userEntries = timeEntries.filter(e => e.user_id === user?.id);
@@ -82,6 +91,19 @@ const TimeClock = () => {
     }
   };
 
+  const handleViewEntry = (entry: TimeEntry) => {
+    setSelectedEntry(entry);
+    setDialogOpen(true);
+  };
+
+  const handleSaveEntry = async (data: { clock_in: string; clock_out: string | null; notes: string | null }) => {
+    if (!selectedEntry) return;
+    await updateTimeEntry.mutateAsync({
+      id: selectedEntry.id,
+      ...data,
+    });
+  };
+
   const formatDuration = (entry: typeof userEntries[0]) => {
     if (!entry.clock_out) return 'Active';
     const mins = differenceInMinutes(new Date(entry.clock_out), new Date(entry.clock_in));
@@ -103,7 +125,12 @@ const TimeClock = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Time Clock</h1>
-        <p className="text-muted-foreground mt-1">Track your work hours</p>
+        <p className="text-muted-foreground mt-1">
+          Track your work hours
+          {company?.timezone && (
+            <span className="ml-2 text-xs">({company.timezone})</span>
+          )}
+        </p>
       </div>
 
       {/* Main Time Clock Card */}
@@ -191,19 +218,25 @@ const TimeClock = () => {
             {userEntries.slice(-10).reverse().map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-center justify-between py-3 border-b last:border-0"
+                className="flex items-center justify-between py-3 border-b last:border-0 cursor-pointer hover:bg-muted/50 rounded-lg px-2 -mx-2 transition-colors"
+                onClick={() => handleViewEntry(entry)}
               >
-                <div>
-                  <p className="font-medium">
-                    {format(new Date(entry.clock_in), 'EEEE, MMM d')}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(entry.clock_in), 'h:mm a')}
-                    {entry.clock_out && ` - ${format(new Date(entry.clock_out), 'h:mm a')}`}
-                  </p>
-                  {entry.notes && (
-                    <p className="text-sm text-muted-foreground mt-1">{entry.notes}</p>
-                  )}
+                <div className="flex items-center gap-3">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                    {canEdit ? <Pencil className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                  <div>
+                    <p className="font-medium">
+                      {format(new Date(entry.clock_in), 'EEEE, MMM d')}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(entry.clock_in), 'h:mm a')}
+                      {entry.clock_out && ` - ${format(new Date(entry.clock_out), 'h:mm a')}`}
+                    </p>
+                    {entry.notes && (
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{entry.notes}</p>
+                    )}
+                  </div>
                 </div>
                 <div className="text-right">
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -224,6 +257,16 @@ const TimeClock = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Time Entry Dialog */}
+      <TimeEntryDialog
+        entry={selectedEntry}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        canEdit={canEdit}
+        onSave={handleSaveEntry}
+        timezone={company?.timezone}
+      />
     </div>
   );
 };

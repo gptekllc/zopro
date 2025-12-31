@@ -10,12 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Building2, Save, Loader2, Key, Plus, Copy, Trash2, Clock, Users } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Building2, Save, Loader2, Key, Plus, Copy, Trash2, Clock, Users, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import JoinRequestsManager from '@/components/admin/JoinRequestsManager';
 import TeamMembersManager from '@/components/team/TeamMembersManager';
 import LogoUpload from '@/components/company/LogoUpload';
+import { TIMEZONES } from '@/lib/timezones';
 
 const Company = () => {
   const { profile, isAdmin } = useAuth();
@@ -31,6 +33,7 @@ const Company = () => {
     city: '',
     state: '',
     zip: '',
+    timezone: 'America/New_York',
   });
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formInitialized, setFormInitialized] = useState(false);
@@ -47,24 +50,12 @@ const Company = () => {
       city: company.city || '',
       state: company.state || '',
       zip: company.zip || '',
+      timezone: company.timezone || 'America/New_York',
     });
     setLogoUrl(company.logo_url || null);
     setFormInitialized(true);
   }
 
-  // Initialize form when company loads
-  if (company && !formInitialized) {
-    setFormData({
-      name: company.name || '',
-      email: company.email || '',
-      phone: company.phone || '',
-      address: company.address || '',
-      city: company.city || '',
-      state: company.state || '',
-      zip: company.zip || '',
-    });
-    setFormInitialized(true);
-  }
 
   // Fetch join codes
   const { data: joinCodes = [] } = useQuery({
@@ -252,6 +243,33 @@ const Company = () => {
                     />
                   </div>
                 </div>
+
+                {/* Timezone Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="timezone" className="flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Company Timezone
+                  </Label>
+                  <Select
+                    value={formData.timezone}
+                    onValueChange={(value) => setFormData({ ...formData, timezone: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select timezone" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TIMEZONES.map((tz) => (
+                        <SelectItem key={tz.value} value={tz.value}>
+                          {tz.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    This timezone will be used for all time tracking across your company
+                  </p>
+                </div>
+
                 <Button type="submit" className="gap-2" disabled={updateCompany.isPending}>
                   {updateCompany.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

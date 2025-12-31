@@ -25,6 +25,7 @@ export type Database = {
           name: string
           phone: string | null
           state: string | null
+          timezone: string | null
           updated_at: string
           zip: string | null
         }
@@ -38,6 +39,7 @@ export type Database = {
           name: string
           phone?: string | null
           state?: string | null
+          timezone?: string | null
           updated_at?: string
           zip?: string | null
         }
@@ -51,6 +53,7 @@ export type Database = {
           name?: string
           phone?: string | null
           state?: string | null
+          timezone?: string | null
           updated_at?: string
           zip?: string | null
         }
