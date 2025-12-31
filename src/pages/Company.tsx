@@ -10,10 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Building2, Save, Loader2, Key, Plus, Copy, Trash2, Clock } from 'lucide-react';
+import { Building2, Save, Loader2, Key, Plus, Copy, Trash2, Clock, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import JoinRequestsManager from '@/components/admin/JoinRequestsManager';
+import TeamMembersManager from '@/components/team/TeamMembersManager';
 
 const Company = () => {
   const { profile, isAdmin } = useAuth();
@@ -143,6 +144,7 @@ const Company = () => {
       <Tabs defaultValue="details" className="space-y-6">
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
+          {isAdmin && <TabsTrigger value="team">Team Members</TabsTrigger>}
           {isAdmin && <TabsTrigger value="join-codes">Join Codes</TabsTrigger>}
           {isAdmin && <TabsTrigger value="requests">Join Requests</TabsTrigger>}
         </TabsList>
@@ -231,6 +233,12 @@ const Company = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="team">
+            <TeamMembersManager />
+          </TabsContent>
+        )}
 
         {isAdmin && (
           <TabsContent value="join-codes">
