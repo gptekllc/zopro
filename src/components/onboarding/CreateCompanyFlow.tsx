@@ -47,63 +47,27 @@ const CreateCompanyFlow = ({ onBack, onComplete }: CreateCompanyFlowProps) => {
     setIsLoading(true);
 
     try {
-      // Create the company
-      const { data: company, error: companyError } = await (supabase as any)
-        .from('companies')
-        .insert({
-          name: formData.name,
-          email: formData.email || null,
-          phone: formData.phone || null,
-          address: formData.address || null,
-          city: formData.city || null,
-          state: formData.state || null,
-          zip: formData.zip || null,
-        })
-        .select()
-        .single();
+      // Create company + set current user as admin via secure RPC (bypasses RLS pitfalls)
+      const { data, error } = await (supabase as any).rpc('create_company_and_set_admin', {
+        _name: formData.name,
+        _email: formData.email,
+        _phone: formData.phone,
+        _address: formData.address,
+        _city: formData.city,
+        _state: formData.state,
+        _zip: formData.zip,
+      });
 
-      if (companyError) throw companyError;
+      if (error) throw error;
 
-      // Update the user's profile with the company_id and set as admin
-      const { error: profileError } = await (supabase as any)
-        .from('profiles')
-        .update({ 
-          company_id: company.id,
-          role: 'admin'
-        })
-        .eq('id', user.id);
+      const result = Array.isArray(data) ? data[0] : data;
+      const joinCode = result?.join_code as string | undefined;
 
-      if (profileError) throw profileError;
-
-      // Add admin role to user_roles table
-      const { error: roleError } = await (supabase as any)
-        .from('user_roles')
-        .insert({
-          user_id: user.id,
-          role: 'admin',
-        });
-
-      if (roleError && !roleError.message.includes('duplicate')) {
-        throw roleError;
-      }
-
-      // Create a default join code for the company
-      const joinCode = generateJoinCode();
-      const { error: codeError } = await (supabase as any)
-        .from('company_join_codes')
-        .insert({
-          company_id: company.id,
-          code: joinCode,
-          created_by: user.id,
-          is_active: true,
-        });
-
-      if (codeError) {
-        console.error('Failed to create join code:', codeError);
-        // Don't fail the whole flow for this
-      }
-
-      toast.success('Company created successfully! Your join code is: ' + joinCode);
+      toast.success(
+        joinCode
+          ? `Company created successfully! Your join code is: ${joinCode}`
+          : 'Company created successfully!'
+      );
       onComplete();
     } catch (error: any) {
       console.error('Company creation error:', error);
