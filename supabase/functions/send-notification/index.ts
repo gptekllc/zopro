@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -28,19 +29,65 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+
+    // Verify caller authentication
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("No authorization header provided");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create a user client with the provided auth header to verify the caller
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+
+    if (userError || !user) {
+      console.error("Failed to verify user:", userError);
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify user has permission to send notifications (admin/manager only)
+    const { data: roles } = await userClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id);
+
+    const isAuthorized = roles?.some(r => 
+      ["admin", "manager", "super_admin"].includes(r.role)
+    );
+
+    if (!isAuthorized) {
+      console.error("User not authorized to send notifications:", user.id);
+      return new Response(
+        JSON.stringify({ error: "Forbidden" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { 
       type, 
       recipientEmail, 
       recipientName, 
       companyName, 
-      roles, 
+      roles: notificationRoles, 
       previousRoles,
       requesterName,
       requesterEmail,
       assignedRole
     }: NotificationRequest = await req.json();
 
-    console.log("Processing notification:", { type, recipientEmail, companyName });
+    console.log("Processing notification:", { type, recipientEmail, companyName, callingUserId: user.id });
 
     let subject = '';
     let htmlContent = '';
@@ -82,7 +129,7 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     } else if (type === 'roles_changed') {
       subject = 'Your Roles Have Been Updated';
-      const rolesList = roles?.map(r => r.replace('_', ' ')).join(', ') || 'None';
+      const rolesList = notificationRoles?.map(r => r.replace('_', ' ')).join(', ') || 'None';
       const previousRolesList = previousRoles?.map(r => r.replace('_', ' ')).join(', ') || 'None';
       
       htmlContent = `
@@ -252,10 +299,11 @@ const handler = async (req: Request): Promise<Response> => {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Error in send-notification function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: errorMessage }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
