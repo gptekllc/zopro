@@ -8,7 +8,7 @@ import { DollarSign, FileText, Users, Clock, TrendingUp, AlertCircle, Loader2 } 
 import { format } from 'date-fns';
 
 const Dashboard = () => {
-  const { profile, isAdmin, user } = useAuth();
+  const { profile, user, roles } = useAuth();
   const { data: invoices = [], isLoading: loadingInvoices } = useInvoices();
   const { data: quotes = [], isLoading: loadingQuotes } = useQuotes();
   const { data: customers = [], isLoading: loadingCustomers } = useCustomers();
@@ -16,8 +16,10 @@ const Dashboard = () => {
 
   const isLoading = loadingInvoices || loadingQuotes || loadingCustomers || loadingTime;
 
-  // Check if user is a technician (not admin or manager)
-  const isTechnician = profile?.role === 'technician';
+  // Technician-only dashboard view (based on roles table, not profile.role)
+  const isTechnician =
+    roles.some((r) => r.role === 'technician') &&
+    !roles.some((r) => r.role === 'admin' || r.role === 'manager' || r.role === 'super_admin');
 
   // Filter invoices for technician view - only show invoices they created
   const visibleInvoices = isTechnician 
