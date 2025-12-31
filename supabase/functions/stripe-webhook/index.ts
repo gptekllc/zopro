@@ -51,20 +51,18 @@ serve(async (req) => {
       return new Response(`Webhook signature verification failed: ${errorMessage}`, { status: 400 });
     }
 
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     // Handle checkout.session.completed event
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
       logStep("Processing checkout.session.completed", { sessionId: session.id });
 
-      // Extract invoice ID from metadata
       const invoiceId = session.metadata?.invoice_id;
       
       if (invoiceId) {
         logStep("Found invoice ID in metadata", { invoiceId });
         
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
-        
-        // Update invoice status to paid
         const { data: invoice, error: updateError } = await supabase
           .from("invoices")
           .update({
@@ -75,7 +73,7 @@ serve(async (req) => {
           .select(`
             *,
             customers (name, email),
-            companies (name, email)
+            companies (name, email, id)
           `)
           .single();
 
@@ -86,10 +84,30 @@ serve(async (req) => {
 
         logStep("Invoice marked as paid", { invoiceId, invoiceNumber: invoice.invoice_number });
 
-        // Send email notification for payment received
+        // Create notification for admins
+        const { data: admins } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("company_id", invoice.companies?.id)
+          .in("role", ["admin", "manager"]);
+
+        if (admins && admins.length > 0) {
+          const notifications = admins.map((admin) => ({
+            user_id: admin.id,
+            type: "payment_received",
+            title: "Payment Received",
+            message: `${invoice.customers?.name} paid Invoice #${invoice.invoice_number} - $${Number(invoice.total).toFixed(2)}`,
+            data: { invoiceId, invoiceNumber: invoice.invoice_number, amount: invoice.total, customerName: invoice.customers?.name },
+          }));
+          
+          await supabase.from("notifications").insert(notifications);
+          logStep("Admin notifications created", { count: notifications.length });
+        }
+
+        // Send email notification
         if (invoice.customers?.email && invoice.companies?.email) {
           try {
-            const notificationResponse = await fetch(`${supabaseUrl}/functions/v1/send-payment-notification`, {
+            await fetch(`${supabaseUrl}/functions/v1/send-payment-notification`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -105,16 +123,95 @@ serve(async (req) => {
                 amount: invoice.total,
               }),
             });
-            logStep("Payment notification sent", { status: notificationResponse.status });
+            logStep("Payment notification email sent");
           } catch (notifyError: unknown) {
             const errorMessage = notifyError instanceof Error ? notifyError.message : String(notifyError);
-            logStep("WARNING: Failed to send notification", { error: errorMessage });
-            // Don't fail the webhook for notification errors
+            logStep("WARNING: Failed to send notification email", { error: errorMessage });
           }
         }
       } else {
         logStep("No invoice_id in session metadata - may be a different payment type");
       }
+    }
+
+    // Handle payment_intent.payment_failed event
+    if (event.type === "payment_intent.payment_failed") {
+      const paymentIntent = event.data.object as Stripe.PaymentIntent;
+      logStep("Processing payment_intent.payment_failed", { paymentIntentId: paymentIntent.id });
+
+      const invoiceId = paymentIntent.metadata?.invoice_id;
+      const customerEmail = paymentIntent.receipt_email || paymentIntent.metadata?.customer_email;
+      
+      if (invoiceId) {
+        // Get invoice details
+        const { data: invoice } = await supabase
+          .from("invoices")
+          .select(`
+            *,
+            customers (name, email),
+            companies (name, email, id)
+          `)
+          .eq("id", invoiceId)
+          .single();
+
+        if (invoice) {
+          // Create notification for admins about failed payment
+          const { data: admins } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("company_id", invoice.companies?.id)
+            .in("role", ["admin", "manager"]);
+
+          if (admins && admins.length > 0) {
+            const errorMessage = paymentIntent.last_payment_error?.message || "Payment failed";
+            const notifications = admins.map((admin) => ({
+              user_id: admin.id,
+              type: "payment_failed",
+              title: "Payment Failed",
+              message: `Payment failed for Invoice #${invoice.invoice_number} - ${errorMessage}`,
+              data: { 
+                invoiceId, 
+                invoiceNumber: invoice.invoice_number, 
+                amount: invoice.total, 
+                customerName: invoice.customers?.name,
+                errorMessage 
+              },
+            }));
+            
+            await supabase.from("notifications").insert(notifications);
+            logStep("Failed payment notifications created", { count: notifications.length });
+          }
+
+          // Send email to customer about failed payment
+          const email = invoice.customers?.email || customerEmail;
+          if (email && invoice.companies?.email) {
+            try {
+              await fetch(`${supabaseUrl}/functions/v1/send-payment-notification`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({
+                  type: "payment_failed",
+                  invoiceNumber: invoice.invoice_number,
+                  customerName: invoice.customers?.name || "Customer",
+                  customerEmail: email,
+                  companyName: invoice.companies.name,
+                  companyEmail: invoice.companies.email,
+                  amount: invoice.total,
+                  errorMessage: paymentIntent.last_payment_error?.message || "Your payment could not be processed",
+                }),
+              });
+              logStep("Failed payment notification email sent");
+            } catch (notifyError: unknown) {
+              const errorMessage = notifyError instanceof Error ? notifyError.message : String(notifyError);
+              logStep("WARNING: Failed to send notification email", { error: errorMessage });
+            }
+          }
+        }
+      }
+      logStep("Payment failed event processed");
     }
 
     return new Response(JSON.stringify({ received: true }), {

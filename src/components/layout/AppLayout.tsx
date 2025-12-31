@@ -27,6 +27,7 @@ import {
   Shield,
   User,
   Briefcase,
+  Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
@@ -42,6 +43,7 @@ const navItems = [
   { icon: FileText, label: 'Quotes', path: '/quotes', roles: ['admin', 'technician'] },
   { icon: Receipt, label: 'Invoices', path: '/invoices', roles: ['admin', 'technician', 'customer'] },
   { icon: Clock, label: 'Time Clock', path: '/timeclock', roles: ['admin', 'technician'] },
+  { icon: Bell, label: 'Notifications', path: '/notifications', roles: ['admin', 'manager'] },
   { icon: UserCog, label: 'Technicians', path: '/technicians', roles: ['admin'] },
   { icon: Building2, label: 'Company', path: '/company', roles: ['admin'] },
   { icon: Shield, label: 'Super Admin', path: '/super-admin', roles: ['super_admin'] },

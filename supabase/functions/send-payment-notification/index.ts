@@ -14,7 +14,7 @@ const logStep = (step: string, details?: any) => {
 };
 
 interface NotificationRequest {
-  type: "invoice_paid" | "quote_approved";
+  type: "invoice_paid" | "quote_approved" | "payment_failed";
   invoiceNumber?: string;
   quoteNumber?: string;
   customerName: string;
@@ -22,6 +22,7 @@ interface NotificationRequest {
   companyName: string;
   companyEmail: string;
   amount?: number;
+  errorMessage?: string;
 }
 
 serve(async (req) => {
@@ -101,6 +102,34 @@ serve(async (req) => {
         `,
       });
       logStep("Quote approval email sent to company", { response: companyEmailResponse });
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    if (payload.type === "payment_failed") {
+      // Email to customer about failed payment
+      const customerEmailResponse = await resend.emails.send({
+        from: "FieldFlow <onboarding@resend.dev>",
+        to: [payload.customerEmail],
+        subject: `Payment Issue - Invoice #${payload.invoiceNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #dc2626;">Payment Could Not Be Processed</h1>
+            <p>Hello ${payload.customerName},</p>
+            <p>We were unable to process your payment for Invoice #${payload.invoiceNumber}.</p>
+            <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+              <p style="margin: 0;"><strong>Amount:</strong> $${payload.amount?.toFixed(2)}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Reason:</strong> ${payload.errorMessage || 'Payment declined'}</p>
+            </div>
+            <p>Please try again with a different payment method or contact us if you need assistance.</p>
+            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>${payload.companyName}</p>
+          </div>
+        `,
+      });
+      logStep("Failed payment email sent to customer", { response: customerEmailResponse });
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
