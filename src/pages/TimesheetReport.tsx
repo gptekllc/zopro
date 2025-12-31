@@ -18,6 +18,7 @@ const TimesheetReport = () => {
   
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
   const [numWeeks, setNumWeeks] = useState(1);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   const canViewAll = roles.some(r => r.role === 'admin' || r.role === 'manager');
 
@@ -95,6 +96,130 @@ const TimesheetReport = () => {
     link.click();
   };
 
+  const exportToPDF = async () => {
+    setIsExportingPdf(true);
+    
+    try {
+      // Calculate totals
+      const dailyTotals = weekDays.map((_, i) => 
+        timesheetData.reduce((sum, row) => sum + row.dailyHours[i].minutes, 0)
+      );
+      const grandTotal = timesheetData.reduce((sum, row) => sum + row.weeklyTotal, 0);
+
+      // Generate PDF-friendly HTML
+      const pdfContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Timesheet Report</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #6366f1; padding-bottom: 20px; }
+            .company-info { flex: 1; }
+            .company-name { font-size: 24px; font-weight: bold; color: #6366f1; margin-bottom: 5px; }
+            .company-details { font-size: 12px; color: #666; }
+            .logo { max-width: 120px; max-height: 60px; object-fit: contain; }
+            .report-title { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+            .date-range { font-size: 14px; color: #666; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { background: #6366f1; color: white; padding: 10px 8px; text-align: center; font-size: 11px; }
+            th:first-child { text-align: left; }
+            td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 12px; }
+            td:first-child { text-align: left; }
+            .member-name { font-weight: 500; }
+            .member-email { font-size: 10px; color: #666; }
+            .total-row { background: #f3f4f6; font-weight: bold; }
+            .grand-total { background: #6366f1; color: white; font-weight: bold; }
+            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 10px; color: #666; text-align: center; }
+            @media print {
+              body { padding: 20px; }
+              .header { page-break-inside: avoid; }
+              table { page-break-inside: auto; }
+              tr { page-break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="company-info">
+              <div class="company-name">${company?.name || 'Company'}</div>
+              <div class="company-details">
+                ${company?.address ? `${company.address}<br>` : ''}
+                ${company?.city || ''}${company?.state ? `, ${company.state}` : ''} ${company?.zip || ''}<br>
+                ${company?.phone ? `Tel: ${company.phone}` : ''} ${company?.email ? `• ${company.email}` : ''}
+              </div>
+            </div>
+            ${company?.logo_url ? `<img src="${company.logo_url}" class="logo" alt="Company Logo" />` : ''}
+          </div>
+
+          <div class="report-title">Weekly Timesheet Report</div>
+          <div class="date-range">${format(weekStart, 'MMMM d, yyyy')} - ${format(weekEnd, 'MMMM d, yyyy')}</div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: left; width: 180px;">Team Member</th>
+                ${weekDays.map(day => `<th>${format(day, 'EEE')}<br>${format(day, 'd')}</th>`).join('')}
+                <th style="background: #4f46e5;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${timesheetData.length === 0 ? `
+                <tr>
+                  <td colspan="${weekDays.length + 2}" style="text-align: center; padding: 30px; color: #666;">
+                    No time entries for this period
+                  </td>
+                </tr>
+              ` : timesheetData.map(row => `
+                <tr>
+                  <td>
+                    <div class="member-name">${row.member.full_name || 'Unknown'}</div>
+                    <div class="member-email">${row.member.email}</div>
+                  </td>
+                  ${row.dailyHours.map(d => `<td>${formatMinutes(d.minutes)}</td>`).join('')}
+                  <td style="font-weight: bold; background: #f3f4f6;">${formatMinutes(row.weeklyTotal)}</td>
+                </tr>
+              `).join('')}
+              ${timesheetData.length > 0 ? `
+                <tr class="total-row">
+                  <td><strong>TOTAL</strong></td>
+                  ${dailyTotals.map(t => `<td>${formatMinutes(t)}</td>`).join('')}
+                  <td class="grand-total">${formatMinutes(grandTotal)}</td>
+                </tr>
+              ` : ''}
+            </tbody>
+          </table>
+
+          <div class="footer">
+            Generated on ${format(new Date(), 'MMMM d, yyyy \'at\' h:mm a')}
+            ${company?.timezone ? ` • Timezone: ${company.timezone}` : ''}
+          </div>
+        </body>
+        </html>
+      `;
+
+      // Create a new window for printing
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(pdfContent);
+        printWindow.document.close();
+        
+        // Wait for content to load, then print
+        printWindow.onload = () => {
+          setTimeout(() => {
+            printWindow.print();
+          }, 250);
+        };
+      }
+    } catch (error) {
+      console.error('PDF export error:', error);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   const isLoading = loadingEntries || loadingProfiles;
 
   if (isLoading) {
@@ -127,7 +252,15 @@ const TimesheetReport = () => {
         <div className="flex items-center gap-2">
           <Button onClick={exportToCSV} variant="outline">
             <Download className="w-4 h-4 mr-2" />
-            Export CSV
+            CSV
+          </Button>
+          <Button onClick={exportToPDF} variant="outline" disabled={isExportingPdf}>
+            {isExportingPdf ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <FileText className="w-4 h-4 mr-2" />
+            )}
+            PDF
           </Button>
           <select 
             className="border rounded px-2 py-1 text-sm"

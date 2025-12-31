@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
-import { Job } from '@/hooks/useJobs';
+import { useState, useMemo, DragEvent } from 'react';
+import { Job, useUpdateJob } from '@/hooks/useJobs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths, isToday, parseISO } from 'date-fns';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, GripVertical } from 'lucide-react';
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, addMonths, subMonths, isToday, parseISO, setHours, setMinutes } from 'date-fns';
+import { toast } from 'sonner';
 
 interface JobCalendarProps {
   jobs: Job[];
@@ -13,6 +14,9 @@ interface JobCalendarProps {
 
 const JobCalendar = ({ jobs, onJobClick }: JobCalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [draggedJob, setDraggedJob] = useState<Job | null>(null);
+  const [dropTargetDate, setDropTargetDate] = useState<string | null>(null);
+  const updateJob = useUpdateJob();
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -55,6 +59,68 @@ const JobCalendar = ({ jobs, onJobClick }: JobCalendarProps) => {
     }
   };
 
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, job: Job) => {
+    setDraggedJob(job);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', job.id);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedJob(null);
+    setDropTargetDate(null);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, dateKey: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropTargetDate(dateKey);
+  };
+
+  const handleDragLeave = () => {
+    setDropTargetDate(null);
+  };
+
+  const handleDrop = async (e: DragEvent<HTMLDivElement>, targetDate: Date) => {
+    e.preventDefault();
+    setDropTargetDate(null);
+
+    if (!draggedJob) return;
+
+    // Preserve the original time if it exists
+    let newScheduledStart: Date;
+    let newScheduledEnd: Date | null = null;
+
+    if (draggedJob.scheduled_start) {
+      const originalStart = parseISO(draggedJob.scheduled_start);
+      newScheduledStart = setMinutes(
+        setHours(targetDate, originalStart.getHours()),
+        originalStart.getMinutes()
+      );
+
+      if (draggedJob.scheduled_end) {
+        const originalEnd = parseISO(draggedJob.scheduled_end);
+        const durationMs = originalEnd.getTime() - originalStart.getTime();
+        newScheduledEnd = new Date(newScheduledStart.getTime() + durationMs);
+      }
+    } else {
+      // Default to 9 AM if no time was set
+      newScheduledStart = setMinutes(setHours(targetDate, 9), 0);
+    }
+
+    try {
+      await updateJob.mutateAsync({
+        id: draggedJob.id,
+        scheduled_start: newScheduledStart.toISOString(),
+        scheduled_end: newScheduledEnd?.toISOString() || null,
+      });
+      toast.success(`Job ${draggedJob.job_number} rescheduled to ${format(targetDate, 'MMM d')}`);
+    } catch (error) {
+      toast.error('Failed to reschedule job');
+    }
+
+    setDraggedJob(null);
+  };
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -87,6 +153,9 @@ const JobCalendar = ({ jobs, onJobClick }: JobCalendarProps) => {
             </Button>
           </div>
         </div>
+        <p className="text-xs text-muted-foreground mt-1">
+          Drag and drop jobs to reschedule them
+        </p>
       </CardHeader>
       <CardContent>
         {/* Day headers */}
@@ -104,17 +173,23 @@ const JobCalendar = ({ jobs, onJobClick }: JobCalendarProps) => {
             const dateKey = format(day, 'yyyy-MM-dd');
             const dayJobs = jobsByDate.get(dateKey) || [];
             const isCurrentMonth = isSameMonth(day, currentDate);
+            const isDropTarget = dropTargetDate === dateKey;
 
             return (
               <div
                 key={dateKey}
-                className={`min-h-[100px] p-1 rounded-md border ${
-                  isToday(day) 
-                    ? 'bg-primary/5 border-primary' 
-                    : isCurrentMonth 
-                      ? 'bg-card border-border' 
-                      : 'bg-muted/30 border-transparent'
+                className={`min-h-[100px] p-1 rounded-md border transition-colors ${
+                  isDropTarget
+                    ? 'bg-primary/20 border-primary border-2'
+                    : isToday(day) 
+                      ? 'bg-primary/5 border-primary' 
+                      : isCurrentMonth 
+                        ? 'bg-card border-border' 
+                        : 'bg-muted/30 border-transparent'
                 }`}
+                onDragOver={(e) => handleDragOver(e, dateKey)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, day)}
               >
                 <div className={`text-sm font-medium mb-1 ${
                   isToday(day) 
@@ -129,16 +204,24 @@ const JobCalendar = ({ jobs, onJobClick }: JobCalendarProps) => {
                   {dayJobs.slice(0, 3).map(job => (
                     <div
                       key={job.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, job)}
+                      onDragEnd={handleDragEnd}
                       onClick={() => onJobClick(job)}
-                      className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition-opacity truncate ${getStatusColor(job.status)} ${getPriorityBorder(job.priority)}`}
-                      title={`${job.job_number}: ${job.title}`}
+                      className={`text-xs p-1 rounded cursor-grab hover:opacity-80 transition-opacity truncate flex items-center gap-1 ${getStatusColor(job.status)} ${getPriorityBorder(job.priority)} ${
+                        draggedJob?.id === job.id ? 'opacity-50' : ''
+                      }`}
+                      title={`${job.job_number}: ${job.title} (Drag to reschedule)`}
                     >
-                      {job.scheduled_start && (
-                        <span className="font-medium">
-                          {format(parseISO(job.scheduled_start), 'HH:mm')}
-                        </span>
-                      )}{' '}
-                      {job.title}
+                      <GripVertical className="w-3 h-3 flex-shrink-0 opacity-50" />
+                      <span className="truncate">
+                        {job.scheduled_start && (
+                          <span className="font-medium">
+                            {format(parseISO(job.scheduled_start), 'HH:mm')}
+                          </span>
+                        )}{' '}
+                        {job.title}
+                      </span>
                     </div>
                   ))}
                   {dayJobs.length > 3 && (
@@ -169,6 +252,10 @@ const JobCalendar = ({ jobs, onJobClick }: JobCalendarProps) => {
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded border-l-4 border-l-destructive" />
             <span>Urgent</span>
+          </div>
+          <div className="flex items-center gap-1 ml-auto">
+            <GripVertical className="w-3 h-3" />
+            <span className="text-muted-foreground">Drag to reschedule</span>
           </div>
         </div>
       </CardContent>
