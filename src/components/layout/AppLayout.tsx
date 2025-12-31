@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -27,8 +27,8 @@ import {
   Shield,
   User,
 } from 'lucide-react';
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import NotificationsBell from '@/components/notifications/NotificationsBell';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -86,6 +86,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <span className="font-semibold">Service App</span>
         </div>
 
+        <div className="flex items-center gap-1">
+          <NotificationsBell />
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
@@ -109,6 +112,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </header>
 
       {/* Mobile sidebar overlay */}

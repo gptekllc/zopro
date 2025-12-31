@@ -13,7 +13,7 @@ interface Profile {
 }
 
 interface UserRole {
-  role: 'admin' | 'technician' | 'super_admin';
+  role: 'admin' | 'technician' | 'super_admin' | 'manager' | 'customer';
 }
 
 interface AuthContextType {
