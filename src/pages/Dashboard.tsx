@@ -20,14 +20,17 @@ const Dashboard = () => {
   const isLoading =
     authLoading || loadingInvoices || loadingQuotes || loadingCustomers || loadingTime || loadingJobs;
 
-  const isAdminOrManager = roles.some((r) =>
-    r.role === 'admin' || r.role === 'manager' || r.role === 'super_admin'
+  const hasTechnicianRole = roles.some((r) => r.role === 'technician');
+
+  const isAdminOrManager = roles.some(
+    (r) => r.role === 'admin' || r.role === 'manager' || r.role === 'super_admin'
   );
 
-  // Technician-only dashboard view (based on roles table)
-  const isTechnician =
-    roles.some((r) => r.role === 'technician') &&
-    !isAdminOrManager;
+  // Dashboard behavior: if a user has the technician role, treat them as technician for dashboard scoping.
+  // (This prevents “existing technicians” who accidentally have extra roles from seeing admin-only widgets.)
+  const isTechnician = hasTechnicianRole;
+
+  const canSeeTimeEntriesWidget = isAdminOrManager && !hasTechnicianRole;
 
   // Filter invoices for technician view - only show invoices they created
   const visibleInvoices = isTechnician 
@@ -135,8 +138,8 @@ const Dashboard = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {/* Today's Time Entries - Only for Admins/Managers */}
-        {isAdminOrManager && (
+        {/* Today's Time Entries - Only for Admins/Managers (never for technicians) */}
+        {canSeeTimeEntriesWidget && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
