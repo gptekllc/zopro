@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, User, Save, Loader2 } from 'lucide-react';
+import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle';
 
 const Settings = () => {
   const { user, profile } = useAuth();
@@ -120,6 +121,9 @@ const Settings = () => {
           </form>
         </CardContent>
       </Card>
+
+      {/* Push Notifications */}
+      <PushNotificationToggle />
 
       {/* App Info */}
       <Card>
