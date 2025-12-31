@@ -289,14 +289,14 @@ const Jobs = () => {
                 <div className="space-y-2">
                   <Label>Assign To</Label>
                   <Select
-                    value={formData.assigned_to || ''}
-                    onValueChange={(value) => setFormData({ ...formData, assigned_to: value || null })}
+                    value={formData.assigned_to || 'unassigned'}
+                    onValueChange={(value) => setFormData({ ...formData, assigned_to: value === 'unassigned' ? null : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select technician" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       {technicians.map((t) => (
                         <SelectItem key={t.id} value={t.id}>{t.full_name || t.email}</SelectItem>
                       ))}
