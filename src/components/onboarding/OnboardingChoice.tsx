@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, Users, UserCircle, ArrowRight } from 'lucide-react';
+import { Building2, Users, UserCircle, ArrowRight, LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 interface OnboardingChoiceProps {
   onChooseCreateCompany: () => void;
@@ -14,6 +15,7 @@ const OnboardingChoice = ({
   onChooseJoinCompany, 
   onChooseContinueAsCustomer 
 }: OnboardingChoiceProps) => {
+  const { user, signOut } = useAuth();
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
 
   const options = [
@@ -45,6 +47,17 @@ const OnboardingChoice = ({
 
   return (
     <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+      {user && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute top-4 right-4 text-primary-foreground hover:bg-primary-foreground/10"
+          onClick={signOut}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Log out
+        </Button>
+      )}
       <div className="w-full max-w-3xl animate-scale-in">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-bold text-primary-foreground">Welcome!</h1>
