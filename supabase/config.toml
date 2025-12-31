@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.invite-team-member]
 verify_jwt = true
+
+[functions.customer-portal-auth]
+verify_jwt = false

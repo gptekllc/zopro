@@ -18,6 +18,7 @@ import Company from "./pages/Company";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import SuperAdmin from "./pages/SuperAdmin";
+import CustomerPortal from "./pages/CustomerPortal";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
@@ -33,6 +34,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/customer-portal" element={<CustomerPortal />} />
             
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />

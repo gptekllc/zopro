@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -9,18 +9,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Building2, Users, UserCircle, ArrowRight, LogOut, User } from 'lucide-react';
+import { Building2, UserCircle, ArrowRight, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface OnboardingChoiceProps {
   onChooseCreateCompany: () => void;
-  onChooseJoinCompany: () => void;
   onChooseContinueAsCustomer: () => void;
 }
 
 const OnboardingChoice = ({ 
   onChooseCreateCompany, 
-  onChooseJoinCompany, 
   onChooseContinueAsCustomer 
 }: OnboardingChoiceProps) => {
   const navigate = useNavigate();
@@ -40,14 +38,6 @@ const OnboardingChoice = ({
       icon: Building2,
       color: 'from-primary to-primary/80',
       onClick: onChooseCreateCompany,
-    },
-    {
-      id: 'join',
-      title: 'Join an Existing Company',
-      description: 'Enter a join code from your employer to request access to their company.',
-      icon: Users,
-      color: 'from-emerald-500 to-emerald-600',
-      onClick: onChooseJoinCompany,
     },
     {
       id: 'customer',
@@ -129,6 +119,10 @@ const OnboardingChoice = ({
             );
           })}
         </div>
+
+        <p className="text-center text-primary-foreground/60 text-sm mt-6">
+          Team members will be invited directly by company admins via email.
+        </p>
       </div>
     </div>
   );
