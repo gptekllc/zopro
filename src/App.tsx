@@ -11,6 +11,7 @@ import Customers from "./pages/Customers";
 import Quotes from "./pages/Quotes";
 import Invoices from "./pages/Invoices";
 import TimeClock from "./pages/TimeClock";
+import TimesheetReport from "./pages/TimesheetReport";
 import Technicians from "./pages/Technicians";
 import Company from "./pages/Company";
 import Settings from "./pages/Settings";
@@ -38,6 +39,7 @@ const App = () => (
               <Route path="/quotes" element={<Quotes />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/timeclock" element={<TimeClock />} />
+              <Route path="/timesheet" element={<TimesheetReport />} />
               <Route path="/technicians" element={<Technicians />} />
               <Route path="/company" element={<Company />} />
               <Route path="/settings" element={<Settings />} />

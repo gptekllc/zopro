@@ -516,33 +516,39 @@ export type Database = {
       time_entries: {
         Row: {
           break_minutes: number | null
+          break_start: string | null
           clock_in: string
           clock_out: string | null
           company_id: string
           created_at: string
           id: string
+          is_on_break: boolean | null
           notes: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           break_minutes?: number | null
+          break_start?: string | null
           clock_in: string
           clock_out?: string | null
           company_id: string
           created_at?: string
           id?: string
+          is_on_break?: boolean | null
           notes?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           break_minutes?: number | null
+          break_start?: string | null
           clock_in?: string
           clock_out?: string | null
           company_id?: string
           created_at?: string
           id?: string
+          is_on_break?: boolean | null
           notes?: string | null
           updated_at?: string
           user_id?: string
