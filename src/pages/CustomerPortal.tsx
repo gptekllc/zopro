@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface CustomerData {
@@ -49,23 +49,46 @@ interface Job {
   created_at: string;
 }
 
+interface Quote {
+  id: string;
+  quote_number: string;
+  status: string;
+  total: number;
+  created_at: string;
+  valid_until: string | null;
+  notes: string | null;
+}
+
 const CustomerPortal = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingLink, setIsSendingLink] = useState(false);
   const [downloadingInvoice, setDownloadingInvoice] = useState<string | null>(null);
+  const [payingInvoice, setPayingInvoice] = useState<string | null>(null);
+  const [approvingQuote, setApprovingQuote] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [linkSent, setLinkSent] = useState(false);
   const [customerData, setCustomerData] = useState<CustomerData | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Check for magic link token in URL
+  // Check for magic link token and payment status in URL
   useEffect(() => {
     const token = searchParams.get('token');
     const customerId = searchParams.get('customer');
+    const paymentStatus = searchParams.get('payment');
+    
+    if (paymentStatus === 'success') {
+      toast.success('Payment successful! Thank you.');
+      // Clean the URL
+      navigate('/customer-portal', { replace: true });
+    } else if (paymentStatus === 'cancelled') {
+      toast.info('Payment was cancelled.');
+      navigate('/customer-portal', { replace: true });
+    }
     
     if (token && customerId) {
       verifyToken(token, customerId);
@@ -102,6 +125,7 @@ const CustomerPortal = () => {
       setCustomerData(data.customer);
       setInvoices(data.invoices || []);
       setJobs(data.jobs || []);
+      setQuotes(data.quotes || []);
       setIsAuthenticated(true);
       
       // Clean URL
@@ -149,6 +173,7 @@ const CustomerPortal = () => {
     setCustomerData(null);
     setInvoices([]);
     setJobs([]);
+    setQuotes([]);
   };
 
   const handleDownloadInvoice = async (invoice: Invoice) => {
@@ -191,15 +216,74 @@ const CustomerPortal = () => {
     }
   };
 
+  const handlePayInvoice = async (invoice: Invoice) => {
+    setPayingInvoice(invoice.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-invoice-payment', {
+        body: { 
+          invoiceId: invoice.id,
+          customerId: customerData?.id,
+          token: localStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error || !data?.url) {
+        throw new Error(data?.error || 'Failed to create payment session');
+      }
+
+      // Redirect to Stripe checkout
+      window.open(data.url, '_blank');
+    } catch (err: any) {
+      console.error('Payment error:', err);
+      toast.error(err.message || 'Failed to initiate payment');
+    } finally {
+      setPayingInvoice(null);
+    }
+  };
+
+  const handleApproveQuote = async (quote: Quote) => {
+    setApprovingQuote(quote.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { 
+          action: 'approve-quote', 
+          quoteId: quote.id,
+          customerId: customerData?.id,
+          token: localStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error) {
+        throw new Error(data?.error || 'Failed to approve quote');
+      }
+
+      toast.success('Quote approved successfully!');
+      
+      // Update local state
+      setQuotes(quotes.map(q => 
+        q.id === quote.id ? { ...q, status: 'approved' } : q
+      ));
+    } catch (err: any) {
+      console.error('Approval error:', err);
+      toast.error(err.message || 'Failed to approve quote');
+    } finally {
+      setApprovingQuote(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
       paid: 'default',
       completed: 'default',
+      approved: 'default',
       sent: 'secondary',
       scheduled: 'secondary',
       in_progress: 'secondary',
+      pending: 'secondary',
       draft: 'outline',
       overdue: 'destructive',
+      rejected: 'destructive',
+      expired: 'destructive',
     };
     return <Badge variant={variants[status] || 'outline'}>{status}</Badge>;
   };
@@ -278,6 +362,9 @@ const CustomerPortal = () => {
   }
 
   // Portal dashboard
+  const unpaidInvoices = invoices.filter(i => i.status !== 'paid');
+  const pendingQuotes = quotes.filter(q => q.status === 'sent' || q.status === 'pending' || q.status === 'draft');
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -312,11 +399,24 @@ const CustomerPortal = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold">Welcome back, {customerData?.name}!</h2>
-          <p className="text-muted-foreground">View your invoices and service history below.</p>
+          <p className="text-muted-foreground">View your quotes, invoices, and service history below.</p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-3 mb-8">
+        <div className="grid gap-4 md:grid-cols-4 mb-8">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <ClipboardList className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{pendingQuotes.length}</p>
+                  <p className="text-sm text-muted-foreground">Pending Quotes</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -333,14 +433,14 @@ const CustomerPortal = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-500/10 rounded-lg">
-                  <DollarSign className="w-6 h-6 text-emerald-500" />
+                <div className="p-3 bg-amber-500/10 rounded-lg">
+                  <CreditCard className="w-6 h-6 text-amber-500" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">
-                    ${invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.total), 0).toFixed(2)}
+                    ${unpaidInvoices.reduce((sum, i) => sum + Number(i.total), 0).toFixed(2)}
                   </p>
-                  <p className="text-sm text-muted-foreground">Total Paid</p>
+                  <p className="text-sm text-muted-foreground">Outstanding</p>
                 </div>
               </div>
             </CardContent>
@@ -348,8 +448,8 @@ const CustomerPortal = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-amber-500/10 rounded-lg">
-                  <Briefcase className="w-6 h-6 text-amber-500" />
+                <div className="p-3 bg-emerald-500/10 rounded-lg">
+                  <Briefcase className="w-6 h-6 text-emerald-500" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{jobs.length}</p>
@@ -361,11 +461,96 @@ const CustomerPortal = () => {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="invoices" className="space-y-4">
+        <Tabs defaultValue="quotes" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="invoices">Invoices</TabsTrigger>
+            <TabsTrigger value="quotes" className="flex items-center gap-2">
+              Quotes
+              {pendingQuotes.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{pendingQuotes.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="invoices" className="flex items-center gap-2">
+              Invoices
+              {unpaidInvoices.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{unpaidInvoices.length}</Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="jobs">Service History</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="quotes">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5" />
+                  Your Quotes
+                </CardTitle>
+                <CardDescription>
+                  Review and approve quotes to proceed with services
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {quotes.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Quote #</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Valid Until</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {quotes.map((quote) => (
+                        <TableRow key={quote.id}>
+                          <TableCell className="font-medium">{quote.quote_number}</TableCell>
+                          <TableCell>{format(new Date(quote.created_at), 'MMM d, yyyy')}</TableCell>
+                          <TableCell>
+                            {quote.valid_until ? format(new Date(quote.valid_until), 'MMM d, yyyy') : '-'}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(quote.status)}</TableCell>
+                          <TableCell className="text-right font-medium">
+                            ${Number(quote.total).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {(quote.status === 'sent' || quote.status === 'pending' || quote.status === 'draft') && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleApproveQuote(quote)}
+                                disabled={approvingQuote === quote.id}
+                              >
+                                {approvingQuote === quote.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                    Approve
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                            {quote.status === 'approved' && (
+                              <Badge variant="default" className="bg-emerald-500">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Approved
+                              </Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <ClipboardList className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No quotes yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="invoices">
             <Card>
@@ -374,6 +559,9 @@ const CustomerPortal = () => {
                   <FileText className="w-5 h-5" />
                   Your Invoices
                 </CardTitle>
+                <CardDescription>
+                  View and pay your invoices online
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {invoices.length > 0 ? (
@@ -401,18 +589,36 @@ const CustomerPortal = () => {
                             ${Number(invoice.total).toFixed(2)}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDownloadInvoice(invoice)}
-                              disabled={downloadingInvoice === invoice.id}
-                            >
-                              {downloadingInvoice === invoice.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Download className="w-4 h-4" />
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadInvoice(invoice)}
+                                disabled={downloadingInvoice === invoice.id}
+                              >
+                                {downloadingInvoice === invoice.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Download className="w-4 h-4" />
+                                )}
+                              </Button>
+                              {invoice.status !== 'paid' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handlePayInvoice(invoice)}
+                                  disabled={payingInvoice === invoice.id}
+                                >
+                                  {payingInvoice === invoice.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <CreditCard className="w-4 h-4 mr-2" />
+                                      Pay Now
+                                    </>
+                                  )}
+                                </Button>
                               )}
-                            </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
