@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, CheckCircle, Clock, DollarSign, LogOut } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface CustomerData {
@@ -54,6 +54,7 @@ const CustomerPortal = () => {
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingLink, setIsSendingLink] = useState(false);
+  const [downloadingInvoice, setDownloadingInvoice] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [linkSent, setLinkSent] = useState(false);
   const [customerData, setCustomerData] = useState<CustomerData | null>(null);
@@ -148,6 +149,46 @@ const CustomerPortal = () => {
     setCustomerData(null);
     setInvoices([]);
     setJobs([]);
+  };
+
+  const handleDownloadInvoice = async (invoice: Invoice) => {
+    setDownloadingInvoice(invoice.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { 
+          action: 'download-invoice', 
+          invoiceId: invoice.id,
+          customerId: customerData?.id,
+          token: localStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error || !data?.html) {
+        throw new Error(data?.error || 'Failed to generate invoice');
+      }
+
+      // Create a new window with the invoice HTML for printing/saving as PDF
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(data.html);
+        printWindow.document.close();
+        
+        // Add print styles and trigger print dialog
+        printWindow.document.title = `Invoice ${invoice.invoice_number}`;
+        
+        // Wait for content to load then trigger print
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      } else {
+        toast.error('Please allow popups to download the invoice');
+      }
+    } catch (err: any) {
+      console.error('Download error:', err);
+      toast.error('Failed to download invoice');
+    } finally {
+      setDownloadingInvoice(null);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -344,6 +385,7 @@ const CustomerPortal = () => {
                         <TableHead>Due Date</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -357,6 +399,20 @@ const CustomerPortal = () => {
                           <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                           <TableCell className="text-right font-medium">
                             ${Number(invoice.total).toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDownloadInvoice(invoice)}
+                              disabled={downloadingInvoice === invoice.id}
+                            >
+                              {downloadingInvoice === invoice.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Download className="w-4 h-4" />
+                              )}
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}

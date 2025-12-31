@@ -1,13 +1,14 @@
-import { useAuth } from '@/hooks/useAuth';
+import { useState } from 'react';
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, Customer } from '@/hooks/useCustomers';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Customers = () => {
   const { data: customers = [], isLoading } = useCustomers();
@@ -18,6 +19,7 @@ const Customers = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<string | null>(null);
+  const [sendingPortalLink, setSendingPortalLink] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -65,6 +67,32 @@ const Customers = () => {
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this customer?')) {
       await deleteCustomer.mutateAsync(id);
+    }
+  };
+
+  const handleSendPortalLink = async (customer: Customer) => {
+    if (!customer.email) {
+      toast.error('Customer must have an email address to send portal link');
+      return;
+    }
+
+    setSendingPortalLink(customer.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { action: 'send-link', email: customer.email },
+      });
+
+      if (error) throw error;
+      
+      if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.success(`Portal link sent to ${customer.email}`);
+      }
+    } catch (err: any) {
+      toast.error('Failed to send portal link');
+    } finally {
+      setSendingPortalLink(null);
     }
   };
 
@@ -152,6 +180,26 @@ const Customers = () => {
                 {customer.phone && <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-4 h-4" /><span>{customer.phone}</span></div>}
                 {customer.address && <div className="flex items-start gap-2 text-muted-foreground"><MapPin className="w-4 h-4 mt-0.5" /><span className="line-clamp-2">{customer.address}</span></div>}
               </div>
+              
+              {/* Send Portal Link Button */}
+              {customer.email && (
+                <div className="mt-4 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => handleSendPortalLink(customer)}
+                    disabled={sendingPortalLink === customer.id}
+                  >
+                    {sendingPortalLink === customer.id ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                    )}
+                    Send Portal Link
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
