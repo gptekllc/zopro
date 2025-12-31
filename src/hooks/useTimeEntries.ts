@@ -117,3 +117,35 @@ export function useClockOut() {
     },
   });
 }
+
+export function useUpdateTimeEntry() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ id, clock_in, clock_out, notes }: { 
+      id: string; 
+      clock_in: string; 
+      clock_out: string | null; 
+      notes: string | null;
+    }) => {
+      const { error } = await (supabase as any)
+        .from('time_entries')
+        .update({
+          clock_in,
+          clock_out,
+          notes,
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['active_time_entry'] });
+      toast.success('Time entry updated');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update: ' + error.message);
+    },
+  });
+}

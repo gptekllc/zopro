@@ -4,6 +4,7 @@ import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
 export interface Company {
+  timezone?: string;
   id: string;
   name: string;
   email: string | null;
