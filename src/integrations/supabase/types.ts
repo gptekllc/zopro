@@ -56,6 +56,44 @@ export type Database = {
         }
         Relationships: []
       }
+      company_join_codes: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_join_codes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -229,6 +267,93 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      join_requests: {
+        Row: {
+          assigned_role: string | null
+          company_id: string
+          id: string
+          join_code_id: string | null
+          notes: string | null
+          requested_at: string
+          responded_at: string | null
+          responded_by: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          assigned_role?: string | null
+          company_id: string
+          id?: string
+          join_code_id?: string | null
+          notes?: string | null
+          requested_at?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          assigned_role?: string | null
+          company_id?: string
+          id?: string
+          join_code_id?: string | null
+          notes?: string | null
+          requested_at?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "join_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "join_requests_join_code_id_fkey"
+            columns: ["join_code_id"]
+            isOneToOne: false
+            referencedRelation: "company_join_codes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          is_read: boolean
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          message: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -472,7 +597,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "technician" | "super_admin"
+      app_role: "admin" | "technician" | "super_admin" | "manager" | "customer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -600,7 +725,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "technician", "super_admin"],
+      app_role: ["admin", "technician", "super_admin", "manager", "customer"],
     },
   },
 } as const
