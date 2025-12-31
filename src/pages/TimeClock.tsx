@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useTimeEntries, useActiveTimeEntry, useClockIn, useClockOut, useUpdateTimeEntry, TimeEntry } from '@/hooks/useTimeEntries';
+import { useTimeEntries, useActiveTimeEntry, useClockIn, useClockOut, useUpdateTimeEntry, useStartBreak, useEndBreak, TimeEntry } from '@/hooks/useTimeEntries';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Clock, Play, Square, Timer, Calendar, Loader2, Eye, Pencil } from 'lucide-react';
+import { Clock, Play, Square, Timer, Calendar, Loader2, Eye, Pencil, Coffee, FileText } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
 import { toast } from 'sonner';
 import { TimeEntryDialog } from '@/components/timeclock/TimeEntryDialog';
+import { Link } from 'react-router-dom';
 
 const TimeClock = () => {
   const { user, profile, roles } = useAuth();
@@ -18,14 +19,18 @@ const TimeClock = () => {
   const clockIn = useClockIn();
   const clockOut = useClockOut();
   const updateTimeEntry = useUpdateTimeEntry();
+  const startBreak = useStartBreak();
+  const endBreak = useEndBreak();
   
   const [notes, setNotes] = useState('');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
+  const [breakTime, setBreakTime] = useState('00:00');
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Check if user can edit entries (admin or manager)
   const canEdit = roles.some(r => r.role === 'admin' || r.role === 'manager');
+  const canViewReports = roles.some(r => r.role === 'admin' || r.role === 'manager');
 
   // Filter entries for current user
   const userEntries = timeEntries.filter(e => e.user_id === user?.id);
@@ -39,7 +44,9 @@ const TimeClock = () => {
   const weeklyEntries = userEntries.filter(e => new Date(e.clock_in) >= weekStart);
   const weeklyMinutes = weeklyEntries.reduce((total, entry) => {
     const clockOutTime = entry.clock_out ? new Date(entry.clock_out) : new Date();
-    return total + differenceInMinutes(clockOutTime, new Date(entry.clock_in));
+    const worked = differenceInMinutes(clockOutTime, new Date(entry.clock_in));
+    const breakMins = entry.break_minutes || 0;
+    return total + worked - breakMins;
   }, 0);
   const weeklyHours = Math.floor(weeklyMinutes / 60);
   const weeklyMins = weeklyMinutes % 60;
@@ -48,13 +55,34 @@ const TimeClock = () => {
   useEffect(() => {
     if (!activeEntry) {
       setElapsedTime('00:00:00');
+      setBreakTime('00:00');
       return;
     }
 
     const updateTimer = () => {
       const now = new Date();
       const start = new Date(activeEntry.clock_in);
-      const diff = now.getTime() - start.getTime();
+      let diff = now.getTime() - start.getTime();
+      
+      // Subtract accumulated break time
+      const breakMinutes = activeEntry.break_minutes || 0;
+      diff -= breakMinutes * 60000;
+      
+      // If currently on break, also subtract ongoing break time
+      if (activeEntry.is_on_break && activeEntry.break_start) {
+        const ongoingBreak = now.getTime() - new Date(activeEntry.break_start).getTime();
+        diff -= ongoingBreak;
+        
+        // Update break display
+        const breakMins = Math.floor(ongoingBreak / 60000);
+        const breakSecs = Math.floor((ongoingBreak % 60000) / 1000);
+        setBreakTime(`${String(breakMins).padStart(2, '0')}:${String(breakSecs).padStart(2, '0')}`);
+      } else {
+        const totalBreakMins = activeEntry.break_minutes || 0;
+        setBreakTime(`${String(totalBreakMins).padStart(2, '0')}:00`);
+      }
+      
+      if (diff < 0) diff = 0;
       
       const hours = Math.floor(diff / 3600000);
       const minutes = Math.floor((diff % 3600000) / 60000);
@@ -82,6 +110,16 @@ const TimeClock = () => {
 
   const handleClockOut = async () => {
     if (!activeEntry) return;
+    
+    // End break first if on break
+    if (activeEntry.is_on_break && activeEntry.break_start) {
+      await endBreak.mutateAsync({
+        entryId: activeEntry.id,
+        breakStart: activeEntry.break_start,
+        currentBreakMinutes: activeEntry.break_minutes || 0,
+      });
+    }
+    
     try {
       await clockOut.mutateAsync({ id: activeEntry.id, notes: notes || undefined });
       setNotes('');
@@ -91,12 +129,30 @@ const TimeClock = () => {
     }
   };
 
+  const handleToggleBreak = async () => {
+    if (!activeEntry) return;
+    
+    if (activeEntry.is_on_break) {
+      // End break
+      if (activeEntry.break_start) {
+        await endBreak.mutateAsync({
+          entryId: activeEntry.id,
+          breakStart: activeEntry.break_start,
+          currentBreakMinutes: activeEntry.break_minutes || 0,
+        });
+      }
+    } else {
+      // Start break
+      await startBreak.mutateAsync(activeEntry.id);
+    }
+  };
+
   const handleViewEntry = (entry: TimeEntry) => {
     setSelectedEntry(entry);
     setDialogOpen(true);
   };
 
-  const handleSaveEntry = async (data: { clock_in: string; clock_out: string | null; notes: string | null }) => {
+  const handleSaveEntry = async (data: { clock_in: string; clock_out: string | null; notes: string | null; break_minutes?: number }) => {
     if (!selectedEntry) return;
     await updateTimeEntry.mutateAsync({
       id: selectedEntry.id,
@@ -106,7 +162,7 @@ const TimeClock = () => {
 
   const formatDuration = (entry: typeof userEntries[0]) => {
     if (!entry.clock_out) return 'Active';
-    const mins = differenceInMinutes(new Date(entry.clock_out), new Date(entry.clock_in));
+    const mins = differenceInMinutes(new Date(entry.clock_out), new Date(entry.clock_in)) - (entry.break_minutes || 0);
     const hrs = Math.floor(mins / 60);
     const remainingMins = mins % 60;
     return `${hrs}h ${remainingMins}m`;
@@ -123,29 +179,51 @@ const TimeClock = () => {
   return (
     <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Time Clock</h1>
-        <p className="text-muted-foreground mt-1">
-          Track your work hours
-          {company?.timezone && (
-            <span className="ml-2 text-xs">({company.timezone})</span>
-          )}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Time Clock</h1>
+          <p className="text-muted-foreground mt-1">
+            Track your work hours
+            {company?.timezone && (
+              <span className="ml-2 text-xs">({company.timezone})</span>
+            )}
+          </p>
+        </div>
+        {canViewReports && (
+          <Link to="/timesheet">
+            <Button variant="outline">
+              <FileText className="w-4 h-4 mr-2" />
+              View Timesheet
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Main Time Clock Card */}
       <Card className="overflow-hidden">
-        <div className={`p-8 text-center ${activeEntry ? 'gradient-success' : 'gradient-primary'}`}>
+        <div className={`p-8 text-center ${activeEntry?.is_on_break ? 'bg-amber-500' : activeEntry ? 'gradient-success' : 'gradient-primary'}`}>
           <div className="text-primary-foreground">
-            <Timer className="w-12 h-12 mx-auto mb-4 opacity-90" />
+            {activeEntry?.is_on_break ? (
+              <Coffee className="w-12 h-12 mx-auto mb-4 opacity-90" />
+            ) : (
+              <Timer className="w-12 h-12 mx-auto mb-4 opacity-90" />
+            )}
             <p className="text-sm uppercase tracking-wider opacity-80 mb-2">
-              {activeEntry ? 'Currently Working' : 'Ready to Clock In'}
+              {activeEntry?.is_on_break ? 'On Break' : activeEntry ? 'Currently Working' : 'Ready to Clock In'}
             </p>
             <p className="text-5xl font-bold font-mono mb-2">{elapsedTime}</p>
             {activeEntry && (
-              <p className="text-sm opacity-80">
-                Started at {format(new Date(activeEntry.clock_in), 'h:mm a')}
-              </p>
+              <div className="space-y-1">
+                <p className="text-sm opacity-80">
+                  Started at {format(new Date(activeEntry.clock_in), 'h:mm a')}
+                </p>
+                {((activeEntry.break_minutes || 0) > 0 || activeEntry.is_on_break) && (
+                  <p className="text-sm opacity-80 flex items-center justify-center gap-1">
+                    <Coffee className="w-3 h-3" />
+                    Break: {breakTime}
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -160,18 +238,33 @@ const TimeClock = () => {
             />
             
             {activeEntry ? (
-              <Button
-                onClick={handleClockOut}
-                disabled={clockOut.isPending}
-                className="w-full h-14 text-lg bg-destructive hover:bg-destructive/90"
-              >
-                {clockOut.isPending ? (
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                ) : (
-                  <Square className="w-5 h-5 mr-2" />
-                )}
-                Clock Out
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleToggleBreak}
+                  disabled={startBreak.isPending || endBreak.isPending}
+                  variant={activeEntry.is_on_break ? "default" : "secondary"}
+                  className="flex-1 h-14 text-lg"
+                >
+                  {startBreak.isPending || endBreak.isPending ? (
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  ) : (
+                    <Coffee className="w-5 h-5 mr-2" />
+                  )}
+                  {activeEntry.is_on_break ? 'End Break' : 'Start Break'}
+                </Button>
+                <Button
+                  onClick={handleClockOut}
+                  disabled={clockOut.isPending}
+                  className="flex-1 h-14 text-lg bg-destructive hover:bg-destructive/90"
+                >
+                  {clockOut.isPending ? (
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  ) : (
+                    <Square className="w-5 h-5 mr-2" />
+                  )}
+                  Clock Out
+                </Button>
+              </div>
             ) : (
               <Button
                 onClick={handleClockIn}
@@ -215,7 +308,7 @@ const TimeClock = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {userEntries.slice(-10).reverse().map((entry) => (
+            {userEntries.slice(0, 10).map((entry) => (
               <div
                 key={entry.id}
                 className="flex items-center justify-between py-3 border-b last:border-0 cursor-pointer hover:bg-muted/50 rounded-lg px-2 -mx-2 transition-colors"
@@ -232,6 +325,12 @@ const TimeClock = () => {
                     <p className="text-sm text-muted-foreground">
                       {format(new Date(entry.clock_in), 'h:mm a')}
                       {entry.clock_out && ` - ${format(new Date(entry.clock_out), 'h:mm a')}`}
+                      {(entry.break_minutes || 0) > 0 && (
+                        <span className="ml-2 text-amber-600">
+                          <Coffee className="w-3 h-3 inline mr-1" />
+                          {entry.break_minutes}m break
+                        </span>
+                      )}
                     </p>
                     {entry.notes && (
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{entry.notes}</p>

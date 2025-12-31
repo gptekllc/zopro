@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Save, Eye, Pencil } from 'lucide-react';
+import { Loader2, Save, Eye, Pencil, Coffee } from 'lucide-react';
 import { format } from 'date-fns';
 import { TimeEntry } from '@/hooks/useTimeEntries';
 
@@ -13,7 +13,7 @@ interface TimeEntryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   canEdit: boolean;
-  onSave: (data: { clock_in: string; clock_out: string | null; notes: string | null }) => Promise<void>;
+  onSave: (data: { clock_in: string; clock_out: string | null; notes: string | null; break_minutes?: number }) => Promise<void>;
   timezone?: string;
 }
 
@@ -26,6 +26,7 @@ export function TimeEntryDialog({ entry, open, onOpenChange, canEdit, onSave, ti
     clockOutDate: '',
     clockOutTime: '',
     notes: '',
+    breakMinutes: 0,
   });
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export function TimeEntryDialog({ entry, open, onOpenChange, canEdit, onSave, ti
         clockOutDate: clockOut ? format(clockOut, 'yyyy-MM-dd') : '',
         clockOutTime: clockOut ? format(clockOut, 'HH:mm') : '',
         notes: entry.notes || '',
+        breakMinutes: entry.break_minutes || 0,
       });
       setIsEditing(false);
     }
@@ -58,6 +60,7 @@ export function TimeEntryDialog({ entry, open, onOpenChange, canEdit, onSave, ti
         clock_in: clockIn.toISOString(),
         clock_out: clockOut ? clockOut.toISOString() : null,
         notes: formData.notes || null,
+        break_minutes: formData.breakMinutes,
       });
       setIsEditing(false);
       onOpenChange(false);
@@ -136,6 +139,19 @@ export function TimeEntryDialog({ entry, open, onOpenChange, canEdit, onSave, ti
               </div>
 
               <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Coffee className="w-4 h-4" />
+                  Break Time (minutes)
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={formData.breakMinutes}
+                  onChange={(e) => setFormData({ ...formData, breakMinutes: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label>Notes</Label>
                 <Textarea
                   value={formData.notes}
@@ -162,6 +178,18 @@ export function TimeEntryDialog({ entry, open, onOpenChange, canEdit, onSave, ti
                       : 'Still active'}
                   </p>
                 </div>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-muted-foreground flex items-center gap-2">
+                  <Coffee className="w-4 h-4" />
+                  Break Time
+                </Label>
+                <p className="font-medium">
+                  {(entry.break_minutes || 0) > 0 
+                    ? `${entry.break_minutes} minutes`
+                    : 'No breaks taken'}
+                </p>
               </div>
 
               <div className="space-y-2">

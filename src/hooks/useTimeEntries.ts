@@ -10,6 +10,8 @@ export interface TimeEntry {
   clock_in: string;
   clock_out: string | null;
   break_minutes: number;
+  break_start: string | null;
+  is_on_break: boolean;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -102,6 +104,8 @@ export function useClockOut() {
         .update({
           clock_out: new Date().toISOString(),
           notes,
+          is_on_break: false,
+          break_start: null,
         })
         .eq('id', id);
       
@@ -118,23 +122,86 @@ export function useClockOut() {
   });
 }
 
+export function useStartBreak() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (entryId: string) => {
+      const { error } = await (supabase as any)
+        .from('time_entries')
+        .update({
+          is_on_break: true,
+          break_start: new Date().toISOString(),
+        })
+        .eq('id', entryId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['active_time_entry'] });
+      toast.success('Break started');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to start break: ' + error.message);
+    },
+  });
+}
+
+export function useEndBreak() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ entryId, breakStart, currentBreakMinutes }: { 
+      entryId: string; 
+      breakStart: string;
+      currentBreakMinutes: number;
+    }) => {
+      const breakDuration = Math.floor(
+        (new Date().getTime() - new Date(breakStart).getTime()) / 60000
+      );
+      
+      const { error } = await (supabase as any)
+        .from('time_entries')
+        .update({
+          is_on_break: false,
+          break_start: null,
+          break_minutes: currentBreakMinutes + breakDuration,
+        })
+        .eq('id', entryId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['time_entries'] });
+      queryClient.invalidateQueries({ queryKey: ['active_time_entry'] });
+      toast.success('Break ended');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to end break: ' + error.message);
+    },
+  });
+}
+
 export function useUpdateTimeEntry() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, clock_in, clock_out, notes }: { 
+    mutationFn: async ({ id, clock_in, clock_out, notes, break_minutes }: { 
       id: string; 
       clock_in: string; 
       clock_out: string | null; 
       notes: string | null;
+      break_minutes?: number;
     }) => {
+      const updateData: Record<string, unknown> = { clock_in, clock_out, notes };
+      if (break_minutes !== undefined) {
+        updateData.break_minutes = break_minutes;
+      }
+      
       const { error } = await (supabase as any)
         .from('time_entries')
-        .update({
-          clock_in,
-          clock_out,
-          notes,
-        })
+        .update(updateData)
         .eq('id', id);
       
       if (error) throw error;
