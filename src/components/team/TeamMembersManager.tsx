@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTeamMembers } from '@/hooks/useCompany';
+import { useTeamInvitations, useCancelInvitation, useResendInvitation } from '@/hooks/useTeamInvitations';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -42,8 +44,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Users, UserCog, UserMinus, Loader2, Shield, Mail, UserPlus } from 'lucide-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Users, UserCog, UserMinus, Loader2, Shield, Mail, UserPlus, RefreshCw, X, RotateCcw, Clock } from 'lucide-react';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
 
 const AVAILABLE_ROLES = ['admin', 'manager', 'technician'] as const;
 type AppRole = typeof AVAILABLE_ROLES[number];
@@ -54,12 +57,16 @@ interface TeamMember {
   full_name: string | null;
   phone: string | null;
   role: string;
+  deleted_at?: string | null;
   roles?: { role: string }[];
 }
 
 const TeamMembersManager = () => {
   const { profile, user, isAdmin } = useAuth();
   const { data: teamMembers, isLoading } = useTeamMembers();
+  const { data: invitations = [], isLoading: loadingInvitations } = useTeamInvitations();
+  const cancelInvitation = useCancelInvitation();
+  const resendInvitation = useResendInvitation();
   const queryClient = useQueryClient();
   
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
@@ -67,11 +74,28 @@ const TeamMembersManager = () => {
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
   
   // Add member form state
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<AppRole>('technician');
+
+  // Fetch deleted team members
+  const { data: deletedMembers = [] } = useQuery({
+    queryKey: ['deleted_team_members', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id) return [];
+      const { data, error } = await (supabase as any)
+        .from('profiles')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .not('deleted_at', 'is', null);
+      if (error) throw error;
+      return data as TeamMember[];
+    },
+    enabled: !!profile?.company_id && isAdmin,
+  });
 
   // Update role mutation
   const updateRoleMutation = useMutation({
@@ -107,29 +131,45 @@ const TeamMembersManager = () => {
     },
   });
 
-  // Remove member mutation
+  // Soft delete member mutation (now uses deleted_at)
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await (supabase as any)
         .from('profiles')
-        .update({ company_id: null })
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', userId);
       
       if (error) throw error;
-
-      await (supabase as any)
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['team_members'] });
+      queryClient.invalidateQueries({ queryKey: ['deleted_team_members'] });
       toast.success('Team member removed from company');
       setIsRemoveDialogOpen(false);
       setSelectedMember(null);
     },
     onError: (error: any) => {
       toast.error('Failed to remove member: ' + error.message);
+    },
+  });
+
+  // Restore member mutation
+  const restoreMemberMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await (supabase as any)
+        .from('profiles')
+        .update({ deleted_at: null })
+        .eq('id', userId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['team_members'] });
+      queryClient.invalidateQueries({ queryKey: ['deleted_team_members'] });
+      toast.success('Team member restored');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to restore member: ' + error.message);
     },
   });
 
@@ -153,6 +193,7 @@ const TeamMembersManager = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['team_members'] });
+      queryClient.invalidateQueries({ queryKey: ['team_invitations'] });
       toast.success(data?.message || 'Team member invited successfully');
       setIsAddDialogOpen(false);
       setNewMemberEmail('');
@@ -256,80 +297,229 @@ const TeamMembersManager = () => {
           </Button>
         </CardHeader>
         <CardContent>
-          {teamMembers && teamMembers.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {teamMembers.map((member: TeamMember) => (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback className="text-xs">
-                            {getInitials(member.full_name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">
-                          {member.full_name || 'Unnamed User'}
-                          {member.id === user?.id && (
-                            <span className="text-muted-foreground ml-2">(You)</span>
+          <Tabs defaultValue="active" className="w-full">
+            <TabsList className="mb-4">
+              <TabsTrigger value="active">Active Members</TabsTrigger>
+              <TabsTrigger value="pending">
+                Pending Invitations
+                {invitations.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">{invitations.length}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="deleted">
+                Removed
+                {deletedMembers.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">{deletedMembers.length}</Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="active">
+              {teamMembers && teamMembers.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Member</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {teamMembers.map((member: TeamMember) => (
+                      <TableRow key={member.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback className="text-xs">
+                                {getInitials(member.full_name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">
+                              {member.full_name || 'Unnamed User'}
+                              {member.id === user?.id && (
+                                <span className="text-muted-foreground ml-2">(You)</span>
+                              )}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                            {member.email}
+                          </div>
+                        </TableCell>
+                        <TableCell>{member.phone || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={getRoleBadgeVariant(getMemberRole(member))}>
+                            {getMemberRole(member)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {member.id !== user?.id && (
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRoleChange(member)}
+                              >
+                                <UserCog className="w-4 h-4 mr-1" />
+                                Role
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRemoveMember(member)}
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <UserMinus className="w-4 h-4 mr-1" />
+                                Remove
+                              </Button>
+                            </div>
                           )}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-muted-foreground" />
-                        {member.email}
-                      </div>
-                    </TableCell>
-                    <TableCell>{member.phone || '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant={getRoleBadgeVariant(getMemberRole(member))}>
-                        {getMemberRole(member)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {member.id !== user?.id && (
-                        <div className="flex justify-end gap-2">
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No team members yet. Invite someone to get started!</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="pending">
+              {loadingInvitations ? (
+                <div className="text-center py-8">
+                  <Loader2 className="w-8 h-8 animate-spin mx-auto" />
+                </div>
+              ) : invitations.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Sent</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invitations.map((invitation) => (
+                      <TableRow key={invitation.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-muted-foreground" />
+                            {invitation.email}
+                          </div>
+                        </TableCell>
+                        <TableCell>{invitation.full_name || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={getRoleBadgeVariant(invitation.role)}>
+                            {invitation.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <Clock className="w-3 h-3" />
+                            {formatDistanceToNow(new Date(invitation.created_at), { addSuffix: true })}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => resendInvitation.mutate(invitation)}
+                              disabled={resendInvitation.isPending}
+                            >
+                              {resendInvitation.isPending ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="w-4 h-4 mr-1" />
+                              )}
+                              Resend
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => cancelInvitation.mutate(invitation.id)}
+                              disabled={cancelInvitation.isPending}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Cancel
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Mail className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No pending invitations</p>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="deleted">
+              {deletedMembers.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Member</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {deletedMembers.map((member) => (
+                      <TableRow key={member.id} className="opacity-60">
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback className="text-xs">
+                                {getInitials(member.full_name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">
+                              {member.full_name || 'Unnamed User'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{member.email}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{member.role}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleRoleChange(member)}
+                            onClick={() => restoreMemberMutation.mutate(member.id)}
+                            disabled={restoreMemberMutation.isPending}
                           >
-                            <UserCog className="w-4 h-4 mr-1" />
-                            Role
+                            <RotateCcw className="w-4 h-4 mr-1" />
+                            Restore
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRemoveMember(member)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <UserMinus className="w-4 h-4 mr-1" />
-                            Remove
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No team members yet. Invite someone to get started!</p>
-            </div>
-          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No removed team members</p>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -380,7 +570,7 @@ const TeamMembersManager = () => {
             <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to remove {selectedMember?.full_name || selectedMember?.email} from your company?
-              They will no longer have access to company data.
+              They will no longer have access to company data. You can restore them later if needed.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -404,7 +594,7 @@ const TeamMembersManager = () => {
           <DialogHeader>
             <DialogTitle>Invite Team Member</DialogTitle>
             <DialogDescription>
-              Enter the email address and role for the new team member. If they already have an account, they'll be added immediately. Otherwise, they'll receive an invitation email.
+              Enter the email address and role for the new team member. They'll receive an invitation email with login instructions.
             </DialogDescription>
           </DialogHeader>
           

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, Customer } from '@/hooks/useCustomers';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,14 +8,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const Customers = () => {
   const { data: customers = [], isLoading } = useCustomers();
+  const { isAdmin, profile } = useAuth();
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();
+  const queryClient = useQueryClient();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -26,6 +32,60 @@ const Customers = () => {
     phone: '',
     address: '',
     notes: '',
+  });
+
+  // Fetch deleted customers for admins/managers
+  const { data: deletedCustomers = [] } = useQuery({
+    queryKey: ['deleted_customers', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id) return [];
+      const { data, error } = await (supabase as any)
+        .from('customers')
+        .select('*')
+        .eq('company_id', profile.company_id)
+        .not('deleted_at', 'is', null);
+      if (error) throw error;
+      return data as (Customer & { deleted_at: string })[];
+    },
+    enabled: !!profile?.company_id && isAdmin,
+  });
+
+  // Soft delete mutation
+  const softDeleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('customers')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['deleted_customers'] });
+      toast.success('Customer deleted');
+    },
+    onError: () => {
+      toast.error('Failed to delete customer');
+    },
+  });
+
+  // Restore mutation
+  const restoreMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('customers')
+        .update({ deleted_at: null })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['deleted_customers'] });
+      toast.success('Customer restored');
+    },
+    onError: () => {
+      toast.error('Failed to restore customer');
+    },
   });
 
   const filteredCustomers = customers.filter(c =>
@@ -66,7 +126,7 @@ const Customers = () => {
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this customer?')) {
-      await deleteCustomer.mutateAsync(id);
+      softDeleteMutation.mutate(id);
     }
   };
 
@@ -159,59 +219,117 @@ const Customers = () => {
         <Input placeholder="Search customers..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredCustomers.map((customer) => (
-          <Card key={customer.id} className="overflow-hidden hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="w-6 h-6 text-primary" />
-                  </div>
-                  <h3 className="font-semibold">{customer.name}</h3>
-                </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(customer)}><Edit className="w-4 h-4" /></Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(customer.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm">
-                {customer.email && <div className="flex items-center gap-2 text-muted-foreground"><Mail className="w-4 h-4" /><span className="truncate">{customer.email}</span></div>}
-                {customer.phone && <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-4 h-4" /><span>{customer.phone}</span></div>}
-                {customer.address && <div className="flex items-start gap-2 text-muted-foreground"><MapPin className="w-4 h-4 mt-0.5" /><span className="line-clamp-2">{customer.address}</span></div>}
-              </div>
-              
-              {/* Send Portal Link Button */}
-              {customer.email && (
-                <div className="mt-4 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => handleSendPortalLink(customer)}
-                    disabled={sendingPortalLink === customer.id}
-                  >
-                    {sendingPortalLink === customer.id ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                    )}
-                    Send Portal Link
-                  </Button>
-                </div>
+      <Tabs defaultValue="active" className="w-full">
+        <TabsList>
+          <TabsTrigger value="active">Active Customers</TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="deleted">
+              Deleted
+              {deletedCustomers.length > 0 && (
+                <Badge variant="secondary" className="ml-2">{deletedCustomers.length}</Badge>
               )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            </TabsTrigger>
+          )}
+        </TabsList>
 
-      {filteredCustomers.length === 0 && (
-        <div className="text-center py-12">
-          <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium">No customers found</h3>
-          <p className="text-muted-foreground mt-1">{searchQuery ? 'Try a different search term' : 'Add your first customer to get started'}</p>
-        </div>
-      )}
+        <TabsContent value="active" className="mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredCustomers.map((customer) => (
+              <Card key={customer.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="w-6 h-6 text-primary" />
+                      </div>
+                      <h3 className="font-semibold">{customer.name}</h3>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(customer)}><Edit className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(customer.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    {customer.email && <div className="flex items-center gap-2 text-muted-foreground"><Mail className="w-4 h-4" /><span className="truncate">{customer.email}</span></div>}
+                    {customer.phone && <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-4 h-4" /><span>{customer.phone}</span></div>}
+                    {customer.address && <div className="flex items-start gap-2 text-muted-foreground"><MapPin className="w-4 h-4 mt-0.5" /><span className="line-clamp-2">{customer.address}</span></div>}
+                  </div>
+                  
+                  {/* Send Portal Link Button */}
+                  {customer.email && (
+                    <div className="mt-4 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => handleSendPortalLink(customer)}
+                        disabled={sendingPortalLink === customer.id}
+                      >
+                        {sendingPortalLink === customer.id ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                        )}
+                        Send Portal Link
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {filteredCustomers.length === 0 && (
+            <div className="text-center py-12">
+              <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium">No customers found</h3>
+              <p className="text-muted-foreground mt-1">{searchQuery ? 'Try a different search term' : 'Add your first customer to get started'}</p>
+            </div>
+          )}
+        </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="deleted" className="mt-4">
+            {deletedCustomers.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {deletedCustomers.map((customer) => (
+                  <Card key={customer.id} className="overflow-hidden opacity-60 hover:opacity-100 transition-opacity">
+                    <CardContent className="p-5">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                            <User className="w-6 h-6 text-muted-foreground" />
+                          </div>
+                          <h3 className="font-semibold">{customer.name}</h3>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => restoreMutation.mutate(customer.id)}
+                          disabled={restoreMutation.isPending}
+                        >
+                          <RotateCcw className="w-4 h-4 mr-1" />
+                          Restore
+                        </Button>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        {customer.email && <div className="flex items-center gap-2 text-muted-foreground"><Mail className="w-4 h-4" /><span className="truncate">{customer.email}</span></div>}
+                        {customer.phone && <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-4 h-4" /><span>{customer.phone}</span></div>}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium">No deleted customers</h3>
+                <p className="text-muted-foreground mt-1">Deleted customers will appear here for restoration</p>
+              </div>
+            )}
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 };

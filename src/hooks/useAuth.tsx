@@ -10,6 +10,7 @@ interface Profile {
   phone: string | null;
   avatar_url: string | null;
   hourly_rate: number;
+  role: string;
 }
 
 interface UserRole {

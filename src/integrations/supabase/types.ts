@@ -103,6 +103,7 @@ export type Database = {
           city: string | null
           company_id: string
           created_at: string
+          deleted_at: string | null
           email: string | null
           id: string
           name: string
@@ -117,6 +118,7 @@ export type Database = {
           city?: string | null
           company_id: string
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           id?: string
           name: string
@@ -131,6 +133,7 @@ export type Database = {
           city?: string | null
           company_id?: string
           created_at?: string
+          deleted_at?: string | null
           email?: string | null
           id?: string
           name?: string
@@ -507,6 +510,7 @@ export type Database = {
           avatar_url: string | null
           company_id: string | null
           created_at: string
+          deleted_at: string | null
           email: string
           full_name: string | null
           hourly_rate: number | null
@@ -519,6 +523,7 @@ export type Database = {
           avatar_url?: string | null
           company_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           email: string
           full_name?: string | null
           hourly_rate?: number | null
@@ -531,6 +536,7 @@ export type Database = {
           avatar_url?: string | null
           company_id?: string | null
           created_at?: string
+          deleted_at?: string | null
           email?: string
           full_name?: string | null
           hourly_rate?: number | null
@@ -683,6 +689,60 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_invitations: {
+        Row: {
+          accepted_at: string | null
+          company_id: string
+          created_at: string
+          email: string
+          expires_at: string | null
+          full_name: string | null
+          id: string
+          invited_by: string | null
+          role: string
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          company_id: string
+          created_at?: string
+          email: string
+          expires_at?: string | null
+          full_name?: string | null
+          id?: string
+          invited_by?: string | null
+          role?: string
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          company_id?: string
+          created_at?: string
+          email?: string
+          expires_at?: string | null
+          full_name?: string | null
+          id?: string
+          invited_by?: string | null
+          role?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
