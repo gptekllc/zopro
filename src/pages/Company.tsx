@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import JoinRequestsManager from '@/components/admin/JoinRequestsManager';
 import TeamMembersManager from '@/components/team/TeamMembersManager';
+import LogoUpload from '@/components/company/LogoUpload';
 
 const Company = () => {
   const { profile, isAdmin } = useAuth();
@@ -31,9 +32,25 @@ const Company = () => {
     state: '',
     zip: '',
   });
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formInitialized, setFormInitialized] = useState(false);
   const [newCodeDays, setNewCodeDays] = useState('7');
   const [createCodeOpen, setCreateCodeOpen] = useState(false);
+
+  // Initialize form when company loads
+  if (company && !formInitialized) {
+    setFormData({
+      name: company.name || '',
+      email: company.email || '',
+      phone: company.phone || '',
+      address: company.address || '',
+      city: company.city || '',
+      state: company.state || '',
+      zip: company.zip || '',
+    });
+    setLogoUrl(company.logo_url || null);
+    setFormInitialized(true);
+  }
 
   // Initialize form when company loads
   if (company && !formInitialized) {
@@ -158,7 +175,21 @@ const Company = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
+              <form onSubmit={handleSubmit} className="space-y-6 max-w-xl">
+                {/* Logo Upload */}
+                <div className="space-y-2">
+                  <Label>Company Logo</Label>
+                  <LogoUpload
+                    companyId={company.id}
+                    currentLogoUrl={logoUrl}
+                    companyName={company.name}
+                    onUploadSuccess={(url) => {
+                      setLogoUrl(url);
+                      queryClient.invalidateQueries({ queryKey: ['company'] });
+                    }}
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="name">Company Name</Label>
                   <Input

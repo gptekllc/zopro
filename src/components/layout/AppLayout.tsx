@@ -173,27 +173,34 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             })}
           </nav>
 
-          {/* User section */}
+          {/* User section with dropdown */}
           <div className="p-4 border-t border-sidebar-border">
-            <div className="flex items-center gap-3 p-3 rounded-lg bg-sidebar-accent">
-              <Avatar className="w-10 h-10">
-                <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm">
-                  {getInitials(profile?.full_name)}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{displayName}</p>
-                <p className="text-xs text-sidebar-foreground/60 capitalize">{primaryRole}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleLogout}
-                className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-border"
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-sidebar-accent hover:bg-sidebar-accent/80 transition-colors">
+                  <Avatar className="w-10 h-10">
+                    <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm">
+                      {getInitials(profile?.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="font-medium truncate">{displayName}</p>
+                    <p className="text-xs text-sidebar-foreground/60 capitalize">{primaryRole}</p>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="top" align="start" className="w-56">
+                <DropdownMenuItem onClick={() => { navigate('/profile'); setSidebarOpen(false); }}>
+                  <User className="w-4 h-4 mr-2" />
+                  Edit Profile
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </aside>

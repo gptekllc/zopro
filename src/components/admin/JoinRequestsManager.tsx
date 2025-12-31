@@ -21,23 +21,41 @@ const JoinRequestsManager = () => {
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
   const [selectedRole, setSelectedRole] = useState<string>('technician');
 
+  // Optimized query - fetch requests first, then profiles separately
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ['join-requests', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
-      const { data, error } = await (supabase as any)
+      
+      // First get join requests
+      const { data: requestsData, error: requestsError } = await (supabase as any)
         .from('join_requests')
-        .select(`
-          *,
-          profiles:user_id(id, email, full_name)
-        `)
+        .select('*')
         .eq('company_id', profile.company_id)
         .eq('status', 'pending')
         .order('requested_at', { ascending: false });
-      if (error) throw error;
-      return data;
+      
+      if (requestsError) throw requestsError;
+      if (!requestsData?.length) return [];
+      
+      // Then get profiles for these requests
+      const userIds = requestsData.map((r: any) => r.user_id);
+      const { data: profilesData, error: profilesError } = await (supabase as any)
+        .from('profiles')
+        .select('id, email, full_name')
+        .in('id', userIds);
+      
+      if (profilesError) throw profilesError;
+      
+      // Combine data
+      const profilesMap = new Map(profilesData?.map((p: any) => [p.id, p]) || []);
+      return requestsData.map((r: any) => ({
+        ...r,
+        profiles: profilesMap.get(r.user_id) || null
+      }));
     },
     enabled: !!profile?.company_id,
+    staleTime: 30000,
   });
 
   const { data: company } = useQuery({
@@ -46,13 +64,14 @@ const JoinRequestsManager = () => {
       if (!profile?.company_id) return null;
       const { data, error } = await (supabase as any)
         .from('companies')
-        .select('*')
+        .select('id, name')
         .eq('id', profile.company_id)
         .single();
       if (error) throw error;
       return data;
     },
     enabled: !!profile?.company_id,
+    staleTime: 60000,
   });
 
   const respondMutation = useMutation({

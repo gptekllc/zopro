@@ -1,7 +1,15 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Building2, Users, UserCircle, ArrowRight, LogOut } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Building2, Users, UserCircle, ArrowRight, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 interface OnboardingChoiceProps {
@@ -15,8 +23,14 @@ const OnboardingChoice = ({
   onChooseJoinCompany, 
   onChooseContinueAsCustomer 
 }: OnboardingChoiceProps) => {
-  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
   const [hoveredOption, setHoveredOption] = useState<string | null>(null);
+
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
 
   const options = [
     {
@@ -48,15 +62,33 @@ const OnboardingChoice = ({
   return (
     <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
       {user && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="absolute top-4 right-4 text-primary-foreground hover:bg-primary-foreground/10"
-          onClick={signOut}
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          Log out
-        </Button>
+        <div className="absolute top-4 right-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors">
+                <Avatar className="w-8 h-8">
+                  <AvatarFallback className="bg-primary-foreground text-primary text-xs">
+                    {getInitials(profile?.full_name)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="text-primary-foreground text-sm font-medium hidden sm:inline">
+                  {profile?.full_name || profile?.email || 'User'}
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <User className="w-4 h-4 mr-2" />
+                Edit Profile
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={signOut}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       )}
       <div className="w-full max-w-3xl animate-scale-in">
         <div className="text-center mb-8">
