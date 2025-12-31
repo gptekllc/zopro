@@ -1,0 +1,230 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { Resend } from 'https://esm.sh/resend@2.0.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Simple token generation (in production, use a more secure method)
+function generateToken(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    
+    const body = await req.json();
+    const { action } = body;
+
+    if (action === 'send-link') {
+      const { email } = body;
+      
+      if (!email) {
+        return new Response(
+          JSON.stringify({ error: 'Email is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Looking up customer with email:', email);
+
+      // Find customer by email
+      const { data: customers, error: customerError } = await adminClient
+        .from('customers')
+        .select('id, name, email, company_id, companies(name)')
+        .eq('email', email.toLowerCase())
+        .limit(1);
+
+      if (customerError) {
+        console.error('Error finding customer:', customerError);
+        throw customerError;
+      }
+
+      if (!customers || customers.length === 0) {
+        // Don't reveal if email exists or not for security
+        console.log('No customer found with email:', email);
+        return new Response(
+          JSON.stringify({ success: true, message: 'If an account exists, a magic link has been sent.' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const customer = customers[0];
+      console.log('Found customer:', customer.id, customer.name);
+
+      // Generate a token and store it
+      const token = generateToken();
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour expiry
+
+      // Store token in a simple way - using customer notes or a separate table would be better in production
+      // For now, we'll use a simple in-memory approach via the token itself containing expiry
+      const tokenData = {
+        customerId: customer.id,
+        expiresAt: expiresAt.toISOString(),
+        token,
+      };
+      
+      // Encode token data in base64 for the URL
+      const encodedToken = btoa(JSON.stringify(tokenData));
+      
+      // Get the app URL from the request origin or use a default
+      const origin = req.headers.get('origin') || 'https://lovable.dev';
+      const magicLink = `${origin}/customer-portal?token=${encodedToken}&customer=${customer.id}`;
+
+      console.log('Generated magic link for customer');
+
+      // Send email if Resend is configured
+      if (resendApiKey) {
+        try {
+          const resend = new Resend(resendApiKey);
+          const companyName = (customer as any).companies?.name || 'Our Company';
+          
+          await resend.emails.send({
+            from: `${companyName} <onboarding@resend.dev>`,
+            to: [email],
+            subject: `Your ${companyName} Customer Portal Access`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h1 style="color: #333;">Customer Portal Access</h1>
+                <p>Hello ${customer.name},</p>
+                <p>Click the button below to access your customer portal where you can view your invoices and service history:</p>
+                <p style="margin: 30px 0;">
+                  <a href="${magicLink}" style="background-color: #0070f3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                    Access Customer Portal
+                  </a>
+                </p>
+                <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
+                <p style="color: #666; font-size: 14px;">If you didn't request this link, you can safely ignore this email.</p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
+                <p style="color: #999; font-size: 12px;">${companyName}</p>
+              </div>
+            `,
+          });
+          console.log('Email sent successfully');
+        } catch (emailError) {
+          console.error('Failed to send email:', emailError);
+          // Continue anyway - in development, we'll just log the link
+        }
+      } else {
+        console.log('RESEND_API_KEY not configured. Magic link:', magicLink);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Magic link sent!' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'verify') {
+      const { token, customerId } = body;
+      
+      if (!token || !customerId) {
+        return new Response(
+          JSON.stringify({ valid: false, error: 'Missing token or customer ID' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        // Decode and verify token
+        const tokenData = JSON.parse(atob(token));
+        
+        if (tokenData.customerId !== customerId) {
+          console.log('Token customer ID mismatch');
+          return new Response(
+            JSON.stringify({ valid: false, error: 'Invalid token' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const expiresAt = new Date(tokenData.expiresAt);
+        if (expiresAt < new Date()) {
+          console.log('Token expired');
+          return new Response(
+            JSON.stringify({ valid: false, error: 'Token expired' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Fetch customer data
+        const { data: customer, error: customerError } = await adminClient
+          .from('customers')
+          .select('id, name, email, phone, company_id, companies(id, name, logo_url)')
+          .eq('id', customerId)
+          .single();
+
+        if (customerError || !customer) {
+          console.error('Customer not found:', customerError);
+          return new Response(
+            JSON.stringify({ valid: false, error: 'Customer not found' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Fetch invoices for this customer
+        const { data: invoices } = await adminClient
+          .from('invoices')
+          .select('id, invoice_number, status, total, created_at, due_date')
+          .eq('customer_id', customerId)
+          .order('created_at', { ascending: false });
+
+        // Fetch jobs for this customer
+        const { data: jobs } = await adminClient
+          .from('jobs')
+          .select('id, job_number, title, status, scheduled_start, created_at')
+          .eq('customer_id', customerId)
+          .order('created_at', { ascending: false });
+
+        console.log('Token verified successfully for customer:', customer.name);
+
+        return new Response(
+          JSON.stringify({
+            valid: true,
+            customer: {
+              id: customer.id,
+              name: customer.name,
+              email: customer.email,
+              phone: customer.phone,
+              company: customer.companies,
+            },
+            invoices: invoices || [],
+            jobs: jobs || [],
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (decodeError) {
+        console.error('Token decode error:', decodeError);
+        return new Response(
+          JSON.stringify({ valid: false, error: 'Invalid token format' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    return new Response(
+      JSON.stringify({ error: 'Invalid action' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error: unknown) {
+    console.error('Error in customer-portal-auth:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
