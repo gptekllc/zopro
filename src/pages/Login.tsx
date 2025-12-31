@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wrench, AlertCircle } from 'lucide-react';
+import { Wrench, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
+
+type AuthView = 'auth' | 'forgot-password' | 'reset-success';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -16,6 +19,7 @@ const Login = () => {
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [view, setView] = useState<AuthView>('auth');
   const { signIn, signUp, user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -67,10 +71,138 @@ const Login = () => {
     setIsLoading(false);
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    if (!email) {
+      setError('Please enter your email address');
+      setIsLoading(false);
+      return;
+    }
+
+    const redirectUrl = `${window.location.origin}/reset-password`;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
+
+    if (error) {
+      setError(error.message);
+    } else {
+      setView('reset-success');
+    }
+    setIsLoading(false);
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-primary">
         <div className="text-primary-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Password reset success view
+  if (view === 'reset-success') {
+    return (
+      <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+        <div className="w-full max-w-md animate-scale-in">
+          <Card className="shadow-lg border-0">
+            <CardHeader className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mx-auto mb-4">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              <CardTitle>Check Your Email</CardTitle>
+              <CardDescription>
+                We've sent a password reset link to <strong>{email}</strong>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground text-center">
+                Click the link in the email to reset your password. If you don't see it, check your spam folder.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setView('auth');
+                  setEmail('');
+                }}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Sign In
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Forgot password view
+  if (view === 'forgot-password') {
+    return (
+      <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+        <div className="w-full max-w-md animate-scale-in">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-card mb-4 shadow-lg">
+              <Wrench className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-3xl font-bold text-primary-foreground">Reset Password</h1>
+            <p className="text-primary-foreground/80 mt-2">We'll send you a reset link</p>
+          </div>
+
+          <Card className="shadow-lg border-0">
+            <CardHeader>
+              <CardTitle>Forgot Password</CardTitle>
+              <CardDescription>
+                Enter your email address and we'll send you a link to reset your password.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {error && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm mb-4">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-11"
+                  />
+                </div>
+
+                <Button type="submit" className="w-full h-11" disabled={isLoading}>
+                  {isLoading ? 'Sending...' : 'Send Reset Link'}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setView('auth');
+                    setError('');
+                  }}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Sign In
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -121,7 +253,20 @@ const Login = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signin-password">Password</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="signin-password">Password</Label>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="px-0 h-auto text-sm"
+                        onClick={() => {
+                          setView('forgot-password');
+                          setError('');
+                        }}
+                      >
+                        Forgot password?
+                      </Button>
+                    </div>
                     <Input
                       id="signin-password"
                       type="password"
