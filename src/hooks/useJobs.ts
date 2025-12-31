@@ -308,3 +308,109 @@ export function useImportQuoteToJob() {
     },
   });
 }
+
+export function useConvertJobToInvoice() {
+  const { profile, user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (job: Job) => {
+      if (!profile?.company_id) throw new Error('No company ID');
+      
+      // Get quote items if job was created from a quote
+      let items: { description: string; quantity: number; unit_price: number }[] = [];
+      
+      if (job.quote_id) {
+        const { data: quoteItems, error: quoteItemsError } = await (supabase as any)
+          .from('quote_items')
+          .select('*')
+          .eq('quote_id', job.quote_id);
+        
+        if (!quoteItemsError && quoteItems) {
+          items = quoteItems.map((item: any) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+          }));
+        }
+      }
+      
+      // If no quote items, create a default line item
+      if (items.length === 0) {
+        items = [{
+          description: job.title,
+          quantity: 1,
+          unit_price: 0,
+        }];
+      }
+      
+      // Get next invoice number
+      const { count } = await (supabase as any)
+        .from('invoices')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', profile.company_id);
+      
+      const invoiceNumber = `INV-${String((count || 0) + 1).padStart(3, '0')}`;
+      
+      // Calculate totals
+      const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+      const tax = subtotal * 0.0825;
+      const total = subtotal + tax;
+      
+      // Create invoice
+      const { data: invoice, error: invoiceError } = await (supabase as any)
+        .from('invoices')
+        .insert({
+          company_id: profile.company_id,
+          customer_id: job.customer_id,
+          quote_id: job.quote_id,
+          invoice_number: invoiceNumber,
+          status: 'draft',
+          subtotal,
+          tax,
+          total,
+          notes: `Invoice for Job ${job.job_number}`,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+      
+      if (invoiceError) throw invoiceError;
+      
+      // Create invoice items
+      if (items.length > 0) {
+        const { error: itemsError } = await (supabase as any)
+          .from('invoice_items')
+          .insert(
+            items.map(item => ({
+              invoice_id: invoice.id,
+              description: item.description,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              total: item.quantity * item.unit_price,
+            }))
+          );
+        
+        if (itemsError) throw itemsError;
+      }
+      
+      // Update job status to invoiced
+      const { error: updateError } = await (supabase as any)
+        .from('jobs')
+        .update({ status: 'invoiced' })
+        .eq('id', job.id);
+      
+      if (updateError) throw updateError;
+      
+      return invoice;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success('Invoice created from job');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to convert job to invoice: ' + error.message);
+    },
+  });
+}
