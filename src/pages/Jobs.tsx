@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, Job } from '@/hooks/useJobs';
+import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, Job } from '@/hooks/useJobs';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes } from '@/hooks/useQuotes';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -14,9 +14,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import JobCalendar from '@/components/jobs/JobCalendar';
 
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -32,6 +33,7 @@ const Jobs = () => {
   const deleteJob = useDeleteJob();
   const uploadPhoto = useUploadJobPhoto();
   const deletePhoto = useDeleteJobPhoto();
+  const convertToInvoice = useConvertJobToInvoice();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -41,6 +43,7 @@ const Jobs = () => {
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [photoType, setPhotoType] = useState<'before' | 'after' | 'other'>('before');
   const [photoCaption, setPhotoCaption] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [importQuoteId, setImportQuoteId] = useState<string>('');
   
   const isAdmin = roles.some(r => r.role === 'admin' || r.role === 'manager');
@@ -424,104 +427,148 @@ const Jobs = () => {
             ))}
           </SelectContent>
         </Select>
+        <div className="flex gap-1 border rounded-md p-1">
+          <Button
+            variant={viewMode === 'list' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('list')}
+          >
+            <List className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('calendar')}
+          >
+            <CalendarDays className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
+
+      {/* Calendar View */}
+      {viewMode === 'calendar' && (
+        <JobCalendar jobs={jobs} onJobClick={setViewingJob} />
+      )}
 
       {/* Job List */}
-      <div className="space-y-3">
-        {filteredJobs.length === 0 ? (
-          <Card>
-            <CardContent className="py-8 text-center text-muted-foreground">
-              No jobs found
-            </CardContent>
-          </Card>
-        ) : (
-          filteredJobs.map((job) => (
-            <Card key={job.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewingJob(job)}>
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Briefcase className="w-6 h-6 text-primary" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold">{job.job_number}</h3>
-                        <Badge className={getStatusColor(job.status)} variant="outline">
-                          {job.status.replace('_', ' ')}
-                        </Badge>
-                        <Badge className={getPriorityColor(job.priority)} variant="outline">
-                          {job.priority}
-                        </Badge>
-                      </div>
-                      <p className="text-sm font-medium">{job.title}</p>
-                      <p className="text-sm text-muted-foreground">{job.customer?.name}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-6">
-                    <div className="text-right hidden sm:block">
-                      {job.assignee?.full_name && (
-                        <p className="text-sm flex items-center gap-1">
-                          <User className="w-4 h-4" />
-                          {job.assignee.full_name}
-                        </p>
-                      )}
-                      {job.scheduled_start && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
-                        </p>
-                      )}
-                      {job.photos && job.photos.length > 0 && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Image className="w-3 h-3" />
-                          {job.photos.length} photos
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      {getNextStatus(job.status) && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleStatusChange(job.id, getNextStatus(job.status)!)}
-                        >
-                          <ChevronRight className="w-4 h-4 mr-1" />
-                          {getNextStatus(job.status)?.replace('_', ' ')}
-                        </Button>
-                      )}
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(job)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      {isAdmin && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Job?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete {job.job_number}. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(job.id)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-                    </div>
-                  </div>
-                </div>
+      {viewMode === 'list' && (
+        <div className="space-y-3">
+          {filteredJobs.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                No jobs found
               </CardContent>
             </Card>
-          ))
-        )}
-      </div>
+          ) : (
+            filteredJobs.map((job) => (
+              <Card key={job.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewingJob(job)}>
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <Briefcase className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold">{job.job_number}</h3>
+                          <Badge className={getStatusColor(job.status)} variant="outline">
+                            {job.status.replace('_', ' ')}
+                          </Badge>
+                          <Badge className={getPriorityColor(job.priority)} variant="outline">
+                            {job.priority}
+                          </Badge>
+                        </div>
+                        <p className="text-sm font-medium">{job.title}</p>
+                        <p className="text-sm text-muted-foreground">{job.customer?.name}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                      <div className="text-right hidden sm:block">
+                        {job.assignee?.full_name && (
+                          <p className="text-sm flex items-center gap-1">
+                            <User className="w-4 h-4" />
+                            {job.assignee.full_name}
+                          </p>
+                        )}
+                        {job.scheduled_start && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
+                          </p>
+                        )}
+                        {job.photos && job.photos.length > 0 && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Image className="w-3 h-3" />
+                            {job.photos.length} photos
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                        {job.status === 'completed' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => convertToInvoice.mutate(job)}
+                            disabled={convertToInvoice.isPending}
+                          >
+                            <Receipt className="w-4 h-4 mr-1" />
+                            Invoice
+                          </Button>
+                        )}
+                        {getNextStatus(job.status) && job.status !== 'completed' && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleStatusChange(job.id, getNextStatus(job.status)!)}
+                          >
+                            <ChevronRight className="w-4 h-4 mr-1" />
+                            {getNextStatus(job.status)?.replace('_', ' ')}
+                          </Button>
+                        )}
+                        {job.status === 'completed' && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleStatusChange(job.id, 'invoiced')}
+                          >
+                            <ChevronRight className="w-4 h-4 mr-1" />
+                            invoiced
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(job)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        {isAdmin && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="text-destructive">
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Job?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete {job.job_number}. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(job.id)}>Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Job Detail Dialog */}
       <Dialog open={!!viewingJob} onOpenChange={(open) => !open && setViewingJob(null)}>
