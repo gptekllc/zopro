@@ -68,17 +68,35 @@ export function useTeamMembers() {
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      const { data, error } = await (supabase as any)
+      // First get profiles
+      const { data: profiles, error: profilesError } = await (supabase as any)
         .from('profiles')
-        .select(`
-          *,
-          roles:user_roles(role)
-        `)
+        .select('id, email, full_name, phone, role, company_id')
         .eq('company_id', profile.company_id);
       
-      if (error) throw error;
-      return data;
+      if (profilesError) throw profilesError;
+      if (!profiles || profiles.length === 0) return [];
+      
+      // Then get roles for these users in a separate query (faster)
+      const userIds = profiles.map((p: any) => p.id);
+      const { data: roles } = await (supabase as any)
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', userIds);
+      
+      // Merge roles into profiles
+      const rolesMap = new Map();
+      (roles || []).forEach((r: any) => {
+        if (!rolesMap.has(r.user_id)) rolesMap.set(r.user_id, []);
+        rolesMap.get(r.user_id).push({ role: r.role });
+      });
+      
+      return profiles.map((p: any) => ({
+        ...p,
+        roles: rolesMap.get(p.id) || [],
+      }));
     },
     enabled: !!profile?.company_id,
+    staleTime: 30000, // Cache for 30 seconds
   });
 }
