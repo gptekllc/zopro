@@ -8,7 +8,7 @@ import { DollarSign, FileText, Users, Clock, TrendingUp, AlertCircle, Loader2 } 
 import { format } from 'date-fns';
 
 const Dashboard = () => {
-  const { profile } = useAuth();
+  const { profile, isAdmin, user } = useAuth();
   const { data: invoices = [], isLoading: loadingInvoices } = useInvoices();
   const { data: quotes = [], isLoading: loadingQuotes } = useQuotes();
   const { data: customers = [], isLoading: loadingCustomers } = useCustomers();
@@ -16,20 +16,42 @@ const Dashboard = () => {
 
   const isLoading = loadingInvoices || loadingQuotes || loadingCustomers || loadingTime;
 
+  // Check if user is a technician (not admin or manager)
+  const isTechnician = profile?.role === 'technician';
+
+  // Filter invoices for technician view - only show invoices they created
+  const visibleInvoices = isTechnician 
+    ? invoices.filter(i => i.created_by === user?.id)
+    : invoices;
+
   // Calculate stats
-  const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.total), 0);
-  const pendingInvoices = invoices.filter(i => i.status === 'sent' || i.status === 'overdue');
+  const totalRevenue = visibleInvoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.total), 0);
+  const pendingInvoices = visibleInvoices.filter(i => i.status === 'sent' || i.status === 'overdue');
   const pendingAmount = pendingInvoices.reduce((sum, inv) => sum + Number(inv.total), 0);
-  const activeQuotes = quotes.filter(q => q.status === 'sent' || q.status === 'draft');
-  const overdueInvoices = invoices.filter(i => i.status === 'overdue');
+  const activeQuotes = isTechnician 
+    ? quotes.filter(q => (q.status === 'sent' || q.status === 'draft') && q.created_by === user?.id)
+    : quotes.filter(q => q.status === 'sent' || q.status === 'draft');
+  const overdueInvoices = visibleInvoices.filter(i => i.status === 'overdue');
 
   const today = new Date();
-  const todayEntries = timeEntries.filter(e => {
+  
+  // Filter time entries for technicians - only show their own
+  const visibleTimeEntries = isTechnician 
+    ? timeEntries.filter(e => e.user_id === user?.id)
+    : timeEntries;
+    
+  const todayEntries = visibleTimeEntries.filter(e => {
     const entryDate = new Date(e.clock_in);
     return entryDate.toDateString() === today.toDateString();
   });
 
-  const stats = [
+  // Stats for technician vs admin/manager
+  const stats = isTechnician ? [
+    { title: 'My Revenue', value: `$${totalRevenue.toLocaleString()}`, icon: DollarSign, iconBg: 'bg-success' },
+    { title: 'My Pending Invoices', value: pendingInvoices.length, subtext: `$${pendingAmount.toLocaleString()}`, icon: FileText, iconBg: 'bg-warning' },
+    { title: 'My Active Quotes', value: activeQuotes.length, icon: TrendingUp, iconBg: 'bg-primary' },
+    { title: 'My Time Today', value: todayEntries.length, icon: Clock, iconBg: 'bg-accent' },
+  ] : [
     { title: 'Total Revenue', value: `$${totalRevenue.toLocaleString()}`, icon: DollarSign, iconBg: 'bg-success' },
     { title: 'Pending Invoices', value: pendingInvoices.length, subtext: `$${pendingAmount.toLocaleString()}`, icon: FileText, iconBg: 'bg-warning' },
     { title: 'Active Quotes', value: activeQuotes.length, icon: TrendingUp, iconBg: 'bg-primary' },
@@ -48,7 +70,10 @@ const Dashboard = () => {
     <div className="space-y-8 animate-fade-in">
       <div>
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">Welcome back, {profile?.full_name || 'User'}. Here's what's happening today.</p>
+        <p className="text-muted-foreground mt-1">
+          Welcome back, {profile?.full_name || 'User'}. 
+          {isTechnician ? " Here's your personal summary." : " Here's what's happening today."}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -78,7 +103,9 @@ const Dashboard = () => {
                 <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
                 <div>
                   <p className="font-medium text-destructive">Overdue Invoices</p>
-                  <p className="text-sm text-muted-foreground mt-1">You have {overdueInvoices.length} overdue invoice(s).</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    You have {overdueInvoices.length} overdue invoice(s).
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -86,7 +113,12 @@ const Dashboard = () => {
         )}
 
         <Card>
-          <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Clock className="w-5 h-5" />Today's Time Entries</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              {isTechnician ? "My Time Entries Today" : "Today's Time Entries"}
+            </CardTitle>
+          </CardHeader>
           <CardContent>
             <div className="space-y-3">
               {todayEntries.map((entry) => (

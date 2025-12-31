@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { Resend } from 'https://esm.sh/resend@2.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,6 +11,7 @@ interface InviteRequest {
   full_name: string;
   role: 'admin' | 'manager' | 'technician' | 'customer';
   company_id: string;
+  resend?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -32,6 +34,7 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
 
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
@@ -67,10 +70,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    const body: InviteRequest = await req.json();
-    const { email, full_name, role, company_id } = body;
+    // Get company info for email
+    const { data: company } = await adminClient
+      .from('companies')
+      .select('name')
+      .eq('id', callerProfile.company_id)
+      .single();
 
-    console.log('Invite request:', { email, full_name, role, company_id });
+    const body: InviteRequest = await req.json();
+    const { email, full_name, role, company_id, resend: isResend } = body;
+
+    console.log('Invite request:', { email, full_name, role, company_id, isResend });
 
     // Validate that the admin is inviting to their own company
     if (callerProfile.company_id !== company_id) {
@@ -119,6 +129,35 @@ Deno.serve(async (req) => {
         .from('user_roles')
         .upsert({ user_id: existingUser.id, role }, { onConflict: 'user_id' });
 
+      // Mark invitation as accepted if exists
+      await adminClient
+        .from('team_invitations')
+        .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+        .eq('email', email)
+        .eq('company_id', company_id);
+
+      // Send welcome email
+      if (resendApiKey) {
+        try {
+          const resendClient = new Resend(resendApiKey);
+          await resendClient.emails.send({
+            from: 'Team <onboarding@resend.dev>',
+            to: [email],
+            subject: `You've been added to ${company?.name || 'a team'}`,
+            html: `
+              <h1>Welcome to ${company?.name || 'the team'}!</h1>
+              <p>Hi ${full_name || 'there'},</p>
+              <p>You've been added to ${company?.name || 'a team'} as a <strong>${role}</strong>.</p>
+              <p>You can now log in with your existing account to access the team dashboard.</p>
+              <p>Best regards,<br>The Team</p>
+            `,
+          });
+          console.log('Welcome email sent to existing user');
+        } catch (emailError) {
+          console.error('Failed to send welcome email:', emailError);
+        }
+      }
+
       console.log('Added existing user to company');
       return new Response(
         JSON.stringify({ success: true, message: 'User added to company', userId: existingUser.id }),
@@ -162,14 +201,65 @@ Deno.serve(async (req) => {
       console.error('Failed to add user role:', roleError);
     }
 
-    // Send password reset email so they can set their password
-    const { error: resetError } = await adminClient.auth.admin.generateLink({
+    // Generate password reset link
+    const { data: resetLink, error: resetError } = await adminClient.auth.admin.generateLink({
       type: 'invite',
       email,
     });
 
-    if (resetError) {
-      console.log('Note: Could not send invite email:', resetError.message);
+    let inviteUrl = '';
+    if (resetLink?.properties?.action_link) {
+      inviteUrl = resetLink.properties.action_link;
+    }
+
+    // Send welcome email with login instructions
+    if (resendApiKey) {
+      try {
+        const resendClient = new Resend(resendApiKey);
+        await resendClient.emails.send({
+          from: 'Team <onboarding@resend.dev>',
+          to: [email],
+          subject: `You're invited to join ${company?.name || 'a team'}`,
+          html: `
+            <h1>Welcome to ${company?.name || 'the team'}!</h1>
+            <p>Hi ${full_name || 'there'},</p>
+            <p>You've been invited to join ${company?.name || 'a team'} as a <strong>${role}</strong>.</p>
+            <h2>Getting Started</h2>
+            <ol>
+              <li>Click the link below to set your password</li>
+              <li>Once your password is set, you can log in to access the dashboard</li>
+            </ol>
+            ${inviteUrl ? `<p><a href="${inviteUrl}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">Set Your Password</a></p>` : ''}
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p>${inviteUrl || 'Please contact your administrator for login instructions.'}</p>
+            <p>Best regards,<br>The Team</p>
+          `,
+        });
+        console.log('Invitation email sent successfully');
+      } catch (emailError) {
+        console.error('Failed to send invitation email:', emailError);
+      }
+    }
+
+    // Update invitation status if this was a resend
+    if (isResend) {
+      await adminClient
+        .from('team_invitations')
+        .update({ expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() })
+        .eq('email', email)
+        .eq('company_id', company_id);
+    } else {
+      // Create invitation record
+      await adminClient
+        .from('team_invitations')
+        .upsert({
+          company_id,
+          email,
+          full_name,
+          role,
+          invited_by: callingUser.id,
+          status: 'pending',
+        }, { onConflict: 'company_id,email' });
     }
 
     console.log('Successfully invited new team member');

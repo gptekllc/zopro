@@ -198,12 +198,36 @@ const Notifications = () => {
               Stay updated on payments, quotes, and important events
             </p>
           </div>
-          {unreadCount > 0 && (
-            <Button variant="outline" onClick={markAllAsRead}>
-              <CheckCheck className="w-4 h-4 mr-2" />
-              Mark all as read
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {unreadCount > 0 && (
+              <Button variant="outline" onClick={markAllAsRead}>
+                <CheckCheck className="w-4 h-4 mr-2" />
+                Mark all as read
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button 
+                variant="outline" 
+                onClick={async () => {
+                  if (confirm('Are you sure you want to clear all notifications?')) {
+                    const { error } = await supabase
+                      .from('notifications')
+                      .delete()
+                      .eq('user_id', user!.id);
+                    if (error) {
+                      toast.error('Failed to clear notifications');
+                    } else {
+                      setNotifications([]);
+                      toast.success('All notifications cleared');
+                    }
+                  }
+                }}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Clear all
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Stats Cards */}
