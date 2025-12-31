@@ -587,6 +587,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_company_and_set_admin: {
+        Args: {
+          _address: string
+          _city: string
+          _email: string
+          _name: string
+          _phone: string
+          _state: string
+          _zip: string
+        }
+        Returns: {
+          company_id: string
+          join_code: string
+        }[]
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
