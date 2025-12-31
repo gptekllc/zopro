@@ -26,15 +26,6 @@ const CreateCompanyFlow = ({ onBack, onComplete }: CreateCompanyFlowProps) => {
     zip: '',
   });
 
-  const generateJoinCode = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -48,7 +39,7 @@ const CreateCompanyFlow = ({ onBack, onComplete }: CreateCompanyFlowProps) => {
 
     try {
       // Create company + set current user as admin via secure RPC (bypasses RLS pitfalls)
-      const { data, error } = await (supabase as any).rpc('create_company_and_set_admin', {
+      const { error } = await (supabase as any).rpc('create_company_and_set_admin', {
         _name: formData.name,
         _email: formData.email,
         _phone: formData.phone,
@@ -60,14 +51,7 @@ const CreateCompanyFlow = ({ onBack, onComplete }: CreateCompanyFlowProps) => {
 
       if (error) throw error;
 
-      const result = Array.isArray(data) ? data[0] : data;
-      const joinCode = result?.join_code as string | undefined;
-
-      toast.success(
-        joinCode
-          ? `Company created successfully! Your join code is: ${joinCode}`
-          : 'Company created successfully!'
-      );
+      toast.success('Company created successfully!');
       onComplete();
     } catch (error: any) {
       console.error('Company creation error:', error);

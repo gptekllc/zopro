@@ -59,44 +59,6 @@ export type Database = {
         }
         Relationships: []
       }
-      company_join_codes: {
-        Row: {
-          code: string
-          company_id: string
-          created_at: string
-          created_by: string | null
-          expires_at: string | null
-          id: string
-          is_active: boolean
-        }
-        Insert: {
-          code: string
-          company_id: string
-          created_at?: string
-          created_by?: string | null
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-        }
-        Update: {
-          code?: string
-          company_id?: string
-          created_at?: string
-          created_by?: string | null
-          expires_at?: string | null
-          id?: string
-          is_active?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "company_join_codes_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       customers: {
         Row: {
           address: string | null
@@ -414,60 +376,6 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      join_requests: {
-        Row: {
-          assigned_role: string | null
-          company_id: string
-          id: string
-          join_code_id: string | null
-          notes: string | null
-          requested_at: string
-          responded_at: string | null
-          responded_by: string | null
-          status: string
-          user_id: string
-        }
-        Insert: {
-          assigned_role?: string | null
-          company_id: string
-          id?: string
-          join_code_id?: string | null
-          notes?: string | null
-          requested_at?: string
-          responded_at?: string | null
-          responded_by?: string | null
-          status?: string
-          user_id: string
-        }
-        Update: {
-          assigned_role?: string | null
-          company_id?: string
-          id?: string
-          join_code_id?: string | null
-          notes?: string | null
-          requested_at?: string
-          responded_at?: string | null
-          responded_by?: string | null
-          status?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "join_requests_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "join_requests_join_code_id_fkey"
-            columns: ["join_code_id"]
-            isOneToOne: false
-            referencedRelation: "company_join_codes"
             referencedColumns: ["id"]
           },
         ]
@@ -842,7 +750,6 @@ export type Database = {
         }
         Returns: {
           company_id: string
-          join_code: string
         }[]
       }
       generate_job_number: { Args: { _company_id: string }; Returns: string }
