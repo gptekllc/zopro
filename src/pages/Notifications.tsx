@@ -207,59 +207,59 @@ const Notifications = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <Bell className="w-6 h-6 text-primary" />
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                  <Bell className="w-5 h-5 text-primary" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{notifications.length}</p>
-                  <p className="text-sm text-muted-foreground">Total</p>
+                <div className="min-w-0">
+                  <p className="text-xl font-bold">{notifications.length}</p>
+                  <p className="text-xs text-muted-foreground truncate">Total</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-amber-500/10 rounded-lg">
-                  <Bell className="w-6 h-6 text-amber-500" />
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-500/10 rounded-lg shrink-0">
+                  <Bell className="w-5 h-5 text-amber-500" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{unreadCount}</p>
-                  <p className="text-sm text-muted-foreground">Unread</p>
+                <div className="min-w-0">
+                  <p className="text-xl font-bold">{unreadCount}</p>
+                  <p className="text-xs text-muted-foreground truncate">Unread</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-500/10 rounded-lg">
-                  <CreditCard className="w-6 h-6 text-emerald-500" />
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-emerald-500/10 rounded-lg shrink-0">
+                  <CreditCard className="w-5 h-5 text-emerald-500" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">
+                <div className="min-w-0">
+                  <p className="text-xl font-bold">
                     {notifications.filter((n) => n.type === 'payment_received').length}
                   </p>
-                  <p className="text-sm text-muted-foreground">Payments</p>
+                  <p className="text-xs text-muted-foreground truncate">Payments</p>
                 </div>
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <FileCheck className="w-6 h-6 text-primary" />
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                  <FileCheck className="w-5 h-5 text-primary" />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">
+                <div className="min-w-0">
+                  <p className="text-xl font-bold">
                     {notifications.filter((n) => n.type === 'quote_approved').length}
                   </p>
-                  <p className="text-sm text-muted-foreground">Approvals</p>
+                  <p className="text-xs text-muted-foreground truncate">Approvals</p>
                 </div>
               </div>
             </CardContent>
@@ -306,34 +306,33 @@ const Notifications = () => {
                   {filteredNotifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
+                      className={`flex items-start gap-3 p-3 sm:p-4 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
                         !notification.is_read ? 'bg-primary/5 border-primary/20' : ''
                       }`}
                       onClick={() => handleNotificationClick(notification)}
                     >
-                      <div className="flex-shrink-0 mt-1">
+                      <div className="shrink-0 mt-0.5">
                         {getNotificationIcon(notification.type)}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           {getNotificationBadge(notification.type)}
                           {!notification.is_read && (
-                            <span className="w-2 h-2 bg-primary rounded-full" />
+                            <span className="w-2 h-2 bg-primary rounded-full shrink-0" />
                           )}
                         </div>
-                        <p className="font-medium">{notification.title}</p>
-                        <p className="text-sm text-muted-foreground">{notification.message}</p>
-                        <p className="text-xs text-muted-foreground mt-2">
+                        <p className="font-medium text-sm sm:text-base truncate">{notification.title}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
+                        <p className="text-xs text-muted-foreground mt-1.5">
                           {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                          {' · '}
-                          {format(new Date(notification.created_at), 'MMM d, h:mm a')}
                         </p>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1 shrink-0">
                         {!notification.is_read && (
                           <Button
                             variant="ghost"
                             size="icon"
+                            className="h-8 w-8"
                             onClick={(e) => {
                               e.stopPropagation();
                               markAsRead(notification.id);
@@ -345,6 +344,7 @@ const Notifications = () => {
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8"
                           onClick={(e) => {
                             e.stopPropagation();
                             deleteNotification(notification.id);
