@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -11,6 +12,7 @@ interface PendingRequestViewProps {
 }
 
 const PendingRequestView = ({ onStartNew }: PendingRequestViewProps) => {
+  const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
   const [isNavigating, setIsNavigating] = useState(false);
 
@@ -18,7 +20,7 @@ const PendingRequestView = ({ onStartNew }: PendingRequestViewProps) => {
     queryKey: ['my-join-request', user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      
+
       const { data, error } = await (supabase as any)
         .from('join_requests')
         .select('*, companies(name)')
@@ -26,31 +28,25 @@ const PendingRequestView = ({ onStartNew }: PendingRequestViewProps) => {
         .order('requested_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      
+
       if (error) throw error;
       return data;
     },
     enabled: !!user?.id,
-    refetchInterval: 10000, // Poll every 10 seconds to check for approval
+    refetchInterval: 10000,
   });
 
-  // Effect to check if profile has been updated with company_id
+  // If the profile now has a company, we should be in the app (not onboarding)
   useEffect(() => {
-    if (profile?.company_id && !isNavigating) {
-      // Profile now has company_id, user is fully set up - reload to enter app
-      setIsNavigating(true);
-      window.location.href = '/dashboard';
-    }
-  }, [profile?.company_id, isNavigating]);
+    if (!profile?.company_id || isNavigating) return;
+    setIsNavigating(true);
+    navigate('/dashboard', { replace: true });
+  }, [profile?.company_id, isNavigating, navigate]);
 
   const handleContinueToDashboard = async () => {
     setIsNavigating(true);
-    // Refresh profile to get updated company_id
     await refreshProfile();
-    // Give a moment for state to update, then force navigation
-    setTimeout(() => {
-      window.location.href = '/dashboard';
-    }, 500);
+    navigate('/dashboard', { replace: true });
   };
 
   const handleRefresh = async () => {
@@ -62,6 +58,18 @@ const PendingRequestView = ({ onStartNew }: PendingRequestViewProps) => {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
         <div className="animate-pulse text-primary-foreground">Checking request status...</div>
+      </div>
+    );
+  }
+
+  // If they've already been assigned a company, this screen should never persist
+  if (profile?.company_id) {
+    return (
+      <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+        <div className="flex items-center gap-2 text-primary-foreground">
+          <Loader2 className="w-5 h-5 animate-spin" />
+          <span>Redirecting to dashboard...</span>
+        </div>
       </div>
     );
   }
