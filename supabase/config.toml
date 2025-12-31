@@ -7,7 +7,7 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.invite-team-member]
-verify_jwt = true
+verify_jwt = false
 
 [functions.customer-portal-auth]
 verify_jwt = false
