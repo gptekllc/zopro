@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.create-invoice-payment]
 verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.send-payment-notification]
+verify_jwt = false

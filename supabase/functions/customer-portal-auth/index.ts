@@ -501,6 +501,40 @@ Deno.serve(async (req) => {
 
       console.log('Quote approved:', quote.quote_number);
 
+      // Send email notification for quote approval
+      try {
+        // Get customer and company info
+        const { data: customerInfo } = await adminClient
+          .from('customers')
+          .select('name, email, company_id, companies(name, email)')
+          .eq('id', customerId)
+          .single();
+
+        const company = customerInfo?.companies as unknown as { name: string; email: string } | null;
+
+        if (company?.email) {
+          await fetch(`${supabaseUrl}/functions/v1/send-payment-notification`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({
+              type: 'quote_approved',
+              quoteNumber: quote.quote_number,
+              customerName: customerInfo?.name,
+              customerEmail: customerInfo?.email,
+              companyName: company.name,
+              companyEmail: company.email,
+            }),
+          });
+          console.log('Quote approval notification sent');
+        }
+      } catch (notifyError) {
+        console.error('Failed to send quote approval notification:', notifyError);
+        // Don't fail the request for notification errors
+      }
+
       return new Response(
         JSON.stringify({ success: true, message: 'Quote approved successfully' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

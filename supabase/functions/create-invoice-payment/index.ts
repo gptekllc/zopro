@@ -109,9 +109,9 @@ serve(async (req) => {
       success_url: `${origin}/customer-portal?payment=success&invoice=${invoiceId}`,
       cancel_url: `${origin}/customer-portal?payment=cancelled`,
       metadata: {
-        invoiceId: invoiceId,
-        customerId: customerId,
-        invoiceNumber: invoice.invoice_number,
+        invoice_id: invoiceId,
+        customer_id: customerId,
+        invoice_number: invoice.invoice_number,
       },
     });
 
