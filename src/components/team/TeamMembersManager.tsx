@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useTeamMembers } from '@/hooks/useCompany';
+import { useTeamMembers, useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -39,8 +41,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Users, UserCog, UserMinus, Loader2, Shield, Mail } from 'lucide-react';
+import { Users, UserCog, UserMinus, Loader2, Shield, Mail, UserPlus, Copy, Link2 } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 const AVAILABLE_ROLES = ['admin', 'manager', 'technician', 'customer'] as const;
@@ -58,12 +66,20 @@ interface TeamMember {
 const TeamMembersManager = () => {
   const { profile, user, isAdmin } = useAuth();
   const { data: teamMembers, isLoading } = useTeamMembers();
+  const { data: company } = useCompany();
   const queryClient = useQueryClient();
   
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [joinCodes, setJoinCodes] = useState<any[]>([]);
+  
+  // Add member form state
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState<AppRole>('technician');
 
   // Update role mutation
   const updateRoleMutation = useMutation({
@@ -129,6 +145,31 @@ const TeamMembersManager = () => {
       toast.error('Failed to remove member: ' + error.message);
     },
   });
+
+  // Fetch join codes when opening add dialog
+  const fetchJoinCodes = async () => {
+    if (!profile?.company_id) return;
+    const { data } = await (supabase as any)
+      .from('company_join_codes')
+      .select('*')
+      .eq('company_id', profile.company_id)
+      .eq('is_active', true);
+    setJoinCodes(data || []);
+  };
+
+  const handleOpenAddDialog = () => {
+    fetchJoinCodes();
+    setIsAddDialogOpen(true);
+  };
+
+  const copyJoinCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success('Join code copied to clipboard!');
+  };
+
+  // Note: Creating auth users requires admin SDK (edge function). 
+  // For now, we'll create a "pending invite" by letting admins share join codes.
+  // Users sign up themselves and use the join code.
 
   const handleRoleChange = (member: TeamMember) => {
     setSelectedMember(member);
@@ -200,11 +241,15 @@ const TeamMembersManager = () => {
   return (
     <>
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
             Team Members ({teamMembers?.length || 0})
           </CardTitle>
+          <Button onClick={handleOpenAddDialog}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add Member
+          </Button>
         </CardHeader>
         <CardContent>
           {teamMembers && teamMembers.length > 0 ? (
@@ -350,6 +395,113 @@ const TeamMembersManager = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Member Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Team Member</DialogTitle>
+            <DialogDescription>
+              Invite someone to join your company by sharing a join code.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Tabs defaultValue="invite" className="mt-4">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="invite">Share Join Code</TabsTrigger>
+              <TabsTrigger value="manual" disabled>Manual Add</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="invite" className="space-y-4 pt-4">
+              <div className="text-sm text-muted-foreground">
+                Share your company's join code with team members. They can use it when signing up or from the onboarding screen.
+              </div>
+              
+              {joinCodes.length > 0 ? (
+                <div className="space-y-2">
+                  {joinCodes.map((code) => (
+                    <div 
+                      key={code.id} 
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Link2 className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-mono font-bold text-lg tracking-wider">{code.code}</span>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => copyJoinCode(code.code)}
+                      >
+                        <Copy className="w-4 h-4 mr-1" />
+                        Copy
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground">
+                  No active join codes. Create one from Company settings.
+                </div>
+              )}
+              
+              <div className="pt-2 border-t">
+                <p className="text-sm text-muted-foreground">
+                  <strong>How it works:</strong> The new team member signs up, enters this code, and an admin approves their request.
+                </p>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="manual" className="space-y-4 pt-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="newMemberName">Full Name</Label>
+                  <Input
+                    id="newMemberName"
+                    value={newMemberName}
+                    onChange={(e) => setNewMemberName(e.target.value)}
+                    placeholder="John Doe"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newMemberEmail">Email</Label>
+                  <Input
+                    id="newMemberEmail"
+                    type="email"
+                    value={newMemberEmail}
+                    onChange={(e) => setNewMemberEmail(e.target.value)}
+                    placeholder="john@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newMemberRole">Role</Label>
+                  <Select value={newMemberRole} onValueChange={(v) => setNewMemberRole(v as AppRole)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AVAILABLE_ROLES.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          <span className="capitalize">{role}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Note: Manual user creation requires email verification. The user will receive an invite email.
+              </p>
+            </TabsContent>
+          </Tabs>
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
