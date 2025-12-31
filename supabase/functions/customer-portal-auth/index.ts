@@ -1,16 +1,101 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
 import { Resend } from 'https://esm.sh/resend@2.0.0';
+import { encode as hexEncode } from 'https://deno.land/std@0.190.0/encoding/hex.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Simple token generation (in production, use a more secure method)
-function generateToken(): string {
+// Get the secret key for HMAC signing
+function getTokenSecret(): string {
+  // Use service role key as the secret for HMAC (it's already secret and available)
+  const secret = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!secret) {
+    throw new Error('Token secret not configured');
+  }
+  return secret;
+}
+
+// Generate a random token
+function generateRandomToken(): string {
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
   return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// Create HMAC signature for data
+async function createHmacSignature(data: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(data);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+  return Array.from(new Uint8Array(signature), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+// Generate a signed token
+async function generateSignedToken(customerId: string, expiresAt: Date): Promise<string> {
+  const secret = getTokenSecret();
+  const randomToken = generateRandomToken();
+  
+  const tokenData = {
+    customerId,
+    expiresAt: expiresAt.toISOString(),
+    nonce: randomToken,
+  };
+  
+  const payload = btoa(JSON.stringify(tokenData));
+  const signature = await createHmacSignature(payload, secret);
+  
+  return `${payload}.${signature}`;
+}
+
+// Verify and decode a signed token
+async function verifySignedToken(signedToken: string): Promise<{ customerId: string; expiresAt: Date } | null> {
+  try {
+    const parts = signedToken.split('.');
+    if (parts.length !== 2) {
+      console.log('Invalid token format: missing signature');
+      return null;
+    }
+    
+    const [payload, signature] = parts;
+    const secret = getTokenSecret();
+    
+    // Verify signature
+    const expectedSignature = await createHmacSignature(payload, secret);
+    if (signature !== expectedSignature) {
+      console.log('Invalid token: signature mismatch');
+      return null;
+    }
+    
+    // Decode payload
+    const tokenData = JSON.parse(atob(payload));
+    const expiresAt = new Date(tokenData.expiresAt);
+    
+    // Check expiry
+    if (expiresAt < new Date()) {
+      console.log('Token expired');
+      return null;
+    }
+    
+    return {
+      customerId: tokenData.customerId,
+      expiresAt,
+    };
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -64,25 +149,15 @@ Deno.serve(async (req) => {
       const customer = customers[0];
       console.log('Found customer:', customer.id, customer.name);
 
-      // Generate a token and store it
-      const token = generateToken();
+      // Generate a signed token
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour expiry
 
-      // Store token in a simple way - using customer notes or a separate table would be better in production
-      // For now, we'll use a simple in-memory approach via the token itself containing expiry
-      const tokenData = {
-        customerId: customer.id,
-        expiresAt: expiresAt.toISOString(),
-        token,
-      };
-      
-      // Encode token data in base64 for the URL
-      const encodedToken = btoa(JSON.stringify(tokenData));
+      const signedToken = await generateSignedToken(customer.id, expiresAt);
       
       // Get the app URL from the request origin or use a default
       const origin = req.headers.get('origin') || 'https://lovable.dev';
-      const magicLink = `${origin}/customer-portal?token=${encodedToken}&customer=${customer.id}`;
+      const magicLink = `${origin}/customer-portal?token=${encodeURIComponent(signedToken)}&customer=${customer.id}`;
 
       console.log('Generated magic link for customer');
 
@@ -138,88 +213,78 @@ Deno.serve(async (req) => {
         );
       }
 
-      try {
-        // Decode and verify token
-        const tokenData = JSON.parse(atob(token));
-        
-        if (tokenData.customerId !== customerId) {
-          console.log('Token customer ID mismatch');
-          return new Response(
-            JSON.stringify({ valid: false, error: 'Invalid token' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const expiresAt = new Date(tokenData.expiresAt);
-        if (expiresAt < new Date()) {
-          console.log('Token expired');
-          return new Response(
-            JSON.stringify({ valid: false, error: 'Token expired' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Fetch customer data
-        const { data: customer, error: customerError } = await adminClient
-          .from('customers')
-          .select('id, name, email, phone, company_id, companies(id, name, logo_url)')
-          .eq('id', customerId)
-          .single();
-
-        if (customerError || !customer) {
-          console.error('Customer not found:', customerError);
-          return new Response(
-            JSON.stringify({ valid: false, error: 'Customer not found' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Fetch invoices for this customer
-        const { data: invoices } = await adminClient
-          .from('invoices')
-          .select('id, invoice_number, status, total, created_at, due_date')
-          .eq('customer_id', customerId)
-          .order('created_at', { ascending: false });
-
-        // Fetch jobs for this customer
-        const { data: jobs } = await adminClient
-          .from('jobs')
-          .select('id, job_number, title, status, scheduled_start, created_at')
-          .eq('customer_id', customerId)
-          .order('created_at', { ascending: false });
-
-        // Fetch quotes for this customer
-        const { data: quotes } = await adminClient
-          .from('quotes')
-          .select('id, quote_number, status, total, created_at, valid_until, notes')
-          .eq('customer_id', customerId)
-          .order('created_at', { ascending: false });
-
-        console.log('Token verified successfully for customer:', customer.name);
-
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData) {
         return new Response(
-          JSON.stringify({
-            valid: true,
-            customer: {
-              id: customer.id,
-              name: customer.name,
-              email: customer.email,
-              phone: customer.phone,
-              company: customer.companies,
-            },
-            invoices: invoices || [],
-            jobs: jobs || [],
-            quotes: quotes || [],
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      } catch (decodeError) {
-        console.error('Token decode error:', decodeError);
-        return new Response(
-          JSON.stringify({ valid: false, error: 'Invalid token format' }),
+          JSON.stringify({ valid: false, error: 'Invalid or expired token' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      if (tokenData.customerId !== customerId) {
+        console.log('Token customer ID mismatch');
+        return new Response(
+          JSON.stringify({ valid: false, error: 'Invalid token' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch customer data
+      const { data: customer, error: customerError } = await adminClient
+        .from('customers')
+        .select('id, name, email, phone, company_id, companies(id, name, logo_url)')
+        .eq('id', customerId)
+        .single();
+
+      if (customerError || !customer) {
+        console.error('Customer not found:', customerError);
+        return new Response(
+          JSON.stringify({ valid: false, error: 'Customer not found' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch invoices for this customer
+      const { data: invoices } = await adminClient
+        .from('invoices')
+        .select('id, invoice_number, status, total, created_at, due_date')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
+
+      // Fetch jobs for this customer
+      const { data: jobs } = await adminClient
+        .from('jobs')
+        .select('id, job_number, title, status, scheduled_start, created_at')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
+
+      // Fetch quotes for this customer
+      const { data: quotes } = await adminClient
+        .from('quotes')
+        .select('id, quote_number, status, total, created_at, valid_until, notes')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
+
+      console.log('Token verified successfully for customer:', customer.name);
+
+      return new Response(
+        JSON.stringify({
+          valid: true,
+          customer: {
+            id: customer.id,
+            name: customer.name,
+            email: customer.email,
+            phone: customer.phone,
+            company: customer.companies,
+          },
+          invoices: invoices || [],
+          jobs: jobs || [],
+          quotes: quotes || [],
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     if (action === 'download-invoice') {
@@ -232,27 +297,12 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Verify token first
-      try {
-        const tokenData = JSON.parse(atob(token));
-        
-        if (tokenData.customerId !== customerId) {
-          return new Response(
-            JSON.stringify({ error: 'Invalid token' }),
-            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const expiresAt = new Date(tokenData.expiresAt);
-        if (expiresAt < new Date()) {
-          return new Response(
-            JSON.stringify({ error: 'Token expired' }),
-            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      } catch {
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
         return new Response(
-          JSON.stringify({ error: 'Invalid token format' }),
+          JSON.stringify({ error: 'Invalid or expired token' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -437,27 +487,12 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Verify token first
-      try {
-        const tokenData = JSON.parse(atob(token));
-        
-        if (tokenData.customerId !== customerId) {
-          return new Response(
-            JSON.stringify({ error: 'Invalid token' }),
-            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const expiresAt = new Date(tokenData.expiresAt);
-        if (expiresAt < new Date()) {
-          return new Response(
-            JSON.stringify({ error: 'Token expired' }),
-            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      } catch {
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
         return new Response(
-          JSON.stringify({ error: 'Invalid token format' }),
+          JSON.stringify({ error: 'Invalid or expired token' }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -465,7 +500,7 @@ Deno.serve(async (req) => {
       // Verify quote belongs to customer and update status
       const { data: quote, error: quoteError } = await adminClient
         .from('quotes')
-        .select('*')
+        .select('*, companies(*)')
         .eq('id', quoteId)
         .eq('customer_id', customerId)
         .single();
@@ -492,47 +527,42 @@ Deno.serve(async (req) => {
         .eq('id', quoteId);
 
       if (updateError) {
-        console.error('Failed to update quote:', updateError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to approve quote' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        console.error('Error updating quote:', updateError);
+        throw updateError;
       }
 
       console.log('Quote approved:', quote.quote_number);
 
-      // Send email notification for quote approval
-      try {
-        // Get customer and company info
-        const { data: customerInfo } = await adminClient
-          .from('customers')
-          .select('name, email, company_id, companies(name, email)')
-          .eq('id', customerId)
-          .single();
-
-        const company = customerInfo?.companies as unknown as { name: string; email: string } | null;
-
-        if (company?.email) {
-          await fetch(`${supabaseUrl}/functions/v1/send-payment-notification`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-            },
-            body: JSON.stringify({
-              type: 'quote_approved',
-              quoteNumber: quote.quote_number,
-              customerName: customerInfo?.name,
-              customerEmail: customerInfo?.email,
-              companyName: company.name,
-              companyEmail: company.email,
-            }),
+      // Send notification email to company
+      const resendApiKey = Deno.env.get('RESEND_API_KEY');
+      if (resendApiKey && quote.companies?.email) {
+        try {
+          const resend = new Resend(resendApiKey);
+          
+          // Fetch customer data for the notification
+          const { data: customer } = await adminClient
+            .from('customers')
+            .select('name, email')
+            .eq('id', customerId)
+            .single();
+          
+          await resend.emails.send({
+            from: `Quote Notifications <onboarding@resend.dev>`,
+            to: [quote.companies.email],
+            subject: `Quote ${quote.quote_number} Approved by Customer`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <h1 style="color: #22c55e;">Quote Approved!</h1>
+                <p>Great news! ${customer?.name || 'A customer'} has approved quote <strong>${quote.quote_number}</strong>.</p>
+                <p><strong>Total:</strong> $${Number(quote.total).toFixed(2)}</p>
+                <p>You can now proceed with scheduling the work or converting this to an invoice.</p>
+              </div>
+            `,
           });
-          console.log('Quote approval notification sent');
+          console.log('Notification email sent to company');
+        } catch (emailError) {
+          console.error('Failed to send notification email:', emailError);
         }
-      } catch (notifyError) {
-        console.error('Failed to send quote approval notification:', notifyError);
-        // Don't fail the request for notification errors
       }
 
       return new Response(
@@ -546,11 +576,10 @@ Deno.serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('Error in customer-portal-auth:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
