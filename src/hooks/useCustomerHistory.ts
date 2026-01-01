@@ -14,8 +14,8 @@ export interface CustomerJob {
   job_number: string;
   title: string;
   description: string | null;
-  status: string;
-  priority: string;
+  status: 'draft' | 'scheduled' | 'in_progress' | 'completed' | 'invoiced' | 'paid';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
   scheduled_start: string | null;
   scheduled_end: string | null;
   actual_start: string | null;
@@ -24,6 +24,8 @@ export interface CustomerJob {
   assigned_to: string | null;
   notes: string | null;
   archived_at: string | null;
+  customer_id: string;
+  quote_id: string | null;
   assignee?: { full_name: string | null } | null;
   completion_signed_at?: string | null;
   completion_signed_by?: string | null;
@@ -120,6 +122,8 @@ export function useCustomerJobs(customerId: string | undefined) {
           created_at,
           assigned_to,
           notes,
+          customer_id,
+          quote_id,
           completion_signed_at,
           completion_signed_by,
           assignee:profiles!jobs_assigned_to_fkey(full_name),

@@ -28,6 +28,7 @@ export interface Quote {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  job_id: string | null; // Reference to parent job (for child/upsell quotes)
   items?: QuoteItem[];
   customer?: { name: string };
 }

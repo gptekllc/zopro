@@ -4,11 +4,13 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   Edit, PenTool, Calendar, User, Briefcase, 
-  Clock, Camera
+  Clock, Camera, FileText, ArrowUp, ArrowDown, Plus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerJob } from '@/hooks/useCustomerHistory';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
+import { useJobRelatedQuotes, useConvertJobToQuote, Job } from '@/hooks/useJobs';
+import { Quote } from '@/hooks/useQuotes';
 
 interface JobDetailDialogProps {
   job: CustomerJob | null;
@@ -17,6 +19,7 @@ interface JobDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onEdit?: (jobId: string) => void;
   onViewSignature?: (signatureId: string) => void;
+  onViewQuote?: (quote: Quote) => void;
 }
 
 const statusColors: Record<string, string> = {
@@ -35,6 +38,14 @@ const priorityColors: Record<string, string> = {
   urgent: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
 };
 
+const quoteStatusColors: Record<string, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  accepted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  expired: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+};
+
 export function JobDetailDialog({
   job,
   customerName,
@@ -42,8 +53,45 @@ export function JobDetailDialog({
   onOpenChange,
   onEdit,
   onViewSignature,
+  onViewQuote,
 }: JobDetailDialogProps) {
+  const { data: relatedQuotes, isLoading: loadingQuotes } = useJobRelatedQuotes(
+    job?.id || null, 
+    job?.quote_id || null
+  );
+  const convertJobToQuote = useConvertJobToQuote();
+
   if (!job) return null;
+
+  const handleCreateUpsellQuote = () => {
+    // Convert the CustomerJob to Job format for the mutation
+    const jobForConversion: Job = {
+      id: job.id,
+      job_number: job.job_number,
+      company_id: '', // Not needed for this operation
+      customer_id: job.customer_id,
+      quote_id: job.quote_id,
+      assigned_to: job.assigned_to,
+      status: job.status,
+      priority: job.priority,
+      title: job.title,
+      description: job.description,
+      scheduled_start: job.scheduled_start,
+      scheduled_end: job.scheduled_end,
+      actual_start: job.actual_start,
+      actual_end: job.actual_end,
+      notes: job.notes,
+      created_by: null,
+      created_at: job.created_at,
+      updated_at: '',
+      archived_at: null,
+      subtotal: null,
+      tax: null,
+      total: null,
+      items: [], // Will use job items if available
+    };
+    convertJobToQuote.mutate(jobForConversion);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -159,6 +207,65 @@ export function JobDetailDialog({
             </>
           )}
 
+          {/* Related Quotes Section */}
+          <Separator />
+          <div>
+            <h4 className="font-medium mb-3 flex items-center gap-2">
+              <FileText className="w-4 h-4" /> Related Quotes
+            </h4>
+            
+            {loadingQuotes ? (
+              <p className="text-sm text-muted-foreground">Loading quotes...</p>
+            ) : (
+              <div className="space-y-4">
+                {/* Origin Quote (Parent) */}
+                {relatedQuotes?.originQuote && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                      <ArrowDown className="w-3 h-3" /> Origin Quote (Created This Job)
+                    </p>
+                    <QuoteCard 
+                      quote={relatedQuotes.originQuote} 
+                      onView={() => onViewQuote?.(relatedQuotes.originQuote)}
+                    />
+                  </div>
+                )}
+
+                {/* Upsell Quotes (Children) */}
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                    <ArrowUp className="w-3 h-3" /> Upsell Quotes (Created During Job)
+                  </p>
+                  
+                  {relatedQuotes?.childQuotes && relatedQuotes.childQuotes.length > 0 ? (
+                    <div className="space-y-2">
+                      {relatedQuotes.childQuotes.map((quote: Quote) => (
+                        <QuoteCard 
+                          key={quote.id} 
+                          quote={quote} 
+                          onView={() => onViewQuote?.(quote)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <p className="text-sm text-muted-foreground">No upsell quotes yet</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleCreateUpsellQuote}
+                        disabled={convertJobToQuote.isPending}
+                      >
+                        <Plus className="w-3 h-3 mr-1" />
+                        Create Upsell Quote
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Photos */}
           {job.photos && job.photos.length > 0 && (
             <>
@@ -194,5 +301,35 @@ export function JobDetailDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Quote Card component for displaying quote info
+function QuoteCard({ quote, onView }: { quote: Quote; onView: () => void }) {
+  return (
+    <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
+      <div className="flex-1">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm">{quote.quote_number}</span>
+          <Badge className={quoteStatusColors[quote.status] || 'bg-muted'} variant="secondary">
+            {quote.status}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+          <span>${quote.total.toFixed(2)}</span>
+          <span>•</span>
+          <span>{quote.items?.length || 0} items</span>
+          {quote.notes && (
+            <>
+              <span>•</span>
+              <span className="truncate max-w-[200px]">{quote.notes}</span>
+            </>
+          )}
+        </div>
+      </div>
+      <Button variant="ghost" size="sm" onClick={onView}>
+        View
+      </Button>
+    </div>
   );
 }

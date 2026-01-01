@@ -667,7 +667,7 @@ export function useConvertJobToQuote() {
       const tax = subtotal * 0.0825;
       const total = subtotal + tax;
       
-      // Create quote
+      // Create quote with job_id reference (child quote)
       const { data: quote, error: quoteError } = await (supabase as any)
         .from('quotes')
         .insert({
@@ -680,6 +680,7 @@ export function useConvertJobToQuote() {
           total,
           notes: `Quote from Job ${job.job_number}`,
           created_by: user?.id,
+          job_id: job.id, // Link as child quote instead of updating job.quote_id
         })
         .select()
         .single();
@@ -703,21 +704,55 @@ export function useConvertJobToQuote() {
         if (itemsError) throw itemsError;
       }
       
-      // Update job to link to quote
-      await (supabase as any)
-        .from('jobs')
-        .update({ quote_id: quote.id })
-        .eq('id', job.id);
-      
       return quote;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['job-related-quotes'] });
       toast.success('Quote created from job');
     },
     onError: (error: unknown) => {
       toast.error('Failed to create quote from job: ' + sanitizeErrorMessage(error));
     },
+  });
+}
+
+// Fetch related quotes for a job (origin quote + child/upsell quotes)
+export function useJobRelatedQuotes(jobId: string | null, originQuoteId: string | null) {
+  return useQuery({
+    queryKey: ['job-related-quotes', jobId, originQuoteId],
+    queryFn: async () => {
+      // Get origin quote (parent - the quote that created this job)
+      let originQuote = null;
+      if (originQuoteId) {
+        const { data, error } = await (supabase as any)
+          .from('quotes')
+          .select('*, items:quote_items(*), customer:customers(name)')
+          .eq('id', originQuoteId)
+          .single();
+        
+        if (!error) {
+          originQuote = data;
+        }
+      }
+      
+      // Get child quotes (upsells created from this job via job_id)
+      let childQuotes: any[] = [];
+      if (jobId) {
+        const { data, error } = await (supabase as any)
+          .from('quotes')
+          .select('*, items:quote_items(*), customer:customers(name)')
+          .eq('job_id', jobId)
+          .order('created_at', { ascending: false });
+        
+        if (!error && data) {
+          childQuotes = data;
+        }
+      }
+      
+      return { originQuote, childQuotes };
+    },
+    enabled: !!jobId || !!originQuoteId,
   });
 }

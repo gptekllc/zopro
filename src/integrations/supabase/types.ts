@@ -617,6 +617,7 @@ export type Database = {
           created_by: string | null
           customer_id: string
           id: string
+          job_id: string | null
           notes: string | null
           quote_number: string
           signature_id: string | null
@@ -634,6 +635,7 @@ export type Database = {
           created_by?: string | null
           customer_id: string
           id?: string
+          job_id?: string | null
           notes?: string | null
           quote_number: string
           signature_id?: string | null
@@ -651,6 +653,7 @@ export type Database = {
           created_by?: string | null
           customer_id?: string
           id?: string
+          job_id?: string | null
           notes?: string | null
           quote_number?: string
           signature_id?: string | null
@@ -682,6 +685,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
           {
