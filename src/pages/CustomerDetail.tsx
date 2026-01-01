@@ -375,19 +375,19 @@ const CustomerDetail = () => {
       <Card>
           <CardContent className="p-0">
             <Tabs defaultValue="jobs" className="w-full">
-              <div className="border-b px-2 md:px-4 overflow-x-auto">
-                <TabsList className="h-10 md:h-12 bg-transparent w-full justify-start">
-                  <TabsTrigger value="jobs" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3">
-                    <Briefcase className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                    <span className="hidden sm:inline">Jobs</span> ({jobs.length})
+              <div className="border-b">
+                <TabsList className="h-12 w-full grid grid-cols-3 bg-muted/50 rounded-none p-1">
+                  <TabsTrigger value="jobs" className="gap-2 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
+                    <Briefcase className="w-4 h-4" />
+                    Jobs ({jobs.length})
                   </TabsTrigger>
-                  <TabsTrigger value="quotes" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3">
-                    <FileText className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                    <span className="hidden sm:inline">Quotes</span> ({quotes.length})
+                  <TabsTrigger value="quotes" className="gap-2 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
+                    <FileText className="w-4 h-4" />
+                    Quotes ({quotes.length})
                   </TabsTrigger>
-                  <TabsTrigger value="invoices" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3">
-                    <Receipt className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                    <span className="hidden sm:inline">Invoices</span> ({invoices.length})
+                  <TabsTrigger value="invoices" className="gap-2 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
+                    <Receipt className="w-4 h-4" />
+                    Invoices ({invoices.length})
                   </TabsTrigger>
                 </TabsList>
               </div>
