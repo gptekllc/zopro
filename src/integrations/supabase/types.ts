@@ -174,6 +174,8 @@ export type Database = {
           due_date: string | null
           id: string
           invoice_number: string
+          late_fee_amount: number | null
+          late_fee_applied_at: string | null
           notes: string | null
           paid_at: string | null
           quote_id: string | null
@@ -193,6 +195,8 @@ export type Database = {
           due_date?: string | null
           id?: string
           invoice_number: string
+          late_fee_amount?: number | null
+          late_fee_applied_at?: string | null
           notes?: string | null
           paid_at?: string | null
           quote_id?: string | null
@@ -212,6 +216,8 @@ export type Database = {
           due_date?: string | null
           id?: string
           invoice_number?: string
+          late_fee_amount?: number | null
+          late_fee_applied_at?: string | null
           notes?: string | null
           paid_at?: string | null
           quote_id?: string | null

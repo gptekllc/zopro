@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   FileDown, Mail, Edit, PenTool, Calendar, 
-  DollarSign, Receipt, CheckCircle, Clock 
+  DollarSign, Receipt, CheckCircle, Clock, AlertCircle 
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -133,7 +133,7 @@ export function InvoiceDetailDialog({
 
           {/* Totals */}
           <div className="flex justify-end">
-            <div className="w-full sm:w-48 space-y-1">
+            <div className="w-full sm:w-56 space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>${Number(invoice.subtotal).toLocaleString()}</span>
@@ -142,10 +142,31 @@ export function InvoiceDetailDialog({
                 <span className="text-muted-foreground">Tax</span>
                 <span>${Number(invoice.tax).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
-                <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
+              <div className="flex justify-between font-semibold pt-2 border-t">
+                <span>Invoice Total</span>
                 <span>${Number(invoice.total).toLocaleString()}</span>
               </div>
+              {invoice.late_fee_amount && Number(invoice.late_fee_amount) > 0 && (
+                <>
+                  <div className="flex justify-between text-sm text-destructive">
+                    <span className="flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      Late Fee
+                    </span>
+                    <span>+${Number(invoice.late_fee_amount).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-base sm:text-lg pt-2 border-t border-destructive/30">
+                    <span className="flex items-center gap-1 text-destructive"><DollarSign className="w-4 h-4" />Total Due</span>
+                    <span className="text-destructive">${(Number(invoice.total) + Number(invoice.late_fee_amount)).toLocaleString()}</span>
+                  </div>
+                </>
+              )}
+              {(!invoice.late_fee_amount || Number(invoice.late_fee_amount) === 0) && (
+                <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
+                  <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
+                  <span>${Number(invoice.total).toLocaleString()}</span>
+                </div>
+              )}
             </div>
           </div>
 
