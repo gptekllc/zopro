@@ -84,6 +84,28 @@ serve(async (req) => {
 
         logStep("Invoice marked as paid", { invoiceId, invoiceNumber: invoice.invoice_number });
 
+        // Auto-sync job status to 'paid' if there's a linked job
+        const { data: linkedJobs, error: jobsError } = await supabase
+          .from("jobs")
+          .select("id, job_number")
+          .eq("quote_id", invoice.quote_id)
+          .in("status", ["completed", "invoiced"]);
+
+        if (!jobsError && linkedJobs && linkedJobs.length > 0) {
+          for (const job of linkedJobs) {
+            const { error: jobUpdateError } = await supabase
+              .from("jobs")
+              .update({ status: "paid" })
+              .eq("id", job.id);
+
+            if (jobUpdateError) {
+              logStep("WARNING: Failed to update job status", { jobId: job.id, error: jobUpdateError.message });
+            } else {
+              logStep("Job status synced to paid", { jobId: job.id, jobNumber: job.job_number });
+            }
+          }
+        }
+
         // Create notification for admins
         const { data: admins } = await supabase
           .from("profiles")
