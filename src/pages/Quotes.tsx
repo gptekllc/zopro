@@ -25,6 +25,7 @@ interface LineItem {
 
 const Quotes = () => {
   const { profile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: quotes = [], isLoading } = useQuotes();
   const { data: customers = [] } = useCustomers();
   const createQuote = useCreateQuote();
@@ -42,6 +43,7 @@ const Quotes = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
+  const [viewingQuote, setViewingQuote] = useState<typeof quotes[0] | null>(null);
   const [formData, setFormData] = useState<{
     customerId: string;
     items: LineItem[];
@@ -55,6 +57,20 @@ const Quotes = () => {
     status: 'draft',
     validDays: 30,
   });
+
+  // Handle URL param to auto-open quote detail
+  useEffect(() => {
+    const viewQuoteId = searchParams.get('view');
+    if (viewQuoteId && quotes.length > 0) {
+      const quote = quotes.find(q => q.id === viewQuoteId);
+      if (quote) {
+        setViewingQuote(quote);
+        // Clear the URL param after opening
+        searchParams.delete('view');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, quotes, setSearchParams]);
 
   const filteredQuotes = quotes.filter(q => {
     const customer = customers.find(c => c.id === q.customer_id);
@@ -552,6 +568,116 @@ const Quotes = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Quote Detail Dialog for viewing from URL */}
+      {viewingQuote && (
+        <Dialog open={!!viewingQuote} onOpenChange={(open) => !open && setViewingQuote(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-primary" />
+                  {viewingQuote.quote_number}
+                </DialogTitle>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(viewingQuote.status)}`}>
+                  {viewingQuote.status}
+                </span>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Customer & Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Customer</p>
+                  <p className="font-medium">{getCustomerName(viewingQuote.customer_id)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Created</p>
+                  <p className="font-medium">{format(new Date(viewingQuote.created_at), 'MMM d, yyyy')}</p>
+                </div>
+                {viewingQuote.valid_until && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Valid Until</p>
+                    <p className="font-medium">{format(new Date(viewingQuote.valid_until), 'MMM d, yyyy')}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Line Items */}
+              <div>
+                <h4 className="font-medium mb-3">Line Items</h4>
+                <div className="space-y-2">
+                  {viewingQuote.items && viewingQuote.items.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
+                        <div className="col-span-6">Description</div>
+                        <div className="col-span-2 text-right">Qty</div>
+                        <div className="col-span-2 text-right">Price</div>
+                        <div className="col-span-2 text-right">Total</div>
+                      </div>
+                      {viewingQuote.items.map((item: any) => (
+                        <div key={item.id} className="grid grid-cols-12 py-2 px-2 bg-muted/50 rounded text-sm">
+                          <div className="col-span-6">{item.description}</div>
+                          <div className="col-span-2 text-right">{item.quantity}</div>
+                          <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
+                          <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No line items</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Totals */}
+              <div className="flex justify-end">
+                <div className="w-48 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>${Number(viewingQuote.subtotal).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Tax</span>
+                    <span>${Number(viewingQuote.tax).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-lg pt-2 border-t">
+                    <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
+                    <span>${Number(viewingQuote.total).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {viewingQuote.notes && (
+                <div>
+                  <h4 className="font-medium mb-2">Notes</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{viewingQuote.notes}</p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" size="sm" onClick={() => handleDownload(viewingQuote.id)}>
+                  <FileDown className="w-4 h-4 mr-1" /> Download
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleOpenEmailDialog(viewingQuote.id, viewingQuote.customer_id)}>
+                  <Mail className="w-4 h-4 mr-1" /> Email
+                </Button>
+                {viewingQuote.status !== 'rejected' && (
+                  <Button variant="outline" size="sm" onClick={() => handleConvertToInvoice(viewingQuote.id)}>
+                    <ArrowRight className="w-4 h-4 mr-1" /> Convert to Invoice
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingQuote); setViewingQuote(null); }} className="ml-auto">
+                  <Edit className="w-4 h-4 mr-1" /> Edit
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };

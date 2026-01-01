@@ -952,7 +952,7 @@ const Jobs = () => {
                               variant="destructive"
                               size="icon"
                               className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => deletePhoto.mutate({ jobId: viewingJob.id, photoId: photo.id, photoUrl: photo.photo_url })}
+                              onClick={() => deletePhoto.mutate(photo.id)}
                             >
                               <X className="w-4 h-4" />
                             </Button>
@@ -972,7 +972,7 @@ const Jobs = () => {
                 </TabsContent>
                 
                 <TabsContent value="time" className="mt-4">
-                  <JobTimeTracker job={viewingJob} />
+                  <JobTimeTracker jobId={viewingJob.id} jobNumber={viewingJob.job_number} />
                 </TabsContent>
                 
                 <TabsContent value="notes" className="mt-4">
