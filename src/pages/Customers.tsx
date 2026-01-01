@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCustomers, useCreateCustomer, useUpdateCustomer, useSoftDeleteCustomer, useRestoreCustomer, Customer } from '@/hooks/useCustomers';
+import { useCustomers, useCreateCustomer, useUpdateCustomer, useSoftDeleteCustomer, useRestoreCustomer, useDeletedCustomers, Customer } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,14 +13,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink, RotateCcw, Eye, Briefcase, FileText, Receipt } from 'lucide-react';
+import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink, RotateCcw, Eye } from 'lucide-react';
 import { toast } from 'sonner';
-import { useQuery } from '@tanstack/react-query';
 
 const Customers = () => {
   const navigate = useNavigate();
   const { data: customers = [], isLoading } = useCustomers();
-  const { isAdmin, profile } = useAuth();
+  const { data: deletedCustomers = [] } = useDeletedCustomers();
+  const { isAdmin } = useAuth();
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
   const softDeleteCustomer = useSoftDeleteCustomer();
@@ -39,22 +39,6 @@ const Customers = () => {
     state: '',
     zip: '',
     notes: '',
-  });
-
-  // Fetch deleted customers for admins/managers
-  const { data: deletedCustomers = [] } = useQuery({
-    queryKey: ['deleted-customers', profile?.company_id],
-    queryFn: async () => {
-      if (!profile?.company_id) return [];
-      const { data, error } = await (supabase as any)
-        .from('customers')
-        .select('*')
-        .eq('company_id', profile.company_id)
-        .not('deleted_at', 'is', null);
-      if (error) throw error;
-      return data as (Customer & { deleted_at: string })[];
-    },
-    enabled: !!profile?.company_id && isAdmin,
   });
 
   const filteredCustomers = customers.filter(c =>

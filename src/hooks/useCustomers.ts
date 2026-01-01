@@ -40,6 +40,25 @@ export function useCustomers() {
   });
 }
 
+export function useDeletedCustomers() {
+  const { profile, isAdmin } = useAuth();
+  
+  return useQuery({
+    queryKey: ['deleted-customers', profile?.company_id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('customers')
+        .select('*')
+        .not('deleted_at', 'is', null)
+        .order('name');
+      
+      if (error) throw error;
+      return data as Customer[];
+    },
+    enabled: !!profile?.company_id && isAdmin,
+  });
+}
+
 export function useSoftDeleteCustomer() {
   const queryClient = useQueryClient();
   
