@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhoneInput, getPhoneDigits } from '@/components/ui/phone-input';
+import { EmailInput } from '@/components/ui/email-input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { UserPlus, X, Check, ChevronsUpDown } from 'lucide-react';
@@ -108,13 +109,21 @@ export function InlineCustomerForm({
           </Button>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label>Name *</Label>
+          <Input
+            value={newCustomer.name}
+            onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+            placeholder="Customer name"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label>Name *</Label>
-            <Input
-              value={newCustomer.name}
-              onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-              placeholder="Customer name"
+            <Label>Email</Label>
+            <EmailInput
+              value={newCustomer.email}
+              onChange={(value) => setNewCustomer({ ...newCustomer, email: value })}
             />
           </div>
           <div className="space-y-2">
@@ -127,25 +136,16 @@ export function InlineCustomerForm({
         </div>
 
         <div className="space-y-2">
-          <Label>Email</Label>
+          <Label>Street Address</Label>
           <Input
-            type="email"
-            value={newCustomer.email}
-            onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
-            placeholder="Email address"
+            value={newCustomer.address}
+            onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
+            placeholder="123 Main St"
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Address</Label>
-            <Input
-              value={newCustomer.address}
-              onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
-              placeholder="Street address"
-            />
-          </div>
-          <div className="space-y-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="space-y-2 col-span-2 sm:col-span-2">
             <Label>City</Label>
             <Input
               value={newCustomer.city}
@@ -153,23 +153,21 @@ export function InlineCustomerForm({
               placeholder="City"
             />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-2">
-              <Label>State</Label>
-              <Input
-                value={newCustomer.state}
-                onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
-                placeholder="ST"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>ZIP</Label>
-              <Input
-                value={newCustomer.zip}
-                onChange={(e) => setNewCustomer({ ...newCustomer, zip: e.target.value })}
-                placeholder="ZIP"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>State</Label>
+            <Input
+              value={newCustomer.state}
+              onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
+              placeholder="CA"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>ZIP</Label>
+            <Input
+              value={newCustomer.zip}
+              onChange={(e) => setNewCustomer({ ...newCustomer, zip: e.target.value })}
+              placeholder="12345"
+            />
           </div>
         </div>
 
