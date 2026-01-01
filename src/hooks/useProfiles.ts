@@ -11,6 +11,9 @@ export interface Profile {
   company_id: string | null;
   avatar_url: string | null;
   hourly_rate: number | null;
+  employment_status: 'active' | 'on_leave' | 'terminated' | null;
+  hire_date: string | null;
+  termination_date: string | null;
   created_at: string;
   updated_at: string;
 }

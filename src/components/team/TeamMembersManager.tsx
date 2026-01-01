@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTeamMembers } from '@/hooks/useCompany';
+import { useTeamMembers, TeamMember } from '@/hooks/useCompany';
 import { useTeamInvitations, useCancelInvitation, useResendInvitation } from '@/hooks/useTeamInvitations';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,22 +44,15 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Users, UserCog, UserMinus, Loader2, Shield, Mail, UserPlus, RefreshCw, X, RotateCcw, Clock } from 'lucide-react';
+import { Users, UserCog, UserMinus, Loader2, Shield, Mail, UserPlus, RefreshCw, X, RotateCcw, Clock, Edit, Calendar, AlertTriangle } from 'lucide-react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 
 const AVAILABLE_ROLES = ['admin', 'manager', 'technician'] as const;
 type AppRole = typeof AVAILABLE_ROLES[number];
 
-interface TeamMember {
-  id: string;
-  email: string;
-  full_name: string | null;
-  phone: string | null;
-  role: string;
-  deleted_at?: string | null;
-  roles?: { role: string }[];
-}
+const EMPLOYMENT_STATUSES = ['active', 'on_leave', 'terminated'] as const;
+type EmploymentStatus = typeof EMPLOYMENT_STATUSES[number];
 
 const TeamMembersManager = () => {
   const { profile, user, isAdmin } = useAuth();
@@ -74,12 +67,19 @@ const TeamMembersManager = () => {
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [showDeleted, setShowDeleted] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
   // Add member form state
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<AppRole>('technician');
+
+  // Edit member form state
+  const [editEmploymentStatus, setEditEmploymentStatus] = useState<EmploymentStatus>('active');
+  const [editHireDate, setEditHireDate] = useState('');
+  const [editTerminationDate, setEditTerminationDate] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editHourlyRate, setEditHourlyRate] = useState('');
 
   // Fetch deleted team members
   const { data: deletedMembers = [] } = useQuery({
@@ -88,7 +88,7 @@ const TeamMembersManager = () => {
       if (!profile?.company_id) return [];
       const { data, error } = await (supabase as any)
         .from('profiles')
-        .select('*')
+        .select('id, email, full_name, phone, role, company_id, employment_status, hire_date, termination_date, deleted_at')
         .eq('company_id', profile.company_id)
         .not('deleted_at', 'is', null);
       if (error) throw error;
@@ -131,12 +131,71 @@ const TeamMembersManager = () => {
     },
   });
 
+  // Update team member mutation (employment status, hire date, etc.)
+  const updateTeamMemberMutation = useMutation({
+    mutationFn: async ({ 
+      userId, 
+      employment_status, 
+      hire_date, 
+      termination_date,
+      phone,
+      hourly_rate 
+    }: { 
+      userId: string; 
+      employment_status: EmploymentStatus;
+      hire_date: string | null;
+      termination_date: string | null;
+      phone: string | null;
+      hourly_rate: number | null;
+    }) => {
+      const updates: Record<string, any> = {
+        employment_status,
+        hire_date: hire_date || null,
+        phone: phone || null,
+        hourly_rate: hourly_rate,
+      };
+
+      // If terminating, also set deleted_at to move to Removed tab
+      if (employment_status === 'terminated') {
+        updates.termination_date = termination_date || new Date().toISOString().split('T')[0];
+        updates.deleted_at = new Date().toISOString();
+      } else {
+        updates.termination_date = null;
+      }
+
+      const { error } = await (supabase as any)
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId);
+      
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['team_members'] });
+      queryClient.invalidateQueries({ queryKey: ['deleted_team_members'] });
+      if (variables.employment_status === 'terminated') {
+        toast.success('Team member terminated and moved to Removed');
+      } else {
+        toast.success('Team member updated successfully');
+      }
+      setIsEditDialogOpen(false);
+      setSelectedMember(null);
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update member: ' + error.message);
+    },
+  });
+
   // Soft delete member mutation (now uses deleted_at)
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await (supabase as any)
         .from('profiles')
-        .update({ deleted_at: new Date().toISOString() })
+        .update({ 
+          deleted_at: new Date().toISOString(),
+          employment_status: 'terminated',
+          termination_date: new Date().toISOString().split('T')[0]
+        })
         .eq('id', userId);
       
       if (error) throw error;
@@ -158,7 +217,11 @@ const TeamMembersManager = () => {
     mutationFn: async (userId: string) => {
       const { error } = await (supabase as any)
         .from('profiles')
-        .update({ deleted_at: null })
+        .update({ 
+          deleted_at: null,
+          employment_status: 'active',
+          termination_date: null
+        })
         .eq('id', userId);
       
       if (error) throw error;
@@ -224,6 +287,16 @@ const TeamMembersManager = () => {
     setIsRoleDialogOpen(true);
   };
 
+  const handleEditMember = (member: TeamMember) => {
+    setSelectedMember(member);
+    setEditEmploymentStatus((member.employment_status as EmploymentStatus) || 'active');
+    setEditHireDate(member.hire_date || '');
+    setEditTerminationDate(member.termination_date || '');
+    setEditPhone(member.phone || '');
+    setEditHourlyRate(member.hourly_rate?.toString() || '');
+    setIsEditDialogOpen(true);
+  };
+
   const handleRemoveMember = (member: TeamMember) => {
     setSelectedMember(member);
     setIsRemoveDialogOpen(true);
@@ -244,6 +317,19 @@ const TeamMembersManager = () => {
     }
   };
 
+  const handleSaveEdit = () => {
+    if (!selectedMember) return;
+
+    updateTeamMemberMutation.mutate({
+      userId: selectedMember.id,
+      employment_status: editEmploymentStatus,
+      hire_date: editHireDate || null,
+      termination_date: editTerminationDate || null,
+      phone: editPhone || null,
+      hourly_rate: editHourlyRate ? parseFloat(editHourlyRate) : null,
+    });
+  };
+
   const getInitials = (name: string | null) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -255,6 +341,19 @@ const TeamMembersManager = () => {
       case 'manager': return 'secondary';
       case 'technician': return 'outline';
       default: return 'outline';
+    }
+  };
+
+  const getEmploymentStatusBadge = (status: string | null) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
+      case 'on_leave':
+        return <Badge className="bg-warning/10 text-warning border-warning/20">On Leave</Badge>;
+      case 'terminated':
+        return <Badge variant="destructive">Terminated</Badge>;
+      default:
+        return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
     }
   };
 
@@ -320,9 +419,9 @@ const TeamMembersManager = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Member</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Role</TableHead>
+                      <TableHead>Hire Date</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -336,29 +435,49 @@ const TeamMembersManager = () => {
                                 {getInitials(member.full_name)}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="font-medium">
-                              {member.full_name || 'Unnamed User'}
-                              {member.id === user?.id && (
-                                <span className="text-muted-foreground ml-2">(You)</span>
-                              )}
-                            </span>
+                            <div>
+                              <span className="font-medium flex items-center gap-2">
+                                {member.full_name || 'Unnamed User'}
+                                {member.id === user?.id && (
+                                  <span className="text-muted-foreground text-sm">(You)</span>
+                                )}
+                              </span>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Mail className="w-3 h-3" />
+                                {member.email}
+                              </p>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-muted-foreground" />
-                            {member.email}
-                          </div>
+                          {getEmploymentStatusBadge(member.employment_status)}
                         </TableCell>
-                        <TableCell>{member.phone || '-'}</TableCell>
                         <TableCell>
                           <Badge variant={getRoleBadgeVariant(getMemberRole(member))}>
                             {getMemberRole(member)}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          {member.hire_date ? (
+                            <span className="text-sm flex items-center gap-1">
+                              <Calendar className="w-3 h-3 text-muted-foreground" />
+                              {format(new Date(member.hire_date), 'MMM d, yyyy')}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
                           {member.id !== user?.id && (
                             <div className="flex justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditMember(member)}
+                              >
+                                <Edit className="w-4 h-4 mr-1" />
+                                Edit
+                              </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -474,7 +593,7 @@ const TeamMembersManager = () => {
                     <TableRow>
                       <TableHead>Member</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
+                      <TableHead>Termination Date</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -495,7 +614,13 @@ const TeamMembersManager = () => {
                         </TableCell>
                         <TableCell>{member.email}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{member.role}</Badge>
+                          {member.termination_date ? (
+                            <span className="text-sm">
+                              {format(new Date(member.termination_date), 'MMM d, yyyy')}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
@@ -522,6 +647,99 @@ const TeamMembersManager = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* Edit Team Member Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Team Member</DialogTitle>
+            <DialogDescription>
+              Update employment details for {selectedMember?.full_name || selectedMember?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="employmentStatus">Employment Status</Label>
+              <Select value={editEmploymentStatus} onValueChange={(v) => setEditEmploymentStatus(v as EmploymentStatus)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="on_leave">On Leave</SelectItem>
+                  <SelectItem value="terminated">Terminated</SelectItem>
+                </SelectContent>
+              </Select>
+              {editEmploymentStatus === 'on_leave' && (
+                <p className="text-xs text-warning flex items-center gap-1 mt-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  Members on leave cannot be assigned to new jobs
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="hireDate">Hire Date</Label>
+              <Input
+                id="hireDate"
+                type="date"
+                value={editHireDate}
+                onChange={(e) => setEditHireDate(e.target.value)}
+              />
+            </div>
+
+            {editEmploymentStatus === 'terminated' && (
+              <div className="space-y-2">
+                <Label htmlFor="terminationDate">Termination Date</Label>
+                <Input
+                  id="terminationDate"
+                  type="date"
+                  value={editTerminationDate}
+                  onChange={(e) => setEditTerminationDate(e.target.value)}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                placeholder="(555) 123-4567"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="hourlyRate">Hourly Rate ($)</Label>
+              <Input
+                id="hourlyRate"
+                type="number"
+                step="0.01"
+                min="0"
+                value={editHourlyRate}
+                onChange={(e) => setEditHourlyRate(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={updateTeamMemberMutation.isPending}
+            >
+              {updateTeamMemberMutation.isPending && (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              )}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Change Role Dialog */}
       <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>

@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 interface SchedulerWidgetProps {
   jobs: Job[];
-  technicians: { id: string; full_name: string | null }[];
+  technicians: { id: string; full_name: string | null; employment_status?: string | null }[];
 }
 
 export function SchedulerWidget({ jobs, technicians }: SchedulerWidgetProps) {
@@ -69,9 +69,9 @@ export function SchedulerWidget({ jobs, technicians }: SchedulerWidgetProps) {
     }).sort((a, b) => b.jobCount - a.jobCount);
   }, [technicians, todaysJobs]);
 
-  // Find available technicians (those with less than 8 hours scheduled)
+  // Find available technicians (those with less than 8 hours scheduled AND not on leave)
   const availableTechnicians = useMemo(() => {
-    return technicianSchedule.filter(tech => tech.hoursScheduled < 8);
+    return technicianSchedule.filter(tech => tech.hoursScheduled < 8 && tech.employment_status !== 'on_leave');
   }, [technicianSchedule]);
 
   const handleQuickAssign = async (jobId: string, technicianId: string) => {

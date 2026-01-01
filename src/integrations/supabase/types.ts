@@ -71,6 +71,57 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_stripe_accounts: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          customer_id: string
+          default_payment_method_last4: string | null
+          default_payment_method_type: string | null
+          has_saved_payment_method: boolean | null
+          id: string
+          stripe_customer_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          customer_id: string
+          default_payment_method_last4?: string | null
+          default_payment_method_type?: string | null
+          has_saved_payment_method?: boolean | null
+          id?: string
+          stripe_customer_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          customer_id?: string
+          default_payment_method_last4?: string | null
+          default_payment_method_type?: string | null
+          has_saved_payment_method?: boolean | null
+          id?: string
+          stripe_customer_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_stripe_accounts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_stripe_accounts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -523,11 +574,14 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           email: string
+          employment_status: string | null
           full_name: string | null
+          hire_date: string | null
           hourly_rate: number | null
           id: string
           phone: string | null
           role: string
+          termination_date: string | null
           updated_at: string
         }
         Insert: {
@@ -536,11 +590,14 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           email: string
+          employment_status?: string | null
           full_name?: string | null
+          hire_date?: string | null
           hourly_rate?: number | null
           id: string
           phone?: string | null
           role?: string
+          termination_date?: string | null
           updated_at?: string
         }
         Update: {
@@ -549,11 +606,14 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           email?: string
+          employment_status?: string | null
           full_name?: string | null
+          hire_date?: string | null
           hourly_rate?: number | null
           id?: string
           phone?: string | null
           role?: string
+          termination_date?: string | null
           updated_at?: string
         }
         Relationships: [

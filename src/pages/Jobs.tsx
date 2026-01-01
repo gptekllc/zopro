@@ -126,6 +126,8 @@ const Jobs = () => {
   const emailDocument = useEmailDocument();
   const isAdmin = roles.some(r => r.role === 'admin' || r.role === 'manager');
   const technicians = safeProfiles.filter(p => p.role === 'technician' || p.role === 'admin' || p.role === 'manager');
+  // Filter out technicians on leave for job assignment
+  const availableTechnicians = technicians.filter(p => p.employment_status !== 'on_leave');
 
   // Handle URL param to auto-open job detail
   useEffect(() => {
@@ -494,11 +496,16 @@ const Jobs = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {technicians.map((t) => (
+                      {availableTechnicians.map((t) => (
                         <SelectItem key={t.id} value={t.id}>{t.full_name || t.email}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {technicians.some(t => t.employment_status === 'on_leave') && (
+                    <p className="text-xs text-muted-foreground">
+                      Team members on leave are hidden from this list
+                    </p>
+                  )}
                 </div>
               </div>
 
