@@ -968,82 +968,100 @@ const Jobs = () => {
                   </div>
 
                   {/* Desktop Layout */}
-                  <div className="hidden sm:flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${job.archived_at ? 'bg-muted' : 'bg-primary/10'}`}>
+                  <div className="hidden sm:flex items-center justify-between gap-4">
+                    {/* Left: Icon + Job Info */}
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${job.archived_at ? 'bg-muted' : 'bg-primary/10'}`}>
                         {job.archived_at ? (
                           <Archive className="w-6 h-6 text-muted-foreground" />
                         ) : (
                           <Briefcase className="w-6 h-6 text-primary" />
                         )}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="font-semibold">{job.job_number}</h3>
-                          {job.archived_at && (
-                            <Badge variant="outline" className="text-muted-foreground">Archived</Badge>
+                          <span className="text-muted-foreground">•</span>
+                          <span className="font-medium truncate">{job.title}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
+                          <span className="truncate">{job.customer?.name}</span>
+                          {job.assignee?.full_name && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                {job.assignee.full_name}
+                              </span>
+                            </>
                           )}
-                          <div onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Badge className={`${getStatusColor(job.status)} cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
-                                  {job.status.replace('_', ' ')}
-                                  <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                                </Badge>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start" className="bg-popover z-50">
-                                {JOB_STATUSES.map((status) => (
-                                  <DropdownMenuItem
-                                    key={status}
-                                    onClick={() => handleStatusChange(job.id, status)}
-                                    disabled={job.status === status}
-                                    className={job.status === status ? 'bg-accent' : ''}
-                                  >
-                                    <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
-                                      {status.replace('_', ' ')}
-                                    </Badge>
-                                    {job.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                                  </DropdownMenuItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                          <Badge className={getPriorityColor(job.priority)} variant="outline">
-                            {job.priority}
-                          </Badge>
-                          {(job.total ?? 0) > 0 && (
-                            <Badge variant="secondary" className="gap-1">
-                              <DollarSign className="w-3 h-3" />
-                              {Number(job.total).toFixed(2)}
-                            </Badge>
+                          {job.scheduled_start && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
+                              </span>
+                            </>
+                          )}
+                          {job.photos && job.photos.length > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Image className="w-3 h-3" />
+                                {job.photos.length}
+                              </span>
+                            </>
                           )}
                         </div>
-                        <p className="text-sm font-medium">{job.title}</p>
-                        <p className="text-sm text-muted-foreground">{job.customer?.name}</p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        {job.assignee?.full_name && (
-                          <p className="text-sm flex items-center gap-1">
-                            <User className="w-4 h-4" />
-                            {job.assignee.full_name}
-                          </p>
+                    {/* Right: Badges + Actions */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      {/* Badges */}
+                      <div className="flex items-center gap-2">
+                        {job.archived_at && (
+                          <Badge variant="outline" className="text-muted-foreground">Archived</Badge>
                         )}
-                        {job.scheduled_start && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
-                          </p>
+                        <Badge className={getPriorityColor(job.priority)} variant="outline">
+                          {job.priority}
+                        </Badge>
+                        {(job.total ?? 0) > 0 && (
+                          <Badge variant="secondary" className="gap-1">
+                            <DollarSign className="w-3 h-3" />
+                            {Number(job.total).toFixed(2)}
+                          </Badge>
                         )}
-                        {job.photos && job.photos.length > 0 && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Image className="w-3 h-3" />
-                            {job.photos.length} photos
-                          </p>
-                        )}
+                        {/* Status Dropdown */}
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Badge className={`${getStatusColor(job.status)} cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
+                                {job.status.replace('_', ' ')}
+                                <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                              </Badge>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-popover z-50">
+                              {JOB_STATUSES.map((status) => (
+                                <DropdownMenuItem
+                                  key={status}
+                                  onClick={() => handleStatusChange(job.id, status)}
+                                  disabled={job.status === status}
+                                  className={job.status === status ? 'bg-accent' : ''}
+                                >
+                                  <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
+                                    {status.replace('_', ' ')}
+                                  </Badge>
+                                  {job.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
+
+                      {/* Action Buttons */}
                       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                         {job.archived_at ? (
                           <Button
@@ -1076,26 +1094,6 @@ const Jobs = () => {
                               >
                                 <Receipt className="w-4 h-4 mr-1" />
                                 Invoice
-                              </Button>
-                            )}
-                            {getNextStatus(job.status) && job.status !== 'completed' && job.status !== 'in_progress' && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleStatusChange(job.id, getNextStatus(job.status)!)}
-                              >
-                                <ChevronRight className="w-4 h-4 mr-1" />
-                                {getNextStatus(job.status)?.replace('_', ' ')}
-                              </Button>
-                            )}
-                            {job.status === 'completed' && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleStatusChange(job.id, 'invoiced')}
-                              >
-                                <ChevronRight className="w-4 h-4 mr-1" />
-                                invoiced
                               </Button>
                             )}
                             {!job.quote_id && (
