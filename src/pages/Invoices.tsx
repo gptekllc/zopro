@@ -279,7 +279,7 @@ const Invoices = () => {
               Create Invoice
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingInvoice ? 'Edit Invoice' : 'Create New Invoice'}</DialogTitle>
             </DialogHeader>
@@ -311,36 +311,81 @@ const Invoices = () => {
                 </div>
                 
                 {formData.items.map((item) => (
-                  <div key={item.id} className="flex gap-2 items-start">
-                    <Input
-                      placeholder="Description"
-                      value={item.description}
-                      onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                      className="flex-1"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Qty"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                      className="w-20"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Price"
-                      value={item.unitPrice}
-                      onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                      className="w-24"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveItem(item.id)}
-                      disabled={formData.items.length === 1}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  <div key={item.id} className="space-y-2 sm:space-y-0">
+                    {/* Mobile layout */}
+                    <div className="sm:hidden space-y-2 p-3 bg-muted/50 rounded-lg">
+                      <Input
+                        placeholder="Description"
+                        value={item.description}
+                        onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                      />
+                      <div className="flex gap-2">
+                        <div className="w-20">
+                          <Label className="text-xs text-muted-foreground">Qty</Label>
+                          <Input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-xs text-muted-foreground">Price</Label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={item.unitPrice === 0 ? '' : item.unitPrice}
+                            onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveItem(item.id)}
+                            disabled={formData.items.length === 1}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex justify-end text-sm font-medium">
+                        Total: ${(item.quantity * item.unitPrice).toFixed(2)}
+                      </div>
+                    </div>
+                    {/* Desktop layout */}
+                    <div className="hidden sm:flex gap-2 items-start">
+                      <Input
+                        placeholder="Description"
+                        value={item.description}
+                        onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Qty"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                        className="w-20"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={item.unitPrice === 0 ? '' : item.unitPrice}
+                        onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                        className="w-24"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveItem(item.id)}
+                        disabled={formData.items.length === 1}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
 
@@ -358,7 +403,7 @@ const Invoices = () => {
                 />
               </div>
               
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>

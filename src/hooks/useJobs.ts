@@ -779,3 +779,162 @@ export function useJobRelatedQuotes(jobId: string | null, originQuoteId: string 
     enabled: !!jobId || !!originQuoteId,
   });
 }
+
+// Create job from quote with selected items only
+export function useCreateJobFromQuoteItems() {
+  const { profile, user } = useAuth();
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ quoteId, selectedItemIds }: { quoteId: string; selectedItemIds: string[] }) => {
+      if (!profile?.company_id) throw new Error('No company ID');
+      
+      // Get quote details with items
+      const { data: quote, error: quoteError } = await (supabase as any)
+        .from('quotes')
+        .select('*, items:quote_items(*)')
+        .eq('id', quoteId)
+        .single();
+      
+      if (quoteError) throw quoteError;
+      
+      // Filter to selected items only
+      const selectedItems = (quote.items || []).filter((item: any) => selectedItemIds.includes(item.id));
+      
+      if (selectedItems.length === 0) {
+        throw new Error('No items selected');
+      }
+      
+      // Generate job number
+      const { data: jobNumber, error: jobNumberError } = await (supabase as any)
+        .rpc('generate_job_number', { _company_id: profile.company_id });
+      
+      if (jobNumberError) throw jobNumberError;
+      
+      // Calculate totals from selected items
+      const subtotal = selectedItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unit_price), 0);
+      const tax = subtotal * 0.0825;
+      const total = subtotal + tax;
+      
+      // Create job from quote
+      const { data: job, error: jobError } = await (supabase as any)
+        .from('jobs')
+        .insert({
+          company_id: profile.company_id,
+          job_number: jobNumber,
+          customer_id: quote.customer_id,
+          quote_id: quoteId,
+          title: `Job from Quote ${quote.quote_number}`,
+          description: quote.notes,
+          status: 'draft',
+          priority: 'medium',
+          created_by: user?.id,
+          subtotal,
+          tax,
+          total,
+        })
+        .select()
+        .single();
+      
+      if (jobError) throw jobError;
+      
+      // Copy selected quote items to job items
+      if (selectedItems.length > 0) {
+        const { error: itemsError } = await (supabase as any)
+          .from('job_items')
+          .insert(
+            selectedItems.map((item: any) => ({
+              job_id: job.id,
+              description: item.description,
+              quantity: item.quantity,
+              unit_price: item.unit_price,
+              total: item.quantity * item.unit_price,
+            }))
+          );
+        
+        if (itemsError) throw itemsError;
+      }
+      
+      return job;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      toast.success('Job created from selected quote items');
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to create job: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
+// Add quote items to an existing job
+export function useAddQuoteItemsToJob() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ quoteId, jobId, selectedItemIds }: { quoteId: string; jobId: string; selectedItemIds: string[] }) => {
+      // Get quote items
+      const { data: quoteItems, error: quoteError } = await (supabase as any)
+        .from('quote_items')
+        .select('*')
+        .eq('quote_id', quoteId);
+      
+      if (quoteError) throw quoteError;
+      
+      // Filter to selected items only
+      const selectedItems = (quoteItems || []).filter((item: any) => selectedItemIds.includes(item.id));
+      
+      if (selectedItems.length === 0) {
+        throw new Error('No items selected');
+      }
+      
+      // Get current job to update totals
+      const { data: job, error: jobError } = await (supabase as any)
+        .from('jobs')
+        .select('subtotal, tax, total')
+        .eq('id', jobId)
+        .single();
+      
+      if (jobError) throw jobError;
+      
+      // Add new items to job
+      const { error: insertError } = await (supabase as any)
+        .from('job_items')
+        .insert(
+          selectedItems.map((item: any) => ({
+            job_id: jobId,
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total: item.quantity * item.unit_price,
+          }))
+        );
+      
+      if (insertError) throw insertError;
+      
+      // Update job totals
+      const addedSubtotal = selectedItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unit_price), 0);
+      const newSubtotal = (job.subtotal || 0) + addedSubtotal;
+      const newTax = newSubtotal * 0.0825;
+      const newTotal = newSubtotal + newTax;
+      
+      const { error: updateError } = await (supabase as any)
+        .from('jobs')
+        .update({ subtotal: newSubtotal, tax: newTax, total: newTotal })
+        .eq('id', jobId);
+      
+      if (updateError) throw updateError;
+      
+      return { jobId, itemsAdded: selectedItems.length };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['job'] });
+      toast.success(`Added ${data.itemsAdded} items to job`);
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to add items to job: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
