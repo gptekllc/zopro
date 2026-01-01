@@ -1,11 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
-import { Calendar, Users, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
-import { format, isToday, parseISO, startOfDay, endOfDay } from 'date-fns';
-import { Job } from '@/hooks/useJobs';
+import { Calendar, Users, AlertTriangle, Clock, ChevronRight, UserPlus, Loader2 } from 'lucide-react';
+import { format, isToday, parseISO, addHours } from 'date-fns';
+import { Job, useUpdateJob } from '@/hooks/useJobs';
+import { toast } from 'sonner';
 
 interface SchedulerWidgetProps {
   jobs: Job[];
@@ -13,7 +15,8 @@ interface SchedulerWidgetProps {
 }
 
 export function SchedulerWidget({ jobs, technicians }: SchedulerWidgetProps) {
-  const today = useMemo(() => new Date(), []);
+  const [assigningJobId, setAssigningJobId] = useState<string | null>(null);
+  const updateJob = useUpdateJob();
 
   // Get today's scheduled jobs
   const todaysJobs = useMemo(() => {
@@ -66,12 +69,53 @@ export function SchedulerWidget({ jobs, technicians }: SchedulerWidgetProps) {
     }).sort((a, b) => b.jobCount - a.jobCount);
   }, [technicians, todaysJobs]);
 
+  // Find available technicians (those with less than 8 hours scheduled)
+  const availableTechnicians = useMemo(() => {
+    return technicianSchedule.filter(tech => tech.hoursScheduled < 8);
+  }, [technicianSchedule]);
+
+  const handleQuickAssign = async (jobId: string, technicianId: string) => {
+    setAssigningJobId(jobId);
+    
+    const job = jobs.find(j => j.id === jobId);
+    const duration = job?.estimated_duration || 60;
+    
+    // Schedule for now + 1 hour (give them time to get there)
+    const scheduledStart = addHours(new Date(), 1);
+    const scheduledEnd = new Date(scheduledStart.getTime() + duration * 60 * 1000);
+    
+    try {
+      await updateJob.mutateAsync({
+        id: jobId,
+        assigned_to: technicianId,
+        scheduled_start: scheduledStart.toISOString(),
+        scheduled_end: scheduledEnd.toISOString(),
+        status: 'scheduled',
+      });
+      
+      const techName = technicians.find(t => t.id === technicianId)?.full_name || 'Technician';
+      toast.success(`Assigned to ${techName} for ${format(scheduledStart, 'h:mm a')}`);
+    } catch (error) {
+      // Error handled by mutation
+    } finally {
+      setAssigningJobId(null);
+    }
+  };
+
   const getStatusColor = (status: Job['status']) => {
     switch (status) {
       case 'in_progress': return 'bg-warning/10 text-warning';
       case 'scheduled': return 'bg-blue-500/10 text-blue-500';
       case 'completed': return 'bg-success/10 text-success';
       default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getPriorityColor = (priority: Job['priority']) => {
+    switch (priority) {
+      case 'urgent': return 'text-destructive';
+      case 'high': return 'text-orange-500';
+      default: return 'text-muted-foreground';
     }
   };
 
@@ -108,17 +152,64 @@ export function SchedulerWidget({ jobs, technicians }: SchedulerWidgetProps) {
           </div>
         </div>
 
-        {/* Urgent unassigned alert */}
+        {/* Urgent unassigned jobs with quick assign */}
         {urgentUnassigned.length > 0 && (
-          <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-            <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-destructive">
-                {urgentUnassigned.length} urgent job{urgentUnassigned.length > 1 ? 's' : ''} need assignment
-              </p>
-              <p className="text-xs text-destructive/80 truncate">
-                {urgentUnassigned.slice(0, 2).map(j => j.title).join(', ')}
-              </p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+              <AlertTriangle className="w-4 h-4" />
+              Urgent Jobs Need Assignment
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {urgentUnassigned.slice(0, 5).map(job => (
+                <div 
+                  key={job.id} 
+                  className="flex items-center gap-3 p-3 bg-destructive/5 border border-destructive/20 rounded-lg"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{job.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {job.customer?.name}
+                      {job.priority === 'urgent' && (
+                        <Badge variant="destructive" className="ml-2 text-[10px] px-1 py-0">URGENT</Badge>
+                      )}
+                    </p>
+                  </div>
+                  <div className="shrink-0 w-36">
+                    {assigningJobId === job.id ? (
+                      <div className="flex items-center justify-center h-9">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      </div>
+                    ) : (
+                      <Select onValueChange={(value) => handleQuickAssign(job.id, value)}>
+                        <SelectTrigger className="h-9 text-xs">
+                          <div className="flex items-center gap-1">
+                            <UserPlus className="w-3 h-3" />
+                            <SelectValue placeholder="Assign" />
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent className="z-50">
+                          {availableTechnicians.length > 0 ? (
+                            availableTechnicians.map(tech => (
+                              <SelectItem key={tech.id} value={tech.id}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="truncate">{tech.full_name || 'Unnamed'}</span>
+                                  <span className="text-xs text-muted-foreground shrink-0">
+                                    {(8 - tech.hoursScheduled).toFixed(1)}h free
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              No available technicians
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
