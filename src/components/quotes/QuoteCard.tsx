@@ -17,27 +17,27 @@ interface QuoteCardProps {
 
 export function QuoteCard({ quote, onView }: QuoteCardProps) {
   return (
-    <div className="flex items-center justify-between p-3 border rounded-lg bg-card">
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-3 border rounded-lg bg-card">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-sm">{quote.quote_number}</span>
-          <Badge className={quoteStatusColors[quote.status] || 'bg-muted'} variant="secondary">
+          <Badge className={`${quoteStatusColors[quote.status] || 'bg-muted'} text-xs`} variant="secondary">
             {quote.status}
           </Badge>
         </div>
-        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 sm:gap-3 mt-1 text-xs sm:text-sm text-muted-foreground flex-wrap">
           <span>${quote.total.toFixed(2)}</span>
-          <span>•</span>
+          <span className="hidden sm:inline">•</span>
           <span>{quote.items?.length || 0} items</span>
           {quote.notes && (
             <>
-              <span>•</span>
-              <span className="truncate max-w-[200px]">{quote.notes}</span>
+              <span className="hidden sm:inline">•</span>
+              <span className="truncate max-w-[150px] sm:max-w-[200px] hidden sm:inline">{quote.notes}</span>
             </>
           )}
         </div>
       </div>
-      <Button variant="ghost" size="sm" onClick={onView}>
+      <Button variant="ghost" size="sm" onClick={onView} className="w-full sm:w-auto">
         View
       </Button>
     </div>

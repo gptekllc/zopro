@@ -88,52 +88,52 @@ export function JobDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-3">
-              <Briefcase className="w-5 h-5 text-primary" />
-              {job.job_number}
+          <div className="flex items-center justify-between gap-2 pr-8">
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
+              <span className="truncate">{job.job_number}</span>
             </DialogTitle>
-            <div className="flex gap-2">
-              <Badge className={priorityColors[job.priority] || 'bg-muted'}>
+            <div className="flex gap-1 sm:gap-2 shrink-0">
+              <Badge className={`${priorityColors[job.priority] || 'bg-muted'} text-xs`}>
                 {job.priority}
               </Badge>
-              <Badge className={statusColors[job.status] || 'bg-muted'}>
+              <Badge className={`${statusColors[job.status] || 'bg-muted'} text-xs`}>
                 {job.status.replace('_', ' ')}
               </Badge>
             </div>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Title */}
           <div>
-            <h3 className="text-lg font-semibold">{job.title}</h3>
+            <h3 className="text-base sm:text-lg font-semibold">{job.title}</h3>
             {job.description && (
-              <p className="text-muted-foreground mt-1">{job.description}</p>
+              <p className="text-muted-foreground mt-1 text-sm">{job.description}</p>
             )}
           </div>
 
           <Separator />
 
           {/* Details Grid */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Customer</p>
-              <p className="font-medium">{customerName || 'Unknown'}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
+              <p className="font-medium text-sm sm:text-base truncate">{customerName || 'Unknown'}</p>
             </div>
             {job.assignee?.full_name && (
               <div>
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
                   <User className="w-3 h-3" /> Assigned To
                 </p>
-                <p className="font-medium">{job.assignee.full_name}</p>
+                <p className="font-medium text-sm sm:text-base truncate">{job.assignee.full_name}</p>
               </div>
             )}
             <div>
-              <p className="text-sm text-muted-foreground">Created</p>
-              <p className="font-medium">{format(new Date(job.created_at), 'MMM d, yyyy')}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
+              <p className="font-medium text-sm sm:text-base">{format(new Date(job.created_at), 'MMM d, yyyy')}</p>
             </div>
           </div>
 
@@ -142,20 +142,20 @@ export function JobDetailDialog({
             <>
               <Separator />
               <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2">
+                <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
                   <Calendar className="w-4 h-4" /> Schedule
                 </h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {job.scheduled_start && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Scheduled Start</p>
-                      <p className="font-medium">{format(new Date(job.scheduled_start), 'MMM d, yyyy h:mm a')}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Scheduled Start</p>
+                      <p className="font-medium text-sm sm:text-base">{format(new Date(job.scheduled_start), 'MMM d, yyyy h:mm a')}</p>
                     </div>
                   )}
                   {job.scheduled_end && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Scheduled End</p>
-                      <p className="font-medium">{format(new Date(job.scheduled_end), 'MMM d, yyyy h:mm a')}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Scheduled End</p>
+                      <p className="font-medium text-sm sm:text-base">{format(new Date(job.scheduled_end), 'MMM d, yyyy h:mm a')}</p>
                     </div>
                   )}
                 </div>
@@ -168,20 +168,20 @@ export function JobDetailDialog({
             <>
               <Separator />
               <div>
-                <h4 className="font-medium mb-3 flex items-center gap-2">
+                <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
                   <Clock className="w-4 h-4" /> Actual Times
                 </h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {job.actual_start && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Started</p>
-                      <p className="font-medium">{format(new Date(job.actual_start), 'MMM d, yyyy h:mm a')}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Started</p>
+                      <p className="font-medium text-sm sm:text-base">{format(new Date(job.actual_start), 'MMM d, yyyy h:mm a')}</p>
                     </div>
                   )}
                   {job.actual_end && (
                     <div>
-                      <p className="text-sm text-muted-foreground">Completed</p>
-                      <p className="font-medium">{format(new Date(job.actual_end), 'MMM d, yyyy h:mm a')}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Completed</p>
+                      <p className="font-medium text-sm sm:text-base">{format(new Date(job.actual_end), 'MMM d, yyyy h:mm a')}</p>
                     </div>
                   )}
                 </div>
@@ -194,8 +194,8 @@ export function JobDetailDialog({
             <>
               <Separator />
               <div>
-                <h4 className="font-medium mb-2">Notes</h4>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{job.notes}</p>
+                <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{job.notes}</p>
               </div>
             </>
           )}
@@ -203,18 +203,18 @@ export function JobDetailDialog({
           {/* Related Quotes Section */}
           <Separator />
           <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
+            <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
               <FileText className="w-4 h-4" /> Related Quotes
             </h4>
             
             {loadingQuotes ? (
-              <p className="text-sm text-muted-foreground">Loading quotes...</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Loading quotes...</p>
             ) : (
               <div className="space-y-4">
                 {/* Origin Quote (Parent) */}
                 {relatedQuotes?.originQuote && (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
                       <ArrowDown className="w-3 h-3" /> Origin Quote (Created This Job)
                     </p>
                     <QuoteCard 
@@ -226,7 +226,7 @@ export function JobDetailDialog({
 
                 {/* Upsell Quotes (Children) */}
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
                     <ArrowUp className="w-3 h-3" /> Upsell Quotes (Created During Job)
                   </p>
                   
@@ -241,13 +241,14 @@ export function JobDetailDialog({
                       ))}
                     </div>
                   ) : (
-                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                      <p className="text-sm text-muted-foreground">No upsell quotes yet</p>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-muted/50 rounded-lg">
+                      <p className="text-xs sm:text-sm text-muted-foreground">No upsell quotes yet</p>
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={handleCreateUpsellQuote}
                         disabled={convertJobToQuote.isPending}
+                        className="w-full sm:w-auto"
                       >
                         <Plus className="w-3 h-3 mr-1" />
                         Create Upsell Quote
@@ -271,13 +272,13 @@ export function JobDetailDialog({
           {job.completion_signed_at && (
             <>
               <Separator />
-              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                  <PenTool className="w-4 h-4" />
+                  <PenTool className="w-4 h-4 shrink-0" />
                   <div>
-                    <span className="text-sm font-medium">Job completion signed</span>
+                    <span className="text-xs sm:text-sm font-medium">Job completion signed</span>
                     {job.completion_signed_by && (
-                      <p className="text-xs">by {job.completion_signed_by}</p>
+                      <p className="text-[10px] sm:text-xs">by {job.completion_signed_by}</p>
                     )}
                   </div>
                 </div>
@@ -286,8 +287,8 @@ export function JobDetailDialog({
           )}
 
           {/* Actions */}
-          <div className="flex gap-2 pt-4">
-            <Button variant="outline" size="sm" onClick={() => onEdit?.(job.id)} className="ml-auto">
+          <div className="flex gap-2 pt-2 sm:pt-4">
+            <Button variant="outline" size="sm" onClick={() => onEdit?.(job.id)} className="w-full sm:w-auto sm:ml-auto">
               <Edit className="w-4 h-4 mr-1" /> Open in Jobs
             </Button>
           </div>
@@ -296,4 +297,3 @@ export function JobDetailDialog({
     </Dialog>
   );
 }
-

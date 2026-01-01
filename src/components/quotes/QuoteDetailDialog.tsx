@@ -44,45 +44,45 @@ export function QuoteDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-3">
-              <FileText className="w-5 h-5 text-primary" />
-              {quote.quote_number}
+          <div className="flex items-center justify-between gap-2 pr-8">
+            <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
+              <span className="truncate">{quote.quote_number}</span>
             </DialogTitle>
-            <Badge className={statusColors[quote.status] || 'bg-muted'}>
+            <Badge className={`${statusColors[quote.status] || 'bg-muted'} shrink-0 text-xs`}>
               {quote.status}
             </Badge>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Customer & Dates */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <p className="text-sm text-muted-foreground">Customer</p>
-              <p className="font-medium">{customerName || 'Unknown'}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
+              <p className="font-medium text-sm sm:text-base truncate">{customerName || 'Unknown'}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Created</p>
-              <p className="font-medium">{format(new Date(quote.created_at), 'MMM d, yyyy')}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
+              <p className="font-medium text-sm sm:text-base">{format(new Date(quote.created_at), 'MMM d, yyyy')}</p>
             </div>
             {quote.valid_until && (
               <div>
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
                   <Calendar className="w-3 h-3" /> Valid Until
                 </p>
-                <p className="font-medium">{format(new Date(quote.valid_until), 'MMM d, yyyy')}</p>
+                <p className="font-medium text-sm sm:text-base">{format(new Date(quote.valid_until), 'MMM d, yyyy')}</p>
               </div>
             )}
             {quote.signed_at && (
               <div>
-                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
                   <PenTool className="w-3 h-3" /> Signed
                 </p>
-                <p className="font-medium text-green-600 flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4" />
+                <p className="font-medium text-green-600 flex items-center gap-1 text-sm sm:text-base">
+                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                   {format(new Date(quote.signed_at), 'MMM d, yyyy')}
                 </p>
               </div>
@@ -93,22 +93,34 @@ export function QuoteDetailDialog({
 
           {/* Line Items */}
           <div>
-            <h4 className="font-medium mb-3">Line Items</h4>
+            <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
             <div className="space-y-2">
               {quote.items && quote.items.length > 0 ? (
                 <>
-                  <div className="grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
+                  {/* Desktop header - hidden on mobile */}
+                  <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
                     <div className="col-span-6">Description</div>
                     <div className="col-span-2 text-right">Qty</div>
                     <div className="col-span-2 text-right">Price</div>
                     <div className="col-span-2 text-right">Total</div>
                   </div>
                   {quote.items.map((item) => (
-                    <div key={item.id} className="grid grid-cols-12 py-2 px-2 bg-muted/50 rounded text-sm">
-                      <div className="col-span-6">{item.description}</div>
-                      <div className="col-span-2 text-right">{item.quantity}</div>
-                      <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
-                      <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
+                    <div key={item.id} className="py-2 px-2 sm:px-3 bg-muted/50 rounded text-sm">
+                      {/* Mobile layout */}
+                      <div className="sm:hidden space-y-1">
+                        <p className="font-medium">{item.description}</p>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>{item.quantity} × ${Number(item.unit_price).toLocaleString()}</span>
+                          <span className="font-medium text-foreground">${Number(item.total).toLocaleString()}</span>
+                        </div>
+                      </div>
+                      {/* Desktop layout */}
+                      <div className="hidden sm:grid grid-cols-12">
+                        <div className="col-span-6">{item.description}</div>
+                        <div className="col-span-2 text-right">{item.quantity}</div>
+                        <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
+                        <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
+                      </div>
                     </div>
                   ))}
                 </>
@@ -122,7 +134,7 @@ export function QuoteDetailDialog({
 
           {/* Totals */}
           <div className="flex justify-end">
-            <div className="w-48 space-y-1">
+            <div className="w-full sm:w-48 space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>${Number(quote.subtotal).toLocaleString()}</span>
@@ -131,7 +143,7 @@ export function QuoteDetailDialog({
                 <span className="text-muted-foreground">Tax</span>
                 <span>${Number(quote.tax).toLocaleString()}</span>
               </div>
-              <div className="flex justify-between font-semibold text-lg pt-2 border-t">
+              <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
                 <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
                 <span>${Number(quote.total).toLocaleString()}</span>
               </div>
@@ -143,8 +155,8 @@ export function QuoteDetailDialog({
             <>
               <Separator />
               <div>
-                <h4 className="font-medium mb-2">Notes</h4>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{quote.notes}</p>
+                <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{quote.notes}</p>
               </div>
             </>
           )}
@@ -153,15 +165,16 @@ export function QuoteDetailDialog({
           {quote.signed_at && quote.signature_id && (
             <>
               <Separator />
-              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                  <PenTool className="w-4 h-4" />
-                  <span className="text-sm font-medium">This quote has been signed</span>
+                  <PenTool className="w-4 h-4 shrink-0" />
+                  <span className="text-xs sm:text-sm font-medium">This quote has been signed</span>
                 </div>
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => onViewSignature?.(quote.signature_id!)}
+                  className="w-full sm:w-auto"
                 >
                   View Signature
                 </Button>
@@ -170,19 +183,22 @@ export function QuoteDetailDialog({
           )}
 
           {/* Actions */}
-          <div className="flex gap-2 pt-4">
-            <Button variant="outline" size="sm" onClick={() => onDownload?.(quote.id)}>
-              <FileDown className="w-4 h-4 mr-1" /> Download
+          <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
+            <Button variant="outline" size="sm" onClick={() => onDownload?.(quote.id)} className="flex-1 sm:flex-none">
+              <FileDown className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Download</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onEmail?.(quote.id)}>
-              <Mail className="w-4 h-4 mr-1" /> Email
+            <Button variant="outline" size="sm" onClick={() => onEmail?.(quote.id)} className="flex-1 sm:flex-none">
+              <Mail className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Email</span>
             </Button>
             {quote.status !== 'rejected' && (
-              <Button variant="outline" size="sm" onClick={() => onConvertToInvoice?.(quote.id)}>
-                <ArrowRight className="w-4 h-4 mr-1" /> Convert to Invoice
+              <Button variant="outline" size="sm" onClick={() => onConvertToInvoice?.(quote.id)} className="flex-1 sm:flex-none">
+                <ArrowRight className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Convert to Invoice</span>
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => onEdit?.(quote.id)} className="ml-auto">
+            <Button variant="outline" size="sm" onClick={() => onEdit?.(quote.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
               <Edit className="w-4 h-4 mr-1" /> Open in Quotes
             </Button>
           </div>

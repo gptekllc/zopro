@@ -1015,64 +1015,64 @@ const Jobs = () => {
 
       {/* Job Detail Modal */}
       <Dialog open={!!viewingJob} onOpenChange={(open) => !open && setViewingJob(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
           {viewingJob && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Briefcase className="w-5 h-5" />
-                  {viewingJob.job_number} - {viewingJob.title}
+                <DialogTitle className="flex items-center gap-2 pr-8 text-base sm:text-lg">
+                  <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="truncate">{viewingJob.job_number} - {viewingJob.title}</span>
                 </DialogTitle>
               </DialogHeader>
               
-              <Tabs defaultValue="details" className="mt-4">
-                <TabsList className="flex-wrap">
-                  <TabsTrigger value="details">Details</TabsTrigger>
-                  <TabsTrigger value="items">Line Items ({viewingJob.items?.length || 0})</TabsTrigger>
-                  <TabsTrigger value="quotes">Quotes</TabsTrigger>
-                  <TabsTrigger value="photos">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
-                  <TabsTrigger value="time">Time</TabsTrigger>
-                  <TabsTrigger value="notes">Notes</TabsTrigger>
+              <Tabs defaultValue="details" className="mt-2 sm:mt-4">
+                <TabsList className="flex-wrap h-auto gap-1 p-1">
+                  <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-3">Details</TabsTrigger>
+                  <TabsTrigger value="items" className="text-xs sm:text-sm px-2 sm:px-3">Items ({viewingJob.items?.length || 0})</TabsTrigger>
+                  <TabsTrigger value="quotes" className="text-xs sm:text-sm px-2 sm:px-3">Quotes</TabsTrigger>
+                  <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
+                  <TabsTrigger value="time" className="text-xs sm:text-sm px-2 sm:px-3">Time</TabsTrigger>
+                  <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 sm:px-3">Notes</TabsTrigger>
                 </TabsList>
                 
                 <TabsContent value="details" className="space-y-4 mt-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <Label className="text-muted-foreground">Customer</Label>
-                      <p className="font-medium">{viewingJob.customer?.name}</p>
+                      <Label className="text-muted-foreground text-xs sm:text-sm">Customer</Label>
+                      <p className="font-medium text-sm sm:text-base truncate">{viewingJob.customer?.name}</p>
                     </div>
                     <div>
-                      <Label className="text-muted-foreground">Status</Label>
-                      <Badge className={getStatusColor(viewingJob.status)}>{viewingJob.status}</Badge>
+                      <Label className="text-muted-foreground text-xs sm:text-sm">Status</Label>
+                      <Badge className={`${getStatusColor(viewingJob.status)} text-xs`}>{viewingJob.status}</Badge>
                     </div>
                     <div>
-                      <Label className="text-muted-foreground">Priority</Label>
-                      <Badge className={getPriorityColor(viewingJob.priority)}>{viewingJob.priority}</Badge>
+                      <Label className="text-muted-foreground text-xs sm:text-sm">Priority</Label>
+                      <Badge className={`${getPriorityColor(viewingJob.priority)} text-xs`}>{viewingJob.priority}</Badge>
                     </div>
                     {viewingJob.assignee?.full_name && (
                       <div>
-                        <Label className="text-muted-foreground">Assigned To</Label>
-                        <p className="font-medium">{viewingJob.assignee.full_name}</p>
+                        <Label className="text-muted-foreground text-xs sm:text-sm">Assigned To</Label>
+                        <p className="font-medium text-sm sm:text-base truncate">{viewingJob.assignee.full_name}</p>
                       </div>
                     )}
                     {viewingJob.scheduled_start && (
-                      <div>
-                        <Label className="text-muted-foreground">Scheduled Start</Label>
-                        <p className="font-medium">{format(new Date(viewingJob.scheduled_start), 'MMM d, yyyy h:mm a')}</p>
+                      <div className="col-span-2 sm:col-span-1">
+                        <Label className="text-muted-foreground text-xs sm:text-sm">Scheduled Start</Label>
+                        <p className="font-medium text-sm sm:text-base">{format(new Date(viewingJob.scheduled_start), 'MMM d, yyyy h:mm a')}</p>
                       </div>
                     )}
                     {viewingJob.scheduled_end && (
-                      <div>
-                        <Label className="text-muted-foreground">Scheduled End</Label>
-                        <p className="font-medium">{format(new Date(viewingJob.scheduled_end), 'MMM d, yyyy h:mm a')}</p>
+                      <div className="col-span-2 sm:col-span-1">
+                        <Label className="text-muted-foreground text-xs sm:text-sm">Scheduled End</Label>
+                        <p className="font-medium text-sm sm:text-base">{format(new Date(viewingJob.scheduled_end), 'MMM d, yyyy h:mm a')}</p>
                       </div>
                     )}
                   </div>
                   
                   {viewingJob.description && (
                     <div>
-                      <Label className="text-muted-foreground">Description</Label>
-                      <p className="mt-1">{viewingJob.description}</p>
+                      <Label className="text-muted-foreground text-xs sm:text-sm">Description</Label>
+                      <p className="mt-1 text-sm">{viewingJob.description}</p>
                     </div>
                   )}
                 </TabsContent>
@@ -1082,31 +1082,43 @@ const Jobs = () => {
                     {viewingJob.items && viewingJob.items.length > 0 ? (
                       <>
                         <div className="rounded-lg border">
-                          <div className="grid grid-cols-12 gap-2 p-3 bg-muted/50 font-medium text-sm">
+                          {/* Desktop header - hidden on mobile */}
+                          <div className="hidden sm:grid grid-cols-12 gap-2 p-3 bg-muted/50 font-medium text-sm">
                             <div className="col-span-6">Description</div>
                             <div className="col-span-2 text-center">Qty</div>
                             <div className="col-span-2 text-right">Unit Price</div>
                             <div className="col-span-2 text-right">Total</div>
                           </div>
                           {viewingJob.items.map((item) => (
-                            <div key={item.id} className="grid grid-cols-12 gap-2 p-3 border-t text-sm">
-                              <div className="col-span-6">{item.description}</div>
-                              <div className="col-span-2 text-center">{item.quantity}</div>
-                              <div className="col-span-2 text-right">${Number(item.unit_price).toFixed(2)}</div>
-                              <div className="col-span-2 text-right">${Number(item.total).toFixed(2)}</div>
+                            <div key={item.id} className="p-3 border-t text-sm">
+                              {/* Mobile layout */}
+                              <div className="sm:hidden space-y-1">
+                                <p className="font-medium">{item.description}</p>
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                  <span>{item.quantity} × ${Number(item.unit_price).toFixed(2)}</span>
+                                  <span className="font-medium text-foreground">${Number(item.total).toFixed(2)}</span>
+                                </div>
+                              </div>
+                              {/* Desktop layout */}
+                              <div className="hidden sm:grid grid-cols-12 gap-2">
+                                <div className="col-span-6">{item.description}</div>
+                                <div className="col-span-2 text-center">{item.quantity}</div>
+                                <div className="col-span-2 text-right">${Number(item.unit_price).toFixed(2)}</div>
+                                <div className="col-span-2 text-right">${Number(item.total).toFixed(2)}</div>
+                              </div>
                             </div>
                           ))}
                         </div>
                         <div className="flex flex-col items-end gap-1 text-sm">
-                          <div className="flex justify-between w-48">
+                          <div className="flex justify-between w-full sm:w-48">
                             <span className="text-muted-foreground">Subtotal:</span>
                             <span>${Number(viewingJob.subtotal ?? 0).toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between w-48">
+                          <div className="flex justify-between w-full sm:w-48">
                             <span className="text-muted-foreground">Tax (8.25%):</span>
                             <span>${Number(viewingJob.tax ?? 0).toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between w-48 font-semibold text-base">
+                          <div className="flex justify-between w-full sm:w-48 font-semibold text-base">
                             <span>Total:</span>
                             <span>${Number(viewingJob.total ?? 0).toFixed(2)}</span>
                           </div>
@@ -1114,8 +1126,8 @@ const Jobs = () => {
                       </>
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
-                        <DollarSign className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                        <p>No line items added</p>
+                        <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No line items added</p>
                         <Button variant="outline" size="sm" className="mt-2" onClick={() => handleEdit(viewingJob)}>
                           <Plus className="w-4 h-4 mr-1" />
                           Add Items
