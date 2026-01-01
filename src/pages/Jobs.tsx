@@ -71,8 +71,9 @@ const Jobs = () => {
       if (job) {
         setViewingJob(job);
         // Clear the URL param after opening
-        searchParams.delete('view');
-        setSearchParams(searchParams, { replace: true });
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('view');
+        setSearchParams(newParams, { replace: true });
       }
     }
   }, [searchParams, jobs, setSearchParams]);
