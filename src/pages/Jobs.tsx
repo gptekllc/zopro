@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, Job, JobItem } from '@/hooks/useJobs';
+import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, useJobRelatedQuotes, Job, JobItem } from '@/hooks/useJobs';
 import { useCustomers } from '@/hooks/useCustomers';
-import { useQuotes } from '@/hooks/useQuotes';
+import { useQuotes, Quote } from '@/hooks/useQuotes';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
+import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff, MoreVertical, DollarSign } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff, MoreVertical, DollarSign, ArrowDown, ArrowUp } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -25,6 +26,8 @@ import JobCalendar from '@/components/jobs/JobCalendar';
 import { CompleteJobDialog } from '@/components/jobs/CompleteJobDialog';
 import { JobTimeTracker } from '@/components/jobs/JobTimeTracker';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
+import { QuoteDetailDialog } from '@/components/quotes/QuoteDetailDialog';
+import { QuoteCard } from '@/components/quotes/QuoteCard';
 
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -95,7 +98,10 @@ const Jobs = () => {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [importQuoteId, setImportQuoteId] = useState<string>('');
   const [completingJob, setCompletingJob] = useState<Job | null>(null);
+  const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
   
+  const downloadDocument = useDownloadDocument();
+  const emailDocument = useEmailDocument();
   const isAdmin = roles.some(r => r.role === 'admin' || r.role === 'manager');
   const technicians = safeProfiles.filter(p => p.role === 'technician' || p.role === 'admin' || p.role === 'manager');
 
@@ -1020,11 +1026,12 @@ const Jobs = () => {
               </DialogHeader>
               
               <Tabs defaultValue="details" className="mt-4">
-                <TabsList>
+                <TabsList className="flex-wrap">
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="items">Line Items ({viewingJob.items?.length || 0})</TabsTrigger>
+                  <TabsTrigger value="quotes">Quotes</TabsTrigger>
                   <TabsTrigger value="photos">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
-                  <TabsTrigger value="time">Time Tracking</TabsTrigger>
+                  <TabsTrigger value="time">Time</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                 </TabsList>
                 
@@ -1227,6 +1234,21 @@ const Jobs = () => {
                     )}
                   </div>
                 </TabsContent>
+                
+                <TabsContent value="quotes" className="mt-4">
+                  <JobRelatedQuotesSection 
+                    job={viewingJob} 
+                    onViewQuote={(quote) => {
+                      setViewingJob(null);
+                      setViewingQuote(quote);
+                    }}
+                    onCreateUpsellQuote={() => {
+                      convertToQuote.mutate(viewingJob);
+                      setViewingJob(null);
+                    }}
+                    isCreatingQuote={convertToQuote.isPending}
+                  />
+                </TabsContent>
               </Tabs>
               
               <DialogFooter className="mt-6 flex-wrap gap-2">
@@ -1259,8 +1281,98 @@ const Jobs = () => {
         open={!!completingJob}
         onOpenChange={(open) => !open && setCompletingJob(null)}
       />
+
+      {/* Quote Detail Dialog */}
+      <QuoteDetailDialog
+        quote={viewingQuote}
+        customerName={viewingQuote ? safeCustomers.find(c => c.id === viewingQuote.customer_id)?.name : undefined}
+        open={!!viewingQuote}
+        onOpenChange={(open) => !open && setViewingQuote(null)}
+        onDownload={(quoteId) => downloadDocument.mutate({ type: 'quote', documentId: quoteId })}
+        onEmail={(quoteId) => {
+          const customer = safeCustomers.find(c => c.id === viewingQuote?.customer_id);
+          if (customer?.email) {
+            emailDocument.mutate({ type: 'quote', documentId: quoteId, recipientEmail: customer.email });
+          } else {
+            toast.error('Customer has no email');
+          }
+        }}
+        onEdit={() => setViewingQuote(null)}
+      />
     </div>
   );
 };
+
+// Separate component for related quotes to use the hook properly
+function JobRelatedQuotesSection({ 
+  job, 
+  onViewQuote, 
+  onCreateUpsellQuote,
+  isCreatingQuote 
+}: { 
+  job: Job; 
+  onViewQuote: (quote: Quote) => void;
+  onCreateUpsellQuote: () => void;
+  isCreatingQuote: boolean;
+}) {
+  const { data: relatedQuotes, isLoading } = useJobRelatedQuotes(job.id, job.quote_id);
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Origin Quote (Parent) */}
+      <div>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+          <ArrowDown className="w-3 h-3" /> Origin Quote (Created This Job)
+        </p>
+        {relatedQuotes?.originQuote ? (
+          <QuoteCard 
+            quote={relatedQuotes.originQuote} 
+            onView={() => onViewQuote(relatedQuotes.originQuote!)}
+          />
+        ) : (
+          <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+            No origin quote - job was created directly
+          </div>
+        )}
+      </div>
+
+      {/* Upsell Quotes (Children) */}
+      <div>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+          <ArrowUp className="w-3 h-3" /> Upsell Quotes (Created During Job)
+        </p>
+        
+        {relatedQuotes?.childQuotes && relatedQuotes.childQuotes.length > 0 ? (
+          <div className="space-y-2">
+            {relatedQuotes.childQuotes.map((quote: Quote) => (
+              <QuoteCard 
+                key={quote.id} 
+                quote={quote} 
+                onView={() => onViewQuote(quote)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+            <p className="text-sm text-muted-foreground">No upsell quotes yet</p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={onCreateUpsellQuote}
+              disabled={isCreatingQuote}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Create Upsell Quote
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default Jobs;

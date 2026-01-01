@@ -747,6 +747,15 @@ const CustomerDetail = () => {
         open={!!selectedJob}
         onOpenChange={(open) => !open && setSelectedJob(null)}
         onEdit={(jobId) => navigate(`/jobs?view=${jobId}`)}
+        onViewQuote={(quote) => {
+          setSelectedJob(null);
+          setSelectedQuote({
+            ...quote,
+            items: quote.items || [],
+            signed_at: quote.signed_at || null,
+            signature_id: quote.signature_id || null,
+          } as CustomerQuote);
+        }}
       />
 
       <QuoteDetailDialog
