@@ -2,9 +2,10 @@ import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput, getPhoneDigits } from '@/components/ui/phone-input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { UserPlus, X, Check, ChevronsUpDown, Search } from 'lucide-react';
+import { UserPlus, X, Check, ChevronsUpDown } from 'lucide-react';
 import { useCreateCustomer, Customer } from '@/hooks/useCustomers';
 import { cn } from '@/lib/utils';
 
@@ -70,7 +71,7 @@ export function InlineCustomerForm({
     try {
       const result = await createCustomer.mutateAsync({
         name: newCustomer.name.trim(),
-        phone: newCustomer.phone.trim() || null,
+        phone: getPhoneDigits(newCustomer.phone) || null,
         email: newCustomer.email.trim() || null,
         address: newCustomer.address.trim() || null,
         city: newCustomer.city.trim() || null,
@@ -118,10 +119,9 @@ export function InlineCustomerForm({
           </div>
           <div className="space-y-2">
             <Label>Phone</Label>
-            <Input
+            <PhoneInput
               value={newCustomer.phone}
-              onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
-              placeholder="Phone number"
+              onChange={(value) => setNewCustomer({ ...newCustomer, phone: value })}
             />
           </div>
         </div>

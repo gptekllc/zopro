@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput, formatPhoneNumber, getPhoneDigits } from '@/components/ui/phone-input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -107,10 +108,15 @@ const Customers = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const submitData = {
+      ...formData,
+      phone: getPhoneDigits(formData.phone) || null,
+    };
+    
     if (editingCustomer) {
-      await updateCustomer.mutateAsync({ id: editingCustomer, ...formData });
+      await updateCustomer.mutateAsync({ id: editingCustomer, ...submitData });
     } else {
-      await createCustomer.mutateAsync(formData as any);
+      await createCustomer.mutateAsync(submitData as any);
     }
     
     setIsDialogOpen(false);
@@ -121,7 +127,7 @@ const Customers = () => {
     setFormData({
       name: customer.name,
       email: customer.email || '',
-      phone: customer.phone || '',
+      phone: formatPhoneNumber(customer.phone || ''),
       address: customer.address || '',
       city: customer.city || '',
       state: customer.state || '',
@@ -200,7 +206,7 @@ const Customers = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
+                  <PhoneInput id="phone" value={formData.phone} onChange={(value) => setFormData({ ...formData, phone: value })} />
                 </div>
               </div>
               <div className="grid grid-cols-4 gap-3">
