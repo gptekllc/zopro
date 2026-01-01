@@ -618,8 +618,10 @@ const Jobs = () => {
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                value={item.unitPrice}
+                                placeholder="0"
+                                value={item.unitPrice === 0 ? '' : item.unitPrice}
                                 onChange={(e) => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                              />
                               />
                             </div>
                             <div className="flex items-end">
@@ -661,8 +663,8 @@ const Jobs = () => {
                               type="number"
                               min="0"
                               step="0.01"
-                              placeholder="Unit Price"
-                              value={item.unitPrice}
+                              placeholder="0"
+                              value={item.unitPrice === 0 ? '' : item.unitPrice}
                               onChange={(e) => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
                             />
                           </div>

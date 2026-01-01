@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote } from '@/hooks/useQuotes';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
+import { useJobs, useCreateJobFromQuoteItems, useAddQuoteItemsToJob } from '@/hooks/useJobs';
 import { useConvertQuoteToInvoice, useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,11 +12,12 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreHorizontal } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreHorizontal, Briefcase } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
+import { CreateJobFromQuoteDialog, AddQuoteItemsToJobDialog } from '@/components/quotes/QuoteToJobDialogs';
 
 interface LineItem {
   id: string;
@@ -29,16 +31,24 @@ const Quotes = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: quotes = [], isLoading } = useQuotes();
   const { data: customers = [] } = useCustomers();
+  const { data: jobs = [] } = useJobs(false);
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
   const deleteQuote = useDeleteQuote();
   const convertToInvoice = useConvertQuoteToInvoice();
   const emailDocument = useEmailDocument();
   const downloadDocument = useDownloadDocument();
+  const createJobFromQuote = useCreateJobFromQuoteItems();
+  const addItemsToJob = useAddQuoteItemsToJob();
   
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedQuoteForEmail, setSelectedQuoteForEmail] = useState<string | null>(null);
   const [emailRecipient, setEmailRecipient] = useState('');
+  
+  // Quote to Job dialogs
+  const [createJobDialogOpen, setCreateJobDialogOpen] = useState(false);
+  const [addToJobDialogOpen, setAddToJobDialogOpen] = useState(false);
+  const [selectedQuoteForJob, setSelectedQuoteForJob] = useState<typeof quotes[0] | null>(null);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -257,6 +267,24 @@ const Quotes = () => {
     }
   };
 
+  const handleOpenCreateJobDialog = (quote: typeof quotes[0]) => {
+    setSelectedQuoteForJob(quote);
+    setCreateJobDialogOpen(true);
+  };
+
+  const handleOpenAddToJobDialog = (quote: typeof quotes[0]) => {
+    setSelectedQuoteForJob(quote);
+    setAddToJobDialogOpen(true);
+  };
+
+  const handleCreateJobFromQuote = async (quoteId: string, selectedItemIds: string[]) => {
+    await createJobFromQuote.mutateAsync({ quoteId, selectedItemIds });
+  };
+
+  const handleAddItemsToJob = async (quoteId: string, jobId: string, selectedItemIds: string[]) => {
+    await addItemsToJob.mutateAsync({ quoteId, jobId, selectedItemIds });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -284,7 +312,7 @@ const Quotes = () => {
               Create Quote
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingQuote ? 'Edit Quote' : 'Create New Quote'}</DialogTitle>
             </DialogHeader>
@@ -316,36 +344,81 @@ const Quotes = () => {
                 </div>
                 
                 {formData.items.map((item) => (
-                  <div key={item.id} className="flex gap-2 items-start">
-                    <Input
-                      placeholder="Description"
-                      value={item.description}
-                      onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                      className="flex-1"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Qty"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                      className="w-20"
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Price"
-                      value={item.unitPrice}
-                      onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                      className="w-24"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveItem(item.id)}
-                      disabled={formData.items.length === 1}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  <div key={item.id} className="space-y-2 sm:space-y-0">
+                    {/* Mobile layout */}
+                    <div className="sm:hidden space-y-2 p-3 bg-muted/50 rounded-lg">
+                      <Input
+                        placeholder="Description"
+                        value={item.description}
+                        onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                      />
+                      <div className="flex gap-2">
+                        <div className="w-20">
+                          <Label className="text-xs text-muted-foreground">Qty</Label>
+                          <Input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <Label className="text-xs text-muted-foreground">Price</Label>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={item.unitPrice === 0 ? '' : item.unitPrice}
+                            onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="flex items-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveItem(item.id)}
+                            disabled={formData.items.length === 1}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="flex justify-end text-sm font-medium">
+                        Total: ${(item.quantity * item.unitPrice).toFixed(2)}
+                      </div>
+                    </div>
+                    {/* Desktop layout */}
+                    <div className="hidden sm:flex gap-2 items-start">
+                      <Input
+                        placeholder="Description"
+                        value={item.description}
+                        onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                        className="flex-1"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Qty"
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                        className="w-20"
+                      />
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={item.unitPrice === 0 ? '' : item.unitPrice}
+                        onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                        className="w-24"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveItem(item.id)}
+                        disabled={formData.items.length === 1}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
 
@@ -363,7 +436,7 @@ const Quotes = () => {
                 />
               </div>
               
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
@@ -552,10 +625,29 @@ const Quotes = () => {
                       <Mail className="w-4 h-4" />
                     </Button>
                     {quote.status === 'accepted' && (
-                      <Button variant="outline" size="sm" onClick={() => handleConvertToInvoice(quote.id)} disabled={convertToInvoice.isPending} className="text-xs">
-                        <ArrowRight className="w-3.5 h-3.5 mr-1" />
-                        Invoice
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="text-xs gap-1">
+                            <Briefcase className="w-3.5 h-3.5" />
+                            Job
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-popover z-50">
+                          <DropdownMenuItem onClick={() => handleOpenCreateJobDialog(quote)}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Create New Job
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleOpenAddToJobDialog(quote)}>
+                            <Briefcase className="w-4 h-4 mr-2" />
+                            Add to Existing Job
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleConvertToInvoice(quote.id)}>
+                            <ArrowRight className="w-4 h-4 mr-2" />
+                            Convert to Invoice
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(quote)} title="Edit">
                       <Edit className="w-4 h-4" />
@@ -721,7 +813,32 @@ const Quotes = () => {
                   <Mail className="w-4 h-4 sm:mr-1" />
                   <span className="hidden sm:inline">Email</span>
                 </Button>
-                {viewingQuote.status !== 'rejected' && (
+                {viewingQuote.status === 'accepted' && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-1">
+                        <Briefcase className="w-4 h-4" />
+                        <span className="hidden sm:inline">Create Job</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-popover z-50">
+                      <DropdownMenuItem onClick={() => { setViewingQuote(null); handleOpenCreateJobDialog(viewingQuote); }}>
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create New Job
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setViewingQuote(null); handleOpenAddToJobDialog(viewingQuote); }}>
+                        <Briefcase className="w-4 h-4 mr-2" />
+                        Add to Existing Job
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => handleConvertToInvoice(viewingQuote.id)}>
+                        <ArrowRight className="w-4 h-4 mr-2" />
+                        Convert to Invoice
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                {viewingQuote.status !== 'rejected' && viewingQuote.status !== 'accepted' && (
                   <Button variant="outline" size="sm" onClick={() => handleConvertToInvoice(viewingQuote.id)} className="flex-1 sm:flex-none">
                     <ArrowRight className="w-4 h-4 sm:mr-1" />
                     <span className="hidden sm:inline">Convert to Invoice</span>
@@ -735,6 +852,25 @@ const Quotes = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Create Job from Quote Dialog */}
+      <CreateJobFromQuoteDialog
+        quote={selectedQuoteForJob}
+        open={createJobDialogOpen}
+        onOpenChange={setCreateJobDialogOpen}
+        onConfirm={handleCreateJobFromQuote}
+        isPending={createJobFromQuote.isPending}
+      />
+
+      {/* Add Items to Existing Job Dialog */}
+      <AddQuoteItemsToJobDialog
+        quote={selectedQuoteForJob}
+        jobs={jobs as any[]}
+        open={addToJobDialogOpen}
+        onOpenChange={setAddToJobDialogOpen}
+        onConfirm={handleAddItemsToJob}
+        isPending={addItemsToJob.isPending}
+      />
     </div>
   );
 };
