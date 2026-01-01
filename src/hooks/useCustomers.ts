@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { customerSchema, sanitizeErrorMessage } from '@/lib/validation';
+
 
 export interface Customer {
   id: string;
@@ -44,9 +46,16 @@ export function useCreateCustomer() {
     mutationFn: async (customer: Omit<Customer, 'id' | 'company_id' | 'created_at' | 'updated_at'>) => {
       if (!profile?.company_id) throw new Error('No company associated');
       
+      // Validate customer data
+      const validation = customerSchema.safeParse(customer);
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        throw new Error(firstError?.message || 'Validation failed');
+      }
+      
       const { data, error } = await (supabase as any)
         .from('customers')
-        .insert({ ...customer, company_id: profile.company_id })
+        .insert({ ...validation.data, company_id: profile.company_id })
         .select()
         .single();
       
@@ -57,8 +66,8 @@ export function useCreateCustomer() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       toast.success('Customer added successfully');
     },
-    onError: (error: any) => {
-      toast.error('Failed to add customer: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to add customer: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -79,8 +88,8 @@ export function useUpdateCustomer() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       toast.success('Customer updated successfully');
     },
-    onError: (error: any) => {
-      toast.error('Failed to update customer: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to update customer: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -101,8 +110,8 @@ export function useDeleteCustomer() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       toast.success('Customer deleted');
     },
-    onError: (error: any) => {
-      toast.error('Failed to delete customer: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to delete customer: ' + sanitizeErrorMessage(error));
     },
   });
 }

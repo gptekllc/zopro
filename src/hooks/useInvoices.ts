@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { invoiceSchema, itemSchema, sanitizeErrorMessage } from '@/lib/validation';
 
 export interface InvoiceItem {
   id: string;
@@ -66,6 +67,22 @@ export function useCreateInvoice() {
     }: Omit<Invoice, 'id' | 'company_id' | 'invoice_number' | 'created_at' | 'updated_at'> & { items: Omit<InvoiceItem, 'id' | 'invoice_id' | 'created_at'>[] }) => {
       if (!profile?.company_id) throw new Error('No company associated');
       
+      // Validate invoice data
+      const invoiceValidation = invoiceSchema.safeParse(invoice);
+      if (!invoiceValidation.success) {
+        const firstError = invoiceValidation.error.errors[0];
+        throw new Error(firstError?.message || 'Validation failed');
+      }
+      
+      // Validate each item
+      for (const item of items) {
+        const itemValidation = itemSchema.safeParse(item);
+        if (!itemValidation.success) {
+          const firstError = itemValidation.error.errors[0];
+          throw new Error(firstError?.message || 'Item validation failed');
+        }
+      }
+      
       // Get next invoice number
       const { count } = await (supabase as any)
         .from('invoices')
@@ -83,7 +100,7 @@ export function useCreateInvoice() {
       const { data: invoiceData, error: invoiceError } = await (supabase as any)
         .from('invoices')
         .insert({
-          ...invoice,
+          ...invoiceValidation.data,
           company_id: profile.company_id,
           invoice_number: invoiceNumber,
           subtotal,
@@ -119,8 +136,8 @@ export function useCreateInvoice() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       toast.success('Invoice created successfully');
     },
-    onError: (error: any) => {
-      toast.error('Failed to create invoice: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to create invoice: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -168,8 +185,8 @@ export function useUpdateInvoice() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       toast.success('Invoice updated successfully');
     },
-    onError: (error: any) => {
-      toast.error('Failed to update invoice: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to update invoice: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -190,8 +207,8 @@ export function useDeleteInvoice() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       toast.success('Invoice deleted');
     },
-    onError: (error: any) => {
-      toast.error('Failed to delete invoice: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to delete invoice: ' + sanitizeErrorMessage(error));
     },
   });
 }
