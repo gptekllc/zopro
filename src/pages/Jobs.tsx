@@ -748,18 +748,21 @@ const Jobs = () => {
 
       {/* Filters */}
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search jobs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+        {/* Search bar row */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search jobs..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        
+        {/* Filters row - Status, Archived toggle, View mode */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-40">
+            <SelectTrigger className="w-32 sm:w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -769,6 +772,7 @@ const Jobs = () => {
               ))}
             </SelectContent>
           </Select>
+          
           <Button
             variant={showArchived ? 'secondary' : 'outline'}
             size="sm"
@@ -779,7 +783,8 @@ const Jobs = () => {
             <span className="hidden sm:inline">{showArchived ? 'Hide Archived' : 'Show Archived'}</span>
             <span className="sm:hidden">{showArchived ? 'Hide' : 'Archived'}</span>
           </Button>
-          <div className="flex gap-1 border rounded-md p-1">
+          
+          <div className="flex gap-1 border rounded-md p-1 ml-auto">
             <Button
               variant={viewMode === 'list' ? 'default' : 'ghost'}
               size="sm"
@@ -796,12 +801,14 @@ const Jobs = () => {
             >
               <CalendarDays className="w-4 h-4" />
             </Button>
+            {/* Scheduler View - Hidden on mobile */}
             {isAdmin && (
               <Button
                 variant={viewMode === 'scheduler' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('scheduler')}
                 title="Scheduler View"
+                className="hidden sm:flex"
               >
                 <Users className="w-4 h-4" />
               </Button>
