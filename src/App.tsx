@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
@@ -37,12 +38,19 @@ const App = () => (
             <Route path="/" element={<Login />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/customer-portal" element={<CustomerPortal />} />
-            
+
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/customers" element={<Customers />} />
               <Route path="/customers/:customerId" element={<CustomerDetail />} />
-              <Route path="/jobs" element={<Jobs />} />
+              <Route
+                path="/jobs"
+                element={
+                  <ErrorBoundary fallbackTitle="Jobs page crashed">
+                    <Jobs />
+                  </ErrorBoundary>
+                }
+              />
               <Route path="/quotes" element={<Quotes />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/timeclock" element={<TimeClock />} />
@@ -54,7 +62,7 @@ const App = () => (
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/super-admin" element={<SuperAdmin />} />
             </Route>
-            
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
