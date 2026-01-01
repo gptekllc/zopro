@@ -405,125 +405,163 @@ const Quotes = () => {
       {/* Quote List */}
       <div className="space-y-3">
         {filteredQuotes.map((quote) => (
-          <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow">
+          <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewingQuote(quote)}>
             <CardContent className="p-4 sm:p-5">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                {/* Left: Icon + Info - Clickable */}
-                <div 
-                  className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 cursor-pointer"
-                  onClick={() => setViewingQuote(quote)}
-                >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-sm sm:text-base">{quote.quote_number}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(quote.status)}`}>
-                        {quote.status}
-                      </span>
+              {/* Mobile Layout */}
+              <div className="flex flex-col gap-2 sm:hidden">
+                {/* Row 1: Quote Info */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">{quote.quote_number}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">{getCustomerName(quote.customer_id)}</p>
-                    {/* Mobile: Amount + Date */}
-                    <div className="flex items-center gap-3 mt-1 sm:hidden">
-                      <p className="font-semibold text-sm flex items-center gap-0.5">
-                        <DollarSign className="w-3.5 h-3.5" />
-                        {Number(quote.total).toLocaleString()}
-                      </p>
-                      {quote.valid_until && (
-                        <p className="text-xs text-muted-foreground">
-                          Valid: {format(new Date(quote.valid_until), 'MMM d')}
-                        </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                      <span className="truncate">{getCustomerName(quote.customer_id)}</span>
+                      {getCustomerEmail(quote.customer_id) && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate">{getCustomerEmail(quote.customer_id)}</span>
+                        </>
                       )}
                     </div>
-                  </div>
-                </div>
-
-                {/* Right: Desktop Amount + Actions */}
-                <div className="flex items-center gap-4 sm:gap-6 justify-end">
-                  <div className="text-right hidden sm:block">
-                    <p className="font-semibold flex items-center gap-1">
-                      <DollarSign className="w-4 h-4" />
-                      {Number(quote.total).toLocaleString()}
-                    </p>
-                    {quote.valid_until && (
-                      <p className="text-xs text-muted-foreground">
-                        Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}
-                      </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                      {quote.valid_until && (
+                        <span className="flex items-center gap-1 shrink-0">
+                          Valid: {format(new Date(quote.valid_until), 'MMM d')}
+                        </span>
+                      )}
+                    </div>
+                    {quote.notes && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{quote.notes}</p>
                     )}
                   </div>
-                  <div className="flex gap-1">
-                    {/* Status change dropdown */}
+                  <span className="text-sm font-medium text-primary shrink-0">${Number(quote.total).toLocaleString()}</span>
+                </div>
+                
+                {/* Row 2: Tags + Actions */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" title="Change Status">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(quote.status)}`}>
+                          {quote.status}
+                          <FileText className="w-3 h-3" />
+                        </span>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem 
-                          onClick={() => handleStatusChange(quote.id, 'sent')}
-                          disabled={quote.status === 'sent'}
-                        >
-                          <Send className="w-4 h-4 mr-2" />
-                          Mark as Sent
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleStatusChange(quote.id, 'accepted')}
-                          disabled={quote.status === 'accepted'}
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2 text-success" />
-                          Mark as Accepted
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleStatusChange(quote.id, 'rejected')}
-                          disabled={quote.status === 'rejected'}
-                        >
-                          <XCircle className="w-4 h-4 mr-2 text-destructive" />
-                          Mark as Rejected
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          onClick={() => handleStatusChange(quote.id, 'draft')}
-                          disabled={quote.status === 'draft'}
-                        >
-                          Reset to Draft
-                        </DropdownMenuItem>
+                      <DropdownMenuContent align="start" className="bg-popover z-50">
+                        {['draft', 'sent', 'accepted', 'rejected'].map((status) => (
+                          <DropdownMenuItem
+                            key={status}
+                            onClick={() => handleStatusChange(quote.id, status)}
+                            disabled={quote.status === status}
+                            className={quote.status === status ? 'bg-accent' : ''}
+                          >
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(status)}`}>
+                              {status}
+                            </span>
+                            {quote.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
+                          </DropdownMenuItem>
+                        ))}
                       </DropdownMenuContent>
                     </DropdownMenu>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownload(quote.id)} title="Download PDF">
+                      <FileDown className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEmailDialog(quote.id, quote.customer_id)} title="Email Quote">
+                      <Mail className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(quote)} title="Edit">
+                      <Edit className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(quote.id)} title="Delete">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDownload(quote.id)}
-                      title="Download PDF"
-                    >
+              {/* Desktop Layout */}
+              <div className="hidden sm:flex flex-col gap-2">
+                {/* Row 1: Quote Info + Amount */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{quote.quote_number}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
+                      <span className="truncate">{getCustomerName(quote.customer_id)}</span>
+                      {getCustomerEmail(quote.customer_id) && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate">{getCustomerEmail(quote.customer_id)}</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
+                      {quote.valid_until && (
+                        <span className="flex items-center gap-1 shrink-0">
+                          Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}
+                        </span>
+                      )}
+                    </div>
+                    {quote.notes && (
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{quote.notes}</p>
+                    )}
+                  </div>
+                  <span className="text-base font-semibold text-primary shrink-0">${Number(quote.total).toLocaleString()}</span>
+                </div>
+                
+                {/* Row 2: Tags + Actions */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(quote.status)}`}>
+                          {quote.status}
+                          <FileText className="w-3 h-3" />
+                        </span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="bg-popover z-50">
+                        {['draft', 'sent', 'accepted', 'rejected'].map((status) => (
+                          <DropdownMenuItem
+                            key={status}
+                            onClick={() => handleStatusChange(quote.id, status)}
+                            disabled={quote.status === status}
+                            className={quote.status === status ? 'bg-accent' : ''}
+                          >
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(status)}`}>
+                              {status}
+                            </span>
+                            {quote.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" onClick={() => handleDownload(quote.id)} title="Download PDF">
                       <FileDown className="w-4 h-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleOpenEmailDialog(quote.id, quote.customer_id)}
-                      title="Email Quote"
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenEmailDialog(quote.id, quote.customer_id)} title="Email Quote">
                       <Mail className="w-4 h-4" />
                     </Button>
                     {quote.status === 'accepted' && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => handleConvertToInvoice(quote.id)}
-                        title="Convert to Invoice"
-                        disabled={convertToInvoice.isPending}
-                      >
-                        <ArrowRight className="w-4 h-4 text-success" />
+                      <Button variant="outline" size="sm" onClick={() => handleConvertToInvoice(quote.id)} disabled={convertToInvoice.isPending} className="text-xs">
+                        <ArrowRight className="w-3.5 h-3.5 mr-1" />
+                        Invoice
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(quote)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(quote)} title="Edit">
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(quote.id)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
+                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(quote.id)} title="Delete">
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -531,17 +569,14 @@ const Quotes = () => {
             </CardContent>
           </Card>
         ))}
+        {filteredQuotes.length === 0 && (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No quotes found
+            </CardContent>
+          </Card>
+        )}
       </div>
-
-      {filteredQuotes.length === 0 && (
-        <div className="text-center py-12">
-          <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium">No quotes found</h3>
-          <p className="text-muted-foreground mt-1">
-            {searchQuery || statusFilter !== 'all' ? 'Try adjusting your filters' : 'Create your first quote to get started'}
-          </p>
-        </div>
-      )}
 
       {/* Email Dialog */}
       <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>

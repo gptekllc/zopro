@@ -400,80 +400,128 @@ const Invoices = () => {
       {/* Invoice List */}
       <div className="space-y-3">
         {filteredInvoices.map((invoice) => (
-          <Card key={invoice.id} className="overflow-hidden hover:shadow-md transition-shadow">
+          <Card key={invoice.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewingInvoice(invoice)}>
             <CardContent className="p-4 sm:p-5">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                {/* Left: Icon + Info - Clickable */}
-                <div 
-                  className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 cursor-pointer"
-                  onClick={() => setViewingInvoice(invoice)}
-                >
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
-                    <Receipt className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-sm sm:text-base">{invoice.invoice_number}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(invoice.status)}`}>
-                        {invoice.status}
-                      </span>
+              {/* Mobile Layout */}
+              <div className="flex flex-col gap-2 sm:hidden">
+                {/* Row 1: Invoice Info */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm">{invoice.invoice_number}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">{getCustomerName(invoice.customer_id)}</p>
-                    {/* Mobile: Amount + Date */}
-                    <div className="flex items-center gap-3 mt-1 sm:hidden">
-                      <p className="font-semibold text-sm flex items-center gap-0.5">
-                        <DollarSign className="w-3.5 h-3.5" />
-                        {Number(invoice.total).toLocaleString()}
-                      </p>
-                      {invoice.due_date && (
-                        <p className="text-xs text-muted-foreground">
-                          Due: {format(new Date(invoice.due_date), 'MMM d')}
-                        </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                      <span className="truncate">{getCustomerName(invoice.customer_id)}</span>
+                      {getCustomerEmail(invoice.customer_id) && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate">{getCustomerEmail(invoice.customer_id)}</span>
+                        </>
                       )}
                     </div>
-                  </div>
-                </div>
-
-                {/* Right: Desktop Amount + Actions */}
-                <div className="flex items-center gap-4 sm:gap-6 justify-end">
-                  <div className="text-right hidden sm:block">
-                    <p className="font-semibold flex items-center gap-1">
-                      <DollarSign className="w-4 h-4" />
-                      {Number(invoice.total).toLocaleString()}
-                    </p>
-                    {invoice.due_date && (
-                      <p className="text-xs text-muted-foreground">
-                        Due {format(new Date(invoice.due_date), 'MMM d, yyyy')}
-                      </p>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                      {invoice.due_date && (
+                        <span className="flex items-center gap-1 shrink-0">
+                          Due: {format(new Date(invoice.due_date), 'MMM d')}
+                        </span>
+                      )}
+                    </div>
+                    {invoice.notes && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{invoice.notes}</p>
                     )}
                   </div>
-                  <div className="flex gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDownload(invoice.id)}
-                      title="Download PDF"
-                    >
+                  <span className="text-sm font-medium text-primary shrink-0">${Number(invoice.total).toLocaleString()}</span>
+                </div>
+                
+                {/* Row 2: Tags + Actions */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(invoice.status)}`}>
+                      {invoice.status}
+                    </span>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownload(invoice.id)} title="Download PDF">
+                      <FileDown className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEmailDialog(invoice.id, invoice.customer_id)} title="Email Invoice">
+                      <Mail className="w-3.5 h-3.5" />
+                    </Button>
+                    {invoice.status !== 'paid' && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => handleMarkPaid(invoice.id)} title="Mark Paid">
+                        <CheckCircle className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(invoice)} title="Edit">
+                      <Edit className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(invoice.id)} title="Delete">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Desktop Layout */}
+              <div className="hidden sm:flex flex-col gap-2">
+                {/* Row 1: Invoice Info + Amount */}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{invoice.invoice_number}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
+                      <span className="truncate">{getCustomerName(invoice.customer_id)}</span>
+                      {getCustomerEmail(invoice.customer_id) && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate">{getCustomerEmail(invoice.customer_id)}</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
+                      {invoice.due_date && (
+                        <span className="flex items-center gap-1 shrink-0">
+                          Due {format(new Date(invoice.due_date), 'MMM d, yyyy')}
+                        </span>
+                      )}
+                    </div>
+                    {invoice.notes && (
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{invoice.notes}</p>
+                    )}
+                  </div>
+                  <span className="text-base font-semibold text-primary shrink-0">${Number(invoice.total).toLocaleString()}</span>
+                </div>
+                
+                {/* Row 2: Tags + Actions */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(invoice.status)}`}>
+                      {invoice.status}
+                    </span>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" onClick={() => handleDownload(invoice.id)} title="Download PDF">
                       <FileDown className="w-4 h-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleOpenEmailDialog(invoice.id, invoice.customer_id)}
-                      title="Email Invoice"
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => handleOpenEmailDialog(invoice.id, invoice.customer_id)} title="Email Invoice">
                       <Mail className="w-4 h-4" />
                     </Button>
                     {invoice.status !== 'paid' && (
-                      <Button variant="ghost" size="icon" onClick={() => handleMarkPaid(invoice.id)} title="Mark as Paid">
-                        <CheckCircle className="w-4 h-4 text-success" />
+                      <Button variant="outline" size="sm" onClick={() => handleMarkPaid(invoice.id)} className="text-xs">
+                        <CheckCircle className="w-3.5 h-3.5 mr-1 text-success" />
+                        Mark Paid
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(invoice)}>
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(invoice)} title="Edit">
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(invoice.id)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
+                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(invoice.id)} title="Delete">
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -481,17 +529,15 @@ const Invoices = () => {
             </CardContent>
           </Card>
         ))}
+        {filteredInvoices.length === 0 && (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              No invoices found
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {filteredInvoices.length === 0 && (
-        <div className="text-center py-12">
-          <Receipt className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium">No invoices found</h3>
-          <p className="text-muted-foreground mt-1">
-            {searchQuery || statusFilter !== 'all' ? 'Try adjusting your filters' : 'Create your first invoice to get started'}
-          </p>
-        </div>
-      )}
 
       {/* Email Dialog */}
       <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
