@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useTimeEntries, useActiveTimeEntry, useClockIn, useClockOut, useUpdateTimeEntry, useStartBreak, useEndBreak, TimeEntry } from '@/hooks/useTimeEntries';
+import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Clock, Play, Square, Timer, Calendar, Loader2, Eye, Pencil, Coffee, FileText } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Clock, Play, Square, Timer, Calendar, Loader2, Eye, Pencil, Coffee, FileText, Briefcase } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
 import { toast } from 'sonner';
 import { TimeEntryDialog } from '@/components/timeclock/TimeEntryDialog';
@@ -14,6 +17,7 @@ import { Link } from 'react-router-dom';
 const TimeClock = () => {
   const { user, profile, roles } = useAuth();
   const { data: company } = useCompany();
+  const { data: jobs = [] } = useJobs();
   const { data: timeEntries = [], isLoading } = useTimeEntries();
   const { data: activeEntry } = useActiveTimeEntry();
   const clockIn = useClockIn();
@@ -23,10 +27,16 @@ const TimeClock = () => {
   const endBreak = useEndBreak();
   
   const [notes, setNotes] = useState('');
+  const [selectedJobId, setSelectedJobId] = useState<string>('none');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [breakTime, setBreakTime] = useState('00:00');
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Filter jobs that can be worked on (scheduled or in_progress)
+  const availableJobs = jobs.filter(j => 
+    j.status === 'scheduled' || j.status === 'in_progress' || j.status === 'draft'
+  );
 
   // Check if user can edit entries (admin or manager)
   const canEdit = roles.some(r => r.role === 'admin' || r.role === 'manager');
@@ -100,8 +110,12 @@ const TimeClock = () => {
 
   const handleClockIn = async () => {
     try {
-      await clockIn.mutateAsync(notes || undefined);
+      await clockIn.mutateAsync({ 
+        notes: notes || undefined, 
+        jobId: selectedJobId !== 'none' ? selectedJobId : undefined 
+      });
       setNotes('');
+      setSelectedJobId('none');
       toast.success('Clocked in successfully!');
     } catch (error) {
       toast.error('Failed to clock in');
@@ -212,11 +226,17 @@ const TimeClock = () => {
               {activeEntry?.is_on_break ? 'On Break' : activeEntry ? 'Currently Working' : 'Ready to Clock In'}
             </p>
             <p className="text-5xl font-bold font-mono mb-2">{elapsedTime}</p>
-            {activeEntry && (
+              {activeEntry && (
               <div className="space-y-1">
                 <p className="text-sm opacity-80">
                   Started at {format(new Date(activeEntry.clock_in), 'h:mm a')}
                 </p>
+                {activeEntry.job && (
+                  <p className="text-sm opacity-80 flex items-center justify-center gap-1">
+                    <Briefcase className="w-3 h-3" />
+                    {activeEntry.job.job_number}
+                  </p>
+                )}
                 {((activeEntry.break_minutes || 0) > 0 || activeEntry.is_on_break) && (
                   <p className="text-sm opacity-80 flex items-center justify-center gap-1">
                     <Coffee className="w-3 h-3" />
@@ -230,6 +250,26 @@ const TimeClock = () => {
         
         <CardContent className="p-6">
           <div className="space-y-4">
+            {/* Job Selector - only show when not clocked in */}
+            {!activeEntry && availableJobs.length > 0 && (
+              <div className="space-y-2">
+                <Label>Link to Job (optional)</Label>
+                <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a job" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No job</SelectItem>
+                    {availableJobs.map((job) => (
+                      <SelectItem key={job.id} value={job.id}>
+                        {job.job_number} - {job.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            
             <Textarea
               placeholder="Add notes (optional)..."
               value={notes}
@@ -319,9 +359,17 @@ const TimeClock = () => {
                     {canEdit ? <Pencil className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </Button>
                   <div>
-                    <p className="font-medium">
-                      {format(new Date(entry.clock_in), 'EEEE, MMM d')}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">
+                        {format(new Date(entry.clock_in), 'EEEE, MMM d')}
+                      </p>
+                      {entry.job && (
+                        <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full flex items-center gap-1">
+                          <Briefcase className="w-3 h-3" />
+                          {entry.job.job_number}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-muted-foreground">
                       {format(new Date(entry.clock_in), 'h:mm a')}
                       {entry.clock_out && ` - ${format(new Date(entry.clock_out), 'h:mm a')}`}

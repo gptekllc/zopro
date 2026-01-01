@@ -14,11 +14,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import JobCalendar from '@/components/jobs/JobCalendar';
 import { CompleteJobDialog } from '@/components/jobs/CompleteJobDialog';
+import { JobTimeTracker } from '@/components/jobs/JobTimeTracker';
 
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -601,6 +602,10 @@ const Jobs = () => {
                 <TabsList>
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="photos">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
+                  <TabsTrigger value="time">
+                    <Clock className="w-4 h-4 mr-1" />
+                    Time
+                  </TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                 </TabsList>
                 
@@ -724,6 +729,10 @@ const Jobs = () => {
                       );
                     })}
                   </div>
+                </TabsContent>
+
+                <TabsContent value="time" className="space-y-4">
+                  <JobTimeTracker jobId={viewingJob.id} jobNumber={viewingJob.job_number} />
                 </TabsContent>
                 
                 <TabsContent value="notes" className="space-y-4">

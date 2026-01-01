@@ -7,6 +7,7 @@ export interface TimeEntry {
   id: string;
   company_id: string;
   user_id: string;
+  job_id: string | null;
   clock_in: string;
   clock_out: string | null;
   break_minutes: number;
@@ -16,6 +17,7 @@ export interface TimeEntry {
   created_at: string;
   updated_at: string;
   user?: { full_name: string };
+  job?: { job_number: string; title: string };
 }
 
 export function useTimeEntries() {
@@ -28,7 +30,8 @@ export function useTimeEntries() {
         .from('time_entries')
         .select(`
           *,
-          user:profiles(full_name)
+          user:profiles(full_name),
+          job:jobs(job_number, title)
         `)
         .order('clock_in', { ascending: false });
       
@@ -61,12 +64,34 @@ export function useActiveTimeEntry() {
   });
 }
 
+export function useJobTimeEntries(jobId: string | null) {
+  return useQuery({
+    queryKey: ['job_time_entries', jobId],
+    queryFn: async () => {
+      if (!jobId) return [];
+      
+      const { data, error } = await (supabase as any)
+        .from('time_entries')
+        .select(`
+          *,
+          user:profiles(full_name)
+        `)
+        .eq('job_id', jobId)
+        .order('clock_in', { ascending: false });
+      
+      if (error) throw error;
+      return data as TimeEntry[];
+    },
+    enabled: !!jobId,
+  });
+}
+
 export function useClockIn() {
   const queryClient = useQueryClient();
   const { user, profile } = useAuth();
   
   return useMutation({
-    mutationFn: async (notes?: string) => {
+    mutationFn: async ({ notes, jobId }: { notes?: string; jobId?: string }) => {
       if (!user || !profile?.company_id) throw new Error('Not authenticated');
       
       const { data, error } = await (supabase as any)
@@ -74,6 +99,7 @@ export function useClockIn() {
         .insert({
           company_id: profile.company_id,
           user_id: user.id,
+          job_id: jobId || null,
           clock_in: new Date().toISOString(),
           notes,
         })
@@ -86,6 +112,7 @@ export function useClockIn() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time_entries'] });
       queryClient.invalidateQueries({ queryKey: ['active_time_entry'] });
+      queryClient.invalidateQueries({ queryKey: ['job_time_entries'] });
       toast.success('Clocked in successfully');
     },
     onError: (error: any) => {
@@ -114,6 +141,7 @@ export function useClockOut() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time_entries'] });
       queryClient.invalidateQueries({ queryKey: ['active_time_entry'] });
+      queryClient.invalidateQueries({ queryKey: ['job_time_entries'] });
       toast.success('Clocked out successfully');
     },
     onError: (error: any) => {
@@ -140,6 +168,7 @@ export function useStartBreak() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time_entries'] });
       queryClient.invalidateQueries({ queryKey: ['active_time_entry'] });
+      queryClient.invalidateQueries({ queryKey: ['job_time_entries'] });
       toast.success('Break started');
     },
     onError: (error: any) => {
@@ -175,6 +204,7 @@ export function useEndBreak() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time_entries'] });
       queryClient.invalidateQueries({ queryKey: ['active_time_entry'] });
+      queryClient.invalidateQueries({ queryKey: ['job_time_entries'] });
       toast.success('Break ended');
     },
     onError: (error: any) => {
@@ -209,6 +239,7 @@ export function useUpdateTimeEntry() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time_entries'] });
       queryClient.invalidateQueries({ queryKey: ['active_time_entry'] });
+      queryClient.invalidateQueries({ queryKey: ['job_time_entries'] });
       toast.success('Time entry updated');
     },
     onError: (error: any) => {
@@ -232,6 +263,7 @@ export function useDeleteTimeEntry() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time_entries'] });
       queryClient.invalidateQueries({ queryKey: ['active_time_entry'] });
+      queryClient.invalidateQueries({ queryKey: ['job_time_entries'] });
       toast.success('Time entry deleted');
     },
     onError: (error: any) => {
