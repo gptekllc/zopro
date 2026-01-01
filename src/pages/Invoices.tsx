@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
+import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 
 interface LineItem {
   id: string;
@@ -283,23 +284,12 @@ const Invoices = () => {
               <DialogTitle>{editingInvoice ? 'Edit Invoice' : 'Create New Invoice'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Customer *</Label>
-                  <Select
-                    value={formData.customerId}
-                    onValueChange={(value) => setFormData({ ...formData, customerId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InlineCustomerForm
+                  customers={customers}
+                  selectedCustomerId={formData.customerId}
+                  onCustomerSelect={(value) => setFormData({ ...formData, customerId: value })}
+                />
                 
                 <div className="space-y-2">
                   <Label>Due In (days)</Label>
