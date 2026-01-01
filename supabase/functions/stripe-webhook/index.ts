@@ -236,6 +236,85 @@ serve(async (req) => {
       logStep("Payment failed event processed");
     }
 
+    // Handle setup_intent.succeeded - payment method saved
+    if (event.type === "setup_intent.succeeded") {
+      const setupIntent = event.data.object as Stripe.SetupIntent;
+      logStep("Processing setup_intent.succeeded", { setupIntentId: setupIntent.id });
+
+      const customerId = setupIntent.metadata?.customer_id;
+      const companyId = setupIntent.metadata?.company_id;
+
+      if (customerId && companyId && setupIntent.payment_method) {
+        // Get payment method details
+        const paymentMethod = await stripe.paymentMethods.retrieve(setupIntent.payment_method as string);
+        
+        const last4 = paymentMethod.card?.last4 || paymentMethod.us_bank_account?.last4;
+        const type = paymentMethod.type;
+
+        // Update customer_stripe_accounts with saved payment method info
+        const { error: updateError } = await supabase
+          .from("customer_stripe_accounts")
+          .update({
+            has_saved_payment_method: true,
+            default_payment_method_last4: last4,
+            default_payment_method_type: type,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("customer_id", customerId)
+          .eq("company_id", companyId);
+
+        if (updateError) {
+          logStep("WARNING: Failed to update customer stripe account", { error: updateError.message });
+        } else {
+          logStep("Updated customer stripe account with payment method", { customerId, type, last4 });
+        }
+      }
+    }
+
+    // Handle payment_method.detached - payment method removed
+    if (event.type === "payment_method.detached") {
+      const paymentMethod = event.data.object as Stripe.PaymentMethod;
+      logStep("Processing payment_method.detached", { paymentMethodId: paymentMethod.id });
+
+      // Check if customer has any remaining payment methods
+      if (paymentMethod.customer) {
+        const customerId = typeof paymentMethod.customer === 'string' 
+          ? paymentMethod.customer 
+          : paymentMethod.customer.id;
+
+        const remainingCards = await stripe.paymentMethods.list({
+          customer: customerId,
+          type: 'card',
+        });
+
+        const remainingBanks = await stripe.paymentMethods.list({
+          customer: customerId,
+          type: 'us_bank_account',
+        });
+
+        const hasRemainingMethods = remainingCards.data.length > 0 || remainingBanks.data.length > 0;
+
+        if (!hasRemainingMethods) {
+          // Update all records for this stripe customer
+          const { error: updateError } = await supabase
+            .from("customer_stripe_accounts")
+            .update({
+              has_saved_payment_method: false,
+              default_payment_method_last4: null,
+              default_payment_method_type: null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("stripe_customer_id", customerId);
+
+          if (updateError) {
+            logStep("WARNING: Failed to update customer stripe account after detach", { error: updateError.message });
+          } else {
+            logStep("Cleared saved payment method status", { stripeCustomerId: customerId });
+          }
+        }
+      }
+    }
+
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
