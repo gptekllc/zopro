@@ -622,7 +622,6 @@ const Jobs = () => {
                                 value={item.unitPrice === 0 ? '' : item.unitPrice}
                                 onChange={(e) => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
                               />
-                              />
                             </div>
                             <div className="flex items-end">
                               <Button
