@@ -249,6 +249,44 @@ export type Database = {
           },
         ]
       }
+      job_items: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          job_id: string
+          quantity: number
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          job_id: string
+          quantity?: number
+          total?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          job_id?: string
+          quantity?: number
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_photos: {
         Row: {
           caption: string | null
@@ -316,7 +354,10 @@ export type Database = {
           scheduled_end: string | null
           scheduled_start: string | null
           status: Database["public"]["Enums"]["job_status"]
+          subtotal: number | null
+          tax: number | null
           title: string
+          total: number | null
           updated_at: string
         }
         Insert: {
@@ -340,7 +381,10 @@ export type Database = {
           scheduled_end?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["job_status"]
+          subtotal?: number | null
+          tax?: number | null
           title: string
+          total?: number | null
           updated_at?: string
         }
         Update: {
@@ -364,7 +408,10 @@ export type Database = {
           scheduled_end?: string | null
           scheduled_start?: string | null
           status?: Database["public"]["Enums"]["job_status"]
+          subtotal?: number | null
+          tax?: number | null
           title?: string
+          total?: number | null
           updated_at?: string
         }
         Relationships: [

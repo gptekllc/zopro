@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useArchiveJob, useUnarchiveJob, Job } from '@/hooks/useJobs';
+import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, Job, JobItem } from '@/hooks/useJobs';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes } from '@/hooks/useQuotes';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -16,7 +16,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff, MoreVertical } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff, MoreVertical, DollarSign } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -27,6 +28,13 @@ import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
+
+interface LineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+}
 
 const Jobs = () => {
   const { profile, roles } = useAuth();
@@ -72,6 +80,7 @@ const Jobs = () => {
   const uploadPhoto = useUploadJobPhoto();
   const deletePhoto = useDeleteJobPhoto();
   const convertToInvoice = useConvertJobToInvoice();
+  const convertToQuote = useConvertJobToQuote();
   const archiveJob = useArchiveJob();
   const unarchiveJob = useUnarchiveJob();
   
@@ -117,6 +126,35 @@ const Jobs = () => {
     scheduled_end: '',
     notes: '',
   });
+
+  // Line items state
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+
+  const addLineItem = () => {
+    setLineItems([...lineItems, { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0 }]);
+  };
+
+  const removeLineItem = (id: string) => {
+    setLineItems(lineItems.filter(item => item.id !== id));
+  };
+
+  const updateLineItem = (id: string, field: keyof LineItem, value: string | number) => {
+    setLineItems(lineItems.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const calculateSubtotal = () => {
+    return lineItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+  };
+
+  const calculateTax = () => {
+    return calculateSubtotal() * 0.0825;
+  };
+
+  const calculateTotal = () => {
+    return calculateSubtotal() + calculateTax();
+  };
 
   // Separate active and archived jobs for display
   const activeJobs = useMemo(() => safeJobs.filter(j => !j.archived_at), [safeJobs]);
@@ -166,6 +204,7 @@ const Jobs = () => {
       scheduled_end: '',
       notes: '',
     });
+    setLineItems([]);
     setEditingJob(null);
     setImportQuoteId('');
   };
@@ -189,6 +228,11 @@ const Jobs = () => {
       scheduled_start: formData.scheduled_start || null,
       scheduled_end: formData.scheduled_end || null,
       notes: formData.notes || null,
+      items: lineItems.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unitPrice,
+      })),
     };
 
     try {
@@ -217,6 +261,17 @@ const Jobs = () => {
       scheduled_end: job.scheduled_end ? format(new Date(job.scheduled_end), "yyyy-MM-dd'T'HH:mm") : '',
       notes: job.notes || '',
     });
+    // Load existing line items
+    if (job.items && job.items.length > 0) {
+      setLineItems(job.items.map(item => ({
+        id: item.id,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+      })));
+    } else {
+      setLineItems([]);
+    }
     setEditingJob(job);
     setIsDialogOpen(true);
   };
@@ -236,6 +291,15 @@ const Jobs = () => {
         title: `Job from Quote ${quote.quote_number}`,
         description: quote.notes || '',
       });
+      // Import quote items as line items
+      if (quote.items && quote.items.length > 0) {
+        setLineItems(quote.items.map((item: any) => ({
+          id: crypto.randomUUID(),
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+        })));
+      }
     }
   };
 
@@ -324,7 +388,7 @@ const Jobs = () => {
               Create Job
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingJob ? 'Edit Job' : 'Create New Job'}</DialogTitle>
             </DialogHeader>
@@ -454,6 +518,87 @@ const Jobs = () => {
                     onChange={(e) => setFormData({ ...formData, scheduled_end: e.target.value })}
                   />
                 </div>
+              </div>
+
+              {/* Line Items Section */}
+              <Separator />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Line Items (Parts & Labor)</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Item
+                  </Button>
+                </div>
+
+                {lineItems.length > 0 ? (
+                  <div className="space-y-3">
+                    {lineItems.map((item, index) => (
+                      <div key={item.id} className="grid grid-cols-12 gap-2 items-start">
+                        <div className="col-span-5">
+                          <Input
+                            placeholder="Description"
+                            value={item.description}
+                            onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <Input
+                            type="number"
+                            min="1"
+                            placeholder="Qty"
+                            value={item.quantity}
+                            onChange={(e) => updateLineItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Unit Price"
+                            value={item.unitPrice}
+                            onChange={(e) => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                        <div className="col-span-1 text-right pt-2 text-sm font-medium">
+                          ${(item.quantity * item.unitPrice).toFixed(2)}
+                        </div>
+                        <div className="col-span-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeLineItem(item.id)}
+                            className="text-destructive"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Totals */}
+                    <div className="border-t pt-3 space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal:</span>
+                        <span>${calculateSubtotal().toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Tax (8.25%):</span>
+                        <span>${calculateTax().toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold">
+                        <span>Total:</span>
+                        <span>${calculateTotal().toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No line items added. Click "Add Item" to add parts or labor.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -590,8 +735,13 @@ const Jobs = () => {
                       </div>
                     </div>
                     
-                    {/* Row 2: Title */}
-                    <p className="font-medium text-sm line-clamp-1">{job.title}</p>
+                    {/* Row 2: Title + Total */}
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium text-sm line-clamp-1 flex-1">{job.title}</p>
+                      {(job.total ?? 0) > 0 && (
+                        <span className="text-sm font-medium text-primary ml-2">${Number(job.total).toFixed(2)}</span>
+                      )}
+                    </div>
                     
                     {/* Row 3: Customer + date */}
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -653,6 +803,12 @@ const Jobs = () => {
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
+                              {!job.quote_id && (
+                                <DropdownMenuItem onClick={() => convertToQuote.mutate(job)}>
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  Create Quote
+                                </DropdownMenuItem>
+                              )}
                               {getNextStatus(job.status) && job.status !== 'completed' && job.status !== 'in_progress' && (
                                 <DropdownMenuItem onClick={() => handleStatusChange(job.id, getNextStatus(job.status)!)}>
                                   <ChevronRight className="w-4 h-4 mr-2" />
@@ -706,6 +862,12 @@ const Jobs = () => {
                           <Badge className={getPriorityColor(job.priority)} variant="outline">
                             {job.priority}
                           </Badge>
+                          {(job.total ?? 0) > 0 && (
+                            <Badge variant="secondary" className="gap-1">
+                              <DollarSign className="w-3 h-3" />
+                              {Number(job.total).toFixed(2)}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm font-medium">{job.title}</p>
                         <p className="text-sm text-muted-foreground">{job.customer?.name}</p>
@@ -787,6 +949,17 @@ const Jobs = () => {
                                 invoiced
                               </Button>
                             )}
+                            {!job.quote_id && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => convertToQuote.mutate(job)}
+                                disabled={convertToQuote.isPending}
+                              >
+                                <FileText className="w-4 h-4 mr-1" />
+                                Quote
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" onClick={() => handleEdit(job)}>
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -849,6 +1022,7 @@ const Jobs = () => {
               <Tabs defaultValue="details" className="mt-4">
                 <TabsList>
                   <TabsTrigger value="details">Details</TabsTrigger>
+                  <TabsTrigger value="items">Line Items ({viewingJob.items?.length || 0})</TabsTrigger>
                   <TabsTrigger value="photos">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
                   <TabsTrigger value="time">Time Tracking</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
@@ -894,6 +1068,54 @@ const Jobs = () => {
                       <p className="mt-1">{viewingJob.description}</p>
                     </div>
                   )}
+                </TabsContent>
+
+                <TabsContent value="items" className="mt-4">
+                  <div className="space-y-4">
+                    {viewingJob.items && viewingJob.items.length > 0 ? (
+                      <>
+                        <div className="rounded-lg border">
+                          <div className="grid grid-cols-12 gap-2 p-3 bg-muted/50 font-medium text-sm">
+                            <div className="col-span-6">Description</div>
+                            <div className="col-span-2 text-center">Qty</div>
+                            <div className="col-span-2 text-right">Unit Price</div>
+                            <div className="col-span-2 text-right">Total</div>
+                          </div>
+                          {viewingJob.items.map((item) => (
+                            <div key={item.id} className="grid grid-cols-12 gap-2 p-3 border-t text-sm">
+                              <div className="col-span-6">{item.description}</div>
+                              <div className="col-span-2 text-center">{item.quantity}</div>
+                              <div className="col-span-2 text-right">${Number(item.unit_price).toFixed(2)}</div>
+                              <div className="col-span-2 text-right">${Number(item.total).toFixed(2)}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex flex-col items-end gap-1 text-sm">
+                          <div className="flex justify-between w-48">
+                            <span className="text-muted-foreground">Subtotal:</span>
+                            <span>${Number(viewingJob.subtotal ?? 0).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between w-48">
+                            <span className="text-muted-foreground">Tax (8.25%):</span>
+                            <span>${Number(viewingJob.tax ?? 0).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between w-48 font-semibold text-base">
+                            <span>Total:</span>
+                            <span>${Number(viewingJob.total ?? 0).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <DollarSign className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p>No line items added</p>
+                        <Button variant="outline" size="sm" className="mt-2" onClick={() => handleEdit(viewingJob)}>
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add Items
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 </TabsContent>
                 
                 <TabsContent value="photos" className="mt-4">
@@ -1007,7 +1229,20 @@ const Jobs = () => {
                 </TabsContent>
               </Tabs>
               
-              <DialogFooter className="mt-6">
+              <DialogFooter className="mt-6 flex-wrap gap-2">
+                {!viewingJob.quote_id && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      convertToQuote.mutate(viewingJob);
+                      setViewingJob(null);
+                    }}
+                    disabled={convertToQuote.isPending}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Create Quote
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => handleEdit(viewingJob)}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit Job
