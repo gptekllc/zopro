@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhoneInput, formatPhoneNumber, getPhoneDigits } from '@/components/ui/phone-input';
-import { EmailInput, isValidEmail } from '@/components/ui/email-input';
+import { EmailInput } from '@/components/ui/email-input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,7 +26,8 @@ const Customers = () => {
   const softDeleteCustomer = useSoftDeleteCustomer();
   const restoreCustomer = useRestoreCustomer();
   
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
+  const [deletedSearch, setDeletedSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<string | null>(null);
   const [sendingPortalLink, setSendingPortalLink] = useState<string | null>(null);
@@ -41,10 +42,16 @@ const Customers = () => {
     notes: '',
   });
 
-  const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-    (c.phone || '').includes(searchQuery)
+  const filteredActiveCustomers = customers.filter(c =>
+    c.name.toLowerCase().includes(activeSearch.toLowerCase()) ||
+    (c.email?.toLowerCase() || '').includes(activeSearch.toLowerCase()) ||
+    (c.phone || '').includes(activeSearch)
+  );
+
+  const filteredDeletedCustomers = deletedCustomers.filter(c =>
+    c.name.toLowerCase().includes(deletedSearch.toLowerCase()) ||
+    (c.email?.toLowerCase() || '').includes(deletedSearch.toLowerCase()) ||
+    (c.phone || '').includes(deletedSearch)
   );
 
   const resetForm = () => {
@@ -192,11 +199,6 @@ const Customers = () => {
         </Dialog>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Search customers..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
-      </div>
-
       <Tabs defaultValue="active" className="w-full">
         <TabsList>
           <TabsTrigger value="active">Active Customers</TabsTrigger>
@@ -210,9 +212,19 @@ const Customers = () => {
           )}
         </TabsList>
 
-        <TabsContent value="active" className="mt-4">
+        <TabsContent value="active" className="mt-4 space-y-4">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search active customers..." 
+              value={activeSearch} 
+              onChange={(e) => setActiveSearch(e.target.value)} 
+              className="pl-9" 
+            />
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCustomers.map((customer) => (
+            {filteredActiveCustomers.map((customer) => (
               <Card 
                 key={customer.id} 
                 className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
@@ -274,20 +286,30 @@ const Customers = () => {
             ))}
           </div>
 
-          {filteredCustomers.length === 0 && (
+          {filteredActiveCustomers.length === 0 && (
             <div className="text-center py-12">
               <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium">No customers found</h3>
-              <p className="text-muted-foreground mt-1">{searchQuery ? 'Try a different search term' : 'Add your first customer to get started'}</p>
+              <p className="text-muted-foreground mt-1">{activeSearch ? 'Try a different search term' : 'Add your first customer to get started'}</p>
             </div>
           )}
         </TabsContent>
 
         {isAdmin && (
-          <TabsContent value="deleted" className="mt-4">
-            {deletedCustomers.length > 0 ? (
+          <TabsContent value="deleted" className="mt-4 space-y-4">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input 
+                placeholder="Search deleted customers..." 
+                value={deletedSearch} 
+                onChange={(e) => setDeletedSearch(e.target.value)} 
+                className="pl-9" 
+              />
+            </div>
+
+            {filteredDeletedCustomers.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {deletedCustomers.map((customer) => (
+                {filteredDeletedCustomers.map((customer) => (
                   <Card key={customer.id} className="overflow-hidden opacity-60 hover:opacity-100 transition-opacity">
                     <CardContent className="p-5">
                       <div className="flex items-start justify-between mb-4">
@@ -318,8 +340,8 @@ const Customers = () => {
             ) : (
               <div className="text-center py-12">
                 <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium">No deleted customers</h3>
-                <p className="text-muted-foreground mt-1">Deleted customers will appear here for restoration</p>
+                <h3 className="text-lg font-medium">{deletedSearch ? 'No deleted customers found' : 'No deleted customers'}</h3>
+                <p className="text-muted-foreground mt-1">{deletedSearch ? 'Try a different search term' : 'Deleted customers will appear here for restoration'}</p>
               </div>
             )}
           </TabsContent>

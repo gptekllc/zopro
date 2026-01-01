@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ArrowLeft, Mail, Phone, MapPin, User, Loader2, ExternalLink, 
   Briefcase, FileText, Receipt, DollarSign, Clock,
@@ -51,6 +52,7 @@ const CustomerDetail = () => {
   const navigate = useNavigate();
   const [sendingPortalLink, setSendingPortalLink] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [showArchivedJobs, setShowArchivedJobs] = useState(false);
   
   // Detail dialogs
@@ -198,6 +200,20 @@ const CustomerDetail = () => {
     }
   };
 
+  const handleActivityClick = (activity: typeof activities[0]) => {
+    setActivityDialogOpen(false);
+    if (activity.type === 'job') {
+      const job = jobs.find(j => j.id === activity.id);
+      if (job) setSelectedJob(job);
+    } else if (activity.type === 'quote') {
+      const quote = quotes.find(q => q.id === activity.id);
+      if (quote) setSelectedQuote(quote);
+    } else if (activity.type === 'invoice') {
+      const invoice = invoices.find(i => i.id === activity.id);
+      if (invoice) setSelectedInvoice(invoice);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -219,113 +235,119 @@ const CustomerDetail = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 md:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/customers')}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold">{customer.name}</h1>
-          <p className="text-muted-foreground">Customer Details</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/customers')} className="shrink-0">
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="text-2xl md:text-3xl font-bold truncate">{customer.name}</h1>
+            <p className="text-muted-foreground text-sm">Customer Details</p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleOpenEdit}>
-            <Edit className="w-4 h-4 mr-2" />
-            Edit
+        <div className="flex flex-wrap gap-2 pl-11 sm:pl-0">
+          <Button variant="outline" size="sm" onClick={() => setActivityDialogOpen(true)} className="gap-1.5">
+            <History className="w-4 h-4" />
+            <span className="hidden sm:inline">Activity</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleOpenEdit} className="gap-1.5">
+            <Edit className="w-4 h-4" />
+            <span className="hidden sm:inline">Edit</span>
           </Button>
           {customer.email && (
-            <Button variant="outline" onClick={handleSendPortalLink} disabled={sendingPortalLink}>
-              {sendingPortalLink ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <ExternalLink className="w-4 h-4 mr-2" />}
-              Send Portal Link
+            <Button variant="outline" size="sm" onClick={handleSendPortalLink} disabled={sendingPortalLink} className="gap-1.5">
+              {sendingPortalLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+              <span className="hidden sm:inline">Portal Link</span>
             </Button>
           )}
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <Briefcase className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <CardContent className="p-3 md:p-4">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 bg-blue-100 dark:bg-blue-900 rounded-lg shrink-0">
+                <Briefcase className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.totalJobs}</p>
-                <p className="text-xs text-muted-foreground">{stats.completedJobs} completed</p>
+              <div className="min-w-0">
+                <p className="text-lg md:text-2xl font-bold">{stats.totalJobs}</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground truncate">{stats.completedJobs} completed</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <FileText className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+          <CardContent className="p-3 md:p-4">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 bg-purple-100 dark:bg-purple-900 rounded-lg shrink-0">
+                <FileText className="w-4 h-4 md:w-5 md:h-5 text-purple-600 dark:text-purple-400" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.totalQuotes}</p>
-                <p className="text-xs text-muted-foreground">{stats.approvedQuotes} approved</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                <DollarSign className="w-5 h-5 text-green-600 dark:text-green-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">${stats.lifetimeValue.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Lifetime value</p>
+              <div className="min-w-0">
+                <p className="text-lg md:text-2xl font-bold">{stats.totalQuotes}</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground truncate">{stats.approvedQuotes} approved</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
-                <Receipt className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+          <CardContent className="p-3 md:p-4">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 bg-green-100 dark:bg-green-900 rounded-lg shrink-0">
+                <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-green-600 dark:text-green-400" />
               </div>
-              <div>
-                <p className="text-2xl font-bold">${stats.outstandingBalance.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Outstanding</p>
+              <div className="min-w-0">
+                <p className="text-lg md:text-2xl font-bold">${stats.lifetimeValue.toLocaleString()}</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground truncate">Lifetime value</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 md:p-4">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="p-1.5 md:p-2 bg-orange-100 dark:bg-orange-900 rounded-lg shrink-0">
+                <Receipt className="w-4 h-4 md:w-5 md:h-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg md:text-2xl font-bold">${stats.outstandingBalance.toLocaleString()}</p>
+                <p className="text-[10px] md:text-xs text-muted-foreground truncate">Outstanding</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Customer Info + History Tabs */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Customer Info + History Tabs - Stack on mobile */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Contact Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Contact Information</CardTitle>
+        <Card className="order-2 lg:order-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base md:text-lg">Contact Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="w-8 h-8 text-primary" />
+              <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <User className="w-6 h-6 md:w-8 md:h-8 text-primary" />
               </div>
-              <div>
-                <p className="font-medium">{customer.name}</p>
-                <p className="text-sm text-muted-foreground">Customer since {format(new Date(customer.created_at), 'MMM yyyy')}</p>
+              <div className="min-w-0">
+                <p className="font-medium truncate">{customer.name}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Customer since {format(new Date(customer.created_at), 'MMM yyyy')}</p>
               </div>
             </div>
             <div className="space-y-3 pt-4 border-t">
               {customer.email && (
                 <div className="flex items-center gap-3 text-sm">
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                  <a href={`mailto:${customer.email}`} className="hover:underline">{customer.email}</a>
+                  <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <a href={`mailto:${customer.email}`} className="hover:underline truncate">{customer.email}</a>
                 </div>
               )}
               {customer.phone && (
                 <div className="flex items-center gap-3 text-sm">
-                  <Phone className="w-4 h-4 text-muted-foreground" />
+                  <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
                   <a href={`tel:${customer.phone}`} className="hover:underline">{customer.phone}</a>
                 </div>
               )}
@@ -334,14 +356,14 @@ const CustomerDetail = () => {
                   onClick={() => openInMaps(customer)}
                   className="flex items-start gap-3 text-sm w-full text-left hover:bg-muted/50 -mx-2 px-2 py-1.5 rounded-md transition-colors group"
                 >
-                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                  <div className="flex-1">
-                    {customer.address && <p>{customer.address}</p>}
+                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    {customer.address && <p className="truncate">{customer.address}</p>}
                     {(customer.city || customer.state || customer.zip) && (
-                      <p>{[customer.city, customer.state, customer.zip].filter(Boolean).join(', ')}</p>
+                      <p className="truncate">{[customer.city, customer.state, customer.zip].filter(Boolean).join(', ')}</p>
                     )}
                   </div>
-                  <Navigation className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
+                  <Navigation className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 shrink-0" />
                 </button>
               )}
             </div>
@@ -355,266 +377,268 @@ const CustomerDetail = () => {
         </Card>
 
         {/* History Tabs */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 order-1 lg:order-2">
           <CardContent className="p-0">
             <Tabs defaultValue="jobs" className="w-full">
-              <div className="border-b px-4">
-                <TabsList className="h-12 bg-transparent">
-                  <TabsTrigger value="jobs" className="gap-2">
-                    <Briefcase className="w-4 h-4" />Jobs ({jobs.length})
+              <div className="border-b px-2 md:px-4 overflow-x-auto">
+                <TabsList className="h-10 md:h-12 bg-transparent w-full justify-start">
+                  <TabsTrigger value="jobs" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3">
+                    <Briefcase className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">Jobs</span> ({jobs.length})
                   </TabsTrigger>
-                  <TabsTrigger value="quotes" className="gap-2">
-                    <FileText className="w-4 h-4" />Quotes ({quotes.length})
+                  <TabsTrigger value="quotes" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3">
+                    <FileText className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">Quotes</span> ({quotes.length})
                   </TabsTrigger>
-                  <TabsTrigger value="invoices" className="gap-2">
-                    <Receipt className="w-4 h-4" />Invoices ({invoices.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="activity" className="gap-2">
-                    <History className="w-4 h-4" />Activity
+                  <TabsTrigger value="invoices" className="gap-1 md:gap-2 text-xs md:text-sm px-2 md:px-3">
+                    <Receipt className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    <span className="hidden sm:inline">Invoices</span> ({invoices.length})
                   </TabsTrigger>
                 </TabsList>
               </div>
 
               {/* Jobs Tab */}
               <TabsContent value="jobs" className="m-0">
-                <div className="p-4 border-b flex justify-between items-center">
+                <div className="p-3 md:p-4 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm text-muted-foreground">
-                      {showArchivedJobs ? 'All jobs' : 'Active jobs'} for this customer
+                    <p className="text-xs md:text-sm text-muted-foreground">
+                      {showArchivedJobs ? 'All jobs' : 'Active jobs'}
                     </p>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowArchivedJobs(!showArchivedJobs)}
-                      className="gap-1 text-xs"
+                      className="gap-1 text-xs h-7 px-2"
                     >
                       {showArchivedJobs ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                      {showArchivedJobs ? 'Hide Archived' : 'Show Archived'}
+                      {showArchivedJobs ? 'Hide' : 'Show'} Archived
                     </Button>
                   </div>
-                  <Button size="sm" asChild>
+                  <Button size="sm" asChild className="h-8">
                     <Link to={`/jobs?customer=${customerId}`}>
                       <Plus className="w-4 h-4 mr-1" />New Job
                     </Link>
                   </Button>
                 </div>
-                <div className="divide-y max-h-96 overflow-y-auto">
-                  {jobsLoading ? (
-                    <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
-                  ) : jobs.filter(j => showArchivedJobs || !j.archived_at).length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground">
-                      {showArchivedJobs ? 'No jobs yet' : 'No active jobs'}
-                    </div>
-                  ) : (
-                    jobs
-                      .filter(j => showArchivedJobs || !j.archived_at)
-                      .map((job) => (
-                      <div 
-                        key={job.id} 
-                        className={`p-4 hover:bg-muted/50 transition-colors cursor-pointer ${job.archived_at ? 'opacity-60' : ''}`}
-                        onClick={() => setSelectedJob(job)}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            {job.archived_at && (
-                              <Archive className="w-4 h-4 text-muted-foreground" />
-                            )}
-                            <div>
-                              <p className="font-medium">{job.title}</p>
-                              <p className="text-sm text-muted-foreground">{job.job_number}</p>
+                <ScrollArea className="h-[300px] md:h-96">
+                  <div className="divide-y">
+                    {jobsLoading ? (
+                      <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
+                    ) : jobs.filter(j => showArchivedJobs || !j.archived_at).length === 0 ? (
+                      <div className="p-8 text-center text-muted-foreground text-sm">
+                        {showArchivedJobs ? 'No jobs yet' : 'No active jobs'}
+                      </div>
+                    ) : (
+                      jobs
+                        .filter(j => showArchivedJobs || !j.archived_at)
+                        .map((job) => (
+                        <div 
+                          key={job.id} 
+                          className={`p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer ${job.archived_at ? 'opacity-60' : ''}`}
+                          onClick={() => setSelectedJob(job)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              {job.archived_at && (
+                                <Archive className="w-4 h-4 text-muted-foreground shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <p className="font-medium text-sm md:text-base truncate">{job.title}</p>
+                                <p className="text-xs md:text-sm text-muted-foreground">{job.job_number}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {job.archived_at && (
+                                <Badge variant="outline" className="text-muted-foreground text-[10px] md:text-xs">Archived</Badge>
+                              )}
+                              {job.completion_signed_at && (
+                                <PenTool className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-500" />
+                              )}
+                              <Badge className={`${statusColors[job.status] || 'bg-muted'} text-[10px] md:text-xs`}>{job.status.replace('_', ' ')}</Badge>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {job.archived_at && (
-                              <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 md:gap-4 text-[10px] md:text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {format(new Date(job.created_at), 'MMM d, yyyy')}
+                            </span>
+                            {job.assignee?.full_name && (
+                              <span className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                {job.assignee.full_name}
+                              </span>
                             )}
-                            {job.completion_signed_at && (
-                              <PenTool className="w-4 h-4 text-green-500" />
+                            {job.photos && job.photos.length > 0 && (
+                              <span className="flex items-center gap-1 text-primary">
+                                <Camera className="w-3 h-3" />
+                                {job.photos.length}
+                              </span>
                             )}
-                            <Badge className={statusColors[job.status] || 'bg-muted'}>{job.status.replace('_', ' ')}</Badge>
                           </div>
                         </div>
-                        <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {format(new Date(job.created_at), 'MMM d, yyyy')}
-                          </span>
-                          {job.assignee?.full_name && (
-                            <span className="flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              {job.assignee.full_name}
-                            </span>
-                          )}
-                          {job.photos && job.photos.length > 0 && (
-                            <span className="flex items-center gap-1 text-primary">
-                              <Camera className="w-3 h-3" />
-                              {job.photos.length}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
               </TabsContent>
 
               {/* Quotes Tab */}
               <TabsContent value="quotes" className="m-0">
-                <div className="p-4 border-b flex justify-between items-center">
-                  <p className="text-sm text-muted-foreground">All quotes for this customer</p>
-                  <Button size="sm" asChild>
+                <div className="p-3 md:p-4 border-b flex justify-between items-center">
+                  <p className="text-xs md:text-sm text-muted-foreground">All quotes</p>
+                  <Button size="sm" asChild className="h-8">
                     <Link to={`/quotes?customer=${customerId}`}>
                       <Plus className="w-4 h-4 mr-1" />New Quote
                     </Link>
                   </Button>
                 </div>
-                <div className="divide-y max-h-96 overflow-y-auto">
-                  {quotesLoading ? (
-                    <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
-                  ) : quotes.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground">No quotes yet</div>
-                  ) : (
-                    quotes.map((quote) => (
-                      <div 
-                        key={quote.id} 
-                        className="p-4 hover:bg-muted/50 transition-colors cursor-pointer"
-                        onClick={() => setSelectedQuote(quote)}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-medium">{quote.quote_number}</p>
-                            <p className="text-sm text-muted-foreground">${Number(quote.total).toLocaleString()}</p>
+                <ScrollArea className="h-[300px] md:h-96">
+                  <div className="divide-y">
+                    {quotesLoading ? (
+                      <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
+                    ) : quotes.length === 0 ? (
+                      <div className="p-8 text-center text-muted-foreground text-sm">No quotes yet</div>
+                    ) : (
+                      quotes.map((quote) => (
+                        <div 
+                          key={quote.id} 
+                          className="p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                          onClick={() => setSelectedQuote(quote)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm md:text-base">{quote.quote_number}</p>
+                              <p className="text-xs md:text-sm text-muted-foreground">${Number(quote.total).toLocaleString()}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {quote.signed_at && (
+                                <PenTool className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-500" />
+                              )}
+                              <Badge className={`${statusColors[quote.status] || 'bg-muted'} text-[10px] md:text-xs`}>{quote.status}</Badge>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {quote.signed_at && (
-                              <PenTool className="w-4 h-4 text-green-500" />
+                          <div className="mt-2 flex flex-wrap items-center gap-2 md:gap-4 text-[10px] md:text-xs text-muted-foreground">
+                            <span>{format(new Date(quote.created_at), 'MMM d, yyyy')}</span>
+                            {quote.valid_until && (
+                              <span>Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}</span>
                             )}
-                            <Badge className={statusColors[quote.status] || 'bg-muted'}>{quote.status}</Badge>
                           </div>
                         </div>
-                        <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>{format(new Date(quote.created_at), 'MMM d, yyyy')}</span>
-                          {quote.valid_until && (
-                            <span>Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
               </TabsContent>
 
               {/* Invoices Tab */}
               <TabsContent value="invoices" className="m-0">
-                <div className="p-4 border-b flex justify-between items-center">
-                  <p className="text-sm text-muted-foreground">All invoices for this customer</p>
-                  <Button size="sm" asChild>
+                <div className="p-3 md:p-4 border-b flex justify-between items-center">
+                  <p className="text-xs md:text-sm text-muted-foreground">All invoices</p>
+                  <Button size="sm" asChild className="h-8">
                     <Link to={`/invoices?customer=${customerId}`}>
                       <Plus className="w-4 h-4 mr-1" />New Invoice
                     </Link>
                   </Button>
                 </div>
-                <div className="divide-y max-h-96 overflow-y-auto">
-                  {invoicesLoading ? (
-                    <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
-                  ) : invoices.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground">No invoices yet</div>
-                  ) : (
-                    invoices.map((invoice) => (
-                      <div 
-                        key={invoice.id} 
-                        className="p-4 hover:bg-muted/50 transition-colors cursor-pointer"
-                        onClick={() => setSelectedInvoice(invoice)}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-medium">{invoice.invoice_number}</p>
-                            <p className="text-sm text-muted-foreground">${Number(invoice.total).toLocaleString()}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {invoice.signed_at && (
-                              <PenTool className="w-4 h-4 text-green-500" />
-                            )}
-                            <Badge className={statusColors[invoice.status] || 'bg-muted'}>{invoice.status}</Badge>
-                          </div>
-                        </div>
-                        <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>{format(new Date(invoice.created_at), 'MMM d, yyyy')}</span>
-                          {invoice.due_date && (
-                            <span>Due {format(new Date(invoice.due_date), 'MMM d, yyyy')}</span>
-                          )}
-                          {invoice.paid_at && (
-                            <span className="text-green-600">Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </TabsContent>
-
-              {/* Activity Tab */}
-              <TabsContent value="activity" className="m-0">
-                <div className="p-4 border-b">
-                  <p className="text-sm text-muted-foreground">All activity for this customer</p>
-                </div>
-                <div className="divide-y max-h-96 overflow-y-auto">
-                  {activities.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground">No activity yet</div>
-                  ) : (
-                    activities.map((activity) => (
-                      <div 
-                        key={`${activity.type}-${activity.id}`} 
-                        className="p-4 hover:bg-muted/50 transition-colors cursor-pointer"
-                        onClick={() => {
-                          if (activity.type === 'job') {
-                            const job = jobs.find(j => j.id === activity.id);
-                            if (job) setSelectedJob(job);
-                          } else if (activity.type === 'quote') {
-                            const quote = quotes.find(q => q.id === activity.id);
-                            if (quote) setSelectedQuote(quote);
-                          } else if (activity.type === 'invoice') {
-                            const invoice = invoices.find(i => i.id === activity.id);
-                            if (invoice) setSelectedInvoice(invoice);
-                          }
-                        }}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`p-2 rounded-lg ${
-                            activity.type === 'job' ? 'bg-blue-100 dark:bg-blue-900' :
-                            activity.type === 'quote' ? 'bg-purple-100 dark:bg-purple-900' :
-                            'bg-green-100 dark:bg-green-900'
-                          }`}>
-                            {activity.type === 'job' && <Briefcase className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-                            {activity.type === 'quote' && <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
-                            {activity.type === 'invoice' && <Receipt className="w-4 h-4 text-green-600 dark:text-green-400" />}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium capitalize">{activity.type}</p>
-                              {activity.signed && <PenTool className="w-3 h-3 text-green-500" />}
-                              <Badge className={statusColors[activity.status] || 'bg-muted'} variant="outline">
-                                {activity.status.replace('_', ' ')}
-                              </Badge>
+                <ScrollArea className="h-[300px] md:h-96">
+                  <div className="divide-y">
+                    {invoicesLoading ? (
+                      <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
+                    ) : invoices.length === 0 ? (
+                      <div className="p-8 text-center text-muted-foreground text-sm">No invoices yet</div>
+                    ) : (
+                      invoices.map((invoice) => (
+                        <div 
+                          key={invoice.id} 
+                          className="p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                          onClick={() => setSelectedInvoice(invoice)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm md:text-base">{invoice.invoice_number}</p>
+                              <p className="text-xs md:text-sm text-muted-foreground">${Number(invoice.total).toLocaleString()}</p>
                             </div>
-                            <p className="text-sm text-muted-foreground">{activity.title}</p>
-                            <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                              <span>{format(new Date(activity.date), 'MMM d, yyyy')}</span>
-                              {activity.amount && (
-                                <span className="font-medium">${activity.amount.toLocaleString()}</span>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {invoice.signed_at && (
+                                <PenTool className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-500" />
                               )}
+                              <Badge className={`${statusColors[invoice.status] || 'bg-muted'} text-[10px] md:text-xs`}>{invoice.status}</Badge>
                             </div>
                           </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2 md:gap-4 text-[10px] md:text-xs text-muted-foreground">
+                            <span>{format(new Date(invoice.created_at), 'MMM d, yyyy')}</span>
+                            {invoice.due_date && (
+                              <span>Due {format(new Date(invoice.due_date), 'MMM d, yyyy')}</span>
+                            )}
+                            {invoice.paid_at && (
+                              <span className="text-green-600">Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}</span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
               </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
       </div>
+
+      {/* Activity Modal */}
+      <Dialog open={activityDialogOpen} onOpenChange={setActivityDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5" />
+              Customer Activity
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[400px] -mx-6 px-6">
+            <div className="divide-y">
+              {activities.length === 0 ? (
+                <div className="py-12 text-center text-muted-foreground">No activity yet</div>
+              ) : (
+                activities.map((activity) => (
+                  <div 
+                    key={`${activity.type}-${activity.id}`} 
+                    className="py-3 hover:bg-muted/50 -mx-2 px-2 rounded-md transition-colors cursor-pointer"
+                    onClick={() => handleActivityClick(activity)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className={`p-2 rounded-lg shrink-0 ${
+                        activity.type === 'job' ? 'bg-blue-100 dark:bg-blue-900' :
+                        activity.type === 'quote' ? 'bg-purple-100 dark:bg-purple-900' :
+                        'bg-green-100 dark:bg-green-900'
+                      }`}>
+                        {activity.type === 'job' && <Briefcase className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                        {activity.type === 'quote' && <FileText className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+                        {activity.type === 'invoice' && <Receipt className="w-4 h-4 text-green-600 dark:text-green-400" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium capitalize text-sm">{activity.type}</p>
+                          {activity.signed && <PenTool className="w-3 h-3 text-green-500" />}
+                          <Badge className={`${statusColors[activity.status] || 'bg-muted'} text-xs`} variant="outline">
+                            {activity.status.replace('_', ' ')}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">{activity.title}</p>
+                        <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                          <span>{format(new Date(activity.date), 'MMM d, yyyy')}</span>
+                          {activity.amount && (
+                            <span className="font-medium">${activity.amount.toLocaleString()}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Customer Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
@@ -630,7 +654,7 @@ const CustomerDetail = () => {
                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Email</Label>
                 <Input
@@ -654,7 +678,7 @@ const CustomerDetail = () => {
                 onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label>City</Label>
                 <Input
