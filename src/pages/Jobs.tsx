@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, useJobRelatedQuotes, Job, JobItem } from '@/hooks/useJobs';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -46,6 +47,7 @@ const Jobs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [showArchived, setShowArchived] = useState(false);
   const [includeArchivedInSearch, setIncludeArchivedInSearch] = useState(false);
+  const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
   
   // Determine if we need to include archived jobs based on search + toggle
   const needsArchivedData = showArchived || includeArchivedInSearch;
@@ -101,6 +103,19 @@ const Jobs = () => {
   const [importQuoteId, setImportQuoteId] = useState<string>('');
   const [completingJob, setCompletingJob] = useState<Job | null>(null);
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
+
+  // Wrapped setters for scroll restoration
+  const openViewingJob = useCallback((job: Job | null) => {
+    if (job) saveScrollPosition();
+    setViewingJob(job);
+    if (!job) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
+
+  const openEditDialog = useCallback((open: boolean) => {
+    if (open) saveScrollPosition();
+    setIsDialogOpen(open);
+    if (!open) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
   
   const downloadDocument = useDownloadDocument();
   const emailDocument = useEmailDocument();
@@ -272,7 +287,7 @@ const Jobs = () => {
       } else {
         await createJob.mutateAsync(jobData);
       }
-      setIsDialogOpen(false);
+      openEditDialog(false);
       resetForm();
     } catch (error) {
       // Error handled by hook
@@ -305,7 +320,7 @@ const Jobs = () => {
       setLineItems([]);
     }
     setEditingJob(job);
-    setIsDialogOpen(true);
+    openEditDialog(true);
   };
 
   const handleDelete = async (jobId: string) => {
@@ -415,7 +430,7 @@ const Jobs = () => {
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
+          openEditDialog(open);
           if (!open) resetForm();
         }}>
           <DialogTrigger asChild>
@@ -840,7 +855,7 @@ const Jobs = () => {
               <Card 
                 key={job.id} 
                 className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${job.archived_at ? 'opacity-60 border-dashed' : ''}`} 
-                onClick={() => setViewingJob(job)}
+                onClick={() => openViewingJob(job)}
               >
                 <CardContent className="p-4 sm:p-5">
                   {/* Mobile Layout */}
@@ -1192,7 +1207,7 @@ const Jobs = () => {
       )}
 
       {/* Job Detail Modal */}
-      <Dialog open={!!viewingJob} onOpenChange={(open) => !open && setViewingJob(null)}>
+      <Dialog open={!!viewingJob} onOpenChange={(open) => !open && openViewingJob(null)}>
         <DialogContent className="max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
           {viewingJob && (
             <>
@@ -1422,12 +1437,12 @@ const Jobs = () => {
                   <JobRelatedQuotesSection 
                     job={viewingJob} 
                     onViewQuote={(quote) => {
-                      setViewingJob(null);
+                      openViewingJob(null);
                       setViewingQuote(quote);
                     }}
                     onCreateUpsellQuote={() => {
                       convertToQuote.mutate(viewingJob);
-                      setViewingJob(null);
+                      openViewingJob(null);
                     }}
                     isCreatingQuote={convertToQuote.isPending}
                   />
@@ -1440,7 +1455,7 @@ const Jobs = () => {
                     variant="outline" 
                     onClick={() => {
                       convertToQuote.mutate(viewingJob);
-                      setViewingJob(null);
+                      openViewingJob(null);
                     }}
                     disabled={convertToQuote.isPending}
                   >

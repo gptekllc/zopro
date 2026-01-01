@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
 import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from '@/hooks/useInvoices';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -34,6 +35,7 @@ const Invoices = () => {
   const deleteInvoice = useDeleteInvoice();
   const emailDocument = useEmailDocument();
   const downloadDocument = useDownloadDocument();
+  const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
   
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedInvoiceForEmail, setSelectedInvoiceForEmail] = useState<string | null>(null);
@@ -44,6 +46,19 @@ const Invoices = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<string | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<typeof invoices[0] | null>(null);
+
+  // Wrapped setters for scroll restoration
+  const openViewingInvoice = useCallback((invoice: typeof invoices[0] | null) => {
+    if (invoice) saveScrollPosition();
+    setViewingInvoice(invoice);
+    if (!invoice) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
+
+  const openEditDialog = useCallback((open: boolean) => {
+    if (open) saveScrollPosition();
+    setIsDialogOpen(open);
+    if (!open) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
   const [formData, setFormData] = useState<{
     customerId: string;
     items: LineItem[];
@@ -163,7 +178,7 @@ const Invoices = () => {
         toast.success('Invoice created successfully');
       }
       
-      setIsDialogOpen(false);
+      openEditDialog(false);
       resetForm();
     } catch (error) {
       toast.error(editingInvoice ? 'Failed to update invoice' : 'Failed to create invoice');
@@ -184,7 +199,7 @@ const Invoices = () => {
       dueDays: 30,
     });
     setEditingInvoice(invoice.id);
-    setIsDialogOpen(true);
+    openEditDialog(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -290,7 +305,7 @@ const Invoices = () => {
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
+          openEditDialog(open);
           if (!open) resetForm();
         }}>
           <DialogTrigger asChild>
@@ -424,7 +439,7 @@ const Invoices = () => {
               </div>
               
               <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" className="flex-1" disabled={createInvoice.isPending || updateInvoice.isPending}>
@@ -465,7 +480,7 @@ const Invoices = () => {
       {/* Invoice List */}
       <div className="space-y-3">
         {filteredInvoices.map((invoice) => (
-          <Card key={invoice.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewingInvoice(invoice)}>
+          <Card key={invoice.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingInvoice(invoice)}>
             <CardContent className="p-4 sm:p-5">
               {/* Mobile Layout */}
               <div className="flex flex-col gap-2 sm:hidden">
@@ -679,7 +694,7 @@ const Invoices = () => {
 
       {/* Invoice Detail Dialog for viewing from URL */}
       {viewingInvoice && (
-        <Dialog open={!!viewingInvoice} onOpenChange={(open) => !open && setViewingInvoice(null)}>
+        <Dialog open={!!viewingInvoice} onOpenChange={(open) => !open && openViewingInvoice(null)}>
           <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <div className="flex items-center justify-between pr-8">
@@ -814,7 +829,7 @@ const Invoices = () => {
                     <span className="hidden sm:inline">Mark Paid</span>
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingInvoice); setViewingInvoice(null); }} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
+                <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingInvoice); openViewingInvoice(null); }} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
                   <Edit className="w-4 h-4 mr-1" /> Edit
                 </Button>
               </div>

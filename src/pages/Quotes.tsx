@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
 import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote } from '@/hooks/useQuotes';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -40,6 +41,7 @@ const Quotes = () => {
   const downloadDocument = useDownloadDocument();
   const createJobFromQuote = useCreateJobFromQuoteItems();
   const addItemsToJob = useAddQuoteItemsToJob();
+  const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
   
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedQuoteForEmail, setSelectedQuoteForEmail] = useState<string | null>(null);
@@ -55,6 +57,19 @@ const Quotes = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
   const [viewingQuote, setViewingQuote] = useState<typeof quotes[0] | null>(null);
+
+  // Wrapped setters for scroll restoration
+  const openViewingQuote = useCallback((quote: typeof quotes[0] | null) => {
+    if (quote) saveScrollPosition();
+    setViewingQuote(quote);
+    if (!quote) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
+
+  const openEditDialog = useCallback((open: boolean) => {
+    if (open) saveScrollPosition();
+    setIsDialogOpen(open);
+    if (!open) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
   const [formData, setFormData] = useState<{
     customerId: string;
     items: LineItem[];
@@ -174,7 +189,7 @@ const Quotes = () => {
         toast.success('Quote created successfully');
       }
       
-      setIsDialogOpen(false);
+      openEditDialog(false);
       resetForm();
     } catch (error) {
       toast.error(editingQuote ? 'Failed to update quote' : 'Failed to create quote');
@@ -195,7 +210,7 @@ const Quotes = () => {
       validDays: 30,
     });
     setEditingQuote(quote.id);
-    setIsDialogOpen(true);
+    openEditDialog(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -303,7 +318,7 @@ const Quotes = () => {
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
+          openEditDialog(open);
           if (!open) resetForm();
         }}>
           <DialogTrigger asChild>
@@ -437,7 +452,7 @@ const Quotes = () => {
               </div>
               
               <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>
                   Cancel
                 </Button>
                 <Button type="submit" className="flex-1" disabled={createQuote.isPending || updateQuote.isPending}>
@@ -478,7 +493,7 @@ const Quotes = () => {
       {/* Quote List */}
       <div className="space-y-3">
         {filteredQuotes.map((quote) => (
-          <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewingQuote(quote)}>
+          <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingQuote(quote)}>
             <CardContent className="p-4 sm:p-5">
               {/* Mobile Layout */}
               <div className="flex flex-col gap-2 sm:hidden">
@@ -705,7 +720,7 @@ const Quotes = () => {
 
       {/* Quote Detail Dialog for viewing from URL */}
       {viewingQuote && (
-        <Dialog open={!!viewingQuote} onOpenChange={(open) => !open && setViewingQuote(null)}>
+        <Dialog open={!!viewingQuote} onOpenChange={(open) => !open && openViewingQuote(null)}>
           <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <div className="flex items-center justify-between pr-8">
@@ -822,11 +837,11 @@ const Quotes = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-popover z-50">
-                      <DropdownMenuItem onClick={() => { setViewingQuote(null); handleOpenCreateJobDialog(viewingQuote); }}>
+                      <DropdownMenuItem onClick={() => { openViewingQuote(null); handleOpenCreateJobDialog(viewingQuote); }}>
                         <Plus className="w-4 h-4 mr-2" />
                         Create New Job
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setViewingQuote(null); handleOpenAddToJobDialog(viewingQuote); }}>
+                      <DropdownMenuItem onClick={() => { openViewingQuote(null); handleOpenAddToJobDialog(viewingQuote); }}>
                         <Briefcase className="w-4 h-4 mr-2" />
                         Add to Existing Job
                       </DropdownMenuItem>
@@ -844,7 +859,7 @@ const Quotes = () => {
                     <span className="hidden sm:inline">Convert to Invoice</span>
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingQuote); setViewingQuote(null); }} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
+                <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingQuote); openViewingQuote(null); }} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
                   <Edit className="w-4 h-4 mr-1" /> Edit
                 </Button>
               </div>

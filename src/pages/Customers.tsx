@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useNavigate } from 'react-router-dom';
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useSoftDeleteCustomer, useRestoreCustomer, useDeletedCustomers, Customer } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
@@ -25,11 +26,18 @@ const Customers = () => {
   const updateCustomer = useUpdateCustomer();
   const softDeleteCustomer = useSoftDeleteCustomer();
   const restoreCustomer = useRestoreCustomer();
+  const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
   
   const [activeSearch, setActiveSearch] = useState('');
   const [deletedSearch, setDeletedSearch] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<string | null>(null);
+
+  const openEditDialog = useCallback((open: boolean) => {
+    if (open) saveScrollPosition();
+    setIsDialogOpen(open);
+    if (!open) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
   const [sendingPortalLink, setSendingPortalLink] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -73,7 +81,7 @@ const Customers = () => {
       await createCustomer.mutateAsync(submitData as any);
     }
     
-    setIsDialogOpen(false);
+    openEditDialog(false);
     resetForm();
   };
 
@@ -89,7 +97,7 @@ const Customers = () => {
       notes: customer.notes || '',
     });
     setEditingCustomer(customer.id);
-    setIsDialogOpen(true);
+    openEditDialog(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -140,7 +148,7 @@ const Customers = () => {
           <p className="text-muted-foreground mt-1">{customers.length} total customers</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => { openEditDialog(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button className="gap-2"><Plus className="w-4 h-4" />Add Customer</Button>
           </DialogTrigger>
@@ -189,7 +197,7 @@ const Customers = () => {
                 <Textarea id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} />
               </div>
               <div className="flex gap-3 pt-4">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>Cancel</Button>
                 <Button type="submit" className="flex-1" disabled={createCustomer.isPending || updateCustomer.isPending}>
                   {editingCustomer ? 'Update' : 'Add'} Customer
                 </Button>
