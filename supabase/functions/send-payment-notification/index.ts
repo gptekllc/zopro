@@ -14,7 +14,7 @@ const logStep = (step: string, details?: any) => {
 };
 
 interface NotificationRequest {
-  type: "invoice_paid" | "quote_approved" | "payment_failed";
+  type: "invoice_paid" | "quote_approved" | "payment_failed" | "late_fee_applied";
   invoiceNumber?: string;
   quoteNumber?: string;
   customerName: string;
@@ -22,6 +22,10 @@ interface NotificationRequest {
   companyName: string;
   companyEmail: string;
   amount?: number;
+  originalAmount?: number;
+  lateFeeAmount?: number;
+  lateFeePercentage?: number;
+  dueDate?: string;
   errorMessage?: string;
 }
 
@@ -130,6 +134,60 @@ serve(async (req) => {
         `,
       });
       logStep("Failed payment email sent to customer", { response: customerEmailResponse });
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    if (payload.type === "late_fee_applied") {
+      // Email to customer about late fee
+      const customerEmailResponse = await resend.emails.send({
+        from: "FieldFlow <onboarding@resend.dev>",
+        to: [payload.customerEmail],
+        subject: `Late Fee Applied - Invoice #${payload.invoiceNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #f59e0b;">Late Fee Notice</h1>
+            <p>Hello ${payload.customerName},</p>
+            <p>A late fee has been applied to your overdue Invoice #${payload.invoiceNumber} from <strong>${payload.companyName}</strong>.</p>
+            <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+              <p style="margin: 0;"><strong>Original Amount:</strong> $${payload.originalAmount?.toFixed(2)}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Late Fee (${payload.lateFeePercentage}%):</strong> $${payload.lateFeeAmount?.toFixed(2)}</p>
+              <p style="margin: 10px 0 0 0; font-size: 18px; font-weight: bold;"><strong>New Total Due:</strong> $${payload.amount?.toFixed(2)}</p>
+              ${payload.dueDate ? `<p style="margin: 10px 0 0 0; color: #dc2626;"><strong>Original Due Date:</strong> ${payload.dueDate}</p>` : ''}
+            </div>
+            <p>Please submit payment as soon as possible to avoid any additional fees.</p>
+            <p>If you have any questions or have already made a payment, please contact us.</p>
+            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>${payload.companyName}</p>
+          </div>
+        `,
+      });
+      logStep("Late fee email sent to customer", { response: customerEmailResponse });
+
+      // Email to company about late fee applied
+      const companyEmailResponse = await resend.emails.send({
+        from: "FieldFlow <onboarding@resend.dev>",
+        to: [payload.companyEmail],
+        subject: `Late Fee Applied - Invoice #${payload.invoiceNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #f59e0b;">Late Fee Applied</h1>
+            <p>A late fee has been applied to an overdue invoice.</p>
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Customer:</strong> ${payload.customerName}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Original Amount:</strong> $${payload.originalAmount?.toFixed(2)}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Late Fee (${payload.lateFeePercentage}%):</strong> $${payload.lateFeeAmount?.toFixed(2)}</p>
+              <p style="margin: 10px 0 0 0; font-size: 18px; font-weight: bold;"><strong>New Total:</strong> $${payload.amount?.toFixed(2)}</p>
+            </div>
+            <p>The customer has been notified via email.</p>
+            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
+          </div>
+        `,
+      });
+      logStep("Late fee email sent to company", { response: companyEmailResponse });
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

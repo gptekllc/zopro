@@ -248,10 +248,14 @@ export function useApplyLateFee() {
   
   return useMutation({
     mutationFn: async ({ invoiceId, lateFeePercentage }: { invoiceId: string; lateFeePercentage: number }) => {
-      // Get the invoice
+      // Get the invoice with customer and company info
       const { data: invoice, error: fetchError } = await (supabase as any)
         .from('invoices')
-        .select('total, status, due_date, late_fee_amount')
+        .select(`
+          total, status, due_date, late_fee_amount, invoice_number, company_id,
+          customer:customers(name, email),
+          company:companies(name, email)
+        `)
         .eq('id', invoiceId)
         .single();
       
@@ -273,6 +277,7 @@ export function useApplyLateFee() {
       
       // Calculate late fee
       const lateFeeAmount = Number(invoice.total) * (lateFeePercentage / 100);
+      const newTotal = Number(invoice.total) + lateFeeAmount;
       
       // Update invoice with late fee
       const { error: updateError } = await (supabase as any)
@@ -286,11 +291,35 @@ export function useApplyLateFee() {
       
       if (updateError) throw updateError;
       
+      // Send email notification if customer has email
+      if (invoice.customer?.email && invoice.company?.email) {
+        try {
+          await supabase.functions.invoke('send-payment-notification', {
+            body: {
+              type: 'late_fee_applied',
+              invoiceNumber: invoice.invoice_number,
+              customerName: invoice.customer.name || 'Customer',
+              customerEmail: invoice.customer.email,
+              companyName: invoice.company.name || 'Company',
+              companyEmail: invoice.company.email,
+              originalAmount: Number(invoice.total),
+              lateFeeAmount: lateFeeAmount,
+              lateFeePercentage: lateFeePercentage,
+              amount: newTotal,
+              dueDate: invoice.due_date,
+            },
+          });
+        } catch (emailError) {
+          console.error('Failed to send late fee notification email:', emailError);
+          // Don't throw - the late fee was still applied successfully
+        }
+      }
+      
       return { lateFeeAmount };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      toast.success(`Late fee of $${data.lateFeeAmount.toFixed(2)} applied`);
+      toast.success(`Late fee of $${data.lateFeeAmount.toFixed(2)} applied and customer notified`);
     },
     onError: (error: unknown) => {
       toast.error('Failed to apply late fee: ' + sanitizeErrorMessage(error));
