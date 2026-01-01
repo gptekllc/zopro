@@ -761,6 +761,7 @@ export type Database = {
           created_at: string
           id: string
           is_on_break: boolean | null
+          job_id: string | null
           notes: string | null
           updated_at: string
           user_id: string
@@ -774,6 +775,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_on_break?: boolean | null
+          job_id?: string | null
           notes?: string | null
           updated_at?: string
           user_id: string
@@ -787,6 +789,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_on_break?: boolean | null
+          job_id?: string | null
           notes?: string | null
           updated_at?: string
           user_id?: string
@@ -797,6 +800,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
           {
