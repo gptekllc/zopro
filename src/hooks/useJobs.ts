@@ -41,7 +41,7 @@ export interface Job {
   total: number | null;
   estimated_duration?: number | null;
   customer?: { name: string; email: string | null; phone: string | null; address: string | null; city: string | null; state: string | null; zip: string | null };
-  assignee?: { full_name: string | null };
+  assignee?: { full_name: string | null; employment_status?: string | null };
   photos?: JobPhoto[];
   items?: JobItem[];
 }
@@ -94,7 +94,7 @@ export function useJobs(includeArchived: boolean = false) {
         .select(`
           *,
           customer:customers(name, email, phone, address, city, state, zip),
-          assignee:profiles!jobs_assigned_to_fkey(full_name),
+          assignee:profiles!jobs_assigned_to_fkey(full_name, employment_status),
           photos:job_photos(*),
           items:job_items(*)
         `)
@@ -123,7 +123,7 @@ export function useJob(jobId: string | null) {
         .select(`
           *,
           customer:customers(name, email, phone, address, city, state, zip),
-          assignee:profiles!jobs_assigned_to_fkey(full_name),
+          assignee:profiles!jobs_assigned_to_fkey(full_name, employment_status),
           photos:job_photos(*),
           items:job_items(*)
         `)

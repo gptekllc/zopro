@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -901,6 +901,12 @@ const Jobs = () => {
                             <span className="flex items-center gap-1">
                               <UserCog className="w-3 h-3" />
                               {job.assignee.full_name}
+                              {job.assignee.employment_status === 'on_leave' && (
+                                <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-[10px] px-1 py-0 ml-1">
+                                  <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
+                                  On Leave
+                                </Badge>
+                              )}
                             </span>
                           )}
                           {job.scheduled_start && (
@@ -1072,6 +1078,12 @@ const Jobs = () => {
                               <span className="flex items-center gap-1">
                                 <UserCog className="w-3 h-3" />
                                 {job.assignee.full_name}
+                                {job.assignee.employment_status === 'on_leave' && (
+                                  <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-[10px] px-1 py-0 ml-1">
+                                    <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
+                                    On Leave
+                                  </Badge>
+                                )}
                               </span>
                             )}
                             {job.scheduled_start && (

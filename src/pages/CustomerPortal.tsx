@@ -16,9 +16,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
 interface CustomerData {
   id: string;
@@ -62,6 +64,109 @@ interface Quote {
   signed_at: string | null;
 }
 
+interface PaymentMethod {
+  id: string;
+  type: 'card' | 'bank';
+  brand?: string;
+  last4?: string;
+  exp_month?: number;
+  exp_year?: number;
+  bank_name?: string;
+  account_type?: string;
+}
+
+// Initialize Stripe - we need to get the publishable key
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_placeholder');
+
+// Card Form Component for adding payment methods
+const AddPaymentMethodForm = ({ 
+  onSuccess, 
+  onCancel,
+  customerId,
+  token 
+}: { 
+  onSuccess: () => void; 
+  onCancel: () => void;
+  customerId: string;
+  token: string;
+}) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      // Get setup intent from our edge function
+      const { data, error: setupError } = await supabase.functions.invoke('setup-customer-payment-method', {
+        body: { customerId, token, action: 'create-setup-intent' },
+      });
+
+      if (setupError || !data?.clientSecret) {
+        throw new Error(data?.error || 'Failed to create setup intent');
+      }
+
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) throw new Error('Card element not found');
+
+      const { error: confirmError } = await stripe.confirmCardSetup(data.clientSecret, {
+        payment_method: {
+          card: cardElement,
+        },
+      });
+
+      if (confirmError) {
+        throw new Error(confirmError.message);
+      }
+
+      toast.success('Payment method saved successfully!');
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message);
+      toast.error(err.message || 'Failed to save payment method');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="p-4 border rounded-lg bg-muted/50">
+        <CardElement 
+          options={{
+            style: {
+              base: {
+                fontSize: '16px',
+                color: '#424770',
+                '::placeholder': { color: '#aab7c4' },
+              },
+              invalid: { color: '#9e2146' },
+            },
+          }}
+        />
+      </div>
+      {error && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isSubmitting || !stripe}>
+          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          Save Card
+        </Button>
+      </div>
+    </form>
+  );
+};
+
 const CustomerPortal = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -78,6 +183,12 @@ const CustomerPortal = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // Payment methods state
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+  const [isLoadingPaymentMethods, setIsLoadingPaymentMethods] = useState(false);
+  const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
+  const [deletingPaymentMethod, setDeletingPaymentMethod] = useState<string | null>(null);
   
   // Signature dialog states
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
@@ -187,6 +298,62 @@ const CustomerPortal = () => {
     setInvoices([]);
     setJobs([]);
     setQuotes([]);
+    setPaymentMethods([]);
+  };
+
+  // Fetch payment methods
+  const fetchPaymentMethods = async () => {
+    if (!customerData?.id) return;
+    
+    setIsLoadingPaymentMethods(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('setup-customer-payment-method', {
+        body: {
+          customerId: customerData.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+          action: 'get-payment-methods',
+        },
+      });
+
+      if (error) throw error;
+      setPaymentMethods(data?.paymentMethods || []);
+    } catch (err) {
+      console.error('Failed to fetch payment methods:', err);
+    } finally {
+      setIsLoadingPaymentMethods(false);
+    }
+  };
+
+  // Fetch payment methods when authenticated
+  useEffect(() => {
+    if (isAuthenticated && customerData?.id) {
+      fetchPaymentMethods();
+    }
+  }, [isAuthenticated, customerData?.id]);
+
+  const handleDeletePaymentMethod = async (paymentMethodId: string) => {
+    if (!customerData?.id) return;
+    
+    setDeletingPaymentMethod(paymentMethodId);
+    try {
+      const { error } = await supabase.functions.invoke('setup-customer-payment-method', {
+        body: {
+          customerId: customerData.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+          action: 'delete-payment-method',
+          paymentMethodId,
+        },
+      });
+
+      if (error) throw error;
+      
+      toast.success('Payment method removed');
+      setPaymentMethods(prev => prev.filter(pm => pm.id !== paymentMethodId));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to remove payment method');
+    } finally {
+      setDeletingPaymentMethod(null);
+    }
   };
 
   const handleDownloadInvoice = async (invoice: Invoice) => {
@@ -538,6 +705,10 @@ const CustomerPortal = () => {
                 <Badge variant="secondary" className="ml-1">{unpaidInvoices.length}</Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="payment-methods" className="flex items-center gap-2">
+              <Wallet className="w-4 h-4" />
+              Payment Methods
+            </TabsTrigger>
             <TabsTrigger value="jobs">Service History</TabsTrigger>
           </TabsList>
 
@@ -698,6 +869,104 @@ const CustomerPortal = () => {
                   <div className="text-center py-8 text-muted-foreground">
                     <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No invoices yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="payment-methods">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="w-5 h-5" />
+                      Payment Methods
+                    </CardTitle>
+                    <CardDescription>
+                      Manage your saved payment methods for faster checkout
+                    </CardDescription>
+                  </div>
+                  {!showAddPaymentMethod && (
+                    <Button onClick={() => setShowAddPaymentMethod(true)} size="sm">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Card
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {showAddPaymentMethod ? (
+                  <Elements stripe={stripePromise}>
+                    <AddPaymentMethodForm
+                      customerId={customerData?.id || ''}
+                      token={sessionStorage.getItem('customer_portal_token') || ''}
+                      onSuccess={() => {
+                        setShowAddPaymentMethod(false);
+                        fetchPaymentMethods();
+                      }}
+                      onCancel={() => setShowAddPaymentMethod(false)}
+                    />
+                  </Elements>
+                ) : isLoadingPaymentMethods ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : paymentMethods.length > 0 ? (
+                  <div className="space-y-3">
+                    {paymentMethods.map((pm) => (
+                      <div
+                        key={pm.id}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-muted rounded-lg">
+                            <CreditCard className="w-5 h-5" />
+                          </div>
+                          <div>
+                            {pm.type === 'card' ? (
+                              <>
+                                <p className="font-medium capitalize">
+                                  {pm.brand} •••• {pm.last4}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  Expires {pm.exp_month}/{pm.exp_year}
+                                </p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="font-medium">
+                                  {pm.bank_name} •••• {pm.last4}
+                                </p>
+                                <p className="text-sm text-muted-foreground capitalize">
+                                  {pm.account_type} Account
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeletePaymentMethod(pm.id)}
+                          disabled={deletingPaymentMethod === pm.id}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          {deletingPaymentMethod === pm.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No saved payment methods</p>
+                    <p className="text-sm mt-1">Add a card for faster checkout</p>
                   </div>
                 )}
               </CardContent>
