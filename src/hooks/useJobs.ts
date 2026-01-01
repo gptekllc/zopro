@@ -4,6 +4,7 @@ import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import { jobSchema, sanitizeErrorMessage } from '@/lib/validation';
 import { compressImage } from '@/lib/imageCompression';
+import { useEffect } from 'react';
 
 export interface Job {
   id: string;
@@ -40,8 +41,35 @@ export interface JobPhoto {
   created_at: string;
 }
 
+// Auto-archive jobs older than 3 years
+export function useAutoArchiveOldJobs() {
+  const { profile } = useAuth();
+  
+  useEffect(() => {
+    if (!profile?.company_id) return;
+    
+    const autoArchive = async () => {
+      const threeYearsAgo = new Date();
+      threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+      
+      // Archive jobs that are completed/paid and older than 3 years
+      await (supabase as any)
+        .from('jobs')
+        .update({ archived_at: new Date().toISOString() })
+        .is('archived_at', null)
+        .in('status', ['completed', 'invoiced', 'paid'])
+        .lt('created_at', threeYearsAgo.toISOString());
+    };
+    
+    autoArchive();
+  }, [profile?.company_id]);
+}
+
 export function useJobs(includeArchived: boolean = false) {
   const { profile } = useAuth();
+  
+  // Auto-archive old jobs on mount
+  useAutoArchiveOldJobs();
   
   return useQuery({
     queryKey: ['jobs', profile?.company_id, includeArchived],
