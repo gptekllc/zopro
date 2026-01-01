@@ -24,6 +24,7 @@ interface LineItem {
 
 const Invoices = () => {
   const { profile } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: invoices = [], isLoading } = useInvoices();
   const { data: customers = [] } = useCustomers();
   const createInvoice = useCreateInvoice();
@@ -40,6 +41,7 @@ const Invoices = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<string | null>(null);
+  const [viewingInvoice, setViewingInvoice] = useState<typeof invoices[0] | null>(null);
   const [formData, setFormData] = useState<{
     customerId: string;
     items: LineItem[];
@@ -53,6 +55,20 @@ const Invoices = () => {
     status: 'draft',
     dueDays: 30,
   });
+
+  // Handle URL param to auto-open invoice detail
+  useEffect(() => {
+    const viewInvoiceId = searchParams.get('view');
+    if (viewInvoiceId && invoices.length > 0) {
+      const invoice = invoices.find(i => i.id === viewInvoiceId);
+      if (invoice) {
+        setViewingInvoice(invoice);
+        // Clear the URL param after opening
+        searchParams.delete('view');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, invoices, setSearchParams]);
 
   const filteredInvoices = invoices.filter(inv => {
     const customer = customers.find(c => c.id === inv.customer_id);
@@ -502,6 +518,137 @@ const Invoices = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Invoice Detail Dialog for viewing from URL */}
+      {viewingInvoice && (
+        <Dialog open={!!viewingInvoice} onOpenChange={(open) => !open && setViewingInvoice(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <DialogTitle className="flex items-center gap-3">
+                  <Receipt className="w-5 h-5 text-primary" />
+                  {viewingInvoice.invoice_number}
+                </DialogTitle>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(viewingInvoice.status)}`}>
+                  {viewingInvoice.status}
+                </span>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Customer & Dates */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Customer</p>
+                  <p className="font-medium">{getCustomerName(viewingInvoice.customer_id)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Created</p>
+                  <p className="font-medium">{format(new Date(viewingInvoice.created_at), 'MMM d, yyyy')}</p>
+                </div>
+                {viewingInvoice.due_date && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Due Date</p>
+                    <p className="font-medium">{format(new Date(viewingInvoice.due_date), 'MMM d, yyyy')}</p>
+                  </div>
+                )}
+                {viewingInvoice.paid_at && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Paid</p>
+                    <p className="font-medium text-green-600 flex items-center gap-1">
+                      <CheckCircle className="w-4 h-4" />
+                      {format(new Date(viewingInvoice.paid_at), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Line Items */}
+              <div>
+                <h4 className="font-medium mb-3">Line Items</h4>
+                <div className="space-y-2">
+                  {viewingInvoice.items && viewingInvoice.items.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
+                        <div className="col-span-6">Description</div>
+                        <div className="col-span-2 text-right">Qty</div>
+                        <div className="col-span-2 text-right">Price</div>
+                        <div className="col-span-2 text-right">Total</div>
+                      </div>
+                      {viewingInvoice.items.map((item: any) => (
+                        <div key={item.id} className="grid grid-cols-12 py-2 px-2 bg-muted/50 rounded text-sm">
+                          <div className="col-span-6">{item.description}</div>
+                          <div className="col-span-2 text-right">{item.quantity}</div>
+                          <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
+                          <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No line items</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Totals */}
+              <div className="flex justify-end">
+                <div className="w-48 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>${Number(viewingInvoice.subtotal).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Tax</span>
+                    <span>${Number(viewingInvoice.tax).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-lg pt-2 border-t">
+                    <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
+                    <span>${Number(viewingInvoice.total).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Status */}
+              {viewingInvoice.status === 'paid' ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-700 dark:text-green-400">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="font-medium">Payment received on {format(new Date(viewingInvoice.paid_at!), 'MMM d, yyyy')}</span>
+                </div>
+              ) : viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date() ? (
+                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-700 dark:text-red-400">
+                  <span className="font-medium">Overdue - was due on {format(new Date(viewingInvoice.due_date), 'MMM d, yyyy')}</span>
+                </div>
+              ) : null}
+
+              {/* Notes */}
+              {viewingInvoice.notes && (
+                <div>
+                  <h4 className="font-medium mb-2">Notes</h4>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{viewingInvoice.notes}</p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-4">
+                <Button variant="outline" size="sm" onClick={() => handleDownload(viewingInvoice.id)}>
+                  <FileDown className="w-4 h-4 mr-1" /> Download
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleOpenEmailDialog(viewingInvoice.id, viewingInvoice.customer_id)}>
+                  <Mail className="w-4 h-4 mr-1" /> Email
+                </Button>
+                {viewingInvoice.status !== 'paid' && (
+                  <Button variant="default" size="sm" onClick={() => handleMarkPaid(viewingInvoice.id)}>
+                    <CheckCircle className="w-4 h-4 mr-1" /> Mark Paid
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingInvoice); setViewingInvoice(null); }} className="ml-auto">
+                  <Edit className="w-4 h-4 mr-1" /> Edit
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
