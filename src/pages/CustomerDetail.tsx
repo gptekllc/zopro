@@ -248,11 +248,11 @@ const CustomerDetail = () => {
         <div className="flex flex-wrap gap-2 pl-11 sm:pl-0">
           <Button variant="outline" size="sm" onClick={() => setActivityDialogOpen(true)} className="gap-1.5">
             <History className="w-4 h-4" />
-            <span className="hidden sm:inline">Activity</span>
+            Activity
           </Button>
           <Button variant="outline" size="sm" onClick={handleOpenEdit} className="gap-1.5">
             <Edit className="w-4 h-4" />
-            <span className="hidden sm:inline">Edit</span>
+            Edit
           </Button>
           {customer.email && (
             <Button variant="outline" size="sm" onClick={() => setPortalLinkConfirmOpen(true)} disabled={sendingPortalLink} className="gap-1.5">

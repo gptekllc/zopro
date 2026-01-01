@@ -401,24 +401,38 @@ const Invoices = () => {
       <div className="space-y-3">
         {filteredInvoices.map((invoice) => (
           <Card key={invoice.id} className="overflow-hidden hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                    <Receipt className="w-6 h-6 text-accent" />
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                {/* Left: Icon + Info */}
+                <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-accent/10 flex items-center justify-center shrink-0">
+                    <Receipt className="w-5 h-5 sm:w-6 sm:h-6 text-accent" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{invoice.invoice_number}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-sm sm:text-base">{invoice.invoice_number}</h3>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(invoice.status)}`}>
                         {invoice.status}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground">{getCustomerName(invoice.customer_id)}</p>
+                    <p className="text-sm text-muted-foreground truncate">{getCustomerName(invoice.customer_id)}</p>
+                    {/* Mobile: Amount + Date */}
+                    <div className="flex items-center gap-3 mt-1 sm:hidden">
+                      <p className="font-semibold text-sm flex items-center gap-0.5">
+                        <DollarSign className="w-3.5 h-3.5" />
+                        {Number(invoice.total).toLocaleString()}
+                      </p>
+                      {invoice.due_date && (
+                        <p className="text-xs text-muted-foreground">
+                          Due: {format(new Date(invoice.due_date), 'MMM d')}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
+                {/* Right: Desktop Amount + Actions */}
+                <div className="flex items-center gap-4 sm:gap-6 justify-end">
                   <div className="text-right hidden sm:block">
                     <p className="font-semibold flex items-center gap-1">
                       <DollarSign className="w-4 h-4" />
