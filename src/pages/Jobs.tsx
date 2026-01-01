@@ -778,9 +778,9 @@ const Jobs = () => {
             variant={showArchived ? 'secondary' : 'outline'}
             size="sm"
             onClick={() => setShowArchived(!showArchived)}
-            className="gap-2 whitespace-nowrap hidden sm:flex"
+            className="gap-2 whitespace-nowrap"
           >
-            {showArchived ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <span className="hidden sm:inline">{showArchived ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</span>
             {showArchived ? 'Hide Archived' : 'Show Archived'}
           </Button>
           
