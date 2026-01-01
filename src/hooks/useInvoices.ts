@@ -24,6 +24,8 @@ export interface Invoice {
   subtotal: number;
   tax: number;
   total: number;
+  late_fee_amount: number | null;
+  late_fee_applied_at: string | null;
   notes: string | null;
   due_date: string | null;
   paid_at: string | null;
@@ -32,6 +34,25 @@ export interface Invoice {
   updated_at: string;
   items?: InvoiceItem[];
   customer?: { name: string };
+}
+
+// Helper to check if invoice is overdue
+export function isInvoiceOverdue(invoice: Invoice): boolean {
+  if (invoice.status === 'paid' || invoice.status === 'cancelled') return false;
+  if (!invoice.due_date) return false;
+  return new Date(invoice.due_date) < new Date();
+}
+
+// Calculate late fee for an invoice
+export function calculateLateFee(invoice: Invoice, lateFeePercentage: number): number {
+  if (!isInvoiceOverdue(invoice)) return 0;
+  if (lateFeePercentage <= 0) return 0;
+  return Number(invoice.total) * (lateFeePercentage / 100);
+}
+
+// Get total amount due including late fee
+export function getTotalWithLateFee(invoice: Invoice): number {
+  return Number(invoice.total) + Number(invoice.late_fee_amount || 0);
 }
 
 export function useInvoices() {
@@ -217,6 +238,62 @@ export function useDeleteInvoice() {
     },
     onError: (error: unknown) => {
       toast.error('Failed to delete invoice: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
+// Apply late fee to an overdue invoice
+export function useApplyLateFee() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ invoiceId, lateFeePercentage }: { invoiceId: string; lateFeePercentage: number }) => {
+      // Get the invoice
+      const { data: invoice, error: fetchError } = await (supabase as any)
+        .from('invoices')
+        .select('total, status, due_date, late_fee_amount')
+        .eq('id', invoiceId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Check if already has late fee
+      if (invoice.late_fee_amount && invoice.late_fee_amount > 0) {
+        throw new Error('Late fee already applied');
+      }
+      
+      // Check if overdue
+      if (invoice.status === 'paid' || invoice.status === 'cancelled') {
+        throw new Error('Cannot apply late fee to paid or cancelled invoice');
+      }
+      
+      if (!invoice.due_date || new Date(invoice.due_date) >= new Date()) {
+        throw new Error('Invoice is not overdue');
+      }
+      
+      // Calculate late fee
+      const lateFeeAmount = Number(invoice.total) * (lateFeePercentage / 100);
+      
+      // Update invoice with late fee
+      const { error: updateError } = await (supabase as any)
+        .from('invoices')
+        .update({
+          late_fee_amount: lateFeeAmount,
+          late_fee_applied_at: new Date().toISOString(),
+          status: 'overdue',
+        })
+        .eq('id', invoiceId);
+      
+      if (updateError) throw updateError;
+      
+      return { lateFeeAmount };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success(`Late fee of $${data.lateFeeAmount.toFixed(2)} applied`);
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to apply late fee: ' + sanitizeErrorMessage(error));
     },
   });
 }

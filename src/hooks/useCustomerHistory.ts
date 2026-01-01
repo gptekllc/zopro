@@ -62,6 +62,8 @@ export interface CustomerInvoice {
   subtotal: number;
   tax: number;
   total: number;
+  late_fee_amount: number | null;
+  late_fee_applied_at: string | null;
   due_date: string | null;
   paid_at: string | null;
   created_at: string;
@@ -186,6 +188,8 @@ export function useCustomerInvoices(customerId: string | undefined) {
           subtotal,
           tax,
           total,
+          late_fee_amount,
+          late_fee_applied_at,
           due_date,
           paid_at,
           created_at,
@@ -216,8 +220,8 @@ export function useCustomerStats(customerId: string | undefined) {
     approvedQuotes: quotes.filter(q => q.status === 'approved' || q.signed_at).length,
     totalInvoices: invoices.length,
     paidInvoices: invoices.filter(i => i.status === 'paid').length,
-    lifetimeValue: invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.total), 0),
-    outstandingBalance: invoices.filter(i => i.status !== 'paid' && i.status !== 'draft').reduce((sum, i) => sum + Number(i.total), 0),
+    lifetimeValue: invoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.total) + Number(i.late_fee_amount || 0), 0),
+    outstandingBalance: invoices.filter(i => i.status !== 'paid' && i.status !== 'draft').reduce((sum, i) => sum + Number(i.total) + Number(i.late_fee_amount || 0), 0),
   };
 
   return stats;

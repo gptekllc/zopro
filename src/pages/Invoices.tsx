@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
-import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from '@/hooks/useInvoices';
+import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useApplyLateFee, isInvoiceOverdue, getTotalWithLateFee } from '@/hooks/useInvoices';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
 import { useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,8 +14,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
@@ -31,9 +32,11 @@ const Invoices = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { data: invoices = [], isLoading, refetch: refetchInvoices } = useInvoices();
   const { data: customers = [] } = useCustomers();
+  const { data: company } = useCompany();
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
   const deleteInvoice = useDeleteInvoice();
+  const applyLateFee = useApplyLateFee();
   const emailDocument = useEmailDocument();
   const downloadDocument = useDownloadDocument();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
@@ -261,6 +264,18 @@ const Invoices = () => {
 
   const getCustomerEmail = (customerId: string) => {
     return customers.find(c => c.id === customerId)?.email || '';
+  };
+
+  const lateFeePercentage = company?.late_fee_percentage ?? 0;
+
+  const handleApplyLateFee = async (invoiceId: string) => {
+    if (lateFeePercentage <= 0) {
+      toast.error('No late fee percentage configured. Set it in Company Settings.');
+      return;
+    }
+    if (confirm(`Apply a ${lateFeePercentage}% late fee to this overdue invoice?`)) {
+      await applyLateFee.mutateAsync({ invoiceId, lateFeePercentage });
+    }
   };
 
   const handleDownload = (invoiceId: string) => {
@@ -512,7 +527,20 @@ const Invoices = () => {
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{invoice.notes}</p>
                     )}
                   </div>
-                  <span className="text-sm font-medium text-primary shrink-0">${Number(invoice.total).toLocaleString()}</span>
+                  <div className="text-right shrink-0">
+                    <span className="text-sm font-medium text-primary">${Number(invoice.total).toLocaleString()}</span>
+                    {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
+                      <div className="text-xs text-destructive flex items-center gap-1 justify-end mt-0.5">
+                        <AlertCircle className="w-3 h-3" />
+                        +${Number(invoice.late_fee_amount).toFixed(2)} late fee
+                      </div>
+                    )}
+                    {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
+                      <div className="text-xs font-semibold text-foreground mt-0.5">
+                        Total: ${getTotalWithLateFee(invoice).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Row 2: Tags + Actions */}
@@ -539,6 +567,18 @@ const Invoices = () => {
                             {invoice.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
                           </DropdownMenuItem>
                         ))}
+                        {isInvoiceOverdue(invoice) && !invoice.late_fee_amount && lateFeePercentage > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleApplyLateFee(invoice.id)}
+                              className="text-destructive"
+                            >
+                              <AlertCircle className="w-4 h-4 mr-2" />
+                              Apply {lateFeePercentage}% Late Fee
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -594,7 +634,20 @@ const Invoices = () => {
                       <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{invoice.notes}</p>
                     )}
                   </div>
-                  <span className="text-base font-semibold text-primary shrink-0">${Number(invoice.total).toLocaleString()}</span>
+                  <div className="text-right shrink-0">
+                    <span className="text-base font-semibold text-primary">${Number(invoice.total).toLocaleString()}</span>
+                    {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
+                      <div className="text-sm text-destructive flex items-center gap-1 justify-end mt-0.5">
+                        <AlertCircle className="w-3.5 h-3.5" />
+                        +${Number(invoice.late_fee_amount).toFixed(2)} late fee
+                      </div>
+                    )}
+                    {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
+                      <div className="text-sm font-semibold text-foreground mt-0.5">
+                        Total Due: ${getTotalWithLateFee(invoice).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 {/* Row 2: Tags + Actions */}
@@ -621,6 +674,18 @@ const Invoices = () => {
                             {invoice.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
                           </DropdownMenuItem>
                         ))}
+                        {isInvoiceOverdue(invoice) && !invoice.late_fee_amount && lateFeePercentage > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleApplyLateFee(invoice.id)}
+                              className="text-destructive"
+                            >
+                              <AlertCircle className="w-4 h-4 mr-2" />
+                              Apply {lateFeePercentage}% Late Fee
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
