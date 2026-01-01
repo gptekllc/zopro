@@ -346,6 +346,7 @@ export type Database = {
           created_by: string | null
           customer_id: string
           description: string | null
+          estimated_duration: number | null
           id: string
           job_number: string
           notes: string | null
@@ -373,6 +374,7 @@ export type Database = {
           created_by?: string | null
           customer_id: string
           description?: string | null
+          estimated_duration?: number | null
           id?: string
           job_number: string
           notes?: string | null
@@ -400,6 +402,7 @@ export type Database = {
           created_by?: string | null
           customer_id?: string
           description?: string | null
+          estimated_duration?: number | null
           id?: string
           job_number?: string
           notes?: string | null

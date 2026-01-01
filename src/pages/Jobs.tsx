@@ -18,11 +18,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff, MoreVertical, DollarSign, ArrowDown, ArrowUp } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import JobCalendar from '@/components/jobs/JobCalendar';
+import SchedulerView from '@/components/jobs/SchedulerView';
 import { CompleteJobDialog } from '@/components/jobs/CompleteJobDialog';
 import { JobTimeTracker } from '@/components/jobs/JobTimeTracker';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
@@ -95,7 +96,7 @@ const Jobs = () => {
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [photoType, setPhotoType] = useState<'before' | 'after' | 'other'>('before');
   const [photoCaption, setPhotoCaption] = useState('');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'scheduler'>('list');
   const [importQuoteId, setImportQuoteId] = useState<string>('');
   const [completingJob, setCompletingJob] = useState<Job | null>(null);
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
@@ -668,6 +669,7 @@ const Jobs = () => {
               variant={viewMode === 'list' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('list')}
+              title="List View"
             >
               <List className="w-4 h-4" />
             </Button>
@@ -675,9 +677,20 @@ const Jobs = () => {
               variant={viewMode === 'calendar' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setViewMode('calendar')}
+              title="Calendar View"
             >
               <CalendarDays className="w-4 h-4" />
             </Button>
+            {isAdmin && (
+              <Button
+                variant={viewMode === 'scheduler' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('scheduler')}
+                title="Scheduler View"
+              >
+                <Users className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
         
@@ -702,6 +715,15 @@ const Jobs = () => {
       {/* Calendar View */}
       {viewMode === 'calendar' && (
         <JobCalendar jobs={safeJobs} onJobClick={setViewingJob} />
+      )}
+
+      {/* Scheduler View - Admin/Manager only */}
+      {viewMode === 'scheduler' && isAdmin && (
+        <SchedulerView 
+          jobs={safeJobs} 
+          technicians={technicians} 
+          onJobClick={setViewingJob} 
+        />
       )}
 
       {/* Job List - Mobile Optimized */}
