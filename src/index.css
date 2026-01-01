@@ -181,3 +181,152 @@
     transform: scale(1);
   }
 }
+
+/* React Big Calendar Overrides */
+.rbc-calendar {
+  font-family: inherit;
+}
+
+.rbc-header {
+  padding: 8px 4px;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-time-view {
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.rbc-time-header {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-time-content {
+  border-top: none;
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid hsl(var(--border) / 0.5);
+}
+
+.rbc-timeslot-group {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.rbc-time-gutter {
+  background: hsl(var(--muted) / 0.3);
+}
+
+.rbc-label {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  padding: 4px 8px;
+}
+
+.rbc-today {
+  background: hsl(var(--primary) / 0.05);
+}
+
+.rbc-current-time-indicator {
+  background: hsl(var(--destructive));
+  height: 2px;
+}
+
+.rbc-current-time-indicator::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: hsl(var(--destructive));
+}
+
+.rbc-event {
+  border: none !important;
+  border-radius: 4px !important;
+  padding: 2px 4px !important;
+  font-size: 0.75rem !important;
+}
+
+.rbc-event-label {
+  display: none;
+}
+
+.rbc-event.rbc-selected {
+  box-shadow: 0 0 0 2px hsl(var(--ring));
+}
+
+.rbc-addons-dnd .rbc-addons-dnd-resize-ns-icon,
+.rbc-addons-dnd .rbc-addons-dnd-resize-ew-icon {
+  display: none;
+}
+
+.rbc-addons-dnd .rbc-addons-dnd-resizable {
+  position: relative;
+}
+
+.rbc-addons-dnd .rbc-addons-dnd-resizable::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  background: linear-gradient(to top, hsl(0 0% 0% / 0.2), transparent);
+  border-radius: 0 0 4px 4px;
+}
+
+.rbc-addons-dnd-dragged-event {
+  opacity: 0.5;
+}
+
+.rbc-slot-selection {
+  background: hsl(var(--primary) / 0.2);
+  border: 2px dashed hsl(var(--primary));
+}
+
+.rbc-time-header-content {
+  border-left: 1px solid hsl(var(--border));
+}
+
+.rbc-time-header-cell {
+  min-height: 40px;
+}
+
+.rbc-allday-cell {
+  display: none;
+}
+
+.rbc-row-segment {
+  padding: 0 2px;
+}
+
+.rbc-day-slot .rbc-events-container {
+  margin-right: 2px;
+}
+
+/* Resource header styling */
+.rbc-time-header-gutter {
+  background: hsl(var(--muted) / 0.3);
+}
+
+.rbc-row-resource {
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+/* Dark mode adjustments */
+.dark .rbc-off-range-bg {
+  background: hsl(var(--muted) / 0.2);
+}
+
+.dark .rbc-today {
+  background: hsl(var(--primary) / 0.1);
+}
