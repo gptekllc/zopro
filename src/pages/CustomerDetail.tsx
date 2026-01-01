@@ -51,6 +51,7 @@ const CustomerDetail = () => {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
   const [sendingPortalLink, setSendingPortalLink] = useState(false);
+  const [portalLinkConfirmOpen, setPortalLinkConfirmOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [showArchivedJobs, setShowArchivedJobs] = useState(false);
@@ -106,6 +107,7 @@ const CustomerDetail = () => {
       return;
     }
 
+    setPortalLinkConfirmOpen(false);
     setSendingPortalLink(true);
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
@@ -242,10 +244,6 @@ const CustomerDetail = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate('/customers')} className="shrink-0">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <div className="min-w-0">
-            <h1 className="text-2xl md:text-3xl font-bold truncate">{customer.name}</h1>
-            <p className="text-muted-foreground text-sm">Customer Details</p>
-          </div>
         </div>
         <div className="flex flex-wrap gap-2 pl-11 sm:pl-0">
           <Button variant="outline" size="sm" onClick={() => setActivityDialogOpen(true)} className="gap-1.5">
@@ -257,13 +255,65 @@ const CustomerDetail = () => {
             <span className="hidden sm:inline">Edit</span>
           </Button>
           {customer.email && (
-            <Button variant="outline" size="sm" onClick={handleSendPortalLink} disabled={sendingPortalLink} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => setPortalLinkConfirmOpen(true)} disabled={sendingPortalLink} className="gap-1.5">
               {sendingPortalLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
-              <span className="hidden sm:inline">Portal Link</span>
+              Send Portal Link
             </Button>
           )}
         </div>
       </div>
+
+      {/* Contact Information - moved to top */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base md:text-lg">Contact Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <User className="w-6 h-6 md:w-8 md:h-8 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium text-lg truncate">{customer.name}</p>
+                <p className="text-xs md:text-sm text-muted-foreground">Customer since {format(new Date(customer.created_at), 'MMM yyyy')}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-4 sm:gap-6 sm:ml-auto">
+              {customer.email && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <a href={`mailto:${customer.email}`} className="hover:underline truncate">{customer.email}</a>
+                </div>
+              )}
+              {customer.phone && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <a href={`tel:${customer.phone}`} className="hover:underline">{customer.phone}</a>
+                </div>
+              )}
+              {hasAddress(customer) && (
+                <button
+                  onClick={() => openInMaps(customer)}
+                  className="flex items-center gap-2 text-sm hover:text-primary transition-colors group"
+                >
+                  <MapPin className="w-4 h-4 text-muted-foreground shrink-0 group-hover:text-primary" />
+                  <span className="truncate max-w-[200px]">
+                    {[customer.address, customer.city, customer.state].filter(Boolean).join(', ')}
+                  </span>
+                  <Navigation className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </button>
+              )}
+            </div>
+          </div>
+          {customer.notes && (
+            <div className="mt-4 pt-4 border-t">
+              <p className="text-sm font-medium mb-1">Notes</p>
+              <p className="text-sm text-muted-foreground">{customer.notes}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
@@ -321,63 +371,8 @@ const CustomerDetail = () => {
         </Card>
       </div>
 
-      {/* Customer Info + History Tabs - Stack on mobile */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Contact Info */}
-        <Card className="order-2 lg:order-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base md:text-lg">Contact Information</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <User className="w-6 h-6 md:w-8 md:h-8 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-medium truncate">{customer.name}</p>
-                <p className="text-xs md:text-sm text-muted-foreground">Customer since {format(new Date(customer.created_at), 'MMM yyyy')}</p>
-              </div>
-            </div>
-            <div className="space-y-3 pt-4 border-t">
-              {customer.email && (
-                <div className="flex items-center gap-3 text-sm">
-                  <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <a href={`mailto:${customer.email}`} className="hover:underline truncate">{customer.email}</a>
-                </div>
-              )}
-              {customer.phone && (
-                <div className="flex items-center gap-3 text-sm">
-                  <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <a href={`tel:${customer.phone}`} className="hover:underline">{customer.phone}</a>
-                </div>
-              )}
-              {hasAddress(customer) && (
-                <button
-                  onClick={() => openInMaps(customer)}
-                  className="flex items-start gap-3 text-sm w-full text-left hover:bg-muted/50 -mx-2 px-2 py-1.5 rounded-md transition-colors group"
-                >
-                  <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    {customer.address && <p className="truncate">{customer.address}</p>}
-                    {(customer.city || customer.state || customer.zip) && (
-                      <p className="truncate">{[customer.city, customer.state, customer.zip].filter(Boolean).join(', ')}</p>
-                    )}
-                  </div>
-                  <Navigation className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 shrink-0" />
-                </button>
-              )}
-            </div>
-            {customer.notes && (
-              <div className="pt-4 border-t">
-                <p className="text-sm font-medium mb-1">Notes</p>
-                <p className="text-sm text-muted-foreground">{customer.notes}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* History Tabs */}
-        <Card className="lg:col-span-2 order-1 lg:order-2">
+      {/* History Tabs */}
+      <Card>
           <CardContent className="p-0">
             <Tabs defaultValue="jobs" className="w-full">
               <div className="border-b px-2 md:px-4 overflow-x-auto">
@@ -583,7 +578,26 @@ const CustomerDetail = () => {
             </Tabs>
           </CardContent>
         </Card>
-      </div>
+
+      {/* Portal Link Confirmation Dialog */}
+      <Dialog open={portalLinkConfirmOpen} onOpenChange={setPortalLinkConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Send Portal Link</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Send portal link to customer?
+          </p>
+          <div className="flex gap-2 justify-end pt-4">
+            <Button variant="outline" onClick={() => setPortalLinkConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendPortalLink}>
+              Yes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Activity Modal */}
       <Dialog open={activityDialogOpen} onOpenChange={setActivityDialogOpen}>
