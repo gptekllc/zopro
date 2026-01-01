@@ -19,10 +19,13 @@ export type Database = {
           address: string | null
           city: string | null
           created_at: string
+          default_payment_method: string | null
           email: string | null
           id: string
+          late_fee_percentage: number | null
           logo_url: string | null
           name: string
+          payment_terms_days: number | null
           phone: string | null
           state: string | null
           tax_rate: number | null
@@ -34,10 +37,13 @@ export type Database = {
           address?: string | null
           city?: string | null
           created_at?: string
+          default_payment_method?: string | null
           email?: string | null
           id?: string
+          late_fee_percentage?: number | null
           logo_url?: string | null
           name: string
+          payment_terms_days?: number | null
           phone?: string | null
           state?: string | null
           tax_rate?: number | null
@@ -49,10 +55,13 @@ export type Database = {
           address?: string | null
           city?: string | null
           created_at?: string
+          default_payment_method?: string | null
           email?: string | null
           id?: string
+          late_fee_percentage?: number | null
           logo_url?: string | null
           name?: string
+          payment_terms_days?: number | null
           phone?: string | null
           state?: string | null
           tax_rate?: number | null
