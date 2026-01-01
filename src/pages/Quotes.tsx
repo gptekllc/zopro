@@ -408,8 +408,11 @@ const Quotes = () => {
           <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow">
             <CardContent className="p-4 sm:p-5">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                {/* Left: Icon + Info */}
-                <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                {/* Left: Icon + Info - Clickable */}
+                <div 
+                  className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0 cursor-pointer"
+                  onClick={() => setViewingQuote(quote)}
+                >
                   <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                     <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
