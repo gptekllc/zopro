@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,6 +51,7 @@ const statusColors: Record<string, string> = {
 const CustomerDetail = () => {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
+  const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
   const [sendingPortalLink, setSendingPortalLink] = useState(false);
   const [portalLinkConfirmOpen, setPortalLinkConfirmOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -61,6 +63,31 @@ const CustomerDetail = () => {
   const [selectedQuote, setSelectedQuote] = useState<CustomerQuote | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<CustomerInvoice | null>(null);
   const [selectedSignatureId, setSelectedSignatureId] = useState<string | null>(null);
+
+  // Wrapped setters for scroll restoration
+  const openSelectedJob = useCallback((job: CustomerJob | null) => {
+    if (job) saveScrollPosition();
+    setSelectedJob(job);
+    if (!job) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
+
+  const openSelectedQuote = useCallback((quote: CustomerQuote | null) => {
+    if (quote) saveScrollPosition();
+    setSelectedQuote(quote);
+    if (!quote) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
+
+  const openSelectedInvoice = useCallback((invoice: CustomerInvoice | null) => {
+    if (invoice) saveScrollPosition();
+    setSelectedInvoice(invoice);
+    if (!invoice) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
+
+  const openEditDialog = useCallback((open: boolean) => {
+    if (open) saveScrollPosition();
+    setEditDialogOpen(open);
+    if (!open) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
   
   // Edit form
   const [editForm, setEditForm] = useState({
@@ -138,7 +165,7 @@ const CustomerDetail = () => {
         zip: customer.zip || '',
         notes: customer.notes || '',
       });
-      setEditDialogOpen(true);
+      openEditDialog(true);
     }
   };
 
@@ -149,7 +176,7 @@ const CustomerDetail = () => {
         id: customerId,
         ...editForm,
       });
-      setEditDialogOpen(false);
+      openEditDialog(false);
       refetch();
     } catch {
       toast.error('Failed to update customer');
@@ -172,7 +199,7 @@ const CustomerDetail = () => {
   const handleConvertQuoteToInvoice = async (quoteId: string) => {
     if (confirm('Convert this quote to an invoice?')) {
       await convertToInvoice.mutateAsync({ quoteId });
-      setSelectedQuote(null);
+      openSelectedQuote(null);
     }
   };
 
@@ -195,7 +222,7 @@ const CustomerDetail = () => {
         status: 'paid',
         paid_at: new Date().toISOString(),
       });
-      setSelectedInvoice(null);
+      openSelectedInvoice(null);
       toast.success('Invoice marked as paid');
     } catch {
       toast.error('Failed to update invoice');
@@ -206,13 +233,13 @@ const CustomerDetail = () => {
     setActivityDialogOpen(false);
     if (activity.type === 'job') {
       const job = jobs.find(j => j.id === activity.id);
-      if (job) setSelectedJob(job);
+      if (job) openSelectedJob(job);
     } else if (activity.type === 'quote') {
       const quote = quotes.find(q => q.id === activity.id);
-      if (quote) setSelectedQuote(quote);
+      if (quote) openSelectedQuote(quote);
     } else if (activity.type === 'invoice') {
       const invoice = invoices.find(i => i.id === activity.id);
-      if (invoice) setSelectedInvoice(invoice);
+      if (invoice) openSelectedInvoice(invoice);
     }
   };
 
@@ -433,7 +460,7 @@ const CustomerDetail = () => {
                         <div 
                           key={job.id} 
                           className={`p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer ${job.archived_at ? 'opacity-60' : ''}`}
-                          onClick={() => setSelectedJob(job)}
+                          onClick={() => openSelectedJob(job)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
@@ -501,7 +528,7 @@ const CustomerDetail = () => {
                         <div 
                           key={quote.id} 
                           className="p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer"
-                          onClick={() => setSelectedQuote(quote)}
+                          onClick={() => openSelectedQuote(quote)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -549,7 +576,7 @@ const CustomerDetail = () => {
                         <div 
                           key={invoice.id} 
                           className="p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer"
-                          onClick={() => setSelectedInvoice(invoice)}
+                          onClick={() => openSelectedInvoice(invoice)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -727,7 +754,7 @@ const CustomerDetail = () => {
               />
             </div>
             <div className="flex gap-3 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => setEditDialogOpen(false)}>
+              <Button variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>
                 Cancel
               </Button>
               <Button 
@@ -748,11 +775,11 @@ const CustomerDetail = () => {
         job={selectedJob}
         customerName={customer.name}
         open={!!selectedJob}
-        onOpenChange={(open) => !open && setSelectedJob(null)}
+        onOpenChange={(open) => !open && openSelectedJob(null)}
         onEdit={(jobId) => navigate(`/jobs?view=${jobId}`)}
         onViewQuote={(quote) => {
-          setSelectedJob(null);
-          setSelectedQuote({
+          openSelectedJob(null);
+          openSelectedQuote({
             ...quote,
             items: quote.items || [],
             signed_at: quote.signed_at || null,
@@ -765,7 +792,7 @@ const CustomerDetail = () => {
         quote={selectedQuote}
         customerName={customer.name}
         open={!!selectedQuote}
-        onOpenChange={(open) => !open && setSelectedQuote(null)}
+        onOpenChange={(open) => !open && openSelectedQuote(null)}
         onDownload={handleDownloadQuote}
         onEmail={handleEmailQuote}
         onConvertToInvoice={handleConvertQuoteToInvoice}
@@ -777,7 +804,7 @@ const CustomerDetail = () => {
         invoice={selectedInvoice}
         customerName={customer.name}
         open={!!selectedInvoice}
-        onOpenChange={(open) => !open && setSelectedInvoice(null)}
+        onOpenChange={(open) => !open && openSelectedInvoice(null)}
         onDownload={handleDownloadInvoice}
         onEmail={handleEmailInvoice}
         onMarkPaid={handleMarkInvoicePaid}
