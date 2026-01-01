@@ -983,29 +983,31 @@ const Jobs = () => {
                           {job.archived_at && (
                             <Badge variant="outline" className="text-muted-foreground">Archived</Badge>
                           )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                              <Badge className={`${getStatusColor(job.status)} cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
-                                {job.status.replace('_', ' ')}
-                                <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                              </Badge>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="bg-popover">
-                              {JOB_STATUSES.map((status) => (
-                                <DropdownMenuItem
-                                  key={status}
-                                  onClick={() => handleStatusChange(job.id, status)}
-                                  disabled={job.status === status}
-                                  className={job.status === status ? 'bg-accent' : ''}
-                                >
-                                  <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
-                                    {status.replace('_', ' ')}
-                                  </Badge>
-                                  {job.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Badge className={`${getStatusColor(job.status)} cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
+                                  {job.status.replace('_', ' ')}
+                                  <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                                </Badge>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start" className="bg-popover z-50">
+                                {JOB_STATUSES.map((status) => (
+                                  <DropdownMenuItem
+                                    key={status}
+                                    onClick={() => handleStatusChange(job.id, status)}
+                                    disabled={job.status === status}
+                                    className={job.status === status ? 'bg-accent' : ''}
+                                  >
+                                    <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
+                                      {status.replace('_', ' ')}
+                                    </Badge>
+                                    {job.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                           <Badge className={getPriorityColor(job.priority)} variant="outline">
                             {job.priority}
                           </Badge>
