@@ -62,6 +62,28 @@ export function useSoftDeleteCustomer() {
   });
 }
 
+export function useRestoreCustomer() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('customers')
+        .update({ deleted_at: null })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['deleted-customers'] });
+      toast.success('Customer restored');
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to restore customer: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
 export function useCreateCustomer() {
   const queryClient = useQueryClient();
   const { profile } = useAuth();

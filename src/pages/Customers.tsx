@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, Customer } from '@/hooks/useCustomers';
+import { useCustomers, useCreateCustomer, useUpdateCustomer, useSoftDeleteCustomer, useRestoreCustomer, Customer } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink, RotateCcw, Eye, Briefcase, FileText, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 const Customers = () => {
   const navigate = useNavigate();
@@ -23,8 +23,8 @@ const Customers = () => {
   const { isAdmin, profile } = useAuth();
   const createCustomer = useCreateCustomer();
   const updateCustomer = useUpdateCustomer();
-  const deleteCustomer = useDeleteCustomer();
-  const queryClient = useQueryClient();
+  const softDeleteCustomer = useSoftDeleteCustomer();
+  const restoreCustomer = useRestoreCustomer();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -43,7 +43,7 @@ const Customers = () => {
 
   // Fetch deleted customers for admins/managers
   const { data: deletedCustomers = [] } = useQuery({
-    queryKey: ['deleted_customers', profile?.company_id],
+    queryKey: ['deleted-customers', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
       const { data, error } = await (supabase as any)
@@ -55,44 +55,6 @@ const Customers = () => {
       return data as (Customer & { deleted_at: string })[];
     },
     enabled: !!profile?.company_id && isAdmin,
-  });
-
-  // Soft delete mutation
-  const softDeleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from('customers')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      queryClient.invalidateQueries({ queryKey: ['deleted_customers'] });
-      toast.success('Customer deleted');
-    },
-    onError: () => {
-      toast.error('Failed to delete customer');
-    },
-  });
-
-  // Restore mutation
-  const restoreMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
-        .from('customers')
-        .update({ deleted_at: null })
-        .eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
-      queryClient.invalidateQueries({ queryKey: ['deleted_customers'] });
-      toast.success('Customer restored');
-    },
-    onError: () => {
-      toast.error('Failed to restore customer');
-    },
   });
 
   const filteredCustomers = customers.filter(c =>
@@ -141,7 +103,7 @@ const Customers = () => {
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this customer?')) {
-      softDeleteMutation.mutate(id);
+      softDeleteCustomer.mutate(id);
     }
   };
 
@@ -354,8 +316,8 @@ const Customers = () => {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => restoreMutation.mutate(customer.id)}
-                          disabled={restoreMutation.isPending}
+                          onClick={() => restoreCustomer.mutate(customer.id)}
+                          disabled={restoreCustomer.isPending}
                         >
                           <RotateCcw className="w-4 h-4 mr-1" />
                           Restore
