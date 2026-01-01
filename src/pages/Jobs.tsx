@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -864,7 +864,7 @@ const Jobs = () => {
                         <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
                           {job.assignee?.full_name && (
                             <span className="flex items-center gap-1">
-                              <User className="w-3 h-3" />
+                              <UserCog className="w-3 h-3" />
                               {job.assignee.full_name}
                             </span>
                           )}
@@ -1035,7 +1035,7 @@ const Jobs = () => {
                           <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
                             {job.assignee?.full_name && (
                               <span className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
+                                <UserCog className="w-3 h-3" />
                                 {job.assignee.full_name}
                               </span>
                             )}
