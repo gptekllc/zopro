@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { 
   ArrowLeft, Mail, Phone, MapPin, User, Loader2, ExternalLink, 
   Briefcase, FileText, Receipt, DollarSign, Clock,
-  Plus, Edit, PenTool, History, Navigation, Camera
+  Plus, Edit, PenTool, History, Navigation, Camera, Archive, Eye, EyeOff
 } from 'lucide-react';
 import { openInMaps, hasAddress } from '@/lib/maps';
 import { toast } from 'sonner';
@@ -51,6 +51,7 @@ const CustomerDetail = () => {
   const navigate = useNavigate();
   const [sendingPortalLink, setSendingPortalLink] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [showArchivedJobs, setShowArchivedJobs] = useState(false);
   
   // Detail dialogs
   const [selectedJob, setSelectedJob] = useState<CustomerJob | null>(null);
@@ -377,7 +378,20 @@ const CustomerDetail = () => {
               {/* Jobs Tab */}
               <TabsContent value="jobs" className="m-0">
                 <div className="p-4 border-b flex justify-between items-center">
-                  <p className="text-sm text-muted-foreground">All jobs for this customer</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      {showArchivedJobs ? 'All jobs' : 'Active jobs'} for this customer
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowArchivedJobs(!showArchivedJobs)}
+                      className="gap-1 text-xs"
+                    >
+                      {showArchivedJobs ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {showArchivedJobs ? 'Hide Archived' : 'Show Archived'}
+                    </Button>
+                  </div>
                   <Button size="sm" asChild>
                     <Link to={`/jobs?customer=${customerId}`}>
                       <Plus className="w-4 h-4 mr-1" />New Job
@@ -387,21 +401,33 @@ const CustomerDetail = () => {
                 <div className="divide-y max-h-96 overflow-y-auto">
                   {jobsLoading ? (
                     <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
-                  ) : jobs.length === 0 ? (
-                    <div className="p-8 text-center text-muted-foreground">No jobs yet</div>
+                  ) : jobs.filter(j => showArchivedJobs || !j.archived_at).length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground">
+                      {showArchivedJobs ? 'No jobs yet' : 'No active jobs'}
+                    </div>
                   ) : (
-                    jobs.map((job) => (
+                    jobs
+                      .filter(j => showArchivedJobs || !j.archived_at)
+                      .map((job) => (
                       <div 
                         key={job.id} 
-                        className="p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                        className={`p-4 hover:bg-muted/50 transition-colors cursor-pointer ${job.archived_at ? 'opacity-60' : ''}`}
                         onClick={() => setSelectedJob(job)}
                       >
                         <div className="flex items-start justify-between">
-                          <div>
-                            <p className="font-medium">{job.title}</p>
-                            <p className="text-sm text-muted-foreground">{job.job_number}</p>
+                          <div className="flex items-center gap-2">
+                            {job.archived_at && (
+                              <Archive className="w-4 h-4 text-muted-foreground" />
+                            )}
+                            <div>
+                              <p className="font-medium">{job.title}</p>
+                              <p className="text-sm text-muted-foreground">{job.job_number}</p>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            {job.archived_at && (
+                              <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
+                            )}
                             {job.completion_signed_at && (
                               <PenTool className="w-4 h-4 text-green-500" />
                             )}

@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import { jobSchema, sanitizeErrorMessage } from '@/lib/validation';
+import { compressImage } from '@/lib/imageCompression';
 
 export interface Job {
   id: string;
@@ -23,6 +24,7 @@ export interface Job {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  archived_at: string | null;
   customer?: { name: string; email: string | null; phone: string | null; address: string | null };
   assignee?: { full_name: string | null };
   photos?: JobPhoto[];
@@ -38,13 +40,13 @@ export interface JobPhoto {
   created_at: string;
 }
 
-export function useJobs() {
+export function useJobs(includeArchived: boolean = false) {
   const { profile } = useAuth();
   
   return useQuery({
-    queryKey: ['jobs', profile?.company_id],
+    queryKey: ['jobs', profile?.company_id, includeArchived],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('jobs')
         .select(`
           *,
@@ -53,6 +55,12 @@ export function useJobs() {
           photos:job_photos(*)
         `)
         .order('created_at', { ascending: false });
+      
+      if (!includeArchived) {
+        query = query.is('archived_at', null);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data as Job[];
@@ -201,11 +209,19 @@ export function useUploadJobPhoto() {
       photoType: 'before' | 'after' | 'other';
       caption?: string;
     }) => {
-      // Upload to storage
-      const fileName = `${user?.id}/${jobId}/${Date.now()}-${file.name}`;
+      // Compress image to ~300KB before upload
+      const compressedBlob = await compressImage(file, 300);
+      const compressedFile = new File(
+        [compressedBlob], 
+        file.name.replace(/\.[^/.]+$/, '') + '.jpg', 
+        { type: 'image/jpeg' }
+      );
+      
+      // Upload compressed image to storage
+      const fileName = `${user?.id}/${jobId}/${Date.now()}-${compressedFile.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('job-photos')
-        .upload(fileName, file);
+        .upload(fileName, compressedFile);
       
       if (uploadError) throw uploadError;
       
@@ -263,6 +279,52 @@ export function useDeleteJobPhoto() {
     },
     onError: (error: unknown) => {
       toast.error('Failed to delete photo: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
+export function useArchiveJob() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      const { error } = await (supabase as any)
+        .from('jobs')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', jobId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['job'] });
+      toast.success('Job archived');
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to archive job: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
+export function useUnarchiveJob() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      const { error } = await (supabase as any)
+        .from('jobs')
+        .update({ archived_at: null })
+        .eq('id', jobId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['job'] });
+      toast.success('Job unarchived');
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to unarchive job: ' + sanitizeErrorMessage(error));
     },
   });
 }
