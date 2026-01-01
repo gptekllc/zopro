@@ -15,6 +15,9 @@ export interface Company {
   zip: string | null;
   logo_url: string | null;
   tax_rate: number | null;
+  payment_terms_days: number | null;
+  late_fee_percentage: number | null;
+  default_payment_method: string | null;
   created_at: string;
   updated_at: string;
 }
