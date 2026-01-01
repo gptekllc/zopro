@@ -843,127 +843,148 @@ const Jobs = () => {
               >
                 <CardContent className="p-4 sm:p-5">
                   {/* Mobile Layout */}
-                  <div className="flex flex-col gap-3 sm:hidden">
-                    {/* Row 1: Job number + badges */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{job.job_number}</span>
-                        {job.archived_at && (
-                          <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
-                        )}
+                  <div className="flex flex-col gap-2 sm:hidden">
+                    {/* Row 1: Job number + Title */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm">{job.job_number}</span>
+                          {job.archived_at && (
+                            <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
+                          )}
+                        </div>
+                        <p className="font-medium text-sm line-clamp-1 mt-0.5">{job.title}</p>
                       </div>
+                      {(job.total ?? 0) > 0 && (
+                        <span className="text-sm font-medium text-primary shrink-0">${Number(job.total).toFixed(2)}</span>
+                      )}
+                    </div>
+                    
+                    {/* Row 2: Customer + date */}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="truncate">{job.customer?.name}</span>
+                      {job.scheduled_start && (
+                        <>
+                          <span>•</span>
+                          <span className="flex items-center gap-1 shrink-0">
+                            <Calendar className="w-3 h-3" />
+                            {format(new Date(job.scheduled_start), 'MMM d')}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    
+                    {/* Row 3: Badges + Actions */}
+                    <div className="flex items-center justify-between pt-2 border-t">
                       <div className="flex items-center gap-1">
-                        <Badge className={`${getStatusColor(job.status)} text-xs`} variant="outline">
-                          {job.status.replace('_', ' ')}
-                        </Badge>
                         <Badge className={`${getPriorityColor(job.priority)} text-xs`} variant="outline">
                           {job.priority}
                         </Badge>
-                      </div>
-                    </div>
-                    
-                    {/* Row 2: Title + Total */}
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm line-clamp-1 flex-1">{job.title}</p>
-                      {(job.total ?? 0) > 0 && (
-                        <span className="text-sm font-medium text-primary ml-2">${Number(job.total).toFixed(2)}</span>
-                      )}
-                    </div>
-                    
-                    {/* Row 3: Customer + date */}
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="truncate max-w-[50%]">{job.customer?.name}</span>
-                      {job.scheduled_start && (
-                        <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {format(new Date(job.scheduled_start), 'MMM d')}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* Row 4: Actions */}
-                    <div className="flex items-center justify-end gap-1 pt-1 border-t" onClick={(e) => e.stopPropagation()}>
-                      {job.archived_at ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => unarchiveJob.mutate(job.id)}
-                          disabled={unarchiveJob.isPending}
-                          className="text-xs h-8"
-                        >
-                          <ArchiveRestore className="w-3 h-3 mr-1" />
-                          Unarchive
-                        </Button>
-                      ) : (
-                        <>
-                          {job.status === 'in_progress' && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => setCompletingJob(job)}
-                              className="text-xs h-8"
-                            >
-                              <CheckCircle2 className="w-3 h-3 mr-1" />
-                              Complete
-                            </Button>
-                          )}
-                          {job.status === 'completed' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => convertToInvoice.mutate(job)}
-                              disabled={convertToInvoice.isPending}
-                              className="text-xs h-8"
-                            >
-                              <Receipt className="w-3 h-3 mr-1" />
-                              Invoice
-                            </Button>
-                          )}
+                        {/* Status Dropdown */}
+                        <div onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
+                              <Badge className={`${getStatusColor(job.status)} text-xs cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
+                                {job.status.replace('_', ' ')}
+                                <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                              </Badge>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(job)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              {!job.quote_id && (
-                                <DropdownMenuItem onClick={() => convertToQuote.mutate(job)}>
-                                  <FileText className="w-4 h-4 mr-2" />
-                                  Create Quote
+                            <DropdownMenuContent align="start" className="bg-popover z-50">
+                              {JOB_STATUSES.map((status) => (
+                                <DropdownMenuItem
+                                  key={status}
+                                  onClick={() => handleStatusChange(job.id, status)}
+                                  disabled={job.status === status}
+                                  className={job.status === status ? 'bg-accent' : ''}
+                                >
+                                  <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
+                                    {status.replace('_', ' ')}
+                                  </Badge>
+                                  {job.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
                                 </DropdownMenuItem>
-                              )}
-                              {getNextStatus(job.status) && job.status !== 'completed' && job.status !== 'in_progress' && (
-                                <DropdownMenuItem onClick={() => handleStatusChange(job.id, getNextStatus(job.status)!)}>
-                                  <ChevronRight className="w-4 h-4 mr-2" />
-                                  {getNextStatus(job.status)?.replace('_', ' ')}
-                                </DropdownMenuItem>
-                              )}
-                              {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
-                                <DropdownMenuItem onClick={() => archiveJob.mutate(job.id)}>
-                                  <Archive className="w-4 h-4 mr-2" />
-                                  Archive
-                                </DropdownMenuItem>
-                              )}
-                              {isAdmin && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    onClick={() => handleDelete(job.id)}
-                                    className="text-destructive"
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </>
-                              )}
+                              ))}
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </>
-                      )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {job.archived_at ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => unarchiveJob.mutate(job.id)}
+                            disabled={unarchiveJob.isPending}
+                            className="text-xs h-7"
+                          >
+                            <ArchiveRestore className="w-3 h-3 mr-1" />
+                            Unarchive
+                          </Button>
+                        ) : (
+                          <>
+                            {job.status === 'in_progress' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => setCompletingJob(job)}
+                                className="text-xs h-7"
+                              >
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Complete
+                              </Button>
+                            )}
+                            {job.status === 'completed' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => convertToInvoice.mutate(job)}
+                                disabled={convertToInvoice.isPending}
+                                className="text-xs h-7"
+                              >
+                                <Receipt className="w-3 h-3 mr-1" />
+                                Invoice
+                              </Button>
+                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-popover z-50">
+                                <DropdownMenuItem onClick={() => handleEdit(job)}>
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                {!job.quote_id && (
+                                  <DropdownMenuItem onClick={() => convertToQuote.mutate(job)}>
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Create Quote
+                                  </DropdownMenuItem>
+                                )}
+                                {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
+                                  <DropdownMenuItem onClick={() => archiveJob.mutate(job.id)}>
+                                    <Archive className="w-4 h-4 mr-2" />
+                                    Archive
+                                  </DropdownMenuItem>
+                                )}
+                                {isAdmin && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      onClick={() => handleDelete(job.id)}
+                                      className="text-destructive"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
 
