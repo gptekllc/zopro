@@ -2,9 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, GripVertical } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 export interface JobPhoto {
   id: string;
@@ -12,14 +13,17 @@ export interface JobPhoto {
   photo_type: 'before' | 'after' | 'other';
   caption: string | null;
   created_at: string;
+  display_order?: number;
 }
 
 interface PhotoGalleryProps {
   photos: JobPhoto[];
   className?: string;
+  onReorder?: (photos: JobPhoto[]) => void;
+  editable?: boolean;
 }
 
-export function PhotoGallery({ photos, className }: PhotoGalleryProps) {
+export function PhotoGallery({ photos, className, onReorder, editable = true }: PhotoGalleryProps) {
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [loadingUrls, setLoadingUrls] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -27,6 +31,17 @@ export function PhotoGallery({ photos, className }: PhotoGalleryProps) {
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  
+  // Drag and drop state
+  const [draggedPhoto, setDraggedPhoto] = useState<JobPhoto | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [orderedPhotos, setOrderedPhotos] = useState<JobPhoto[]>([]);
+
+  // Sort photos by display_order when photos prop changes
+  useEffect(() => {
+    const sorted = [...photos].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+    setOrderedPhotos(sorted);
+  }, [photos]);
 
   useEffect(() => {
     async function loadSignedUrls() {
@@ -39,12 +54,11 @@ export function PhotoGallery({ photos, className }: PhotoGalleryProps) {
       
       await Promise.all(
         photos.map(async (photo) => {
-          // Extract the path from the photo_url (remove bucket prefix if present)
           const path = photo.photo_url.replace(/^job-photos\//, '');
           
           const { data } = await supabase.storage
             .from('job-photos')
-            .createSignedUrl(path, 3600); // 1 hour expiry
+            .createSignedUrl(path, 3600);
           
           if (data?.signedUrl) {
             urls[photo.id] = data.signedUrl;
@@ -59,9 +73,9 @@ export function PhotoGallery({ photos, className }: PhotoGalleryProps) {
     loadSignedUrls();
   }, [photos]);
 
-  const beforePhotos = photos.filter(p => p.photo_type === 'before');
-  const afterPhotos = photos.filter(p => p.photo_type === 'after');
-  const otherPhotos = photos.filter(p => p.photo_type === 'other');
+  const beforePhotos = orderedPhotos.filter(p => p.photo_type === 'before');
+  const afterPhotos = orderedPhotos.filter(p => p.photo_type === 'after');
+  const otherPhotos = orderedPhotos.filter(p => p.photo_type === 'other');
 
   const photosByType = [
     { type: 'before', label: 'Before', photos: beforePhotos, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
@@ -158,6 +172,94 @@ export function PhotoGallery({ photos, className }: PhotoGalleryProps) {
     setIsDragging(false);
   };
 
+  // Drag and drop handlers for reordering
+  const handleDragStart = (e: React.DragEvent, photo: JobPhoto, groupPhotos: JobPhoto[]) => {
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedPhoto(photo);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetPhoto: JobPhoto, groupPhotos: JobPhoto[]) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    
+    if (!draggedPhoto || draggedPhoto.id === targetPhoto.id) {
+      setDraggedPhoto(null);
+      return;
+    }
+
+    // Only allow reordering within the same photo type
+    if (draggedPhoto.photo_type !== targetPhoto.photo_type) {
+      toast.error('Can only reorder within the same category');
+      setDraggedPhoto(null);
+      return;
+    }
+
+    const fromIndex = groupPhotos.findIndex(p => p.id === draggedPhoto.id);
+    const toIndex = groupPhotos.findIndex(p => p.id === targetPhoto.id);
+
+    if (fromIndex === -1 || toIndex === -1) {
+      setDraggedPhoto(null);
+      return;
+    }
+
+    // Create new order for this group
+    const newGroupOrder = [...groupPhotos];
+    const [movedPhoto] = newGroupOrder.splice(fromIndex, 1);
+    newGroupOrder.splice(toIndex, 0, movedPhoto);
+
+    // Update display_order for all photos in this group
+    const updates = newGroupOrder.map((photo, idx) => ({
+      id: photo.id,
+      display_order: idx,
+    }));
+
+    try {
+      // Update in database
+      await Promise.all(
+        updates.map(update =>
+          supabase
+            .from('job_photos')
+            .update({ display_order: update.display_order })
+            .eq('id', update.id)
+        )
+      );
+
+      // Update local state
+      const updatedPhotos = orderedPhotos.map(photo => {
+        const update = updates.find(u => u.id === photo.id);
+        return update ? { ...photo, display_order: update.display_order } : photo;
+      });
+
+      setOrderedPhotos(updatedPhotos.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)));
+      
+      if (onReorder) {
+        onReorder(updatedPhotos);
+      }
+      
+      toast.success('Photos reordered');
+    } catch (error) {
+      console.error('Failed to reorder photos:', error);
+      toast.error('Failed to reorder photos');
+    }
+
+    setDraggedPhoto(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedPhoto(null);
+    setDragOverIndex(null);
+  };
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -195,9 +297,14 @@ export function PhotoGallery({ photos, className }: PhotoGalleryProps) {
 
   return (
     <div className={className}>
-      <div className="flex items-center gap-2 mb-3">
-        <Camera className="w-4 h-4 text-muted-foreground" />
-        <span className="font-medium text-sm">Photos ({photos.length})</span>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Camera className="w-4 h-4 text-muted-foreground" />
+          <span className="font-medium text-sm">Photos ({photos.length})</span>
+        </div>
+        {editable && photos.length > 1 && (
+          <span className="text-xs text-muted-foreground">Drag to reorder</span>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -207,24 +314,48 @@ export function PhotoGallery({ photos, className }: PhotoGalleryProps) {
               {group.label} ({group.photos.length})
             </Badge>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {group.photos.map((photo) => (
-                <button
+              {group.photos.map((photo, index) => (
+                <div
                   key={photo.id}
-                  onClick={() => openLightbox(photo)}
-                  className="relative aspect-square rounded-lg overflow-hidden bg-muted hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary"
+                  draggable={editable && group.photos.length > 1}
+                  onDragStart={(e) => handleDragStart(e, photo, group.photos)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, photo, group.photos)}
+                  onDragEnd={handleDragEnd}
+                  className={`relative group ${
+                    draggedPhoto?.id === photo.id ? 'opacity-50' : ''
+                  } ${
+                    dragOverIndex === index && draggedPhoto?.photo_type === photo.photo_type && draggedPhoto?.id !== photo.id
+                      ? 'ring-2 ring-primary ring-offset-2'
+                      : ''
+                  }`}
                 >
-                  {signedUrls[photo.id] ? (
-                    <img
-                      src={signedUrls[photo.id]}
-                      alt={photo.caption || `${photo.photo_type} photo`}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Camera className="w-6 h-6 text-muted-foreground" />
+                  {editable && group.photos.length > 1 && (
+                    <div className="absolute top-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
+                      <div className="bg-black/50 rounded p-0.5">
+                        <GripVertical className="w-4 h-4 text-white" />
+                      </div>
                     </div>
                   )}
-                </button>
+                  <button
+                    onClick={() => openLightbox(photo)}
+                    className="w-full relative aspect-square rounded-lg overflow-hidden bg-muted hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    {signedUrls[photo.id] ? (
+                      <img
+                        src={signedUrls[photo.id]}
+                        alt={photo.caption || `${photo.photo_type} photo`}
+                        className="w-full h-full object-cover"
+                        draggable={false}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Camera className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    )}
+                  </button>
+                </div>
               ))}
             </div>
           </div>

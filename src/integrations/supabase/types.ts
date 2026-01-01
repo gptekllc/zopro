@@ -291,6 +291,7 @@ export type Database = {
         Row: {
           caption: string | null
           created_at: string
+          display_order: number | null
           id: string
           job_id: string
           photo_type: string
@@ -300,6 +301,7 @@ export type Database = {
         Insert: {
           caption?: string | null
           created_at?: string
+          display_order?: number | null
           id?: string
           job_id: string
           photo_type: string
@@ -309,6 +311,7 @@ export type Database = {
         Update: {
           caption?: string | null
           created_at?: string
+          display_order?: number | null
           id?: string
           job_id?: string
           photo_type?: string
