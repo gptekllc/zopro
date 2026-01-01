@@ -40,6 +40,14 @@ const Jobs = () => {
   // Defensive: some backends/joins can yield null rows; never let that crash rendering.
   const safeJobs = useMemo(() => (jobs ?? []).filter(Boolean) as Job[], [jobs]);
 
+  useEffect(() => {
+    // Debug: help catch any null jobs coming from the backend/cache
+    // eslint-disable-next-line no-console
+    console.log('[Jobs] raw jobs:', jobs);
+    // eslint-disable-next-line no-console
+    console.log('[Jobs] safeJobs.length:', safeJobs.length);
+  }, [jobs, safeJobs.length]);
+
   const { data: customers = [] } = useCustomers();
   const { data: quotes = [] } = useQuotes();
   const { data: profiles = [] } = useProfiles();
@@ -108,10 +116,11 @@ const Jobs = () => {
   };
 
   const filteredJobs = useMemo(() => {
-    return safeJobs.filter(job => {
-      const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.job_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        job.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    return safeJobs.filter((job: any) => {
+      if (!job) return false;
+      const matchesSearch = String(job.title ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(job.job_number ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(job.customer?.name ?? '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
 
       // When searching with includeArchivedInSearch, include archived jobs
