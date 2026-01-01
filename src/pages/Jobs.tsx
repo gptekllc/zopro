@@ -852,214 +852,59 @@ const Jobs = () => {
                           <span className="text-muted-foreground">•</span>
                           <span className="font-medium text-sm truncate">{job.title}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
                           <span className="truncate">{job.customer?.name}</span>
-                          {job.scheduled_start && (
+                          {job.customer?.email && (
                             <>
                               <span>•</span>
+                              <span className="truncate">{job.customer.email}</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                          {job.assignee?.full_name && (
+                            <span className="flex items-center gap-1">
+                              <User className="w-3 h-3" />
+                              {job.assignee.full_name}
+                            </span>
+                          )}
+                          {job.scheduled_start && (
+                            <>
+                              {job.assignee?.full_name && <span>•</span>}
                               <span className="flex items-center gap-1 shrink-0">
                                 <Calendar className="w-3 h-3" />
-                                {format(new Date(job.scheduled_start), 'MMM d')}
+                                {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
                               </span>
                             </>
                           )}
                         </div>
+                        {job.notes && (
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{job.notes}</p>
+                        )}
                       </div>
                       {(job.total ?? 0) > 0 && (
                         <span className="text-sm font-medium text-primary shrink-0">${Number(job.total).toFixed(2)}</span>
                       )}
                     </div>
                     
-                    {/* Row 2: Tags */}
-                    <div className="flex items-center gap-1 flex-wrap">
-                      {job.archived_at && (
-                        <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
-                      )}
-                      <Badge className={`${getPriorityColor(job.priority)} text-xs`} variant="outline">
-                        {job.priority}
-                      </Badge>
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Badge className={`${getStatusColor(job.status)} text-xs cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
-                              {job.status.replace('_', ' ')}
-                              <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                            </Badge>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="bg-popover z-50">
-                            {JOB_STATUSES.map((status) => (
-                              <DropdownMenuItem
-                                key={status}
-                                onClick={() => handleStatusChange(job.id, status)}
-                                disabled={job.status === status}
-                                className={job.status === status ? 'bg-accent' : ''}
-                              >
-                                <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
-                                  {status.replace('_', ' ')}
-                                </Badge>
-                                {job.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                    
-                    {/* Row 3: Action Buttons */}
-                    <div className="flex items-center justify-end gap-1 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
-                      {job.archived_at ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => unarchiveJob.mutate(job.id)}
-                          disabled={unarchiveJob.isPending}
-                          className="text-xs h-7"
-                        >
-                          <ArchiveRestore className="w-3 h-3 mr-1" />
-                          Unarchive
-                        </Button>
-                      ) : (
-                        <>
-                          {job.status === 'completed' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => convertToInvoice.mutate(job)}
-                              disabled={convertToInvoice.isPending}
-                              className="text-xs h-7"
-                            >
-                              <Receipt className="w-3 h-3 mr-1" />
-                              Invoice
-                            </Button>
-                          )}
-                          {!job.quote_id && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => convertToQuote.mutate(job)}
-                              disabled={convertToQuote.isPending}
-                              className="text-xs h-7"
-                            >
-                              <FileText className="w-3 h-3 mr-1" />
-                              Quote
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(job)}>
-                            <Edit className="w-3.5 h-3.5" />
-                          </Button>
-                          {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => archiveJob.mutate(job.id)}
-                              disabled={archiveJob.isPending}
-                              title="Archive job"
-                            >
-                              <Archive className="w-3.5 h-3.5" />
-                            </Button>
-                          )}
-                          {isAdmin && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Job?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will permanently delete {job.job_number}. This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(job.id)}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Desktop Layout */}
-                  <div className="hidden sm:flex sm:flex-col gap-3">
-                    {/* Row 1: Job Info + Tags */}
-                    <div className="flex items-center justify-between gap-4">
-                      {/* Left: Icon + Job Info */}
-                      <div className="flex items-center gap-4 min-w-0 flex-1">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${job.archived_at ? 'bg-muted' : 'bg-primary/10'}`}>
-                          {job.archived_at ? (
-                            <Archive className="w-5 h-5 text-muted-foreground" />
-                          ) : (
-                            <Briefcase className="w-5 h-5 text-primary" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold">{job.job_number}</h3>
-                            <span className="text-muted-foreground">•</span>
-                            <span className="font-medium truncate">{job.title}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
-                            <span className="truncate">{job.customer?.name}</span>
-                            {job.assignee?.full_name && (
-                              <>
-                                <span>•</span>
-                                <span className="flex items-center gap-1">
-                                  <User className="w-3 h-3" />
-                                  {job.assignee.full_name}
-                                </span>
-                              </>
-                            )}
-                            {job.scheduled_start && (
-                              <>
-                                <span>•</span>
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
-                                </span>
-                              </>
-                            )}
-                            {job.photos && job.photos.length > 0 && (
-                              <>
-                                <span>•</span>
-                                <span className="flex items-center gap-1">
-                                  <Image className="w-3 h-3" />
-                                  {job.photos.length}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right: Tags */}
-                      <div className="flex items-center gap-2 shrink-0">
+                    {/* Row 2: Tags + Actions */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1 flex-wrap">
                         {job.archived_at && (
-                          <Badge variant="outline" className="text-muted-foreground">Archived</Badge>
+                          <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
                         )}
-                        <Badge className={getPriorityColor(job.priority)} variant="outline">
+                        <Badge className={`${getPriorityColor(job.priority)} text-xs`} variant="outline">
                           {job.priority}
                         </Badge>
-                        {(job.total ?? 0) > 0 && (
-                          <Badge variant="secondary" className="gap-1">
-                            <DollarSign className="w-3 h-3" />
-                            {Number(job.total).toFixed(2)}
-                          </Badge>
-                        )}
                         <div onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Badge className={`${getStatusColor(job.status)} cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
+                              <Badge className={`${getStatusColor(job.status)} text-xs cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
                                 {job.status.replace('_', ' ')}
                                 <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
                               </Badge>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-popover z-50">
+                            <DropdownMenuContent align="start" className="bg-popover z-50">
                               {JOB_STATUSES.map((status) => (
                                 <DropdownMenuItem
                                   key={status}
@@ -1077,81 +922,265 @@ const Jobs = () => {
                           </DropdownMenu>
                         </div>
                       </div>
+                      
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        {job.archived_at ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => unarchiveJob.mutate(job.id)}
+                            disabled={unarchiveJob.isPending}
+                            className="text-xs h-7"
+                          >
+                            <ArchiveRestore className="w-3 h-3 mr-1" />
+                            Unarchive
+                          </Button>
+                        ) : (
+                          <>
+                            {job.status === 'completed' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => convertToInvoice.mutate(job)}
+                                disabled={convertToInvoice.isPending}
+                                className="text-xs h-7"
+                              >
+                                <Receipt className="w-3 h-3 mr-1" />
+                                Invoice
+                              </Button>
+                            )}
+                            {!job.quote_id && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => convertToQuote.mutate(job)}
+                                disabled={convertToQuote.isPending}
+                                className="text-xs h-7"
+                              >
+                                <FileText className="w-3 h-3 mr-1" />
+                                Quote
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(job)}>
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => archiveJob.mutate(job.id)}
+                                disabled={archiveJob.isPending}
+                                title="Archive job"
+                              >
+                                <Archive className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                            {isAdmin && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Job?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will permanently delete {job.job_number}. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(job.id)}>Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
+                  </div>
 
-                    {/* Row 2: Action Buttons */}
-                    <div className="flex items-center justify-end gap-1 pt-2 border-t" onClick={(e) => e.stopPropagation()}>
-                      {job.archived_at ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => unarchiveJob.mutate(job.id)}
-                          disabled={unarchiveJob.isPending}
-                        >
-                          <ArchiveRestore className="w-4 h-4 mr-1" />
-                          Unarchive
-                        </Button>
-                      ) : (
-                        <>
-                          {job.status === 'completed' && (
+                  {/* Desktop Layout */}
+                  <div className="hidden sm:flex sm:flex-col gap-2">
+                    {/* Row 1: Job Info + Tags */}
+                    <div className="flex items-start justify-between gap-4">
+                      {/* Left: Icon + Job Info */}
+                      <div className="flex items-start gap-4 min-w-0 flex-1">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${job.archived_at ? 'bg-muted' : 'bg-primary/10'}`}>
+                          {job.archived_at ? (
+                            <Archive className="w-5 h-5 text-muted-foreground" />
+                          ) : (
+                            <Briefcase className="w-5 h-5 text-primary" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-semibold">{job.job_number}</h3>
+                            <span className="text-muted-foreground">•</span>
+                            <span className="font-medium truncate">{job.title}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
+                            <span className="truncate">{job.customer?.name}</span>
+                            {job.customer?.email && (
+                              <>
+                                <span>•</span>
+                                <span className="truncate">{job.customer.email}</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
+                            {job.assignee?.full_name && (
+                              <span className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                {job.assignee.full_name}
+                              </span>
+                            )}
+                            {job.scheduled_start && (
+                              <>
+                                {job.assignee?.full_name && <span>•</span>}
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
+                                </span>
+                              </>
+                            )}
+                            {job.photos && job.photos.length > 0 && (
+                              <>
+                                {(job.assignee?.full_name || job.scheduled_start) && <span>•</span>}
+                                <span className="flex items-center gap-1">
+                                  <Image className="w-3 h-3" />
+                                  {job.photos.length}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          {job.notes && (
+                            <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{job.notes}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Tags + Actions */}
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <div className="flex items-center gap-2">
+                          {job.archived_at && (
+                            <Badge variant="outline" className="text-muted-foreground">Archived</Badge>
+                          )}
+                          <Badge className={getPriorityColor(job.priority)} variant="outline">
+                            {job.priority}
+                          </Badge>
+                          {(job.total ?? 0) > 0 && (
+                            <Badge variant="secondary" className="gap-1">
+                              <DollarSign className="w-3 h-3" />
+                              {Number(job.total).toFixed(2)}
+                            </Badge>
+                          )}
+                          <div onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Badge className={`${getStatusColor(job.status)} cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
+                                  {job.status.replace('_', ' ')}
+                                  <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                                </Badge>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-popover z-50">
+                                {JOB_STATUSES.map((status) => (
+                                  <DropdownMenuItem
+                                    key={status}
+                                    onClick={() => handleStatusChange(job.id, status)}
+                                    disabled={job.status === status}
+                                    className={job.status === status ? 'bg-accent' : ''}
+                                  >
+                                    <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
+                                      {status.replace('_', ' ')}
+                                    </Badge>
+                                    {job.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          {job.archived_at ? (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => convertToInvoice.mutate(job)}
-                              disabled={convertToInvoice.isPending}
+                              onClick={() => unarchiveJob.mutate(job.id)}
+                              disabled={unarchiveJob.isPending}
                             >
-                              <Receipt className="w-4 h-4 mr-1" />
-                              Invoice
+                              <ArchiveRestore className="w-4 h-4 mr-1" />
+                              Unarchive
                             </Button>
-                          )}
-                          {!job.quote_id && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => convertToQuote.mutate(job)}
-                              disabled={convertToQuote.isPending}
-                            >
-                              <FileText className="w-4 h-4 mr-1" />
-                              Quote
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(job)}>
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => archiveJob.mutate(job.id)}
-                              disabled={archiveJob.isPending}
-                              title="Archive job"
-                            >
-                              <Archive className="w-4 h-4" />
-                            </Button>
-                          )}
-                          {isAdmin && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="text-destructive">
-                                  <Trash2 className="w-4 h-4" />
+                          ) : (
+                            <>
+                              {job.status === 'completed' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => convertToInvoice.mutate(job)}
+                                  disabled={convertToInvoice.isPending}
+                                >
+                                  <Receipt className="w-4 h-4 mr-1" />
+                                  Invoice
                                 </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Job?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will permanently delete {job.job_number}. This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDelete(job.id)}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
+                              )}
+                              {!job.quote_id && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => convertToQuote.mutate(job)}
+                                  disabled={convertToQuote.isPending}
+                                >
+                                  <FileText className="w-4 h-4 mr-1" />
+                                  Quote
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="icon" onClick={() => handleEdit(job)}>
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => archiveJob.mutate(job.id)}
+                                  disabled={archiveJob.isPending}
+                                  title="Archive job"
+                                >
+                                  <Archive className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {isAdmin && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-destructive">
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Delete Job?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This will permanently delete {job.job_number}. This action cannot be undone.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => handleDelete(job.id)}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                            </>
                           )}
-                        </>
-                      )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
