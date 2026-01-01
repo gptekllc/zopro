@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import JobCalendar from '@/components/jobs/JobCalendar';
 import { CompleteJobDialog } from '@/components/jobs/CompleteJobDialog';
 import { JobTimeTracker } from '@/components/jobs/JobTimeTracker';
+import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -355,23 +356,12 @@ const Jobs = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Customer *</Label>
-                  <Select
-                    value={formData.customer_id}
-                    onValueChange={(value) => setFormData({ ...formData, customer_id: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {safeCustomers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InlineCustomerForm
+                  customers={safeCustomers}
+                  selectedCustomerId={formData.customer_id}
+                  onCustomerSelect={(value) => setFormData({ ...formData, customer_id: value })}
+                />
                 
                 <div className="space-y-2">
                   <Label>Assign To</Label>

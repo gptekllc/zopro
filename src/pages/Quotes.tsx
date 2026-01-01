@@ -15,6 +15,7 @@ import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Ma
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
+import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 
 interface LineItem {
   id: string;
@@ -288,23 +289,12 @@ const Quotes = () => {
               <DialogTitle>{editingQuote ? 'Edit Quote' : 'Create New Quote'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Customer *</Label>
-                  <Select
-                    value={formData.customerId}
-                    onValueChange={(value) => setFormData({ ...formData, customerId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InlineCustomerForm
+                  customers={customers}
+                  selectedCustomerId={formData.customerId}
+                  onCustomerSelect={(value) => setFormData({ ...formData, customerId: value })}
+                />
                 
                 <div className="space-y-2">
                   <Label>Valid For (days)</Label>
