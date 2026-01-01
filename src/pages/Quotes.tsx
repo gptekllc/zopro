@@ -406,24 +406,38 @@ const Quotes = () => {
       <div className="space-y-3">
         {filteredQuotes.map((quote) => (
           <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-primary" />
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                {/* Left: Icon + Info */}
+                <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{quote.quote_number}</h3>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-sm sm:text-base">{quote.quote_number}</h3>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(quote.status)}`}>
                         {quote.status}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground">{getCustomerName(quote.customer_id)}</p>
+                    <p className="text-sm text-muted-foreground truncate">{getCustomerName(quote.customer_id)}</p>
+                    {/* Mobile: Amount + Date */}
+                    <div className="flex items-center gap-3 mt-1 sm:hidden">
+                      <p className="font-semibold text-sm flex items-center gap-0.5">
+                        <DollarSign className="w-3.5 h-3.5" />
+                        {Number(quote.total).toLocaleString()}
+                      </p>
+                      {quote.valid_until && (
+                        <p className="text-xs text-muted-foreground">
+                          Valid: {format(new Date(quote.valid_until), 'MMM d')}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-6">
+                {/* Right: Desktop Amount + Actions */}
+                <div className="flex items-center gap-4 sm:gap-6 justify-end">
                   <div className="text-right hidden sm:block">
                     <p className="font-semibold flex items-center gap-1">
                       <DollarSign className="w-4 h-4" />
