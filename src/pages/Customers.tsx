@@ -33,6 +33,9 @@ const Customers = () => {
     email: '',
     phone: '',
     address: '',
+    city: '',
+    state: '',
+    zip: '',
     notes: '',
   });
 
@@ -97,7 +100,7 @@ const Customers = () => {
   );
 
   const resetForm = () => {
-    setFormData({ name: '', email: '', phone: '', address: '', notes: '' });
+    setFormData({ name: '', email: '', phone: '', address: '', city: '', state: '', zip: '', notes: '' });
     setEditingCustomer(null);
   };
 
@@ -120,6 +123,9 @@ const Customers = () => {
       email: customer.email || '',
       phone: customer.phone || '',
       address: customer.address || '',
+      city: customer.city || '',
+      state: customer.state || '',
+      zip: customer.zip || '',
       notes: customer.notes || '',
     });
     setEditingCustomer(customer.id);
@@ -197,9 +203,25 @@ const Customers = () => {
                   <Input id="phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} />
+              <div className="grid grid-cols-4 gap-3">
+                <div className="space-y-2 col-span-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Street address" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input id="city" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State</Label>
+                    <Input id="state" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} placeholder="ST" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="zip">ZIP</Label>
+                    <Input id="zip" value={formData.zip} onChange={(e) => setFormData({ ...formData, zip: e.target.value })} />
+                  </div>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="notes">Notes</Label>
