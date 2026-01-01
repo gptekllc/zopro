@@ -14,7 +14,10 @@ export interface CustomerJob {
   actual_end: string | null;
   created_at: string;
   assigned_to: string | null;
+  notes: string | null;
   assignee?: { full_name: string | null } | null;
+  completion_signed_at?: string | null;
+  completion_signed_by?: string | null;
 }
 
 export interface CustomerQuote {
@@ -27,6 +30,17 @@ export interface CustomerQuote {
   valid_until: string | null;
   signed_at: string | null;
   created_at: string;
+  notes: string | null;
+  signature_id: string | null;
+  items?: QuoteItem[];
+}
+
+export interface QuoteItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
 }
 
 export interface CustomerInvoice {
@@ -39,6 +53,18 @@ export interface CustomerInvoice {
   due_date: string | null;
   paid_at: string | null;
   created_at: string;
+  notes: string | null;
+  signed_at: string | null;
+  signature_id: string | null;
+  items?: InvoiceItem[];
+}
+
+export interface InvoiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
 }
 
 export interface CustomerStats {
@@ -50,6 +76,16 @@ export interface CustomerStats {
   paidInvoices: number;
   lifetimeValue: number;
   outstandingBalance: number;
+}
+
+export interface ActivityItem {
+  id: string;
+  type: 'job' | 'quote' | 'invoice';
+  title: string;
+  status: string;
+  date: string;
+  amount?: number;
+  signed?: boolean;
 }
 
 export function useCustomerJobs(customerId: string | undefined) {
@@ -73,6 +109,9 @@ export function useCustomerJobs(customerId: string | undefined) {
           actual_end,
           created_at,
           assigned_to,
+          notes,
+          completion_signed_at,
+          completion_signed_by,
           assignee:profiles!jobs_assigned_to_fkey(full_name)
         `)
         .eq('customer_id', customerId)
@@ -102,7 +141,10 @@ export function useCustomerQuotes(customerId: string | undefined) {
           total,
           valid_until,
           signed_at,
-          created_at
+          created_at,
+          notes,
+          signature_id,
+          items:quote_items(id, description, quantity, unit_price, total)
         `)
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
@@ -131,7 +173,11 @@ export function useCustomerInvoices(customerId: string | undefined) {
           total,
           due_date,
           paid_at,
-          created_at
+          created_at,
+          notes,
+          signed_at,
+          signature_id,
+          items:invoice_items(id, description, quantity, unit_price, total)
         `)
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
@@ -160,4 +206,41 @@ export function useCustomerStats(customerId: string | undefined) {
   };
 
   return stats;
+}
+
+export function useCustomerActivity(customerId: string | undefined) {
+  const { data: jobs = [] } = useCustomerJobs(customerId);
+  const { data: quotes = [] } = useCustomerQuotes(customerId);
+  const { data: invoices = [] } = useCustomerInvoices(customerId);
+
+  const activities: ActivityItem[] = [
+    ...jobs.map(j => ({
+      id: j.id,
+      type: 'job' as const,
+      title: `${j.job_number} - ${j.title}`,
+      status: j.status,
+      date: j.created_at,
+      signed: !!j.completion_signed_at,
+    })),
+    ...quotes.map(q => ({
+      id: q.id,
+      type: 'quote' as const,
+      title: q.quote_number,
+      status: q.status,
+      date: q.created_at,
+      amount: Number(q.total),
+      signed: !!q.signed_at,
+    })),
+    ...invoices.map(i => ({
+      id: i.id,
+      type: 'invoice' as const,
+      title: i.invoice_number,
+      status: i.status,
+      date: i.created_at,
+      amount: Number(i.total),
+      signed: !!i.signed_at,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  return activities;
 }

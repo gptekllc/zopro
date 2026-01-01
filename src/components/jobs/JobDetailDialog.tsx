@@ -1,0 +1,189 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Edit, PenTool, Calendar, User, Briefcase, 
+  CheckCircle, Clock, AlertCircle, MapPin
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { CustomerJob } from '@/hooks/useCustomerHistory';
+
+interface JobDetailDialogProps {
+  job: CustomerJob | null;
+  customerName?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onEdit?: (jobId: string) => void;
+  onViewSignature?: (signatureId: string) => void;
+}
+
+const statusColors: Record<string, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  in_progress: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  invoiced: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+};
+
+const priorityColors: Record<string, string> = {
+  low: 'bg-muted text-muted-foreground',
+  medium: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  high: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  urgent: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+};
+
+export function JobDetailDialog({
+  job,
+  customerName,
+  open,
+  onOpenChange,
+  onEdit,
+  onViewSignature,
+}: JobDetailDialogProps) {
+  if (!job) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-3">
+              <Briefcase className="w-5 h-5 text-primary" />
+              {job.job_number}
+            </DialogTitle>
+            <div className="flex gap-2">
+              <Badge className={priorityColors[job.priority] || 'bg-muted'}>
+                {job.priority}
+              </Badge>
+              <Badge className={statusColors[job.status] || 'bg-muted'}>
+                {job.status.replace('_', ' ')}
+              </Badge>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Title */}
+          <div>
+            <h3 className="text-lg font-semibold">{job.title}</h3>
+            {job.description && (
+              <p className="text-muted-foreground mt-1">{job.description}</p>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Details Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Customer</p>
+              <p className="font-medium">{customerName || 'Unknown'}</p>
+            </div>
+            {job.assignee?.full_name && (
+              <div>
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <User className="w-3 h-3" /> Assigned To
+                </p>
+                <p className="font-medium">{job.assignee.full_name}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-sm text-muted-foreground">Created</p>
+              <p className="font-medium">{format(new Date(job.created_at), 'MMM d, yyyy')}</p>
+            </div>
+          </div>
+
+          {/* Schedule */}
+          {(job.scheduled_start || job.scheduled_end) && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" /> Schedule
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {job.scheduled_start && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Scheduled Start</p>
+                      <p className="font-medium">{format(new Date(job.scheduled_start), 'MMM d, yyyy h:mm a')}</p>
+                    </div>
+                  )}
+                  {job.scheduled_end && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Scheduled End</p>
+                      <p className="font-medium">{format(new Date(job.scheduled_end), 'MMM d, yyyy h:mm a')}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Actual Times */}
+          {(job.actual_start || job.actual_end) && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Clock className="w-4 h-4" /> Actual Times
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  {job.actual_start && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Started</p>
+                      <p className="font-medium">{format(new Date(job.actual_start), 'MMM d, yyyy h:mm a')}</p>
+                    </div>
+                  )}
+                  {job.actual_end && (
+                    <div>
+                      <p className="text-sm text-muted-foreground">Completed</p>
+                      <p className="font-medium">{format(new Date(job.actual_end), 'MMM d, yyyy h:mm a')}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Notes */}
+          {job.notes && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="font-medium mb-2">Notes</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{job.notes}</p>
+              </div>
+            </>
+          )}
+
+          {/* Completion Signature */}
+          {job.completion_signed_at && (
+            <>
+              <Separator />
+              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                  <PenTool className="w-4 h-4" />
+                  <div>
+                    <span className="text-sm font-medium">Job completion signed</span>
+                    {job.completion_signed_by && (
+                      <p className="text-xs">by {job.completion_signed_by}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-2 pt-4">
+            <Button variant="outline" size="sm" onClick={() => onEdit?.(job.id)} className="ml-auto">
+              <Edit className="w-4 h-4 mr-1" /> View Full Details
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
