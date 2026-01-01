@@ -322,7 +322,7 @@ const Quotes = () => {
           if (!open) resetForm();
         }}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2 hidden sm:flex">
               <Plus className="w-4 h-4" />
               Create Quote
             </Button>
@@ -886,6 +886,14 @@ const Quotes = () => {
         onConfirm={handleAddItemsToJob}
         isPending={addItemsToJob.isPending}
       />
+
+      {/* Mobile Floating Action Button */}
+      <Button
+        className="fixed bottom-6 right-6 w-14 h-14 rounded-full shadow-lg sm:hidden z-50"
+        onClick={() => openEditDialog(true)}
+      >
+        <Plus className="w-6 h-6" />
+      </Button>
     </div>
   );
 };
