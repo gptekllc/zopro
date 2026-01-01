@@ -83,13 +83,12 @@ export function useCreateInvoice() {
         }
       }
       
-      // Get next invoice number
-      const { count } = await (supabase as any)
-        .from('invoices')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', profile.company_id);
+      // Generate invoice number using database function
+      const { data: invoiceNumberData, error: invoiceNumberError } = await (supabase as any)
+        .rpc('generate_invoice_number', { _company_id: profile.company_id });
       
-      const invoiceNumber = `INV-${String((count || 0) + 1).padStart(3, '0')}`;
+      if (invoiceNumberError) throw invoiceNumberError;
+      const invoiceNumber = invoiceNumberData;
       
       // Calculate totals
       const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);

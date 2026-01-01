@@ -861,7 +861,12 @@ export type Database = {
           company_id: string
         }[]
       }
+      generate_invoice_number: {
+        Args: { _company_id: string }
+        Returns: string
+      }
       generate_job_number: { Args: { _company_id: string }; Returns: string }
+      generate_quote_number: { Args: { _company_id: string }; Returns: string }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {

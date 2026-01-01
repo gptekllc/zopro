@@ -81,13 +81,12 @@ export function useCreateQuote() {
         }
       }
       
-      // Get next quote number
-      const { count } = await (supabase as any)
-        .from('quotes')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', profile.company_id);
+      // Generate quote number using database function
+      const { data: quoteNumberData, error: quoteNumberError } = await (supabase as any)
+        .rpc('generate_quote_number', { _company_id: profile.company_id });
       
-      const quoteNumber = `Q-${String((count || 0) + 1).padStart(3, '0')}`;
+      if (quoteNumberError) throw quoteNumberError;
+      const quoteNumber = quoteNumberData;
       
       // Calculate totals
       const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
