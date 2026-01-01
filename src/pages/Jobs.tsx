@@ -29,6 +29,7 @@ import { JobTimeTracker } from '@/components/jobs/JobTimeTracker';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 import { QuoteDetailDialog } from '@/components/quotes/QuoteDetailDialog';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
+import { PhotoGallery } from '@/components/photos/PhotoGallery';
 
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -248,6 +249,26 @@ const Jobs = () => {
     try {
       if (editingJob) {
         await updateJob.mutateAsync({ id: editingJob.id, ...jobData });
+        // Update viewingJob immediately if it was the edited job
+        if (viewingJob?.id === editingJob.id) {
+          const customerName = safeCustomers.find(c => c.id === formData.customer_id)?.name || '';
+          const assigneeName = technicians.find(t => t.id === formData.assigned_to)?.full_name || null;
+          setViewingJob(prev => prev ? {
+            ...prev,
+            ...jobData,
+            customer: prev.customer ? { ...prev.customer, name: customerName } : { name: customerName, email: null, phone: null, address: null, city: null, state: null, zip: null },
+            assignee: { full_name: assigneeName },
+            items: lineItems.map((item, idx) => ({
+              id: item.id || `temp-${idx}`,
+              job_id: prev.id,
+              description: item.description,
+              quantity: item.quantity,
+              unit_price: item.unitPrice,
+              total: item.quantity * item.unitPrice,
+              created_at: new Date().toISOString(),
+            })),
+          } : null);
+        }
       } else {
         await createJob.mutateAsync(jobData);
       }
@@ -1295,33 +1316,22 @@ const Jobs = () => {
                     </div>
                     
                     {viewingJob.photos && viewingJob.photos.length > 0 ? (
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {viewingJob.photos.map((photo) => (
-                          <div key={photo.id} className="relative group">
-                            <img
-                              src={photo.photo_url}
-                              alt={photo.caption || 'Job photo'}
-                              className="w-full h-40 object-cover rounded-lg"
-                            />
-                            <div className="absolute top-2 left-2">
-                              <Badge variant="secondary" className="text-xs capitalize">
-                                {photo.photo_type}
-                              </Badge>
-                            </div>
-                            <Button
-                              variant="destructive"
-                              size="icon"
-                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => deletePhoto.mutate(photo.id)}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                            {photo.caption && (
-                              <p className="text-xs text-muted-foreground mt-1">{photo.caption}</p>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                      <PhotoGallery 
+                        photos={viewingJob.photos} 
+                        deletable={true}
+                        editable={true}
+                        onDelete={(photoId) => {
+                          deletePhoto.mutate(photoId, {
+                            onSuccess: () => {
+                              // Immediately update local state
+                              setViewingJob(prev => prev ? {
+                                ...prev,
+                                photos: prev.photos?.filter(p => p.id !== photoId) || []
+                              } : null);
+                            }
+                          });
+                        }}
+                      />
                     ) : (
                       <div className="text-center py-8 text-muted-foreground">
                         <Image className="w-12 h-12 mx-auto mb-2 opacity-50" />

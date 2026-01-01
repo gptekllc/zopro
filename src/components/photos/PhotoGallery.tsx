@@ -20,10 +20,12 @@ interface PhotoGalleryProps {
   photos: JobPhoto[];
   className?: string;
   onReorder?: (photos: JobPhoto[]) => void;
+  onDelete?: (photoId: string) => void;
   editable?: boolean;
+  deletable?: boolean;
 }
 
-export function PhotoGallery({ photos, className, onReorder, editable = true }: PhotoGalleryProps) {
+export function PhotoGallery({ photos, className, onReorder, onDelete, editable = true, deletable = false }: PhotoGalleryProps) {
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [loadingUrls, setLoadingUrls] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -54,11 +56,16 @@ export function PhotoGallery({ photos, className, onReorder, editable = true }: 
       
       await Promise.all(
         photos.map(async (photo) => {
-          const path = photo.photo_url.replace(/^job-photos\//, '');
+          // Check if photo_url is already a signed URL or full URL
+          if (photo.photo_url.startsWith('http')) {
+            urls[photo.id] = photo.photo_url;
+            return;
+          }
           
+          // photo_url is a storage path - get signed URL
           const { data } = await supabase.storage
             .from('job-photos')
-            .createSignedUrl(path, 3600);
+            .createSignedUrl(photo.photo_url, 3600);
           
           if (data?.signedUrl) {
             urls[photo.id] = data.signedUrl;
@@ -337,6 +344,17 @@ export function PhotoGallery({ photos, className, onReorder, editable = true }: 
                         <GripVertical className="w-4 h-4 text-white" />
                       </div>
                     </div>
+                  )}
+                  {deletable && onDelete && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(photo.id);
+                      }}
+                      className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive rounded p-1 hover:bg-destructive/90"
+                    >
+                      <X className="w-4 h-4 text-white" />
+                    </button>
                   )}
                   <button
                     onClick={() => openLightbox(photo)}
