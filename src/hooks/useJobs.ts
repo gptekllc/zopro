@@ -372,6 +372,28 @@ export function useDeleteJobPhoto() {
   
   return useMutation({
     mutationFn: async (photoId: string) => {
+      // First, get the photo record to find the storage path
+      const { data: photo, error: fetchError } = await (supabase as any)
+        .from('job_photos')
+        .select('photo_url')
+        .eq('id', photoId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Delete the file from storage if we have a path
+      if (photo?.photo_url) {
+        const { error: storageError } = await supabase.storage
+          .from('job-photos')
+          .remove([photo.photo_url]);
+        
+        if (storageError) {
+          console.error('Failed to delete storage file:', storageError);
+          // Continue with DB deletion even if storage deletion fails
+        }
+      }
+      
+      // Delete the database record
       const { error } = await (supabase as any)
         .from('job_photos')
         .delete()
