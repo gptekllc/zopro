@@ -4,6 +4,7 @@ import { useInvoices } from "@/hooks/useInvoices";
 import { useJobs } from "@/hooks/useJobs";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useTimeEntries } from "@/hooks/useTimeEntries";
+import { useProfiles } from "@/hooks/useProfiles";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertCircle,
@@ -18,6 +19,7 @@ import {
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { useDashboardAccess } from "./useDashboardAccess";
+import { SchedulerWidget } from "@/components/dashboard/SchedulerWidget";
 
 export default function DashboardPage() {
   const { profile, user, isLoading: authLoading } = useAuth();
@@ -28,6 +30,9 @@ export default function DashboardPage() {
   const { data: customers = [], isLoading: loadingCustomers } = useCustomers();
   const { data: timeEntries = [], isLoading: loadingTime } = useTimeEntries();
   const { data: jobs = [], isLoading: loadingJobs } = useJobs();
+  const { data: profiles = [] } = useProfiles();
+  
+  const technicians = profiles.filter(p => p.role === 'technician' || p.role === 'admin' || p.role === 'manager');
 
   const isLoading =
     authLoading || loadingInvoices || loadingQuotes || loadingCustomers || loadingTime || loadingJobs;
@@ -376,6 +381,10 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
+          {/* Scheduler Widget - Admin/Manager only */}
+          {!isTechnicianDashboardScoped && (
+            <SchedulerWidget jobs={jobs} technicians={technicians} />
+          )}
         </div>
       </section>
     </div>
