@@ -719,7 +719,7 @@ const CustomerDetail = () => {
         onDownload={handleDownloadQuote}
         onEmail={handleEmailQuote}
         onConvertToInvoice={handleConvertQuoteToInvoice}
-        onEdit={(quoteId) => navigate(`/quotes?edit=${quoteId}`)}
+        onEdit={(quoteId) => navigate(`/quotes?view=${quoteId}`)}
         onViewSignature={(sigId) => setSelectedSignatureId(sigId)}
       />
 
@@ -731,7 +731,7 @@ const CustomerDetail = () => {
         onDownload={handleDownloadInvoice}
         onEmail={handleEmailInvoice}
         onMarkPaid={handleMarkInvoicePaid}
-        onEdit={(invoiceId) => navigate(`/invoices?edit=${invoiceId}`)}
+        onEdit={(invoiceId) => navigate(`/invoices?view=${invoiceId}`)}
         onViewSignature={(sigId) => setSelectedSignatureId(sigId)}
       />
 

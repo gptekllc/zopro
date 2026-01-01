@@ -188,7 +188,7 @@ export function JobDetailDialog({
           {/* Actions */}
           <div className="flex gap-2 pt-4">
             <Button variant="outline" size="sm" onClick={() => onEdit?.(job.id)} className="ml-auto">
-              <Edit className="w-4 h-4 mr-1" /> View Full Details
+              <Edit className="w-4 h-4 mr-1" /> Open in Jobs
             </Button>
           </div>
         </div>

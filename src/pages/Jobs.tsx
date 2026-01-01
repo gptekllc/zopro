@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useArchiveJob, useUnarchiveJob, Job } from '@/hooks/useJobs';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes } from '@/hooks/useQuotes';
@@ -14,7 +15,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import JobCalendar from '@/components/jobs/JobCalendar';
@@ -26,8 +29,13 @@ const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 
 const Jobs = () => {
   const { profile, roles } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showArchived, setShowArchived] = useState(false);
-  const { data: jobs = [], isLoading } = useJobs(showArchived);
+  const [includeArchivedInSearch, setIncludeArchivedInSearch] = useState(false);
+  
+  // Determine if we need to include archived jobs based on search + toggle
+  const needsArchivedData = showArchived || includeArchivedInSearch;
+  const { data: jobs = [], isLoading } = useJobs(needsArchivedData);
   const { data: customers = [] } = useCustomers();
   const { data: quotes = [] } = useQuotes();
   const { data: profiles = [] } = useProfiles();
@@ -55,6 +63,20 @@ const Jobs = () => {
   const isAdmin = roles.some(r => r.role === 'admin' || r.role === 'manager');
   const technicians = profiles.filter(p => p.role === 'technician' || p.role === 'admin' || p.role === 'manager');
 
+  // Handle URL param to auto-open job detail
+  useEffect(() => {
+    const viewJobId = searchParams.get('view');
+    if (viewJobId && jobs.length > 0) {
+      const job = jobs.find(j => j.id === viewJobId);
+      if (job) {
+        setViewingJob(job);
+        // Clear the URL param after opening
+        searchParams.delete('view');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, jobs, setSearchParams]);
+
   const [formData, setFormData] = useState({
     customer_id: '',
     quote_id: '' as string | null,
@@ -81,13 +103,27 @@ const Jobs = () => {
            !job.archived_at;
   };
 
-  const filteredJobs = jobs.filter(job => {
-    const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.job_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
+      const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.job_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        job.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
+      
+      // When searching with includeArchivedInSearch, include archived jobs
+      // Otherwise, respect showArchived toggle
+      let matchesArchiveFilter = true;
+      if (searchQuery && includeArchivedInSearch) {
+        // Include all jobs (archived and active) when searching with toggle on
+        matchesArchiveFilter = true;
+      } else if (!showArchived) {
+        // Hide archived jobs when not showing archived
+        matchesArchiveFilter = !job.archived_at;
+      }
+      
+      return matchesSearch && matchesStatus && matchesArchiveFilter;
+    });
+  }, [jobs, searchQuery, statusFilter, showArchived, includeArchivedInSearch]);
 
   const resetForm = () => {
     setFormData({
@@ -425,58 +461,72 @@ const Jobs = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search jobs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search jobs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              {JOB_STATUSES.map((s) => (
+                <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            variant={showArchived ? 'secondary' : 'outline'}
+            size="sm"
+            onClick={() => setShowArchived(!showArchived)}
+            className="gap-2 whitespace-nowrap"
+          >
+            {showArchived ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <span className="hidden sm:inline">{showArchived ? 'Hide Archived' : 'Show Archived'}</span>
+            <span className="sm:hidden">{showArchived ? 'Hide' : 'Archived'}</span>
+          </Button>
+          <div className="flex gap-1 border rounded-md p-1">
+            <Button
+              variant={viewMode === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('list')}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('calendar')}
+            >
+              <CalendarDays className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            {JOB_STATUSES.map((s) => (
-              <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Button
-          variant={showArchived ? 'secondary' : 'outline'}
-          size="sm"
-          onClick={() => setShowArchived(!showArchived)}
-          className="gap-2"
-        >
-          {showArchived ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          {showArchived ? 'Hide Archived' : 'Show Archived'}
-        </Button>
-        <div className="flex gap-1 border rounded-md p-1">
-          <Button
-            variant={viewMode === 'list' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('list')}
-          >
-            <List className="w-4 h-4" />
-          </Button>
-          <Button
-            variant={viewMode === 'calendar' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('calendar')}
-          >
-          </Button>
-          <Button
-            variant={viewMode === 'calendar' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setViewMode('calendar')}
-          >
-            <CalendarDays className="w-4 h-4" />
-          </Button>
-        </div>
+        
+        {/* Include archived in search toggle - shows when searching */}
+        {searchQuery && (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="include-archived"
+              checked={includeArchivedInSearch}
+              onCheckedChange={(checked) => setIncludeArchivedInSearch(checked === true)}
+            />
+            <label
+              htmlFor="include-archived"
+              className="text-sm text-muted-foreground cursor-pointer"
+            >
+              Include archived jobs in search
+            </label>
+          </div>
+        )}
       </div>
 
       {/* Calendar View */}
@@ -484,7 +534,7 @@ const Jobs = () => {
         <JobCalendar jobs={jobs} onJobClick={setViewingJob} />
       )}
 
-      {/* Job List */}
+      {/* Job List - Mobile Optimized */}
       {viewMode === 'list' && (
         <div className="space-y-3">
           {filteredJobs.length === 0 ? (
@@ -500,8 +550,123 @@ const Jobs = () => {
                 className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${job.archived_at ? 'opacity-60 border-dashed' : ''}`} 
                 onClick={() => setViewingJob(job)}
               >
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
+                <CardContent className="p-4 sm:p-5">
+                  {/* Mobile Layout */}
+                  <div className="flex flex-col gap-3 sm:hidden">
+                    {/* Row 1: Job number + badges */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm">{job.job_number}</span>
+                        {job.archived_at && (
+                          <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Badge className={`${getStatusColor(job.status)} text-xs`} variant="outline">
+                          {job.status.replace('_', ' ')}
+                        </Badge>
+                        <Badge className={`${getPriorityColor(job.priority)} text-xs`} variant="outline">
+                          {job.priority}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    {/* Row 2: Title */}
+                    <p className="font-medium text-sm line-clamp-1">{job.title}</p>
+                    
+                    {/* Row 3: Customer + date */}
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span className="truncate max-w-[50%]">{job.customer?.name}</span>
+                      {job.scheduled_start && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          {format(new Date(job.scheduled_start), 'MMM d')}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Row 4: Actions */}
+                    <div className="flex items-center justify-end gap-1 pt-1 border-t" onClick={(e) => e.stopPropagation()}>
+                      {job.archived_at ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => unarchiveJob.mutate(job.id)}
+                          disabled={unarchiveJob.isPending}
+                          className="text-xs h-8"
+                        >
+                          <ArchiveRestore className="w-3 h-3 mr-1" />
+                          Unarchive
+                        </Button>
+                      ) : (
+                        <>
+                          {job.status === 'in_progress' && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => setCompletingJob(job)}
+                              className="text-xs h-8"
+                            >
+                              <CheckCircle2 className="w-3 h-3 mr-1" />
+                              Complete
+                            </Button>
+                          )}
+                          {job.status === 'completed' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => convertToInvoice.mutate(job)}
+                              disabled={convertToInvoice.isPending}
+                              className="text-xs h-8"
+                            >
+                              <Receipt className="w-3 h-3 mr-1" />
+                              Invoice
+                            </Button>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(job)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              {getNextStatus(job.status) && job.status !== 'completed' && job.status !== 'in_progress' && (
+                                <DropdownMenuItem onClick={() => handleStatusChange(job.id, getNextStatus(job.status)!)}>
+                                  <ChevronRight className="w-4 h-4 mr-2" />
+                                  {getNextStatus(job.status)?.replace('_', ' ')}
+                                </DropdownMenuItem>
+                              )}
+                              {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
+                                <DropdownMenuItem onClick={() => archiveJob.mutate(job.id)}>
+                                  <Archive className="w-4 h-4 mr-2" />
+                                  Archive
+                                </DropdownMenuItem>
+                              )}
+                              {isAdmin && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    onClick={() => handleDelete(job.id)}
+                                    className="text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Desktop Layout */}
+                  <div className="hidden sm:flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${job.archived_at ? 'bg-muted' : 'bg-primary/10'}`}>
                         {job.archived_at ? (
@@ -529,7 +694,7 @@ const Jobs = () => {
                     </div>
 
                     <div className="flex items-center gap-6">
-                      <div className="text-right hidden sm:block">
+                      <div className="text-right">
                         {job.assignee?.full_name && (
                           <p className="text-sm flex items-center gap-1">
                             <User className="w-4 h-4" />
@@ -650,192 +815,196 @@ const Jobs = () => {
         </div>
       )}
 
-      {/* Job Detail Dialog */}
+      {/* Job Detail Modal */}
       <Dialog open={!!viewingJob} onOpenChange={(open) => !open && setViewingJob(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           {viewingJob && (
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  {viewingJob.job_number}
-                  <Badge className={getStatusColor(viewingJob.status)} variant="outline">
-                    {viewingJob.status.replace('_', ' ')}
-                  </Badge>
+                  <Briefcase className="w-5 h-5" />
+                  {viewingJob.job_number} - {viewingJob.title}
                 </DialogTitle>
-                <DialogDescription>{viewingJob.title}</DialogDescription>
               </DialogHeader>
               
-              <Tabs defaultValue="details">
+              <Tabs defaultValue="details" className="mt-4">
                 <TabsList>
                   <TabsTrigger value="details">Details</TabsTrigger>
                   <TabsTrigger value="photos">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
-                  <TabsTrigger value="time">
-                    <Clock className="w-4 h-4 mr-1" />
-                    Time
-                  </TabsTrigger>
+                  <TabsTrigger value="time">Time Tracking</TabsTrigger>
                   <TabsTrigger value="notes">Notes</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="details" className="space-y-4">
+                <TabsContent value="details" className="space-y-4 mt-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="text-muted-foreground">Customer</Label>
                       <p className="font-medium">{viewingJob.customer?.name}</p>
-                      {viewingJob.customer?.phone && <p className="text-sm">{viewingJob.customer.phone}</p>}
-                      {viewingJob.customer?.address && <p className="text-sm">{viewingJob.customer.address}</p>}
                     </div>
                     <div>
-                      <Label className="text-muted-foreground">Assigned To</Label>
-                      <p className="font-medium">{viewingJob.assignee?.full_name || 'Unassigned'}</p>
+                      <Label className="text-muted-foreground">Status</Label>
+                      <Badge className={getStatusColor(viewingJob.status)}>{viewingJob.status}</Badge>
                     </div>
                     <div>
                       <Label className="text-muted-foreground">Priority</Label>
                       <Badge className={getPriorityColor(viewingJob.priority)}>{viewingJob.priority}</Badge>
                     </div>
-                    <div>
-                      <Label className="text-muted-foreground">Scheduled</Label>
-                      <p className="text-sm">
-                        {viewingJob.scheduled_start ? format(new Date(viewingJob.scheduled_start), 'MMM d, h:mm a') : 'Not scheduled'}
-                        {viewingJob.scheduled_end && ` - ${format(new Date(viewingJob.scheduled_end), 'h:mm a')}`}
-                      </p>
-                    </div>
+                    {viewingJob.assignee?.full_name && (
+                      <div>
+                        <Label className="text-muted-foreground">Assigned To</Label>
+                        <p className="font-medium">{viewingJob.assignee.full_name}</p>
+                      </div>
+                    )}
+                    {viewingJob.scheduled_start && (
+                      <div>
+                        <Label className="text-muted-foreground">Scheduled Start</Label>
+                        <p className="font-medium">{format(new Date(viewingJob.scheduled_start), 'MMM d, yyyy h:mm a')}</p>
+                      </div>
+                    )}
+                    {viewingJob.scheduled_end && (
+                      <div>
+                        <Label className="text-muted-foreground">Scheduled End</Label>
+                        <p className="font-medium">{format(new Date(viewingJob.scheduled_end), 'MMM d, yyyy h:mm a')}</p>
+                      </div>
+                    )}
                   </div>
                   
                   {viewingJob.description && (
                     <div>
                       <Label className="text-muted-foreground">Description</Label>
-                      <p className="text-sm whitespace-pre-wrap">{viewingJob.description}</p>
+                      <p className="mt-1">{viewingJob.description}</p>
                     </div>
                   )}
                 </TabsContent>
                 
-                <TabsContent value="photos" className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-muted-foreground">Before & after photos to document work</p>
-                    <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <Camera className="w-4 h-4 mr-2" />
-                          Add Photo
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Upload Photo</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Photo Type</Label>
-                            <Select value={photoType} onValueChange={(v) => setPhotoType(v as any)}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="before">Before</SelectItem>
-                                <SelectItem value="after">After</SelectItem>
-                                <SelectItem value="other">Other</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Caption (optional)</Label>
-                            <Input
-                              value={photoCaption}
-                              onChange={(e) => setPhotoCaption(e.target.value)}
-                              placeholder="Describe the photo..."
-                            />
-                          </div>
-                          <div>
-                            <Label>Photo</Label>
-                            <Input
-                              type="file"
-                              accept="image/*"
-                              capture="environment"
-                              onChange={handlePhotoUpload}
-                              disabled={uploadPhoto.isPending}
-                            />
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {['before', 'after', 'other'].map((type) => {
-                      const photos = viewingJob.photos?.filter(p => p.photo_type === type) || [];
-                      return (
-                        <div key={type} className="space-y-2">
-                          <Label className="capitalize">{type} Photos</Label>
-                          {photos.length === 0 ? (
-                            <div className="aspect-square border-2 border-dashed rounded-lg flex items-center justify-center text-muted-foreground">
-                              No {type} photos
+                <TabsContent value="photos" className="mt-4">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-medium">Job Photos</h4>
+                      <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Camera className="w-4 h-4 mr-2" />
+                            Add Photo
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Upload Photo</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label>Photo Type</Label>
+                              <Select value={photoType} onValueChange={(v: any) => setPhotoType(v)}>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="before">Before</SelectItem>
+                                  <SelectItem value="after">After</SelectItem>
+                                  <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
                             </div>
-                          ) : (
-                            photos.map((photo) => (
-                              <div key={photo.id} className="relative group">
-                                <img
-                                  src={photo.photo_url}
-                                  alt={photo.caption || `${type} photo`}
-                                  className="aspect-square object-cover rounded-lg"
-                                />
-                                <Button
-                                  variant="destructive"
-                                  size="icon"
-                                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => deletePhoto.mutate(photo.id)}
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                                {photo.caption && (
-                                  <p className="text-xs text-muted-foreground mt-1">{photo.caption}</p>
-                                )}
+                            <div className="space-y-2">
+                              <Label>Caption (optional)</Label>
+                              <Input
+                                value={photoCaption}
+                                onChange={(e) => setPhotoCaption(e.target.value)}
+                                placeholder="Add a caption..."
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Photo</Label>
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={handlePhotoUpload}
+                                disabled={uploadPhoto.isPending}
+                              />
+                            </div>
+                            {uploadPhoto.isPending && (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Uploading...
                               </div>
-                            ))
-                          )}
-                        </div>
-                      );
-                    })}
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                    
+                    {viewingJob.photos && viewingJob.photos.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {viewingJob.photos.map((photo) => (
+                          <div key={photo.id} className="relative group">
+                            <img
+                              src={photo.photo_url}
+                              alt={photo.caption || 'Job photo'}
+                              className="w-full h-40 object-cover rounded-lg"
+                            />
+                            <div className="absolute top-2 left-2">
+                              <Badge variant="secondary" className="text-xs capitalize">
+                                {photo.photo_type}
+                              </Badge>
+                            </div>
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => deletePhoto.mutate({ jobId: viewingJob.id, photoId: photo.id, photoUrl: photo.photo_url })}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                            {photo.caption && (
+                              <p className="text-xs text-muted-foreground mt-1">{photo.caption}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Image className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                        <p>No photos yet</p>
+                      </div>
+                    )}
                   </div>
-                </TabsContent>
-
-                <TabsContent value="time" className="space-y-4">
-                  <JobTimeTracker jobId={viewingJob.id} jobNumber={viewingJob.job_number} />
                 </TabsContent>
                 
-                <TabsContent value="notes" className="space-y-4">
-                  <Textarea
-                    value={viewingJob.notes || ''}
-                    placeholder="Add notes about this job..."
-                    rows={6}
-                    onChange={(e) => {
-                      setViewingJob({ ...viewingJob, notes: e.target.value });
-                    }}
-                  />
-                  <Button
-                    onClick={async () => {
-                      await updateJob.mutateAsync({ id: viewingJob.id, notes: viewingJob.notes });
-                    }}
-                    disabled={updateJob.isPending}
-                  >
-                    {updateJob.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Save Notes
-                  </Button>
+                <TabsContent value="time" className="mt-4">
+                  <JobTimeTracker job={viewingJob} />
+                </TabsContent>
+                
+                <TabsContent value="notes" className="mt-4">
+                  <div className="space-y-4">
+                    {viewingJob.notes ? (
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="whitespace-pre-wrap">{viewingJob.notes}</p>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">No notes added</p>
+                    )}
+                  </div>
                 </TabsContent>
               </Tabs>
+              
+              <DialogFooter className="mt-6">
+                <Button variant="outline" onClick={() => handleEdit(viewingJob)}>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Job
+                </Button>
+              </DialogFooter>
             </>
           )}
         </DialogContent>
       </Dialog>
 
       {/* Complete Job Dialog */}
-      {completingJob && (
-        <CompleteJobDialog
-          job={completingJob}
-          open={!!completingJob}
-          onOpenChange={(open) => !open && setCompletingJob(null)}
-          onComplete={() => setCompletingJob(null)}
-        />
-      )}
+      <CompleteJobDialog
+        job={completingJob}
+        open={!!completingJob}
+        onOpenChange={(open) => !open && setCompletingJob(null)}
+      />
     </div>
   );
 };
