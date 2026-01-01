@@ -1149,14 +1149,13 @@ const Jobs = () => {
               <Tabs defaultValue="details" className="mt-2 sm:mt-4">
                 <TabsList className="flex-wrap h-auto gap-1 p-1">
                   <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-3">Details</TabsTrigger>
-                  <TabsTrigger value="items" className="text-xs sm:text-sm px-2 sm:px-3">Items ({viewingJob.items?.length || 0})</TabsTrigger>
                   <TabsTrigger value="quotes" className="text-xs sm:text-sm px-2 sm:px-3">Quotes</TabsTrigger>
                   <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
                   <TabsTrigger value="time" className="text-xs sm:text-sm px-2 sm:px-3">Time</TabsTrigger>
-                  <TabsTrigger value="notes" className="text-xs sm:text-sm px-2 sm:px-3">Notes</TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="details" className="space-y-4 mt-4">
+                <TabsContent value="details" className="space-y-6 mt-4">
+                  {/* Basic Info */}
                   <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <Label className="text-muted-foreground text-xs sm:text-sm">Customer</Label>
@@ -1196,10 +1195,10 @@ const Jobs = () => {
                       <p className="mt-1 text-sm">{viewingJob.description}</p>
                     </div>
                   )}
-                </TabsContent>
 
-                <TabsContent value="items" className="mt-4">
-                  <div className="space-y-4">
+                  {/* Line Items Section */}
+                  <div className="space-y-3">
+                    <Label className="text-muted-foreground text-xs sm:text-sm font-medium">Line Items</Label>
                     {viewingJob.items && viewingJob.items.length > 0 ? (
                       <>
                         <div className="rounded-lg border">
@@ -1246,14 +1245,26 @@ const Jobs = () => {
                         </div>
                       </>
                     ) : (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 opacity-50" />
+                      <div className="text-center py-6 text-muted-foreground border rounded-lg">
+                        <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p className="text-sm">No line items added</p>
                         <Button variant="outline" size="sm" className="mt-2" onClick={() => handleEdit(viewingJob)}>
                           <Plus className="w-4 h-4 mr-1" />
                           Add Items
                         </Button>
                       </div>
+                    )}
+                  </div>
+
+                  {/* Notes Section */}
+                  <div className="space-y-2">
+                    <Label className="text-muted-foreground text-xs sm:text-sm font-medium">Notes</Label>
+                    {viewingJob.notes ? (
+                      <div className="p-4 bg-muted rounded-lg">
+                        <p className="whitespace-pre-wrap text-sm">{viewingJob.notes}</p>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">No notes added</p>
                     )}
                   </div>
                 </TabsContent>
@@ -1345,17 +1356,6 @@ const Jobs = () => {
                   <JobTimeTracker jobId={viewingJob.id} jobNumber={viewingJob.job_number} />
                 </TabsContent>
                 
-                <TabsContent value="notes" className="mt-4">
-                  <div className="space-y-4">
-                    {viewingJob.notes ? (
-                      <div className="p-4 bg-muted rounded-lg">
-                        <p className="whitespace-pre-wrap">{viewingJob.notes}</p>
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground">No notes added</p>
-                    )}
-                  </div>
-                </TabsContent>
                 
                 <TabsContent value="quotes" className="mt-4">
                   <JobRelatedQuotesSection 
