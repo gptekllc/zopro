@@ -51,6 +51,11 @@ const Jobs = () => {
   const { data: customers = [] } = useCustomers();
   const { data: quotes = [] } = useQuotes();
   const { data: profiles = [] } = useProfiles();
+
+  const safeCustomers = useMemo(() => (customers ?? []).filter(Boolean) as any[], [customers]);
+  const safeQuotes = useMemo(() => (quotes ?? []).filter(Boolean) as any[], [quotes]);
+  const safeProfiles = useMemo(() => (profiles ?? []).filter(Boolean) as any[], [profiles]);
+
   const createJob = useCreateJob();
   const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
@@ -73,7 +78,7 @@ const Jobs = () => {
   const [completingJob, setCompletingJob] = useState<Job | null>(null);
   
   const isAdmin = roles.some(r => r.role === 'admin' || r.role === 'manager');
-  const technicians = profiles.filter(p => p.role === 'technician' || p.role === 'admin' || p.role === 'manager');
+  const technicians = safeProfiles.filter(p => p.role === 'technician' || p.role === 'admin' || p.role === 'manager');
 
   // Handle URL param to auto-open job detail
   useEffect(() => {
@@ -212,7 +217,7 @@ const Jobs = () => {
 
   const handleImportQuote = () => {
     if (!importQuoteId) return;
-    const quote = quotes.find(q => q.id === importQuoteId);
+    const quote = safeQuotes.find(q => q.id === importQuoteId);
     if (quote) {
       setFormData({
         ...formData,
@@ -324,11 +329,13 @@ const Jobs = () => {
                         <SelectValue placeholder="Select a quote" />
                       </SelectTrigger>
                       <SelectContent>
-                        {quotes.filter(q => q.status === 'accepted' || q.status === 'sent').map((q) => (
-                          <SelectItem key={q.id} value={q.id}>
-                            {q.quote_number} - {customers.find(c => c.id === q.customer_id)?.name}
-                          </SelectItem>
-                        ))}
+                        {safeQuotes
+                          .filter(q => q.status === 'accepted' || q.status === 'sent')
+                          .map((q) => (
+                            <SelectItem key={q.id} value={q.id}>
+                              {q.quote_number} - {safeCustomers.find(c => c.id === q.customer_id)?.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -350,7 +357,7 @@ const Jobs = () => {
                       <SelectValue placeholder="Select customer" />
                     </SelectTrigger>
                     <SelectContent>
-                      {customers.map((c) => (
+                      {safeCustomers.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
