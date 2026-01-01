@@ -1155,19 +1155,23 @@ const Jobs = () => {
                 </TabsList>
                 
                 <TabsContent value="details" className="space-y-6 mt-4">
-                  {/* Basic Info */}
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  {/* Basic Info - responsive grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                     <div>
                       <Label className="text-muted-foreground text-xs sm:text-sm">Customer</Label>
                       <p className="font-medium text-sm sm:text-base truncate">{viewingJob.customer?.name}</p>
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-xs sm:text-sm">Status</Label>
-                      <Badge className={`${getStatusColor(viewingJob.status)} text-xs`}>{viewingJob.status}</Badge>
+                      <div className="mt-0.5">
+                        <Badge className={`${getStatusColor(viewingJob.status)} text-xs`}>{viewingJob.status}</Badge>
+                      </div>
                     </div>
                     <div>
                       <Label className="text-muted-foreground text-xs sm:text-sm">Priority</Label>
-                      <Badge className={`${getPriorityColor(viewingJob.priority)} text-xs`}>{viewingJob.priority}</Badge>
+                      <div className="mt-0.5">
+                        <Badge className={`${getPriorityColor(viewingJob.priority)} text-xs`}>{viewingJob.priority}</Badge>
+                      </div>
                     </div>
                     {viewingJob.assignee?.full_name && (
                       <div>
@@ -1176,13 +1180,13 @@ const Jobs = () => {
                       </div>
                     )}
                     {viewingJob.scheduled_start && (
-                      <div className="col-span-2 sm:col-span-1">
+                      <div>
                         <Label className="text-muted-foreground text-xs sm:text-sm">Scheduled Start</Label>
                         <p className="font-medium text-sm sm:text-base">{format(new Date(viewingJob.scheduled_start), 'MMM d, yyyy h:mm a')}</p>
                       </div>
                     )}
                     {viewingJob.scheduled_end && (
-                      <div className="col-span-2 sm:col-span-1">
+                      <div>
                         <Label className="text-muted-foreground text-xs sm:text-sm">Scheduled End</Label>
                         <p className="font-medium text-sm sm:text-base">{format(new Date(viewingJob.scheduled_end), 'MMM d, yyyy h:mm a')}</p>
                       </div>

@@ -44,7 +44,7 @@ export function QuoteDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl lg:max-w-3xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between gap-2 pr-8">
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -58,8 +58,8 @@ export function QuoteDetailDialog({
         </DialogHeader>
 
         <div className="space-y-4 sm:space-y-6">
-          {/* Customer & Dates */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          {/* Customer & Dates - responsive grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             <div>
               <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
               <p className="font-medium text-sm sm:text-base truncate">{customerName || 'Unknown'}</p>
