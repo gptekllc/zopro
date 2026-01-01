@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { UserPlus, X } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { UserPlus, X, Check, ChevronsUpDown, Search } from 'lucide-react';
 import { useCreateCustomer, Customer } from '@/hooks/useCustomers';
+import { cn } from '@/lib/utils';
 
 interface InlineCustomerFormProps {
   customers: Customer[];
@@ -30,6 +32,7 @@ export function InlineCustomerForm({
   onNewCustomerCreated,
 }: InlineCustomerFormProps) {
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const [open, setOpen] = useState(false);
   const [newCustomer, setNewCustomer] = useState<NewCustomerData>({
     name: '',
     phone: '',
@@ -41,6 +44,11 @@ export function InlineCustomerForm({
   });
 
   const createCustomer = useCreateCustomer();
+
+  const selectedCustomer = useMemo(
+    () => customers.find((c) => c.id === selectedCustomerId),
+    [customers, selectedCustomerId]
+  );
 
   const resetNewCustomerForm = () => {
     setNewCustomer({
@@ -91,7 +99,7 @@ export function InlineCustomerForm({
 
   if (isAddingNew) {
     return (
-      <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+      <div className="space-y-3 p-4 border rounded-lg bg-muted/30 col-span-full">
         <div className="flex items-center justify-between">
           <Label className="text-base font-semibold">New Customer</Label>
           <Button type="button" variant="ghost" size="sm" onClick={handleCancelNew}>
@@ -99,16 +107,15 @@ export function InlineCustomerForm({
           </Button>
         </div>
         
-        <div className="space-y-2">
-          <Label>Name *</Label>
-          <Input
-            value={newCustomer.name}
-            onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-            placeholder="Customer name"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Name *</Label>
+            <Input
+              value={newCustomer.name}
+              onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
+              placeholder="Customer name"
+            />
+          </div>
           <div className="space-y-2">
             <Label>Phone</Label>
             <Input
@@ -117,27 +124,27 @@ export function InlineCustomerForm({
               placeholder="Phone number"
             />
           </div>
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input
-              type="email"
-              value={newCustomer.email}
-              onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
-              placeholder="Email address"
-            />
-          </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Address</Label>
+          <Label>Email</Label>
           <Input
-            value={newCustomer.address}
-            onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
-            placeholder="Street address"
+            type="email"
+            value={newCustomer.email}
+            onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+            placeholder="Email address"
           />
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="space-y-2 md:col-span-2">
+            <Label>Address</Label>
+            <Input
+              value={newCustomer.address}
+              onChange={(e) => setNewCustomer({ ...newCustomer, address: e.target.value })}
+              placeholder="Street address"
+            />
+          </div>
           <div className="space-y-2">
             <Label>City</Label>
             <Input
@@ -146,21 +153,23 @@ export function InlineCustomerForm({
               placeholder="City"
             />
           </div>
-          <div className="space-y-2">
-            <Label>State</Label>
-            <Input
-              value={newCustomer.state}
-              onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
-              placeholder="State"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>ZIP</Label>
-            <Input
-              value={newCustomer.zip}
-              onChange={(e) => setNewCustomer({ ...newCustomer, zip: e.target.value })}
-              placeholder="ZIP"
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <Label>State</Label>
+              <Input
+                value={newCustomer.state}
+                onChange={(e) => setNewCustomer({ ...newCustomer, state: e.target.value })}
+                placeholder="ST"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>ZIP</Label>
+              <Input
+                value={newCustomer.zip}
+                onChange={(e) => setNewCustomer({ ...newCustomer, zip: e.target.value })}
+                placeholder="ZIP"
+              />
+            </div>
           </div>
         </div>
 
@@ -192,18 +201,52 @@ export function InlineCustomerForm({
     <div className="space-y-2">
       <Label>Customer *</Label>
       <div className="flex gap-2">
-        <Select value={selectedCustomerId} onValueChange={onCustomerSelect}>
-          <SelectTrigger className="flex-1">
-            <SelectValue placeholder="Select customer" />
-          </SelectTrigger>
-          <SelectContent>
-            {customers.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="flex-1 justify-between font-normal"
+            >
+              {selectedCustomer ? selectedCustomer.name : "Select customer..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[300px] p-0 bg-popover z-50" align="start">
+            <Command>
+              <CommandInput placeholder="Search customers..." />
+              <CommandList>
+                <CommandEmpty>No customer found.</CommandEmpty>
+                <CommandGroup>
+                  {customers.map((customer) => (
+                    <CommandItem
+                      key={customer.id}
+                      value={customer.name}
+                      onSelect={() => {
+                        onCustomerSelect(customer.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selectedCustomerId === customer.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      <div className="flex flex-col">
+                        <span>{customer.name}</span>
+                        {customer.email && (
+                          <span className="text-xs text-muted-foreground">{customer.email}</span>
+                        )}
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
         <Button
           type="button"
           variant="outline"
