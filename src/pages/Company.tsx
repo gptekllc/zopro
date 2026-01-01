@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Save, Loader2, Globe } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt } from 'lucide-react';
 import TeamMembersManager from '@/components/team/TeamMembersManager';
 import LogoUpload from '@/components/company/LogoUpload';
 import { TIMEZONES } from '@/lib/timezones';
@@ -29,6 +29,9 @@ const Company = () => {
     zip: '',
     timezone: 'America/New_York',
   });
+  const [billingData, setBillingData] = useState({
+    tax_rate: 8.25,
+  });
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formInitialized, setFormInitialized] = useState(false);
 
@@ -44,6 +47,9 @@ const Company = () => {
       zip: company.zip || '',
       timezone: company.timezone || 'America/New_York',
     });
+    setBillingData({
+      tax_rate: company.tax_rate ?? 8.25,
+    });
     setLogoUrl(company.logo_url || null);
     setFormInitialized(true);
   }
@@ -52,6 +58,12 @@ const Company = () => {
     e.preventDefault();
     if (!company) return;
     await updateCompany.mutateAsync({ id: company.id, ...formData });
+  };
+
+  const handleBillingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!company) return;
+    await updateCompany.mutateAsync({ id: company.id, tax_rate: billingData.tax_rate });
   };
 
   if (isLoading) {
@@ -80,6 +92,7 @@ const Company = () => {
       <Tabs defaultValue="details" className="space-y-6">
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="billing">Billing & Tax</TabsTrigger>
           {isAdmin && <TabsTrigger value="team">Team Members</TabsTrigger>}
         </TabsList>
 
@@ -203,6 +216,45 @@ const Company = () => {
                     <Save className="w-4 h-4" />
                   )}
                   Save Changes
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="billing">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Receipt className="w-5 h-5" />
+                Billing & Tax Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleBillingSubmit} className="space-y-6 max-w-xl">
+                <div className="space-y-2">
+                  <Label htmlFor="tax_rate">Default Tax Rate (%)</Label>
+                  <Input
+                    id="tax_rate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    value={billingData.tax_rate}
+                    onChange={(e) => setBillingData({ ...billingData, tax_rate: parseFloat(e.target.value) || 0 })}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    This tax rate will be applied to all new quotes, invoices, and jobs. Existing documents will keep their original tax amounts.
+                  </p>
+                </div>
+
+                <Button type="submit" className="gap-2" disabled={updateCompany.isPending}>
+                  {updateCompany.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  Save Tax Settings
                 </Button>
               </form>
             </CardContent>

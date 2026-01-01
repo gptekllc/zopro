@@ -90,9 +90,18 @@ export function useCreateInvoice() {
       if (invoiceNumberError) throw invoiceNumberError;
       const invoiceNumber = invoiceNumberData;
       
+      // Fetch company tax rate
+      const { data: company } = await (supabase as any)
+        .from('companies')
+        .select('tax_rate')
+        .eq('id', profile.company_id)
+        .single();
+      
+      const taxRate = (company?.tax_rate ?? 8.25) / 100;
+      
       // Calculate totals
       const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const tax = subtotal * 0.0825; // 8.25% tax
+      const tax = subtotal * taxRate;
       const total = subtotal + tax;
       
       // Create invoice

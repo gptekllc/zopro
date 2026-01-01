@@ -14,6 +14,7 @@ export interface Company {
   state: string | null;
   zip: string | null;
   logo_url: string | null;
+  tax_rate: number | null;
   created_at: string;
   updated_at: string;
 }
