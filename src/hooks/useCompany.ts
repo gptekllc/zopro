@@ -65,6 +65,21 @@ export function useUpdateCompany() {
   });
 }
 
+export interface TeamMember {
+  id: string;
+  email: string;
+  full_name: string | null;
+  phone: string | null;
+  role: string;
+  company_id: string | null;
+  hourly_rate: number | null;
+  employment_status: 'active' | 'on_leave' | 'terminated' | null;
+  hire_date: string | null;
+  termination_date: string | null;
+  deleted_at?: string | null;
+  roles?: { role: string }[];
+}
+
 export function useTeamMembers() {
   const { profile } = useAuth();
   
@@ -73,11 +88,12 @@ export function useTeamMembers() {
     queryFn: async () => {
       if (!profile?.company_id) return [];
       
-      // First get profiles
+      // First get profiles with new fields
       const { data: profiles, error: profilesError } = await (supabase as any)
         .from('profiles')
-        .select('id, email, full_name, phone, role, company_id')
-        .eq('company_id', profile.company_id);
+        .select('id, email, full_name, phone, role, company_id, hourly_rate, employment_status, hire_date, termination_date')
+        .eq('company_id', profile.company_id)
+        .is('deleted_at', null);
       
       if (profilesError) throw profilesError;
       if (!profiles || profiles.length === 0) return [];
@@ -99,7 +115,7 @@ export function useTeamMembers() {
       return profiles.map((p: any) => ({
         ...p,
         roles: rolesMap.get(p.id) || [],
-      }));
+      })) as TeamMember[];
     },
     enabled: !!profile?.company_id,
     staleTime: 30000, // Cache for 30 seconds

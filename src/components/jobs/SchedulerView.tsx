@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 interface SchedulerViewProps {
   jobs: Job[];
-  technicians: { id: string; full_name: string | null; email: string }[];
+  technicians: { id: string; full_name: string | null; email: string; employment_status?: string | null }[];
   onJobClick: (job: Job) => void;
 }
 
@@ -19,6 +19,9 @@ export default function SchedulerView({ jobs, technicians, onJobClick }: Schedul
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const updateJob = useUpdateJob();
+  
+  // Filter out technicians on leave
+  const availableTechnicians = technicians.filter(t => t.employment_status !== 'on_leave');
 
   // Handle drop on calendar from sidebar
   const handleCalendarDrop = useCallback(
@@ -89,7 +92,7 @@ export default function SchedulerView({ jobs, technicians, onJobClick }: Schedul
           
           <span className="text-sm text-muted-foreground">
             <Users className="w-4 h-4 inline mr-1" />
-            {technicians.length} technicians
+            {availableTechnicians.length} technicians
           </span>
         </div>
 
@@ -97,7 +100,7 @@ export default function SchedulerView({ jobs, technicians, onJobClick }: Schedul
         <div className="flex-1 min-h-0">
           <ResourceCalendar
             jobs={jobs}
-            technicians={technicians}
+            technicians={availableTechnicians}
             onJobClick={onJobClick}
           />
         </div>
@@ -117,7 +120,7 @@ export default function SchedulerView({ jobs, technicians, onJobClick }: Schedul
       <div className="flex-1 min-w-0">
         <ResourceCalendar
           jobs={jobs}
-          technicians={technicians}
+          technicians={availableTechnicians}
           onJobClick={onJobClick}
         />
       </div>
