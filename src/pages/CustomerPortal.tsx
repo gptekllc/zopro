@@ -93,9 +93,9 @@ const CustomerPortal = () => {
     if (token && customerId) {
       verifyToken(token, customerId);
     } else {
-      // Check if already authenticated via localStorage
-      const savedCustomerId = localStorage.getItem('customer_portal_id');
-      const savedToken = localStorage.getItem('customer_portal_token');
+      // Check if already authenticated via sessionStorage (more secure than localStorage)
+      const savedCustomerId = sessionStorage.getItem('customer_portal_id');
+      const savedToken = sessionStorage.getItem('customer_portal_token');
       if (savedCustomerId && savedToken) {
         verifyToken(savedToken, savedCustomerId);
       } else {
@@ -112,15 +112,15 @@ const CustomerPortal = () => {
 
       if (error || !data?.valid) {
         toast.error('Invalid or expired link. Please request a new one.');
-        localStorage.removeItem('customer_portal_id');
-        localStorage.removeItem('customer_portal_token');
+        sessionStorage.removeItem('customer_portal_id');
+        sessionStorage.removeItem('customer_portal_token');
         setIsLoading(false);
         return;
       }
 
-      // Save to localStorage for session persistence
-      localStorage.setItem('customer_portal_id', customerId);
-      localStorage.setItem('customer_portal_token', token);
+      // Save to sessionStorage for session persistence (more secure - cleared when browser closes)
+      sessionStorage.setItem('customer_portal_id', customerId);
+      sessionStorage.setItem('customer_portal_token', token);
       
       setCustomerData(data.customer);
       setInvoices(data.invoices || []);
@@ -167,8 +167,8 @@ const CustomerPortal = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('customer_portal_id');
-    localStorage.removeItem('customer_portal_token');
+    sessionStorage.removeItem('customer_portal_id');
+    sessionStorage.removeItem('customer_portal_token');
     setIsAuthenticated(false);
     setCustomerData(null);
     setInvoices([]);
@@ -184,7 +184,7 @@ const CustomerPortal = () => {
           action: 'download-invoice', 
           invoiceId: invoice.id,
           customerId: customerData?.id,
-          token: localStorage.getItem('customer_portal_token'),
+          token: sessionStorage.getItem('customer_portal_token'),
         },
       });
 
@@ -223,7 +223,7 @@ const CustomerPortal = () => {
         body: { 
           invoiceId: invoice.id,
           customerId: customerData?.id,
-          token: localStorage.getItem('customer_portal_token'),
+          token: sessionStorage.getItem('customer_portal_token'),
         },
       });
 
@@ -249,7 +249,7 @@ const CustomerPortal = () => {
           action: 'approve-quote', 
           quoteId: quote.id,
           customerId: customerData?.id,
-          token: localStorage.getItem('customer_portal_token'),
+          token: sessionStorage.getItem('customer_portal_token'),
         },
       });
 

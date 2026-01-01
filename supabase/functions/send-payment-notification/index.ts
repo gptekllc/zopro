@@ -144,7 +144,8 @@ serve(async (req) => {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { error: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    // Return sanitized error message to client - don't expose internal details
+    return new Response(JSON.stringify({ error: "Failed to send notification. Please try again." }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
