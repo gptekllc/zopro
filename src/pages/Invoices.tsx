@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail } from 'lucide-react';
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
@@ -207,6 +208,25 @@ const Invoices = () => {
       toast.success('Invoice marked as paid');
     } catch (error) {
       toast.error('Failed to update invoice');
+    }
+  };
+
+  const handleStatusChange = async (invoiceId: string, newStatus: string) => {
+    try {
+      const updateData: { id: string; status: string; paid_at?: string | null } = { 
+        id: invoiceId, 
+        status: newStatus 
+      };
+      // Set or clear paid_at based on status
+      if (newStatus === 'paid') {
+        updateData.paid_at = new Date().toISOString();
+      } else {
+        updateData.paid_at = null;
+      }
+      await updateInvoice.mutateAsync(updateData as any);
+      toast.success(`Invoice marked as ${newStatus}`);
+    } catch (error) {
+      toast.error('Failed to update status');
     }
   };
 
@@ -480,10 +500,30 @@ const Invoices = () => {
                 
                 {/* Row 2: Tags + Actions */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(invoice.status)}`}>
-                      {invoice.status}
-                    </span>
+                  <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(invoice.status)}`}>
+                          {invoice.status}
+                          <FileText className="w-3 h-3" />
+                        </span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="bg-popover z-50">
+                        {['draft', 'sent', 'paid', 'overdue'].map((status) => (
+                          <DropdownMenuItem
+                            key={status}
+                            onClick={() => handleStatusChange(invoice.id, status)}
+                            disabled={invoice.status === status}
+                            className={invoice.status === status ? 'bg-accent' : ''}
+                          >
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(status)}`}>
+                              {status}
+                            </span>
+                            {invoice.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   
                   {/* Action Buttons */}
@@ -542,10 +582,30 @@ const Invoices = () => {
                 
                 {/* Row 2: Tags + Actions */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(invoice.status)}`}>
-                      {invoice.status}
-                    </span>
+                  <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(invoice.status)}`}>
+                          {invoice.status}
+                          <FileText className="w-3 h-3" />
+                        </span>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="bg-popover z-50">
+                        {['draft', 'sent', 'paid', 'overdue'].map((status) => (
+                          <DropdownMenuItem
+                            key={status}
+                            onClick={() => handleStatusChange(invoice.id, status)}
+                            disabled={invoice.status === status}
+                            className={invoice.status === status ? 'bg-accent' : ''}
+                          >
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(status)}`}>
+                              {status}
+                            </span>
+                            {invoice.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                   
                   {/* Action Buttons */}
