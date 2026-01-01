@@ -23,6 +23,17 @@ interface GeneratePDFRequest {
   recipientEmail?: string;
 }
 
+function getPaymentMethodLabel(method: string | null): string {
+  switch (method) {
+    case 'cash': return 'Cash';
+    case 'check': return 'Check';
+    case 'card': return 'Credit/Debit Card';
+    case 'bank_transfer': return 'Bank Transfer (ACH)';
+    case 'any':
+    default: return 'Any Method Accepted';
+  }
+}
+
 function generateHTML(
   type: "quote" | "invoice",
   document: any,
@@ -51,6 +62,22 @@ function generateHTML(
       currency: "USD",
     }).format(amount);
   };
+
+  // Payment info section for invoices
+  const paymentMethod = company?.default_payment_method;
+  const paymentTerms = company?.payment_terms_days;
+  const lateFee = company?.late_fee_percentage;
+
+  const paymentInfoSection = type === "invoice" ? `
+    <div class="payment-info">
+      <h3>Payment Information</h3>
+      <div class="payment-details">
+        <p><strong>Payment Method:</strong> ${getPaymentMethodLabel(paymentMethod)}</p>
+        ${paymentTerms !== null && paymentTerms !== undefined ? `<p><strong>Payment Terms:</strong> ${paymentTerms === 0 ? 'Due on Receipt' : `Net ${paymentTerms} days`}</p>` : ''}
+        ${lateFee && lateFee > 0 ? `<p><strong>Late Fee:</strong> ${lateFee}% on overdue balances</p>` : ''}
+      </div>
+    </div>
+  ` : '';
 
   return `
 <!DOCTYPE html>
@@ -82,7 +109,10 @@ function generateHTML(
     .totals { margin-left: auto; width: 300px; }
     .totals-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
     .totals-row.total { border-bottom: none; font-size: 20px; font-weight: bold; color: #2563eb; padding-top: 15px; }
-    .notes { margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+    .payment-info { margin-top: 30px; padding: 20px; background: #e8f4fc; border-radius: 8px; border-left: 4px solid #2563eb; }
+    .payment-info h3 { font-size: 14px; text-transform: uppercase; color: #2563eb; margin-bottom: 10px; }
+    .payment-details p { margin: 5px 0; font-size: 14px; }
+    .notes { margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
     .notes h3 { font-size: 14px; color: #888; margin-bottom: 10px; }
     .footer { margin-top: 60px; text-align: center; color: #888; font-size: 12px; }
   </style>
@@ -154,6 +184,8 @@ function generateHTML(
         <span>${formatCurrency(Number(document.total))}</span>
       </div>
     </div>
+
+    ${paymentInfoSection}
 
     ${document.notes ? `
       <div class="notes">
@@ -247,6 +279,11 @@ serve(async (req) => {
         ? `Quote ${documentNumber} from ${company?.name || "Our Company"}`
         : `Invoice ${documentNumber} from ${company?.name || "Our Company"}`;
 
+      // Payment info for email
+      const paymentMethodLabel = getPaymentMethodLabel(company?.default_payment_method);
+      const paymentTerms = company?.payment_terms_days;
+      const lateFee = company?.late_fee_percentage;
+
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Hello ${customer?.name || ""},</h2>
@@ -255,6 +292,14 @@ serve(async (req) => {
           <p><strong>Total Amount:</strong> $${Number(document.total).toLocaleString()}</p>
           ${type === "invoice" && document.due_date ? `<p><strong>Due Date:</strong> ${new Date(document.due_date).toLocaleDateString()}</p>` : ""}
           ${type === "quote" && document.valid_until ? `<p><strong>Valid Until:</strong> ${new Date(document.valid_until).toLocaleDateString()}</p>` : ""}
+          ${type === "invoice" ? `
+            <div style="margin: 20px 0; padding: 15px; background: #e8f4fc; border-left: 4px solid #2563eb; border-radius: 4px;">
+              <p style="margin: 0 0 5px 0; font-weight: bold; color: #2563eb;">Payment Information</p>
+              <p style="margin: 5px 0;"><strong>Accepted Payment Method:</strong> ${paymentMethodLabel}</p>
+              ${paymentTerms !== null && paymentTerms !== undefined ? `<p style="margin: 5px 0;"><strong>Payment Terms:</strong> ${paymentTerms === 0 ? 'Due on Receipt' : `Net ${paymentTerms} days`}</p>` : ''}
+              ${lateFee && lateFee > 0 ? `<p style="margin: 5px 0;"><strong>Late Fee:</strong> ${lateFee}% on overdue balances</p>` : ''}
+            </div>
+          ` : ""}
           <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
           ${html}
           <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
