@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, Job } from '@/hooks/useJobs';
+import { useState, useMemo } from 'react';
+import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useArchiveJob, useUnarchiveJob, Job } from '@/hooks/useJobs';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes } from '@/hooks/useQuotes';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -14,7 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, EyeOff } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import JobCalendar from '@/components/jobs/JobCalendar';
@@ -26,7 +26,8 @@ const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 
 const Jobs = () => {
   const { profile, roles } = useAuth();
-  const { data: jobs = [], isLoading } = useJobs();
+  const [showArchived, setShowArchived] = useState(false);
+  const { data: jobs = [], isLoading } = useJobs(showArchived);
   const { data: customers = [] } = useCustomers();
   const { data: quotes = [] } = useQuotes();
   const { data: profiles = [] } = useProfiles();
@@ -36,6 +37,8 @@ const Jobs = () => {
   const uploadPhoto = useUploadJobPhoto();
   const deletePhoto = useDeleteJobPhoto();
   const convertToInvoice = useConvertJobToInvoice();
+  const archiveJob = useArchiveJob();
+  const unarchiveJob = useUnarchiveJob();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -64,6 +67,19 @@ const Jobs = () => {
     scheduled_end: '',
     notes: '',
   });
+
+  // Separate active and archived jobs for display
+  const activeJobs = useMemo(() => jobs.filter(j => !j.archived_at), [jobs]);
+  const archivedJobs = useMemo(() => jobs.filter(j => j.archived_at), [jobs]);
+  
+  // Check if job is older than 2 years and eligible for archive suggestion
+  const isArchiveEligible = (job: Job) => {
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    return new Date(job.created_at) < twoYearsAgo && 
+           (job.status === 'paid' || job.status === 'completed') &&
+           !job.archived_at;
+  };
 
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -430,6 +446,15 @@ const Jobs = () => {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          variant={showArchived ? 'secondary' : 'outline'}
+          size="sm"
+          onClick={() => setShowArchived(!showArchived)}
+          className="gap-2"
+        >
+          {showArchived ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          {showArchived ? 'Hide Archived' : 'Show Archived'}
+        </Button>
         <div className="flex gap-1 border rounded-md p-1">
           <Button
             variant={viewMode === 'list' ? 'default' : 'ghost'}
@@ -437,6 +462,12 @@ const Jobs = () => {
             onClick={() => setViewMode('list')}
           >
             <List className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('calendar')}
+          >
           </Button>
           <Button
             variant={viewMode === 'calendar' ? 'default' : 'ghost'}
@@ -464,16 +495,27 @@ const Jobs = () => {
             </Card>
           ) : (
             filteredJobs.map((job) => (
-              <Card key={job.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => setViewingJob(job)}>
+              <Card 
+                key={job.id} 
+                className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${job.archived_at ? 'opacity-60 border-dashed' : ''}`} 
+                onClick={() => setViewingJob(job)}
+              >
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <Briefcase className="w-6 h-6 text-primary" />
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${job.archived_at ? 'bg-muted' : 'bg-primary/10'}`}>
+                        {job.archived_at ? (
+                          <Archive className="w-6 h-6 text-muted-foreground" />
+                        ) : (
+                          <Briefcase className="w-6 h-6 text-primary" />
+                        )}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold">{job.job_number}</h3>
+                          {job.archived_at && (
+                            <Badge variant="outline" className="text-muted-foreground">Archived</Badge>
+                          )}
                           <Badge className={getStatusColor(job.status)} variant="outline">
                             {job.status.replace('_', ' ')}
                           </Badge>
@@ -508,70 +550,95 @@ const Jobs = () => {
                         )}
                       </div>
                       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        {job.status === 'in_progress' && (
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => setCompletingJob(job)}
-                          >
-                            <CheckCircle2 className="w-4 h-4 mr-1" />
-                            Complete
-                          </Button>
-                        )}
-                        {job.status === 'completed' && (
+                        {job.archived_at ? (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => convertToInvoice.mutate(job)}
-                            disabled={convertToInvoice.isPending}
+                            onClick={() => unarchiveJob.mutate(job.id)}
+                            disabled={unarchiveJob.isPending}
                           >
-                            <Receipt className="w-4 h-4 mr-1" />
-                            Invoice
+                            <ArchiveRestore className="w-4 h-4 mr-1" />
+                            Unarchive
                           </Button>
-                        )}
-                        {getNextStatus(job.status) && job.status !== 'completed' && job.status !== 'in_progress' && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleStatusChange(job.id, getNextStatus(job.status)!)}
-                          >
-                            <ChevronRight className="w-4 h-4 mr-1" />
-                            {getNextStatus(job.status)?.replace('_', ' ')}
-                          </Button>
-                        )}
-                        {job.status === 'completed' && (
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleStatusChange(job.id, 'invoiced')}
-                          >
-                            <ChevronRight className="w-4 h-4 mr-1" />
-                            invoiced
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(job)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        {isAdmin && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="text-destructive">
-                                <Trash2 className="w-4 h-4" />
+                        ) : (
+                          <>
+                            {job.status === 'in_progress' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => setCompletingJob(job)}
+                              >
+                                <CheckCircle2 className="w-4 h-4 mr-1" />
+                                Complete
                               </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Job?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will permanently delete {job.job_number}. This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(job.id)}>Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                            )}
+                            {job.status === 'completed' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => convertToInvoice.mutate(job)}
+                                disabled={convertToInvoice.isPending}
+                              >
+                                <Receipt className="w-4 h-4 mr-1" />
+                                Invoice
+                              </Button>
+                            )}
+                            {getNextStatus(job.status) && job.status !== 'completed' && job.status !== 'in_progress' && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleStatusChange(job.id, getNextStatus(job.status)!)}
+                              >
+                                <ChevronRight className="w-4 h-4 mr-1" />
+                                {getNextStatus(job.status)?.replace('_', ' ')}
+                              </Button>
+                            )}
+                            {job.status === 'completed' && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleStatusChange(job.id, 'invoiced')}
+                              >
+                                <ChevronRight className="w-4 h-4 mr-1" />
+                                invoiced
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(job)}>
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            {isAdmin && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="text-destructive">
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Job?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will permanently delete {job.job_number}. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDelete(job.id)}>Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => archiveJob.mutate(job.id)}
+                                disabled={archiveJob.isPending}
+                                title="Archive job"
+                              >
+                                <Archive className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     </div>

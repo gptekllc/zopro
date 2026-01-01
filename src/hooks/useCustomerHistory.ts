@@ -23,6 +23,7 @@ export interface CustomerJob {
   created_at: string;
   assigned_to: string | null;
   notes: string | null;
+  archived_at: string | null;
   assignee?: { full_name: string | null } | null;
   completion_signed_at?: string | null;
   completion_signed_by?: string | null;

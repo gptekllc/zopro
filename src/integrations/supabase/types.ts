@@ -298,6 +298,7 @@ export type Database = {
         Row: {
           actual_end: string | null
           actual_start: string | null
+          archived_at: string | null
           assigned_to: string | null
           company_id: string
           completion_signature_id: string | null
@@ -321,6 +322,7 @@ export type Database = {
         Insert: {
           actual_end?: string | null
           actual_start?: string | null
+          archived_at?: string | null
           assigned_to?: string | null
           company_id: string
           completion_signature_id?: string | null
@@ -344,6 +346,7 @@ export type Database = {
         Update: {
           actual_end?: string | null
           actual_start?: string | null
+          archived_at?: string | null
           assigned_to?: string | null
           company_id?: string
           completion_signature_id?: string | null
