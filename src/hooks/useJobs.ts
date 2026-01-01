@@ -170,10 +170,19 @@ export function useCreateJob() {
       
       if (jobNumberError) throw jobNumberError;
       
+      // Fetch company tax rate
+      const { data: company } = await (supabase as any)
+        .from('companies')
+        .select('tax_rate')
+        .eq('id', profile.company_id)
+        .single();
+      
+      const taxRate = (company?.tax_rate ?? 8.25) / 100;
+      
       // Calculate totals from items
       const items = jobData.items || [];
       const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const tax = subtotal * 0.0825;
+      const tax = subtotal * taxRate;
       const total = subtotal + tax;
       
       const { data, error } = await (supabase as any)
@@ -229,8 +238,23 @@ export function useUpdateJob() {
     mutationFn: async ({ id, items, ...updates }: Omit<Partial<Job>, 'items'> & { id: string; items?: { description: string; quantity: number; unit_price: number }[] }) => {
       // Calculate totals if items are provided
       if (items !== undefined) {
+        // Fetch job to get company_id, then fetch tax rate
+        const { data: job } = await (supabase as any)
+          .from('jobs')
+          .select('company_id')
+          .eq('id', id)
+          .single();
+        
+        const { data: company } = await (supabase as any)
+          .from('companies')
+          .select('tax_rate')
+          .eq('id', job?.company_id)
+          .single();
+        
+        const taxRate = (company?.tax_rate ?? 8.25) / 100;
+        
         const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-        const tax = subtotal * 0.0825;
+        const tax = subtotal * taxRate;
         const total = subtotal + tax;
         
         (updates as any).subtotal = subtotal;
@@ -481,10 +505,19 @@ export function useImportQuoteToJob() {
       
       if (jobNumberError) throw jobNumberError;
       
+      // Fetch company tax rate
+      const { data: company } = await (supabase as any)
+        .from('companies')
+        .select('tax_rate')
+        .eq('id', profile.company_id)
+        .single();
+      
+      const taxRate = (company?.tax_rate ?? 8.25) / 100;
+      
       // Calculate totals from quote items
       const quoteItems = quote.items || [];
       const subtotal = quoteItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unit_price), 0);
-      const tax = subtotal * 0.0825;
+      const tax = subtotal * taxRate;
       const total = subtotal + tax;
       
       // Create job from quote
@@ -588,9 +621,18 @@ export function useConvertJobToInvoice() {
       if (invoiceNumberError) throw invoiceNumberError;
       const invoiceNumber = invoiceNumberData;
       
+      // Fetch company tax rate
+      const { data: company } = await (supabase as any)
+        .from('companies')
+        .select('tax_rate')
+        .eq('id', profile.company_id)
+        .single();
+      
+      const taxRate = (company?.tax_rate ?? 8.25) / 100;
+      
       // Calculate totals
       const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const tax = subtotal * 0.0825;
+      const tax = subtotal * taxRate;
       const total = subtotal + tax;
       
       // Create invoice
@@ -685,9 +727,18 @@ export function useConvertJobToQuote() {
       
       if (quoteNumberError) throw quoteNumberError;
       
+      // Fetch company tax rate
+      const { data: company } = await (supabase as any)
+        .from('companies')
+        .select('tax_rate')
+        .eq('id', profile.company_id)
+        .single();
+      
+      const taxRate = (company?.tax_rate ?? 8.25) / 100;
+      
       // Calculate totals
       const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const tax = subtotal * 0.0825;
+      const tax = subtotal * taxRate;
       const total = subtotal + tax;
       
       // Create quote with job_id reference (child quote)
@@ -811,9 +862,18 @@ export function useCreateJobFromQuoteItems() {
       
       if (jobNumberError) throw jobNumberError;
       
+      // Fetch company tax rate
+      const { data: company } = await (supabase as any)
+        .from('companies')
+        .select('tax_rate')
+        .eq('id', profile.company_id)
+        .single();
+      
+      const taxRate = (company?.tax_rate ?? 8.25) / 100;
+      
       // Calculate totals from selected items
       const subtotal = selectedItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unit_price), 0);
-      const tax = subtotal * 0.0825;
+      const tax = subtotal * taxRate;
       const total = subtotal + tax;
       
       // Create job from quote
@@ -913,10 +973,25 @@ export function useAddQuoteItemsToJob() {
       
       if (insertError) throw insertError;
       
+      // Fetch company tax rate from job's company
+      const { data: jobData } = await (supabase as any)
+        .from('jobs')
+        .select('company_id')
+        .eq('id', jobId)
+        .single();
+      
+      const { data: company } = await (supabase as any)
+        .from('companies')
+        .select('tax_rate')
+        .eq('id', jobData?.company_id)
+        .single();
+      
+      const taxRate = (company?.tax_rate ?? 8.25) / 100;
+      
       // Update job totals
       const addedSubtotal = selectedItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unit_price), 0);
       const newSubtotal = (job.subtotal || 0) + addedSubtotal;
-      const newTax = newSubtotal * 0.0825;
+      const newTax = newSubtotal * taxRate;
       const newTotal = newSubtotal + newTax;
       
       const { error: updateError } = await (supabase as any)

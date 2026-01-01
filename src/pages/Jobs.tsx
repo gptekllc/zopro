@@ -7,6 +7,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes, Quote } from '@/hooks/useQuotes';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,9 @@ const Jobs = () => {
   const { data: customers = [] } = useCustomers();
   const { data: quotes = [] } = useQuotes();
   const { data: profiles = [] } = useProfiles();
+  const { data: company } = useCompany();
+  
+  const taxRate = company?.tax_rate ?? 8.25;
 
   const safeCustomers = useMemo(
     () => (Array.isArray(customers) ? customers : []).filter((c: any) => c && c.id) as any[],
@@ -174,7 +178,7 @@ const Jobs = () => {
   };
 
   const calculateTax = () => {
-    return calculateSubtotal() * 0.0825;
+    return calculateSubtotal() * (taxRate / 100);
   };
 
   const calculateTotal = () => {
@@ -708,7 +712,7 @@ const Jobs = () => {
                         <span>${calculateSubtotal().toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Tax (8.25%):</span>
+                        <span className="text-muted-foreground">Tax ({taxRate}%):</span>
                         <span>${calculateTax().toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between font-semibold">
@@ -1320,7 +1324,7 @@ const Jobs = () => {
                             <span>${Number(viewingJob.subtotal ?? 0).toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between w-full sm:w-48">
-                            <span className="text-muted-foreground">Tax (8.25%):</span>
+                            <span className="text-muted-foreground">Tax ({taxRate}%):</span>
                             <span>${Number(viewingJob.tax ?? 0).toFixed(2)}</span>
                           </div>
                           <div className="flex justify-between w-full sm:w-48 font-semibold text-base">

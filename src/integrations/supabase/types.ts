@@ -25,6 +25,7 @@ export type Database = {
           name: string
           phone: string | null
           state: string | null
+          tax_rate: number | null
           timezone: string | null
           updated_at: string
           zip: string | null
@@ -39,6 +40,7 @@ export type Database = {
           name: string
           phone?: string | null
           state?: string | null
+          tax_rate?: number | null
           timezone?: string | null
           updated_at?: string
           zip?: string | null
@@ -53,6 +55,7 @@ export type Database = {
           name?: string
           phone?: string | null
           state?: string | null
+          tax_rate?: number | null
           timezone?: string | null
           updated_at?: string
           zip?: string | null
