@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useDeleteCustomer, Customer } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,11 +11,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink, RotateCcw } from 'lucide-react';
+import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink, RotateCcw, Eye, Briefcase, FileText, Receipt } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const Customers = () => {
+  const navigate = useNavigate();
   const { data: customers = [], isLoading } = useCustomers();
   const { isAdmin, profile } = useAuth();
   const createCustomer = useCreateCustomer();
@@ -235,16 +237,25 @@ const Customers = () => {
         <TabsContent value="active" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredCustomers.map((customer) => (
-              <Card key={customer.id} className="overflow-hidden hover:shadow-md transition-shadow">
+              <Card 
+                key={customer.id} 
+                className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
+                onClick={() => navigate(`/customers/${customer.id}`)}
+              >
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                         <User className="w-6 h-6 text-primary" />
                       </div>
-                      <h3 className="font-semibold">{customer.name}</h3>
+                      <div>
+                        <h3 className="font-semibold group-hover:text-primary transition-colors">{customer.name}</h3>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" onClick={() => navigate(`/customers/${customer.id}`)} title="View Details">
+                        <Eye className="w-4 h-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(customer)}><Edit className="w-4 h-4" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => handleDelete(customer.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
                     </div>
@@ -255,13 +266,13 @@ const Customers = () => {
                     {customer.address && <div className="flex items-start gap-2 text-muted-foreground"><MapPin className="w-4 h-4 mt-0.5" /><span className="line-clamp-2">{customer.address}</span></div>}
                   </div>
                   
-                  {/* Send Portal Link Button */}
-                  {customer.email && (
-                    <div className="mt-4 pt-4 border-t">
+                  {/* Actions */}
+                  <div className="mt-4 pt-4 border-t flex gap-2" onClick={(e) => e.stopPropagation()}>
+                    {customer.email && (
                       <Button
                         variant="outline"
                         size="sm"
-                        className="w-full"
+                        className="flex-1"
                         onClick={() => handleSendPortalLink(customer)}
                         disabled={sendingPortalLink === customer.id}
                       >
@@ -270,10 +281,18 @@ const Customers = () => {
                         ) : (
                           <ExternalLink className="w-4 h-4 mr-2" />
                         )}
-                        Send Portal Link
+                        Portal Link
                       </Button>
-                    </div>
-                  )}
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/customers/${customer.id}`)}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
