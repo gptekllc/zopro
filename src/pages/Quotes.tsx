@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
 import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote } from '@/hooks/useQuotes';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobs, useCreateJobFromQuoteItems, useAddQuoteItemsToJob } from '@/hooks/useJobs';
@@ -30,7 +31,7 @@ interface LineItem {
 const Quotes = () => {
   const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: quotes = [], isLoading } = useQuotes();
+  const { data: quotes = [], isLoading, refetch: refetchQuotes } = useQuotes();
   const { data: customers = [] } = useCustomers();
   const { data: jobs = [] } = useJobs(false);
   const createQuote = useCreateQuote();
@@ -491,6 +492,7 @@ const Quotes = () => {
       </div>
 
       {/* Quote List */}
+      <PullToRefresh onRefresh={async () => { await refetchQuotes(); }} className="sm:contents">
       <div className="space-y-3">
         {filteredQuotes.map((quote) => (
           <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingQuote(quote)}>
@@ -684,6 +686,7 @@ const Quotes = () => {
           </Card>
         )}
       </div>
+      </PullToRefresh>
 
       {/* Email Dialog */}
       <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>

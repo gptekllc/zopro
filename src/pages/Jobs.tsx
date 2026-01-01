@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, useJobRelatedQuotes, Job, JobItem } from '@/hooks/useJobs';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes, Quote } from '@/hooks/useQuotes';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -51,7 +52,7 @@ const Jobs = () => {
   
   // Determine if we need to include archived jobs based on search + toggle
   const needsArchivedData = showArchived || includeArchivedInSearch;
-  const { data: jobs = [], isLoading } = useJobs(needsArchivedData);
+  const { data: jobs = [], isLoading, refetch: refetchJobs } = useJobs(needsArchivedData);
 
   // Defensive: some backends/joins can yield null rows; never let that crash rendering.
   const safeJobs = useMemo(() => (jobs ?? []).filter(Boolean) as Job[], [jobs]);
@@ -849,6 +850,7 @@ const Jobs = () => {
 
       {/* Job List - Mobile Optimized */}
       {viewMode === 'list' && (
+        <PullToRefresh onRefresh={async () => { await refetchJobs(); }} className="sm:contents">
         <div className="space-y-3">
           {filteredJobs.length === 0 ? (
             <Card>
@@ -1210,6 +1212,7 @@ const Jobs = () => {
             ))
           )}
         </div>
+        </PullToRefresh>
       )}
 
       {/* Job Detail Modal */}

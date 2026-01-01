@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
 import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice } from '@/hooks/useInvoices';
+import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
@@ -28,7 +29,7 @@ interface LineItem {
 const Invoices = () => {
   const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: invoices = [], isLoading } = useInvoices();
+  const { data: invoices = [], isLoading, refetch: refetchInvoices } = useInvoices();
   const { data: customers = [] } = useCustomers();
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
@@ -478,6 +479,7 @@ const Invoices = () => {
       </div>
 
       {/* Invoice List */}
+      <PullToRefresh onRefresh={async () => { await refetchInvoices(); }} className="sm:contents">
       <div className="space-y-3">
         {filteredInvoices.map((invoice) => (
           <Card key={invoice.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingInvoice(invoice)}>
@@ -657,6 +659,7 @@ const Invoices = () => {
           </Card>
         )}
       </div>
+      </PullToRefresh>
 
 
       {/* Email Dialog */}
