@@ -28,12 +28,12 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { invoiceId, customerId, token } = await req.json();
+    const { invoiceId, customerId, token, signatureData, signerName } = await req.json();
     
     if (!invoiceId || !customerId || !token) {
       throw new Error("Missing required parameters: invoiceId, customerId, or token");
     }
-    logStep("Parameters received", { invoiceId, customerId });
+    logStep("Parameters received", { invoiceId, customerId, hasSignature: !!signatureData });
 
     // Verify token
     try {
@@ -70,6 +70,42 @@ serve(async (req) => {
 
     if (invoice.status === 'paid') {
       throw new Error("Invoice is already paid");
+    }
+
+    // Save signature if provided (required for payment)
+    if (signatureData && signerName) {
+      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                       req.headers.get('x-real-ip') || 
+                       'unknown';
+
+      const { data: signature, error: signatureError } = await adminClient
+        .from('signatures')
+        .insert({
+          company_id: invoice.company_id,
+          customer_id: customerId,
+          document_type: 'invoice',
+          document_id: invoiceId,
+          signature_data: signatureData,
+          signer_name: signerName,
+          signer_ip: clientIp,
+        })
+        .select()
+        .single();
+
+      if (signatureError) {
+        logStep("Signature save error", { error: signatureError.message });
+      } else {
+        // Update invoice with signature reference
+        await adminClient
+          .from('invoices')
+          .update({
+            signature_id: signature.id,
+            signed_at: new Date().toISOString(),
+          })
+          .eq('id', invoiceId);
+        
+        logStep("Signature saved", { signatureId: signature.id });
+      }
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });

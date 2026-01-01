@@ -165,6 +165,8 @@ export type Database = {
           notes: string | null
           paid_at: string | null
           quote_id: string | null
+          signature_id: string | null
+          signed_at: string | null
           status: string
           subtotal: number
           tax: number
@@ -182,6 +184,8 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           quote_id?: string | null
+          signature_id?: string | null
+          signed_at?: string | null
           status?: string
           subtotal?: number
           tax?: number
@@ -199,6 +203,8 @@ export type Database = {
           notes?: string | null
           paid_at?: string | null
           quote_id?: string | null
+          signature_id?: string | null
+          signed_at?: string | null
           status?: string
           subtotal?: number
           tax?: number
@@ -232,6 +238,13 @@ export type Database = {
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_signature_id_fkey"
+            columns: ["signature_id"]
+            isOneToOne: false
+            referencedRelation: "signatures"
             referencedColumns: ["id"]
           },
         ]
@@ -287,6 +300,9 @@ export type Database = {
           actual_start: string | null
           assigned_to: string | null
           company_id: string
+          completion_signature_id: string | null
+          completion_signed_at: string | null
+          completion_signed_by: string | null
           created_at: string
           created_by: string | null
           customer_id: string
@@ -307,6 +323,9 @@ export type Database = {
           actual_start?: string | null
           assigned_to?: string | null
           company_id: string
+          completion_signature_id?: string | null
+          completion_signed_at?: string | null
+          completion_signed_by?: string | null
           created_at?: string
           created_by?: string | null
           customer_id: string
@@ -327,6 +346,9 @@ export type Database = {
           actual_start?: string | null
           assigned_to?: string | null
           company_id?: string
+          completion_signature_id?: string | null
+          completion_signed_at?: string | null
+          completion_signed_by?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string
@@ -355,6 +377,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_completion_signature_id_fkey"
+            columns: ["completion_signature_id"]
+            isOneToOne: false
+            referencedRelation: "signatures"
             referencedColumns: ["id"]
           },
           {
@@ -540,6 +569,8 @@ export type Database = {
           id: string
           notes: string | null
           quote_number: string
+          signature_id: string | null
+          signed_at: string | null
           status: string
           subtotal: number
           tax: number
@@ -555,6 +586,8 @@ export type Database = {
           id?: string
           notes?: string | null
           quote_number: string
+          signature_id?: string | null
+          signed_at?: string | null
           status?: string
           subtotal?: number
           tax?: number
@@ -570,6 +603,8 @@ export type Database = {
           id?: string
           notes?: string | null
           quote_number?: string
+          signature_id?: string | null
+          signed_at?: string | null
           status?: string
           subtotal?: number
           tax?: number
@@ -594,6 +629,67 @@ export type Database = {
           },
           {
             foreignKeyName: "quotes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_signature_id_fkey"
+            columns: ["signature_id"]
+            isOneToOne: false
+            referencedRelation: "signatures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      signatures: {
+        Row: {
+          company_id: string
+          created_at: string
+          customer_id: string
+          document_id: string
+          document_type: string
+          id: string
+          signature_data: string
+          signed_at: string
+          signer_ip: string | null
+          signer_name: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          customer_id: string
+          document_id: string
+          document_type: string
+          id?: string
+          signature_data: string
+          signed_at?: string
+          signer_ip?: string | null
+          signer_name: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          document_id?: string
+          document_type?: string
+          id?: string
+          signature_data?: string
+          signed_at?: string
+          signer_ip?: string | null
+          signer_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signatures_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signatures_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"

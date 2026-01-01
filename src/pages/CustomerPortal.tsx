@@ -16,8 +16,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine } from 'lucide-react';
 import { format } from 'date-fns';
+import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 
 interface CustomerData {
   id: string;
@@ -47,6 +48,7 @@ interface Job {
   status: string;
   scheduled_start: string | null;
   created_at: string;
+  completion_signed_at: string | null;
 }
 
 interface Quote {
@@ -57,6 +59,7 @@ interface Quote {
   created_at: string;
   valid_until: string | null;
   notes: string | null;
+  signed_at: string | null;
 }
 
 const CustomerPortal = () => {
@@ -67,6 +70,7 @@ const CustomerPortal = () => {
   const [downloadingInvoice, setDownloadingInvoice] = useState<string | null>(null);
   const [payingInvoice, setPayingInvoice] = useState<string | null>(null);
   const [approvingQuote, setApprovingQuote] = useState<string | null>(null);
+  const [signingJob, setSigningJob] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [linkSent, setLinkSent] = useState(false);
   const [customerData, setCustomerData] = useState<CustomerData | null>(null);
@@ -74,6 +78,15 @@ const CustomerPortal = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // Signature dialog states
+  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+  const [signatureAction, setSignatureAction] = useState<{
+    type: 'quote' | 'invoice' | 'job';
+    id: string;
+    data?: any;
+  } | null>(null);
+  const [isSubmittingSignature, setIsSubmittingSignature] = useState(false);
 
   // Check for magic link token and payment status in URL
   useEffect(() => {
@@ -217,57 +230,107 @@ const CustomerPortal = () => {
   };
 
   const handlePayInvoice = async (invoice: Invoice) => {
-    setPayingInvoice(invoice.id);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-invoice-payment', {
-        body: { 
-          invoiceId: invoice.id,
-          customerId: customerData?.id,
-          token: sessionStorage.getItem('customer_portal_token'),
-        },
-      });
-
-      if (error || !data?.url) {
-        throw new Error(data?.error || 'Failed to create payment session');
-      }
-
-      // Redirect to Stripe checkout
-      window.open(data.url, '_blank');
-    } catch (err: any) {
-      console.error('Payment error:', err);
-      toast.error(err.message || 'Failed to initiate payment');
-    } finally {
-      setPayingInvoice(null);
-    }
+    // Open signature dialog for invoice payment
+    setSignatureAction({ type: 'invoice', id: invoice.id, data: invoice });
+    setSignatureDialogOpen(true);
   };
 
   const handleApproveQuote = async (quote: Quote) => {
-    setApprovingQuote(quote.id);
+    // Open signature dialog for quote approval
+    setSignatureAction({ type: 'quote', id: quote.id, data: quote });
+    setSignatureDialogOpen(true);
+  };
+
+  const handleSignJobCompletion = (job: Job) => {
+    setSignatureAction({ type: 'job', id: job.id, data: job });
+    setSignatureDialogOpen(true);
+  };
+
+  const handleSignatureComplete = async (signatureData: string, signerName: string) => {
+    if (!signatureAction) return;
+    
+    setIsSubmittingSignature(true);
+    
     try {
-      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
-        body: { 
-          action: 'approve-quote', 
-          quoteId: quote.id,
-          customerId: customerData?.id,
-          token: sessionStorage.getItem('customer_portal_token'),
-        },
-      });
+      if (signatureAction.type === 'quote') {
+        setApprovingQuote(signatureAction.id);
+        const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+          body: { 
+            action: 'approve-quote', 
+            quoteId: signatureAction.id,
+            customerId: customerData?.id,
+            token: sessionStorage.getItem('customer_portal_token'),
+            signatureData,
+            signerName,
+          },
+        });
 
-      if (error) {
-        throw new Error(data?.error || 'Failed to approve quote');
+        if (error) {
+          throw new Error(data?.error || 'Failed to approve quote');
+        }
+
+        toast.success('Quote approved and signed successfully!');
+        
+        // Update local state
+        setQuotes(quotes.map(q => 
+          q.id === signatureAction.id ? { ...q, status: 'approved', signed_at: new Date().toISOString() } : q
+        ));
+        setApprovingQuote(null);
+      } else if (signatureAction.type === 'invoice') {
+        setPayingInvoice(signatureAction.id);
+        const { data, error } = await supabase.functions.invoke('create-invoice-payment', {
+          body: { 
+            invoiceId: signatureAction.id,
+            customerId: customerData?.id,
+            token: sessionStorage.getItem('customer_portal_token'),
+            signatureData,
+            signerName,
+          },
+        });
+
+        if (error || !data?.url) {
+          throw new Error(data?.error || 'Failed to create payment session');
+        }
+
+        // Redirect to Stripe checkout
+        window.open(data.url, '_blank');
+        setPayingInvoice(null);
+      } else if (signatureAction.type === 'job') {
+        setSigningJob(signatureAction.id);
+        const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+          body: { 
+            action: 'sign-job-completion', 
+            jobId: signatureAction.id,
+            customerId: customerData?.id,
+            token: sessionStorage.getItem('customer_portal_token'),
+            signatureData,
+            signerName,
+          },
+        });
+
+        if (error) {
+          throw new Error(data?.error || 'Failed to sign job completion');
+        }
+
+        toast.success('Job completion confirmed and signed!');
+        
+        // Update local state
+        setJobs(jobs.map(j => 
+          j.id === signatureAction.id ? { ...j, completion_signed_at: new Date().toISOString() } : j
+        ));
+        setSigningJob(null);
       }
-
-      toast.success('Quote approved successfully!');
       
-      // Update local state
-      setQuotes(quotes.map(q => 
-        q.id === quote.id ? { ...q, status: 'approved' } : q
-      ));
+      setSignatureDialogOpen(false);
+      setSignatureAction(null);
     } catch (err: any) {
-      console.error('Approval error:', err);
-      toast.error(err.message || 'Failed to approve quote');
-    } finally {
+      console.error('Signature action error:', err);
+      toast.error(err.message || 'Failed to complete action');
       setApprovingQuote(null);
+      setPayingInvoice(null);
+      setSigningJob(null);
+    } finally {
+      setIsSubmittingSignature(false);
     }
   };
 
@@ -525,17 +588,24 @@ const CustomerPortal = () => {
                                   <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
                                   <>
-                                    <CheckCircle className="w-4 h-4 mr-2" />
-                                    Approve
+                                    <PenLine className="w-4 h-4 mr-2" />
+                                    Sign & Approve
                                   </>
                                 )}
                               </Button>
                             )}
                             {quote.status === 'approved' && (
-                              <Badge variant="default" className="bg-emerald-500">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Approved
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="default" className="bg-emerald-500">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Approved
+                                </Badge>
+                                {quote.signed_at && (
+                                  <span className="text-xs text-muted-foreground">
+                                    Signed {format(new Date(quote.signed_at), 'MMM d')}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </TableCell>
                         </TableRow>
@@ -612,8 +682,8 @@ const CustomerPortal = () => {
                                     <Loader2 className="w-4 h-4 animate-spin" />
                                   ) : (
                                     <>
-                                      <CreditCard className="w-4 h-4 mr-2" />
-                                      Pay Now
+                                      <PenLine className="w-4 h-4 mr-2" />
+                                      Sign & Pay
                                     </>
                                   )}
                                 </Button>
@@ -651,6 +721,7 @@ const CustomerPortal = () => {
                         <TableHead>Title</TableHead>
                         <TableHead>Scheduled</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -665,6 +736,36 @@ const CustomerPortal = () => {
                             }
                           </TableCell>
                           <TableCell>{getStatusBadge(job.status)}</TableCell>
+                          <TableCell className="text-right">
+                            {job.status === 'completed' && !job.completion_signed_at && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleSignJobCompletion(job)}
+                                disabled={signingJob === job.id}
+                              >
+                                {signingJob === job.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <PenLine className="w-4 h-4 mr-2" />
+                                    Sign Completion
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                            {job.completion_signed_at && (
+                              <div className="flex items-center justify-end gap-2">
+                                <Badge variant="default" className="bg-emerald-500">
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Signed
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(job.completion_signed_at), 'MMM d')}
+                                </span>
+                              </div>
+                            )}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -680,6 +781,30 @@ const CustomerPortal = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Signature Dialog */}
+      <SignatureDialog
+        open={signatureDialogOpen}
+        onOpenChange={(open) => {
+          setSignatureDialogOpen(open);
+          if (!open) setSignatureAction(null);
+        }}
+        title={
+          signatureAction?.type === 'quote' ? 'Sign & Approve Quote' :
+          signatureAction?.type === 'invoice' ? 'Sign & Pay Invoice' :
+          'Confirm Job Completion'
+        }
+        description={
+          signatureAction?.type === 'quote' 
+            ? `Please sign to approve Quote ${signatureAction?.data?.quote_number} for $${Number(signatureAction?.data?.total || 0).toFixed(2)}`
+            : signatureAction?.type === 'invoice'
+            ? `Please sign to proceed with payment for Invoice ${signatureAction?.data?.invoice_number}`
+            : `Please sign to confirm completion of Job ${signatureAction?.data?.job_number}`
+        }
+        signerName={customerData?.name || ''}
+        onSignatureComplete={handleSignatureComplete}
+        isSubmitting={isSubmittingSignature}
+      />
     </div>
   );
 };

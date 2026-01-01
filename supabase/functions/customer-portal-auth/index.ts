@@ -478,11 +478,19 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'approve-quote') {
-      const { quoteId, customerId, token } = body;
+      const { quoteId, customerId, token, signatureData, signerName } = body;
       
       if (!quoteId || !customerId || !token) {
         return new Response(
           JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Signature is required for quote approval
+      if (!signatureData || !signerName) {
+        return new Response(
+          JSON.stringify({ error: 'Signature is required to approve quote' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -520,10 +528,45 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Update quote status to approved
+      // Get client IP from headers
+      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                       req.headers.get('x-real-ip') || 
+                       'unknown';
+
+      // Save signature first
+      const { data: signature, error: signatureError } = await adminClient
+        .from('signatures')
+        .insert({
+          company_id: quote.company_id,
+          customer_id: customerId,
+          document_type: 'quote',
+          document_id: quoteId,
+          signature_data: signatureData,
+          signer_name: signerName,
+          signer_ip: clientIp,
+        })
+        .select()
+        .single();
+
+      if (signatureError) {
+        console.error('Error saving signature:', signatureError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to save signature' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Signature saved:', signature.id);
+
+      // Update quote status to approved with signature reference
       const { error: updateError } = await adminClient
         .from('quotes')
-        .update({ status: 'approved', updated_at: new Date().toISOString() })
+        .update({ 
+          status: 'approved', 
+          updated_at: new Date().toISOString(),
+          signature_id: signature.id,
+          signed_at: new Date().toISOString(),
+        })
         .eq('id', quoteId);
 
       if (updateError) {
@@ -531,7 +574,7 @@ Deno.serve(async (req) => {
         throw updateError;
       }
 
-      console.log('Quote approved:', quote.quote_number);
+      console.log('Quote approved with signature:', quote.quote_number);
 
       // Auto-create a draft job from the approved quote
       let jobNumber = '';
@@ -621,6 +664,7 @@ Deno.serve(async (req) => {
                 <h1 style="color: #22c55e;">Quote Approved!</h1>
                 <p>Great news! ${customer?.name || 'A customer'} has approved quote <strong>${quote.quote_number}</strong>.</p>
                 <p><strong>Total:</strong> $${Number(quote.total).toFixed(2)}</p>
+                <p><strong>Signed by:</strong> ${signerName}</p>
                 ${jobNumber ? `<p><strong>Job ${jobNumber}</strong> has been automatically created and is ready for scheduling.</p>` : ''}
                 <p>You can now proceed with scheduling the work.</p>
               </div>
@@ -634,6 +678,102 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, message: 'Quote approved successfully', jobCreated: !!jobNumber, jobNumber }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle job completion signature from customer
+    if (action === 'sign-job-completion') {
+      const { jobId, customerId, token, signatureData, signerName } = body;
+      
+      if (!jobId || !customerId || !token) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!signatureData || !signerName) {
+        return new Response(
+          JSON.stringify({ error: 'Signature is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify job belongs to customer
+      const { data: job, error: jobError } = await adminClient
+        .from('jobs')
+        .select('*, companies(*)')
+        .eq('id', jobId)
+        .eq('customer_id', customerId)
+        .single();
+
+      if (jobError || !job) {
+        console.error('Job not found or access denied:', jobError);
+        return new Response(
+          JSON.stringify({ error: 'Job not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get client IP
+      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                       req.headers.get('x-real-ip') || 
+                       'unknown';
+
+      // Save signature
+      const { data: signature, error: signatureError } = await adminClient
+        .from('signatures')
+        .insert({
+          company_id: job.company_id,
+          customer_id: customerId,
+          document_type: 'job_completion',
+          document_id: jobId,
+          signature_data: signatureData,
+          signer_name: signerName,
+          signer_ip: clientIp,
+        })
+        .select()
+        .single();
+
+      if (signatureError) {
+        console.error('Error saving signature:', signatureError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to save signature' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update job with completion signature
+      const { error: updateError } = await adminClient
+        .from('jobs')
+        .update({
+          completion_signature_id: signature.id,
+          completion_signed_at: new Date().toISOString(),
+          completion_signed_by: signerName,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', jobId);
+
+      if (updateError) {
+        console.error('Error updating job:', updateError);
+        throw updateError;
+      }
+
+      console.log('Job completion signed:', job.job_number);
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Job completion confirmed' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
