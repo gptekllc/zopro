@@ -235,6 +235,18 @@ const Quotes = () => {
     }
   };
 
+  // Map database status to display label (accepted -> Approved)
+  const getStatusLabel = (status: string) => {
+    if (status === 'accepted') return 'approved';
+    return status;
+  };
+
+  // Map display status back to database status (approved -> accepted)
+  const getDbStatus = (displayStatus: string) => {
+    if (displayStatus === 'approved') return 'accepted';
+    return displayStatus;
+  };
+
   const getCustomerName = (customerId: string) => {
     return customers.find(c => c.id === customerId)?.name || 'Unknown';
   };
@@ -534,24 +546,26 @@ const Quotes = () => {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(quote.status)}`}>
-                          {quote.status}
+                          {getStatusLabel(quote.status)}
                           <FileText className="w-3 h-3" />
                         </span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="bg-popover z-50">
-                        {['draft', 'sent', 'accepted', 'rejected'].map((status) => (
+                        {['draft', 'sent', 'approved', 'rejected'].map((displayStatus) => {
+                          const dbStatus = getDbStatus(displayStatus);
+                          return (
                           <DropdownMenuItem
-                            key={status}
-                            onClick={() => handleStatusChange(quote.id, status)}
-                            disabled={quote.status === status}
-                            className={quote.status === status ? 'bg-accent' : ''}
+                            key={displayStatus}
+                            onClick={() => handleStatusChange(quote.id, dbStatus)}
+                            disabled={quote.status === dbStatus}
+                            className={quote.status === dbStatus ? 'bg-accent' : ''}
                           >
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(status)}`}>
-                              {status}
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(displayStatus)}`}>
+                              {displayStatus}
                             </span>
-                            {quote.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
+                            {quote.status === dbStatus && <CheckCircle className="w-4 h-4 ml-auto" />}
                           </DropdownMenuItem>
-                        ))}
+                        )})}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -611,24 +625,26 @@ const Quotes = () => {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(quote.status)}`}>
-                          {quote.status}
+                          {getStatusLabel(quote.status)}
                           <FileText className="w-3 h-3" />
                         </span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="bg-popover z-50">
-                        {['draft', 'sent', 'accepted', 'rejected'].map((status) => (
+                        {['draft', 'sent', 'approved', 'rejected'].map((displayStatus) => {
+                          const dbStatus = getDbStatus(displayStatus);
+                          return (
                           <DropdownMenuItem
-                            key={status}
-                            onClick={() => handleStatusChange(quote.id, status)}
-                            disabled={quote.status === status}
-                            className={quote.status === status ? 'bg-accent' : ''}
+                            key={displayStatus}
+                            onClick={() => handleStatusChange(quote.id, dbStatus)}
+                            disabled={quote.status === dbStatus}
+                            className={quote.status === dbStatus ? 'bg-accent' : ''}
                           >
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(status)}`}>
-                              {status}
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(displayStatus)}`}>
+                              {displayStatus}
                             </span>
-                            {quote.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
+                            {quote.status === dbStatus && <CheckCircle className="w-4 h-4 ml-auto" />}
                           </DropdownMenuItem>
-                        ))}
+                        )})}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -732,7 +748,7 @@ const Quotes = () => {
                   <span className="truncate">{viewingQuote.quote_number}</span>
                 </DialogTitle>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0 ${getStatusColor(viewingQuote.status)}`}>
-                  {viewingQuote.status}
+                  {getStatusLabel(viewingQuote.status)}
                 </span>
               </div>
             </DialogHeader>
