@@ -14,10 +14,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, User, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import JobCalendar from '@/components/jobs/JobCalendar';
+import { CompleteJobDialog } from '@/components/jobs/CompleteJobDialog';
 
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -45,6 +46,7 @@ const Jobs = () => {
   const [photoCaption, setPhotoCaption] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [importQuoteId, setImportQuoteId] = useState<string>('');
+  const [completingJob, setCompletingJob] = useState<Job | null>(null);
   
   const isAdmin = roles.some(r => r.role === 'admin' || r.role === 'manager');
   const technicians = profiles.filter(p => p.role === 'technician' || p.role === 'admin' || p.role === 'manager');
@@ -505,6 +507,16 @@ const Jobs = () => {
                         )}
                       </div>
                       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                        {job.status === 'in_progress' && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => setCompletingJob(job)}
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-1" />
+                            Complete
+                          </Button>
+                        )}
                         {job.status === 'completed' && (
                           <Button
                             variant="outline"
@@ -516,7 +528,7 @@ const Jobs = () => {
                             Invoice
                           </Button>
                         )}
-                        {getNextStatus(job.status) && job.status !== 'completed' && (
+                        {getNextStatus(job.status) && job.status !== 'completed' && job.status !== 'in_progress' && (
                           <Button 
                             variant="ghost" 
                             size="sm"
@@ -738,6 +750,16 @@ const Jobs = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Complete Job Dialog */}
+      {completingJob && (
+        <CompleteJobDialog
+          job={completingJob}
+          open={!!completingJob}
+          onOpenChange={(open) => !open && setCompletingJob(null)}
+          onComplete={() => setCompletingJob(null)}
+        />
+      )}
     </div>
   );
 };

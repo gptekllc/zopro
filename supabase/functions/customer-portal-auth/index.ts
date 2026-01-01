@@ -533,6 +533,72 @@ Deno.serve(async (req) => {
 
       console.log('Quote approved:', quote.quote_number);
 
+      // Auto-create a draft job from the approved quote
+      let jobNumber = '';
+      try {
+        // Generate job number using the database function
+        const { data: jobNumberData, error: jobNumberError } = await adminClient
+          .rpc('generate_job_number', { _company_id: quote.company_id });
+        
+        if (jobNumberError) {
+          console.error('Error generating job number:', jobNumberError);
+          throw jobNumberError;
+        }
+        jobNumber = jobNumberData;
+
+        // Fetch customer data for the job
+        const { data: customer } = await adminClient
+          .from('customers')
+          .select('name, email')
+          .eq('id', customerId)
+          .single();
+
+        // Create the job
+        const { data: newJob, error: jobError } = await adminClient
+          .from('jobs')
+          .insert({
+            company_id: quote.company_id,
+            customer_id: customerId,
+            quote_id: quoteId,
+            job_number: jobNumber,
+            title: `Job from Quote ${quote.quote_number}`,
+            description: quote.notes || null,
+            status: 'draft',
+            priority: 'medium',
+          })
+          .select()
+          .single();
+
+        if (jobError) {
+          console.error('Error creating job:', jobError);
+        } else {
+          console.log('Auto-created job:', newJob.job_number);
+        }
+
+        // Create notifications for admins/managers about the new job
+        const { data: admins } = await adminClient
+          .from('profiles')
+          .select('id')
+          .eq('company_id', quote.company_id)
+          .in('role', ['admin', 'manager']);
+
+        if (admins && admins.length > 0) {
+          const notifications = admins.map((admin: { id: string }) => ({
+            user_id: admin.id,
+            type: 'quote_approved',
+            title: 'Quote Approved - Job Created',
+            message: `${customer?.name || 'A customer'} approved Quote ${quote.quote_number}. Job ${jobNumber} has been created.`,
+            data: { quoteId, quoteNumber: quote.quote_number, jobNumber, customerName: customer?.name, total: quote.total },
+          }));
+          
+          await adminClient.from('notifications').insert(notifications);
+          console.log('Admin notifications created:', notifications.length);
+        }
+      } catch (jobCreateError) {
+        console.error('Failed to auto-create job:', jobCreateError);
+        // Continue anyway - quote is still approved
+      }
+
       // Send notification email to company
       const resendApiKey = Deno.env.get('RESEND_API_KEY');
       if (resendApiKey && quote.companies?.email) {
@@ -549,13 +615,14 @@ Deno.serve(async (req) => {
           await resend.emails.send({
             from: `Quote Notifications <onboarding@resend.dev>`,
             to: [quote.companies.email],
-            subject: `Quote ${quote.quote_number} Approved by Customer`,
+            subject: `Quote ${quote.quote_number} Approved - Job ${jobNumber} Created`,
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <h1 style="color: #22c55e;">Quote Approved!</h1>
                 <p>Great news! ${customer?.name || 'A customer'} has approved quote <strong>${quote.quote_number}</strong>.</p>
                 <p><strong>Total:</strong> $${Number(quote.total).toFixed(2)}</p>
-                <p>You can now proceed with scheduling the work or converting this to an invoice.</p>
+                ${jobNumber ? `<p><strong>Job ${jobNumber}</strong> has been automatically created and is ready for scheduling.</p>` : ''}
+                <p>You can now proceed with scheduling the work.</p>
               </div>
             `,
           });
@@ -566,7 +633,7 @@ Deno.serve(async (req) => {
       }
 
       return new Response(
-        JSON.stringify({ success: true, message: 'Quote approved successfully' }),
+        JSON.stringify({ success: true, message: 'Quote approved successfully', jobCreated: !!jobNumber, jobNumber }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
