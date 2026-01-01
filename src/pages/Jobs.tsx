@@ -36,6 +36,10 @@ const Jobs = () => {
   // Determine if we need to include archived jobs based on search + toggle
   const needsArchivedData = showArchived || includeArchivedInSearch;
   const { data: jobs = [], isLoading } = useJobs(needsArchivedData);
+
+  // Defensive: some backends/joins can yield null rows; never let that crash rendering.
+  const safeJobs = useMemo(() => (jobs ?? []).filter(Boolean) as Job[], [jobs]);
+
   const { data: customers = [] } = useCustomers();
   const { data: quotes = [] } = useQuotes();
   const { data: profiles = [] } = useProfiles();
@@ -66,8 +70,8 @@ const Jobs = () => {
   // Handle URL param to auto-open job detail
   useEffect(() => {
     const viewJobId = searchParams.get('view');
-    if (viewJobId && jobs.length > 0) {
-      const job = jobs.find(j => j.id === viewJobId);
+    if (viewJobId && safeJobs.length > 0) {
+      const job = safeJobs.find(j => j.id === viewJobId);
       if (job) {
         setViewingJob(job);
         // Clear the URL param after opening
@@ -76,7 +80,7 @@ const Jobs = () => {
         setSearchParams(newParams, { replace: true });
       }
     }
-  }, [searchParams, jobs, setSearchParams]);
+  }, [searchParams, safeJobs, setSearchParams]);
 
   const [formData, setFormData] = useState({
     customer_id: '',
@@ -92,9 +96,8 @@ const Jobs = () => {
   });
 
   // Separate active and archived jobs for display
-  const activeJobs = useMemo(() => jobs.filter(j => !j.archived_at), [jobs]);
-  const archivedJobs = useMemo(() => jobs.filter(j => j.archived_at), [jobs]);
-  
+  const activeJobs = useMemo(() => safeJobs.filter(j => !j.archived_at), [safeJobs]);
+  const archivedJobs = useMemo(() => safeJobs.filter(j => j.archived_at), [safeJobs]);
   // Check if job is older than 2 years and eligible for archive suggestion
   const isArchiveEligible = (job: Job) => {
     const twoYearsAgo = new Date();
@@ -105,12 +108,12 @@ const Jobs = () => {
   };
 
   const filteredJobs = useMemo(() => {
-    return jobs.filter(job => {
+    return safeJobs.filter(job => {
       const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.job_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
         job.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
-      
+
       // When searching with includeArchivedInSearch, include archived jobs
       // Otherwise, respect showArchived toggle
       let matchesArchiveFilter = true;
@@ -121,10 +124,10 @@ const Jobs = () => {
         // Hide archived jobs when not showing archived
         matchesArchiveFilter = !job.archived_at;
       }
-      
+
       return matchesSearch && matchesStatus && matchesArchiveFilter;
     });
-  }, [jobs, searchQuery, statusFilter, showArchived, includeArchivedInSearch]);
+  }, [safeJobs, searchQuery, statusFilter, showArchived, includeArchivedInSearch]);
 
   const resetForm = () => {
     setFormData({
@@ -214,7 +217,7 @@ const Jobs = () => {
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.[0] || !viewingJob) return;
-    
+
     const file = e.target.files[0];
     await uploadPhoto.mutateAsync({
       jobId: viewingJob.id,
@@ -225,13 +228,13 @@ const Jobs = () => {
     setPhotoDialogOpen(false);
     setPhotoCaption('');
     // Refresh viewing job
-    const updatedJob = jobs.find(j => j.id === viewingJob.id);
+    const updatedJob = safeJobs.find(j => j.id === viewingJob.id);
     if (updatedJob) setViewingJob(updatedJob);
   };
 
   const handleStatusChange = async (jobId: string, newStatus: Job['status']) => {
     const updates: Partial<Job> = { status: newStatus };
-    if (newStatus === 'in_progress' && !jobs.find(j => j.id === jobId)?.actual_start) {
+    if (newStatus === 'in_progress' && !safeJobs.find(j => j.id === jobId)?.actual_start) {
       updates.actual_start = new Date().toISOString();
     }
     if (newStatus === 'completed') {
@@ -284,7 +287,7 @@ const Jobs = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Jobs</h1>
-          <p className="text-muted-foreground mt-1">{jobs.length} total jobs</p>
+          <p className="text-muted-foreground mt-1">{safeJobs.length} total jobs</p>
         </div>
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
@@ -532,7 +535,7 @@ const Jobs = () => {
 
       {/* Calendar View */}
       {viewMode === 'calendar' && (
-        <JobCalendar jobs={jobs} onJobClick={setViewingJob} />
+        <JobCalendar jobs={safeJobs} onJobClick={setViewingJob} />
       )}
 
       {/* Job List - Mobile Optimized */}
