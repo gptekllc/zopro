@@ -19,9 +19,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   ArrowLeft, Mail, Phone, MapPin, User, Loader2, ExternalLink, 
-  Briefcase, FileText, Receipt, DollarSign, CheckCircle, Clock,
-  Plus, Edit, PenTool, History
+  Briefcase, FileText, Receipt, DollarSign, Clock,
+  Plus, Edit, PenTool, History, Navigation, Camera
 } from 'lucide-react';
+import { openInMaps, hasAddress } from '@/lib/maps';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
@@ -327,16 +328,20 @@ const CustomerDetail = () => {
                   <a href={`tel:${customer.phone}`} className="hover:underline">{customer.phone}</a>
                 </div>
               )}
-              {(customer.address || customer.city || customer.state) && (
-                <div className="flex items-start gap-3 text-sm">
+              {hasAddress(customer) && (
+                <button
+                  onClick={() => openInMaps(customer)}
+                  className="flex items-start gap-3 text-sm w-full text-left hover:bg-muted/50 -mx-2 px-2 py-1.5 rounded-md transition-colors group"
+                >
                   <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                  <div>
+                  <div className="flex-1">
                     {customer.address && <p>{customer.address}</p>}
                     {(customer.city || customer.state || customer.zip) && (
                       <p>{[customer.city, customer.state, customer.zip].filter(Boolean).join(', ')}</p>
                     )}
                   </div>
-                </div>
+                  <Navigation className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity mt-0.5" />
+                </button>
               )}
             </div>
             {customer.notes && (
@@ -412,6 +417,12 @@ const CustomerDetail = () => {
                             <span className="flex items-center gap-1">
                               <User className="w-3 h-3" />
                               {job.assignee.full_name}
+                            </span>
+                          )}
+                          {job.photos && job.photos.length > 0 && (
+                            <span className="flex items-center gap-1 text-primary">
+                              <Camera className="w-3 h-3" />
+                              {job.photos.length}
                             </span>
                           )}
                         </div>
