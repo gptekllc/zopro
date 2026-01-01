@@ -195,7 +195,7 @@ export function InvoiceDetailDialog({
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => onEdit?.(invoice.id)} className="ml-auto">
-              <Edit className="w-4 h-4 mr-1" /> Edit
+              <Edit className="w-4 h-4 mr-1" /> Open in Invoices
             </Button>
           </div>
         </div>

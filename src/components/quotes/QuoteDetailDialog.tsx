@@ -183,7 +183,7 @@ export function QuoteDetailDialog({
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => onEdit?.(quote.id)} className="ml-auto">
-              <Edit className="w-4 h-4 mr-1" /> Edit
+              <Edit className="w-4 h-4 mr-1" /> Open in Quotes
             </Button>
           </div>
         </div>
