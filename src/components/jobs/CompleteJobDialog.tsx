@@ -18,23 +18,26 @@ import { Loader2, CheckCircle2, FileText, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CompleteJobDialogProps {
-  job: Job;
+  job: Job | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onComplete?: () => void;
 }
 
 export function CompleteJobDialog({ job, open, onOpenChange, onComplete }: CompleteJobDialogProps) {
+  // When closed (or not yet selected), don't render anything to avoid null access.
+  if (!job) return null;
+
   const [generateInvoice, setGenerateInvoice] = useState(true);
   const [emailCustomer, setEmailCustomer] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const updateJob = useUpdateJob();
   const convertToInvoice = useConvertJobToInvoice();
   const emailDocument = useEmailDocument();
   const { data: customers = [] } = useCustomers();
-  
-  const customer = customers.find(c => c.id === job.customer_id);
+
+  const customer = customers.find((c) => c.id === job.customer_id);
   const customerEmail = customer?.email;
 
   const handleComplete = async () => {
