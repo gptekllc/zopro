@@ -132,6 +132,7 @@ const Jobs = () => {
     scheduled_start: '',
     scheduled_end: '',
     notes: '',
+    estimated_duration: 60,
   });
 
   // Line items state
@@ -210,6 +211,7 @@ const Jobs = () => {
       scheduled_start: '',
       scheduled_end: '',
       notes: '',
+      estimated_duration: 60,
     });
     setLineItems([]);
     setEditingJob(null);
@@ -235,6 +237,7 @@ const Jobs = () => {
       scheduled_start: formData.scheduled_start || null,
       scheduled_end: formData.scheduled_end || null,
       notes: formData.notes || null,
+      estimated_duration: formData.estimated_duration || 60,
       items: lineItems.map(item => ({
         description: item.description,
         quantity: item.quantity,
@@ -267,6 +270,7 @@ const Jobs = () => {
       scheduled_start: job.scheduled_start ? format(new Date(job.scheduled_start), "yyyy-MM-dd'T'HH:mm") : '',
       scheduled_end: job.scheduled_end ? format(new Date(job.scheduled_end), "yyyy-MM-dd'T'HH:mm") : '',
       notes: job.notes || '',
+      estimated_duration: job.estimated_duration ?? 60,
     });
     // Load existing line items
     if (job.items && job.items.length > 0) {
@@ -314,7 +318,7 @@ const Jobs = () => {
     if (!e.target.files?.[0] || !viewingJob) return;
 
     const file = e.target.files[0];
-    await uploadPhoto.mutateAsync({
+    const result = await uploadPhoto.mutateAsync({
       jobId: viewingJob.id,
       file,
       photoType,
@@ -322,9 +326,13 @@ const Jobs = () => {
     });
     setPhotoDialogOpen(false);
     setPhotoCaption('');
-    // Refresh viewing job
-    const updatedJob = safeJobs.find(j => j.id === viewingJob.id);
-    if (updatedJob) setViewingJob(updatedJob);
+    // Update viewingJob with new photo immediately
+    if (result) {
+      setViewingJob(prev => prev ? {
+        ...prev,
+        photos: [...(prev.photos || []), result]
+      } : null);
+    }
   };
 
   const handleStatusChange = async (jobId: string, newStatus: Job['status']) => {
@@ -395,14 +403,14 @@ const Jobs = () => {
               Create Job
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingJob ? 'Edit Job' : 'Create New Job'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Import from Quote */}
               {!editingJob && (
-                <div className="flex gap-2 items-end">
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
                   <div className="flex-1 space-y-2">
                     <Label>Import from Quote (optional)</Label>
                     <Select value={importQuoteId} onValueChange={setImportQuoteId}>
@@ -420,7 +428,7 @@ const Jobs = () => {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button type="button" variant="outline" onClick={handleImportQuote} disabled={!importQuoteId}>
+                  <Button type="button" variant="outline" onClick={handleImportQuote} disabled={!importQuoteId} className="w-full sm:w-auto">
                     <FileText className="w-4 h-4 mr-2" />
                     Import
                   </Button>
@@ -472,7 +480,7 @@ const Jobs = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Priority</Label>
                   <Select
@@ -506,9 +514,32 @@ const Jobs = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                <div className="space-y-2">
+                  <Label>Est. Duration</Label>
+                  <Select
+                    value={String(formData.estimated_duration)}
+                    onValueChange={(value) => setFormData({ ...formData, estimated_duration: parseInt(value) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 min</SelectItem>
+                      <SelectItem value="60">1 hour</SelectItem>
+                      <SelectItem value="90">1.5 hours</SelectItem>
+                      <SelectItem value="120">2 hours</SelectItem>
+                      <SelectItem value="180">3 hours</SelectItem>
+                      <SelectItem value="240">4 hours</SelectItem>
+                      <SelectItem value="300">5 hours</SelectItem>
+                      <SelectItem value="360">6 hours</SelectItem>
+                      <SelectItem value="480">8 hours</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Scheduled Start</Label>
                   <Input
@@ -534,53 +565,100 @@ const Jobs = () => {
                   <Label className="text-base font-semibold">Line Items (Parts & Labor)</Label>
                   <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
                     <Plus className="w-4 h-4 mr-1" />
-                    Add Item
+                    <span className="hidden sm:inline">Add Item</span>
+                    <span className="sm:hidden">Add</span>
                   </Button>
                 </div>
 
                 {lineItems.length > 0 ? (
                   <div className="space-y-3">
                     {lineItems.map((item, index) => (
-                      <div key={item.id} className="grid grid-cols-12 gap-2 items-start">
-                        <div className="col-span-5">
+                      <div key={item.id} className="space-y-2 sm:space-y-0">
+                        {/* Mobile layout */}
+                        <div className="sm:hidden space-y-2 p-3 bg-muted/50 rounded-lg">
                           <Input
                             placeholder="Description"
                             value={item.description}
                             onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
                           />
+                          <div className="flex gap-2">
+                            <div className="w-20">
+                              <Label className="text-xs text-muted-foreground">Qty</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => updateLineItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <Label className="text-xs text-muted-foreground">Unit Price</Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={item.unitPrice}
+                                onChange={(e) => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeLineItem(item.id)}
+                                className="text-destructive"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex justify-end text-sm font-medium">
+                            Total: ${(item.quantity * item.unitPrice).toFixed(2)}
+                          </div>
                         </div>
-                        <div className="col-span-2">
-                          <Input
-                            type="number"
-                            min="1"
-                            placeholder="Qty"
-                            value={item.quantity}
-                            onChange={(e) => updateLineItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
-                          />
-                        </div>
-                        <div className="col-span-3">
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="Unit Price"
-                            value={item.unitPrice}
-                            onChange={(e) => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                          />
-                        </div>
-                        <div className="col-span-1 text-right pt-2 text-sm font-medium">
-                          ${(item.quantity * item.unitPrice).toFixed(2)}
-                        </div>
-                        <div className="col-span-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeLineItem(item.id)}
-                            className="text-destructive"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
+                        {/* Desktop layout */}
+                        <div className="hidden sm:grid grid-cols-12 gap-2 items-start">
+                          <div className="col-span-5">
+                            <Input
+                              placeholder="Description"
+                              value={item.description}
+                              onChange={(e) => updateLineItem(item.id, 'description', e.target.value)}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Input
+                              type="number"
+                              min="1"
+                              placeholder="Qty"
+                              value={item.quantity}
+                              onChange={(e) => updateLineItem(item.id, 'quantity', parseInt(e.target.value) || 1)}
+                            />
+                          </div>
+                          <div className="col-span-3">
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="Unit Price"
+                              value={item.unitPrice}
+                              onChange={(e) => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                            />
+                          </div>
+                          <div className="col-span-1 text-right pt-2 text-sm font-medium">
+                            ${(item.quantity * item.unitPrice).toFixed(2)}
+                          </div>
+                          <div className="col-span-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeLineItem(item.id)}
+                              className="text-destructive"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -617,7 +695,7 @@ const Jobs = () => {
                 />
               </div>
               
-              <div className="flex gap-3 pt-4">
+              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
                   Cancel
                 </Button>
