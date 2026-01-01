@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhoneInput, formatPhoneNumber, getPhoneDigits } from '@/components/ui/phone-input';
+import { EmailInput, isValidEmail } from '@/components/ui/email-input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -199,34 +200,35 @@ const Customers = () => {
                 <Label htmlFor="name">Name *</Label>
                 <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
+                  <EmailInput id="email" value={formData.email} onChange={(value) => setFormData({ ...formData, email: value })} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone</Label>
                   <PhoneInput id="phone" value={formData.phone} onChange={(value) => setFormData({ ...formData, phone: value })} />
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-3">
-                <div className="space-y-2 col-span-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="Street address" />
-                </div>
-                <div className="space-y-2">
+              
+              <div className="space-y-2">
+                <Label htmlFor="address">Street Address</Label>
+                <Input id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="123 Main St" />
+              </div>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="space-y-2 col-span-2 sm:col-span-2">
                   <Label htmlFor="city">City</Label>
                   <Input id="city" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
-                    <Input id="state" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} placeholder="ST" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="zip">ZIP</Label>
-                    <Input id="zip" value={formData.zip} onChange={(e) => setFormData({ ...formData, zip: e.target.value })} />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input id="state" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} placeholder="CA" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="zip">ZIP</Label>
+                  <Input id="zip" value={formData.zip} onChange={(e) => setFormData({ ...formData, zip: e.target.value })} placeholder="12345" />
                 </div>
               </div>
               <div className="space-y-2">
