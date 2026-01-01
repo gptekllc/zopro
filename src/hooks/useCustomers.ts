@@ -16,6 +16,7 @@ export interface Customer {
   state: string | null;
   zip: string | null;
   notes: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +30,7 @@ export function useCustomers() {
       const { data, error } = await (supabase as any)
         .from('customers')
         .select('*')
+        .is('deleted_at', null)
         .order('name');
       
       if (error) throw error;
@@ -38,12 +40,34 @@ export function useCustomers() {
   });
 }
 
+export function useSoftDeleteCustomer() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('customers')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['deleted-customers'] });
+      toast.success('Customer deleted');
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to delete customer: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
 export function useCreateCustomer() {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
   
   return useMutation({
-    mutationFn: async (customer: Omit<Customer, 'id' | 'company_id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (customer: Omit<Customer, 'id' | 'company_id' | 'created_at' | 'updated_at' | 'deleted_at'>) => {
       if (!profile?.company_id) throw new Error('No company associated');
       
       // Validate customer data
