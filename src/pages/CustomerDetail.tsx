@@ -295,13 +295,16 @@ const CustomerDetail = () => {
               {hasAddress(customer) && (
                 <button
                   onClick={() => openInMaps(customer)}
-                  className="flex items-center gap-2 text-sm hover:text-primary transition-colors group"
+                  className="flex items-start gap-2 text-sm hover:text-primary transition-colors group text-left"
                 >
-                  <MapPin className="w-4 h-4 text-muted-foreground shrink-0 group-hover:text-primary" />
-                  <span className="truncate max-w-[200px]">
-                    {[customer.address, customer.city, customer.state].filter(Boolean).join(', ')}
+                  <MapPin className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5 group-hover:text-primary" />
+                  <span className="flex flex-col">
+                    {customer.address && <span>{customer.address}</span>}
+                    {(customer.city || customer.state || customer.zip) && (
+                      <span>{[customer.city, customer.state].filter(Boolean).join(', ')}{customer.zip && ` ${customer.zip}`}</span>
+                    )}
                   </span>
-                  <Navigation className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  <Navigation className="w-3 h-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
                 </button>
               )}
             </div>

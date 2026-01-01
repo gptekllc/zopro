@@ -251,7 +251,17 @@ const Customers = () => {
                   <div className="space-y-2 text-sm">
                     {customer.email && <div className="flex items-center gap-2 text-muted-foreground"><Mail className="w-4 h-4" /><span className="truncate">{customer.email}</span></div>}
                     {customer.phone && <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-4 h-4" /><span>{customer.phone}</span></div>}
-                    {customer.address && <div className="flex items-start gap-2 text-muted-foreground"><MapPin className="w-4 h-4 mt-0.5" /><span className="line-clamp-2">{customer.address}</span></div>}
+                    {(customer.address || customer.city || customer.state || customer.zip) && (
+                      <div className="flex items-start gap-2 text-muted-foreground">
+                        <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
+                        <span>
+                          {customer.address && <span className="block">{customer.address}</span>}
+                          {(customer.city || customer.state || customer.zip) && (
+                            <span className="block">{[customer.city, customer.state].filter(Boolean).join(', ')}{customer.zip && ` ${customer.zip}`}</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Actions */}
