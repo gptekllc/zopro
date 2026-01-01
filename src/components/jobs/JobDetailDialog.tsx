@@ -4,10 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   Edit, PenTool, Calendar, User, Briefcase, 
-  CheckCircle, Clock, AlertCircle, MapPin
+  Clock, Camera
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerJob } from '@/hooks/useCustomerHistory';
+import { PhotoGallery } from '@/components/photos/PhotoGallery';
 
 interface JobDetailDialogProps {
   job: CustomerJob | null;
@@ -155,6 +156,14 @@ export function JobDetailDialog({
                 <h4 className="font-medium mb-2">Notes</h4>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{job.notes}</p>
               </div>
+            </>
+          )}
+
+          {/* Photos */}
+          {job.photos && job.photos.length > 0 && (
+            <>
+              <Separator />
+              <PhotoGallery photos={job.photos} />
             </>
           )}
 

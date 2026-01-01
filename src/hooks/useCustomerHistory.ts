@@ -1,6 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface JobPhoto {
+  id: string;
+  photo_url: string;
+  photo_type: 'before' | 'after' | 'other';
+  caption: string | null;
+  created_at: string;
+}
+
 export interface CustomerJob {
   id: string;
   job_number: string;
@@ -18,6 +26,7 @@ export interface CustomerJob {
   assignee?: { full_name: string | null } | null;
   completion_signed_at?: string | null;
   completion_signed_by?: string | null;
+  photos?: JobPhoto[];
 }
 
 export interface CustomerQuote {
@@ -112,7 +121,8 @@ export function useCustomerJobs(customerId: string | undefined) {
           notes,
           completion_signed_at,
           completion_signed_by,
-          assignee:profiles!jobs_assigned_to_fkey(full_name)
+          assignee:profiles!jobs_assigned_to_fkey(full_name),
+          photos:job_photos(id, photo_url, photo_type, caption, created_at)
         `)
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
