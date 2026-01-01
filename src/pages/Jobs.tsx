@@ -52,9 +52,18 @@ const Jobs = () => {
   const { data: quotes = [] } = useQuotes();
   const { data: profiles = [] } = useProfiles();
 
-  const safeCustomers = useMemo(() => (customers ?? []).filter(Boolean) as any[], [customers]);
-  const safeQuotes = useMemo(() => (quotes ?? []).filter(Boolean) as any[], [quotes]);
-  const safeProfiles = useMemo(() => (profiles ?? []).filter(Boolean) as any[], [profiles]);
+  const safeCustomers = useMemo(
+    () => (Array.isArray(customers) ? customers : []).filter((c: any) => c && c.id) as any[],
+    [customers]
+  );
+  const safeQuotes = useMemo(
+    () => (Array.isArray(quotes) ? quotes : []).filter((q: any) => q && q.id) as any[],
+    [quotes]
+  );
+  const safeProfiles = useMemo(
+    () => (Array.isArray(profiles) ? profiles : []).filter((p: any) => p && p.id) as any[],
+    [profiles]
+  );
 
   const createJob = useCreateJob();
   const updateJob = useUpdateJob();
@@ -217,8 +226,8 @@ const Jobs = () => {
 
   const handleImportQuote = () => {
     if (!importQuoteId) return;
-    const quote = safeQuotes.find(q => q.id === importQuoteId);
-    if (quote) {
+    const quote: any = safeQuotes.find((q: any) => q?.id === importQuoteId);
+    if (quote?.customer_id) {
       setFormData({
         ...formData,
         customer_id: quote.customer_id,
@@ -330,10 +339,10 @@ const Jobs = () => {
                       </SelectTrigger>
                       <SelectContent>
                         {safeQuotes
-                          .filter(q => q.status === 'accepted' || q.status === 'sent')
-                          .map((q) => (
+                          .filter((q: any) => (q?.status === 'accepted' || q?.status === 'sent') && q?.id)
+                          .map((q: any) => (
                             <SelectItem key={q.id} value={q.id}>
-                              {q.quote_number} - {safeCustomers.find(c => c.id === q.customer_id)?.name}
+                              {String(q.quote_number ?? 'Quote')} - {safeCustomers.find((c: any) => c?.id === q?.customer_id)?.name}
                             </SelectItem>
                           ))}
                       </SelectContent>
