@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { companySchema, sanitizeErrorMessage } from '@/lib/validation';
+
 
 interface CompanyOnboardingProps {
   onComplete: () => void;
@@ -30,8 +31,11 @@ const CompanyOnboarding = ({ onComplete }: CompanyOnboardingProps) => {
     e.preventDefault();
     if (!user) return;
 
-    if (!formData.name.trim()) {
-      toast.error('Company name is required');
+    // Validate form data with Zod schema
+    const validation = companySchema.safeParse(formData);
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError?.message || 'Please check your input');
       return;
     }
 
@@ -80,9 +84,9 @@ const CompanyOnboarding = ({ onComplete }: CompanyOnboardingProps) => {
 
       toast.success('Company created successfully!');
       onComplete();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Onboarding error:', error);
-      toast.error('Failed to create company: ' + error.message);
+      toast.error('Failed to create company: ' + sanitizeErrorMessage(error));
     } finally {
       setIsLoading(false);
     }

@@ -55,15 +55,30 @@ Deno.serve(async (req) => {
     // Use service role client for admin operations
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if calling user is an admin
+    // Get caller's profile for company_id
     const { data: callerProfile } = await adminClient
       .from('profiles')
-      .select('company_id, role')
+      .select('company_id')
       .eq('id', callingUser.id)
       .single();
 
-    if (!callerProfile || callerProfile.role !== 'admin') {
-      console.error('Caller is not an admin:', callerProfile);
+    if (!callerProfile?.company_id) {
+      console.error('Caller has no company:', callerProfile);
+      return new Response(
+        JSON.stringify({ error: 'You must be part of a company to invite team members' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check if calling user is an admin using has_role() RPC (consistent with RLS)
+    const { data: isAdmin, error: roleError } = await adminClient
+      .rpc('has_role', { 
+        _user_id: callingUser.id, 
+        _role: 'admin' 
+      });
+
+    if (roleError || !isAdmin) {
+      console.error('Caller is not an admin, has_role check failed:', { roleError, isAdmin });
       return new Response(
         JSON.stringify({ error: 'Only admins can invite team members' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -174,8 +189,15 @@ Deno.serve(async (req) => {
 
     if (createError) {
       console.error('Failed to create user:', createError);
+      // Return sanitized error message
+      let errorMessage = 'Unable to create invitation. Please try again.';
+      if (createError.message?.includes('email')) {
+        errorMessage = 'Invalid email address';
+      } else if (createError.message?.includes('already') || createError.message?.includes('exists')) {
+        errorMessage = 'A user with this email already exists';
+      }
       return new Response(
-        JSON.stringify({ error: createError.message }),
+        JSON.stringify({ error: errorMessage }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -193,12 +215,12 @@ Deno.serve(async (req) => {
     }
 
     // Add role to user_roles
-    const { error: roleError } = await adminClient
+    const { error: userRoleError } = await adminClient
       .from('user_roles')
       .insert({ user_id: newUser.user.id, role });
 
-    if (roleError) {
-      console.error('Failed to add user role:', roleError);
+    if (userRoleError) {
+      console.error('Failed to add user role:', userRoleError);
     }
 
     // Generate password reset link
@@ -274,9 +296,9 @@ Deno.serve(async (req) => {
 
   } catch (error: unknown) {
     console.error('Error in invite-team-member:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    // Return sanitized error message to client
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'An error occurred processing your request. Please try again.' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

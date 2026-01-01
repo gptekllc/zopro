@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { quoteSchema, itemSchema, sanitizeErrorMessage } from '@/lib/validation';
 
 export interface QuoteItem {
   id: string;
@@ -64,6 +65,22 @@ export function useCreateQuote() {
     }: Omit<Quote, 'id' | 'company_id' | 'quote_number' | 'created_at' | 'updated_at'> & { items: Omit<QuoteItem, 'id' | 'quote_id' | 'created_at'>[] }) => {
       if (!profile?.company_id) throw new Error('No company associated');
       
+      // Validate quote data
+      const quoteValidation = quoteSchema.safeParse(quote);
+      if (!quoteValidation.success) {
+        const firstError = quoteValidation.error.errors[0];
+        throw new Error(firstError?.message || 'Validation failed');
+      }
+      
+      // Validate each item
+      for (const item of items) {
+        const itemValidation = itemSchema.safeParse(item);
+        if (!itemValidation.success) {
+          const firstError = itemValidation.error.errors[0];
+          throw new Error(firstError?.message || 'Item validation failed');
+        }
+      }
+      
       // Get next quote number
       const { count } = await (supabase as any)
         .from('quotes')
@@ -81,7 +98,7 @@ export function useCreateQuote() {
       const { data: quoteData, error: quoteError } = await (supabase as any)
         .from('quotes')
         .insert({
-          ...quote,
+          ...quoteValidation.data,
           company_id: profile.company_id,
           quote_number: quoteNumber,
           subtotal,
@@ -117,8 +134,8 @@ export function useCreateQuote() {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       toast.success('Quote created successfully');
     },
-    onError: (error: any) => {
-      toast.error('Failed to create quote: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to create quote: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -166,8 +183,8 @@ export function useUpdateQuote() {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       toast.success('Quote updated successfully');
     },
-    onError: (error: any) => {
-      toast.error('Failed to update quote: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to update quote: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -188,8 +205,8 @@ export function useDeleteQuote() {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       toast.success('Quote deleted');
     },
-    onError: (error: any) => {
-      toast.error('Failed to delete quote: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to delete quote: ' + sanitizeErrorMessage(error));
     },
   });
 }

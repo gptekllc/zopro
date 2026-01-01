@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
+import { jobSchema, sanitizeErrorMessage } from '@/lib/validation';
 
 export interface Job {
   id: string;
@@ -102,6 +103,13 @@ export function useCreateJob() {
     }) => {
       if (!profile?.company_id) throw new Error('No company ID');
       
+      // Validate job data
+      const validation = jobSchema.safeParse(jobData);
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        throw new Error(firstError?.message || 'Validation failed');
+      }
+      
       // Generate job number
       const { data: jobNumberData, error: jobNumberError } = await (supabase as any)
         .rpc('generate_job_number', { _company_id: profile.company_id });
@@ -111,7 +119,7 @@ export function useCreateJob() {
       const { data, error } = await (supabase as any)
         .from('jobs')
         .insert({
-          ...jobData,
+          ...validation.data,
           company_id: profile.company_id,
           job_number: jobNumberData,
           created_by: user?.id,
@@ -126,8 +134,8 @@ export function useCreateJob() {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       toast.success('Job created successfully');
     },
-    onError: (error: any) => {
-      toast.error('Failed to create job: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to create job: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -149,8 +157,8 @@ export function useUpdateJob() {
       queryClient.invalidateQueries({ queryKey: ['job'] });
       toast.success('Job updated successfully');
     },
-    onError: (error: any) => {
-      toast.error('Failed to update job: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to update job: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -171,8 +179,8 @@ export function useDeleteJob() {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       toast.success('Job deleted successfully');
     },
-    onError: (error: any) => {
-      toast.error('Failed to delete job: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to delete job: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -201,17 +209,20 @@ export function useUploadJobPhoto() {
       
       if (uploadError) throw uploadError;
       
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      // Get signed URL since bucket is now private
+      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
         .from('job-photos')
-        .getPublicUrl(fileName);
+        .createSignedUrl(fileName, 3600 * 24 * 7); // 7 days expiry
       
-      // Save to database
+      if (signedUrlError) throw signedUrlError;
+      const photoUrl = signedUrlData?.signedUrl || '';
+      
+      // Save to database (store the file path, not the signed URL)
       const { data, error } = await (supabase as any)
         .from('job_photos')
         .insert({
           job_id: jobId,
-          photo_url: publicUrl,
+          photo_url: fileName, // Store path instead of signed URL
           photo_type: photoType,
           caption,
           uploaded_by: user?.id,
@@ -220,15 +231,15 @@ export function useUploadJobPhoto() {
         .single();
       
       if (error) throw error;
-      return data;
+      return { ...data, photo_url: photoUrl }; // Return with signed URL for immediate display
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['job'] });
       toast.success('Photo uploaded successfully');
     },
-    onError: (error: any) => {
-      toast.error('Failed to upload photo: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to upload photo: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -250,8 +261,8 @@ export function useDeleteJobPhoto() {
       queryClient.invalidateQueries({ queryKey: ['job'] });
       toast.success('Photo deleted');
     },
-    onError: (error: any) => {
-      toast.error('Failed to delete photo: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to delete photo: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -303,8 +314,8 @@ export function useImportQuoteToJob() {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       toast.success('Job created from quote');
     },
-    onError: (error: any) => {
-      toast.error('Failed to import quote: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to import quote: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -409,8 +420,8 @@ export function useConvertJobToInvoice() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       toast.success('Invoice created from job');
     },
-    onError: (error: any) => {
-      toast.error('Failed to convert job to invoice: ' + error.message);
+    onError: (error: unknown) => {
+      toast.error('Failed to convert job to invoice: ' + sanitizeErrorMessage(error));
     },
   });
 }
