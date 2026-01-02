@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
 import { useSignJobCompletion } from '@/hooks/useSignatures';
+import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter, PenTool } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter, PenTool, Send } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
@@ -104,6 +105,7 @@ const Jobs = () => {
   const archiveJob = useArchiveJob();
   const unarchiveJob = useUnarchiveJob();
   const signJobCompletion = useSignJobCompletion();
+  const sendSignatureRequest = useSendSignatureRequest();
   
   // Undo-able delete
   const { scheduleDelete: scheduleJobDelete, filterPendingDeletes: filterPendingJobDeletes } = useUndoableDelete(
@@ -488,13 +490,14 @@ const Jobs = () => {
       signerName,
       customerId: signatureJob.customer_id,
     });
-    // Update viewing job with the new signature if it's open
+    // Update viewing job with the new signature and status if it's open
     if (viewingJob?.id === signatureJob.id) {
       setViewingJob({
         ...viewingJob,
         completion_signature_id: signature.id,
         completion_signed_at: new Date().toISOString(),
         completion_signed_by: signerName,
+        status: 'completed',
       } as any);
     }
     setSignatureDialogOpen(false);
@@ -504,6 +507,23 @@ const Jobs = () => {
   const handleViewSignature = (signatureId: string) => {
     setViewSignatureId(signatureId);
     setViewSignatureOpen(true);
+  };
+
+  const handleSendSignatureRequest = (job: Job) => {
+    const customer = safeCustomers.find(c => c.id === job.customer_id);
+    if (!customer?.email) {
+      toast.error('Customer does not have an email address');
+      return;
+    }
+    sendSignatureRequest.mutate({
+      documentType: 'job',
+      documentId: job.id,
+      recipientEmail: customer.email,
+      recipientName: customer.name,
+      companyName: company?.name || 'Company',
+      documentNumber: job.job_number,
+      customerId: customer.id,
+    });
   };
   const getStatusColor = (status: Job['status']) => {
     switch (status) {
@@ -1018,10 +1038,18 @@ const Jobs = () => {
                                   View Signature
                                 </DropdownMenuItem>
                               ) : (job.status === 'completed' || job.status === 'in_progress') && (
-                                <DropdownMenuItem onClick={() => handleOpenSignatureDialog(job)}>
-                                  <PenTool className="w-4 h-4 mr-2" />
-                                  Collect Completion Signature
-                                </DropdownMenuItem>
+                                <>
+                                  <DropdownMenuItem onClick={() => handleOpenSignatureDialog(job)}>
+                                    <PenTool className="w-4 h-4 mr-2" />
+                                    Collect Completion Signature
+                                  </DropdownMenuItem>
+                                  {job.customer?.email && (
+                                    <DropdownMenuItem onClick={() => handleSendSignatureRequest(job)}>
+                                      <Send className="w-4 h-4 mr-2" />
+                                      Send Signature Request
+                                    </DropdownMenuItem>
+                                  )}
+                                </>
                               )}
                               {job.archived_at ? (
                                 <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
@@ -1192,10 +1220,18 @@ const Jobs = () => {
                                   View Signature
                                 </DropdownMenuItem>
                               ) : (job.status === 'completed' || job.status === 'in_progress') && (
-                                <DropdownMenuItem onClick={() => handleOpenSignatureDialog(job)}>
-                                  <PenTool className="w-4 h-4 mr-2" />
-                                  Collect Completion Signature
-                                </DropdownMenuItem>
+                                <>
+                                  <DropdownMenuItem onClick={() => handleOpenSignatureDialog(job)}>
+                                    <PenTool className="w-4 h-4 mr-2" />
+                                    Collect Completion Signature
+                                  </DropdownMenuItem>
+                                  {job.customer?.email && (
+                                    <DropdownMenuItem onClick={() => handleSendSignatureRequest(job)}>
+                                      <Send className="w-4 h-4 mr-2" />
+                                      Send Signature Request
+                                    </DropdownMenuItem>
+                                  )}
+                                </>
                               )}
                               {job.archived_at ? (
                                 <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>

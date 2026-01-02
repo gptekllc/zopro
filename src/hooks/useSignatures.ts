@@ -99,12 +99,14 @@ export function useSignInvoice() {
 
       if (sigError) throw sigError;
 
-      // Update invoice with signature
+      // Update invoice with signature and mark as paid
       const { error: invoiceError } = await (supabase as any)
         .from('invoices')
         .update({
           signature_id: signature.id,
           signed_at: new Date().toISOString(),
+          status: 'paid',
+          paid_at: new Date().toISOString(),
         })
         .eq('id', invoiceId);
 
@@ -154,13 +156,14 @@ export function useSignJobCompletion() {
 
       if (sigError) throw sigError;
 
-      // Update job with completion signature
+      // Update job with completion signature and mark as completed
       const { error: jobError } = await (supabase as any)
         .from('jobs')
         .update({
           completion_signature_id: signature.id,
           completion_signed_at: new Date().toISOString(),
           completion_signed_by: signerName,
+          status: 'completed',
         })
         .eq('id', jobId);
 
