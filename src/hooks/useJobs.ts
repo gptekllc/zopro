@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { jobSchema, sanitizeErrorMessage } from '@/lib/validation';
 import { compressImage } from '@/lib/imageCompression';
 import { useEffect } from 'react';
+import { calculateDiscountAmount } from '@/components/ui/discount-input';
 
 export interface JobItem {
   id: string;
@@ -39,6 +40,8 @@ export interface Job {
   subtotal: number | null;
   tax: number | null;
   total: number | null;
+  discount_type: 'amount' | 'percentage' | null;
+  discount_value: number | null;
   estimated_duration?: number | null;
   customer?: { name: string; email: string | null; phone: string | null; address: string | null; city: string | null; state: string | null; zip: string | null };
   assignee?: { full_name: string | null; employment_status?: string | null };
@@ -182,8 +185,10 @@ export function useCreateJob() {
       // Calculate totals from items
       const items = jobData.items || [];
       const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const tax = subtotal * taxRate;
-      const total = subtotal + tax;
+      const discountAmount = calculateDiscountAmount(subtotal, (validation.data as any).discount_type, (validation.data as any).discount_value);
+      const afterDiscount = subtotal - discountAmount;
+      const tax = afterDiscount * taxRate;
+      const total = afterDiscount + tax;
       
       const { data, error } = await (supabase as any)
         .from('jobs')
@@ -254,8 +259,10 @@ export function useUpdateJob() {
         const taxRate = (company?.tax_rate ?? 8.25) / 100;
         
         const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-        const tax = subtotal * taxRate;
-        const total = subtotal + tax;
+        const discountAmount = calculateDiscountAmount(subtotal, (updates as any).discount_type, (updates as any).discount_value);
+        const afterDiscount = subtotal - discountAmount;
+        const tax = afterDiscount * taxRate;
+        const total = afterDiscount + tax;
         
         (updates as any).subtotal = subtotal;
         (updates as any).tax = tax;

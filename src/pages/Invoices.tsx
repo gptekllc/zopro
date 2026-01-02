@@ -29,6 +29,7 @@ import { InlineCustomerForm } from "@/components/customers/InlineCustomerForm";
 import { SignatureSection } from "@/components/signatures/SignatureSection";
 import { ConstrainedPanel } from "@/components/ui/constrained-panel";
 import { formatAmount } from "@/lib/formatAmount";
+import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
 interface LineItem {
   id: string;
   description: string;
@@ -129,6 +130,8 @@ const Invoices = () => {
     notes: string;
     status: string;
     dueDays: number;
+    discountType: 'amount' | 'percentage';
+    discountValue: number;
   }>({
     customerId: "",
     assignedTo: "",
@@ -140,7 +143,9 @@ const Invoices = () => {
     }],
     notes: "",
     status: "draft",
-    dueDays: 30
+    dueDays: 30,
+    discountType: "amount",
+    discountValue: 0
   });
 
   // Handle URL param to auto-open invoice detail
@@ -187,7 +192,9 @@ const Invoices = () => {
       }],
       notes: "",
       status: "draft",
-      dueDays: 30
+      dueDays: 30,
+      discountType: "amount",
+      discountValue: 0
     });
     setEditingInvoice(null);
   };
@@ -229,6 +236,8 @@ const Invoices = () => {
       return;
     }
     const subtotal = calculateTotal(formData.items);
+    const discountAmount = calculateDiscountAmount(subtotal, formData.discountType, formData.discountValue);
+    const afterDiscount = subtotal - discountAmount;
     const invoiceData = {
       customer_id: formData.customerId,
       assigned_to: formData.assignedTo || null,
@@ -237,7 +246,9 @@ const Invoices = () => {
       due_date: format(addDays(new Date(), formData.dueDays), "yyyy-MM-dd"),
       subtotal,
       tax: 0,
-      total: subtotal
+      total: afterDiscount,
+      discount_type: formData.discountValue > 0 ? formData.discountType : null,
+      discount_value: formData.discountValue > 0 ? formData.discountValue : 0
     };
     try {
       const itemsData = formData.items.map(item => ({
@@ -283,7 +294,9 @@ const Invoices = () => {
       }],
       notes: invoice.notes || "",
       status: invoice.status as any,
-      dueDays: 30
+      dueDays: 30,
+      discountType: (invoice.discount_type as 'amount' | 'percentage') || "amount",
+      discountValue: Number(invoice.discount_value) || 0
     });
     setEditingInvoice(invoice.id);
     openEditDialog(true);
@@ -348,7 +361,9 @@ const Invoices = () => {
       }],
       notes: invoice.notes || "",
       status: "draft",
-      dueDays: 30
+      dueDays: 30,
+      discountType: (invoice.discount_type as 'amount' | 'percentage') || "amount",
+      discountValue: Number(invoice.discount_value) || 0
     });
     setEditingInvoice(null);
     openEditDialog(true);
@@ -617,8 +632,28 @@ const Invoices = () => {
                         </div>
                       </div>)}
 
-                    <div className="text-right font-semibold text-lg">
-                      Total: ${calculateTotal(formData.items).toLocaleString()}
+                    {/* Discount and Totals */}
+                    <div className="border-t pt-3 space-y-2">
+                      <DiscountInput
+                        discountType={formData.discountType}
+                        discountValue={formData.discountValue}
+                        onDiscountTypeChange={(type) => setFormData({ ...formData, discountType: type })}
+                        onDiscountValueChange={(value) => setFormData({ ...formData, discountValue: value })}
+                      />
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal:</span>
+                        <span>${calculateTotal(formData.items).toLocaleString()}</span>
+                      </div>
+                      {formData.discountValue > 0 && (
+                        <div className="flex justify-between text-sm text-success">
+                          <span>Discount ({formatDiscount(formData.discountType, formData.discountValue)}):</span>
+                          <span>-${calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue).toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-semibold text-lg pt-1 border-t">
+                        <span>Total:</span>
+                        <span>${(calculateTotal(formData.items) - calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue)).toLocaleString()}</span>
+                      </div>
                     </div>
                   </div>
 
@@ -1045,11 +1080,17 @@ const Invoices = () => {
 
               {/* Totals */}
               <div className="flex justify-end">
-                <div className="w-full sm:w-48 space-y-1">
+                <div className="w-full sm:w-56 space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>${Number(viewingInvoice.subtotal).toLocaleString()}</span>
                   </div>
+                  {Number(viewingInvoice.discount_value) > 0 && (
+                    <div className="flex justify-between text-sm text-success">
+                      <span>Discount ({formatDiscount(viewingInvoice.discount_type, Number(viewingInvoice.discount_value))})</span>
+                      <span>-${calculateDiscountAmount(Number(viewingInvoice.subtotal), viewingInvoice.discount_type, Number(viewingInvoice.discount_value)).toLocaleString()}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Tax</span>
                     <span>${Number(viewingInvoice.tax).toLocaleString()}</span>

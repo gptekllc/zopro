@@ -42,6 +42,7 @@ import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { SaveAsTemplateDialog } from '@/components/jobs/SaveAsTemplateDialog';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
+import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 interface LineItem {
@@ -180,7 +181,9 @@ const Jobs = () => {
     scheduled_start: '',
     scheduled_end: '',
     notes: '',
-    estimated_duration: 60
+    estimated_duration: 60,
+    discountType: 'amount' as 'amount' | 'percentage',
+    discountValue: 0
   });
 
   // Line items state
@@ -257,7 +260,9 @@ const Jobs = () => {
       scheduled_start: '',
       scheduled_end: '',
       notes: '',
-      estimated_duration: 60
+      estimated_duration: 60,
+      discountType: 'amount',
+      discountValue: 0
     });
     setLineItems([]);
     setEditingJob(null);
@@ -281,6 +286,8 @@ const Jobs = () => {
       scheduled_end: formData.scheduled_end || null,
       notes: formData.notes || null,
       estimated_duration: formData.estimated_duration || 60,
+      discount_type: formData.discountValue > 0 ? formData.discountType : null,
+      discount_value: formData.discountValue > 0 ? formData.discountValue : 0,
       items: lineItems.map(item => ({
         description: item.description,
         quantity: item.quantity,
@@ -347,7 +354,9 @@ const Jobs = () => {
       scheduled_start: job.scheduled_start ? format(new Date(job.scheduled_start), "yyyy-MM-dd'T'HH:mm") : '',
       scheduled_end: job.scheduled_end ? format(new Date(job.scheduled_end), "yyyy-MM-dd'T'HH:mm") : '',
       notes: job.notes || '',
-      estimated_duration: job.estimated_duration ?? 60
+      estimated_duration: job.estimated_duration ?? 60,
+      discountType: job.discount_type || 'amount',
+      discountValue: Number(job.discount_value) || 0
     });
     // Load existing line items
     if (job.items && job.items.length > 0) {
@@ -378,7 +387,9 @@ const Jobs = () => {
       scheduled_start: '',
       scheduled_end: '',
       notes: job.notes || '',
-      estimated_duration: job.estimated_duration ?? 60
+      estimated_duration: job.estimated_duration ?? 60,
+      discountType: job.discount_type || 'amount',
+      discountValue: Number(job.discount_value) || 0
     });
     // Copy line items
     if (job.items && job.items.length > 0) {
@@ -861,18 +872,31 @@ const Jobs = () => {
                       </div>)}
 
                     {/* Totals */}
-                    <div className="border-t pt-3 space-y-1">
+                    {/* Discount and Totals */}
+                    <div className="border-t pt-3 space-y-2">
+                      <DiscountInput
+                        discountType={formData.discountType}
+                        discountValue={formData.discountValue}
+                        onDiscountTypeChange={(type) => setFormData({ ...formData, discountType: type })}
+                        onDiscountValueChange={(value) => setFormData({ ...formData, discountValue: value })}
+                      />
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal:</span>
                         <span>${calculateSubtotal().toLocaleString()}</span>
                       </div>
+                      {formData.discountValue > 0 && (
+                        <div className="flex justify-between text-sm text-success">
+                          <span>Discount ({formatDiscount(formData.discountType, formData.discountValue)}):</span>
+                          <span>-${calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue).toLocaleString()}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Tax ({taxRate}%):</span>
                         <span>${calculateTax().toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between font-semibold">
+                      <div className="flex justify-between font-semibold pt-1 border-t">
                         <span>Total:</span>
-                        <span>${calculateTotal().toLocaleString()}</span>
+                        <span>${(calculateTotal() - calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue)).toLocaleString()}</span>
                       </div>
                     </div>
                   </div> : <p className="text-sm text-muted-foreground text-center py-4">
@@ -1365,15 +1389,21 @@ const Jobs = () => {
                             </div>)}
                         </div>
                         <div className="flex flex-col items-end gap-1 text-sm">
-                          <div className="flex justify-between w-full sm:w-48">
+                          <div className="flex justify-between w-full sm:w-56">
                             <span className="text-muted-foreground">Subtotal:</span>
                             <span>${Number(viewingJob.subtotal ?? 0).toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between w-full sm:w-48">
+                          {Number(viewingJob.discount_value) > 0 && (
+                            <div className="flex justify-between w-full sm:w-56 text-success">
+                              <span>Discount ({formatDiscount(viewingJob.discount_type, Number(viewingJob.discount_value))}):</span>
+                              <span>-${calculateDiscountAmount(Number(viewingJob.subtotal ?? 0), viewingJob.discount_type, Number(viewingJob.discount_value)).toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between w-full sm:w-56">
                             <span className="text-muted-foreground">Tax ({taxRate}%):</span>
                             <span>${Number(viewingJob.tax ?? 0).toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between w-full sm:w-48 font-semibold text-base">
+                          <div className="flex justify-between w-full sm:w-56 font-semibold text-base pt-1 border-t">
                             <span>Total:</span>
                             <span>${Number(viewingJob.total ?? 0).toFixed(2)}</span>
                           </div>

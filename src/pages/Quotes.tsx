@@ -34,6 +34,7 @@ import { CreateJobFromQuoteDialog, AddQuoteItemsToJobDialog } from '@/components
 import { SaveAsQuoteTemplateDialog } from '@/components/quotes/SaveAsQuoteTemplateDialog';
 import { SelectQuoteTemplateDialog } from '@/components/quotes/SelectQuoteTemplateDialog';
 import { QuoteTemplate } from '@/hooks/useQuoteTemplates';
+import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
 interface LineItem {
   id: string;
   description: string;
@@ -139,6 +140,8 @@ const Quotes = () => {
     status: string;
     validDays: number;
     createdBy: string;
+    discountType: 'amount' | 'percentage';
+    discountValue: number;
   }>({
     customerId: '',
     items: [{
@@ -150,7 +153,9 @@ const Quotes = () => {
     notes: '',
     status: 'draft',
     validDays: 30,
-    createdBy: ''
+    createdBy: '',
+    discountType: 'amount',
+    discountValue: 0
   });
 
   // Handle URL param to auto-open quote detail
@@ -197,7 +202,9 @@ const Quotes = () => {
       notes: '',
       status: 'draft',
       validDays: 30,
-      createdBy: ''
+      createdBy: '',
+      discountType: 'amount',
+      discountValue: 0
     });
     setEditingQuote(null);
   };
@@ -239,6 +246,8 @@ const Quotes = () => {
       return;
     }
     const subtotal = calculateTotal(formData.items);
+    const discountAmount = calculateDiscountAmount(subtotal, formData.discountType, formData.discountValue);
+    const afterDiscount = subtotal - discountAmount;
     const quoteData: any = {
       customer_id: formData.customerId,
       notes: formData.notes || null,
@@ -246,7 +255,9 @@ const Quotes = () => {
       valid_until: format(addDays(new Date(), formData.validDays), 'yyyy-MM-dd'),
       subtotal,
       tax: 0,
-      total: subtotal
+      total: afterDiscount,
+      discount_type: formData.discountValue > 0 ? formData.discountType : null,
+      discount_value: formData.discountValue > 0 ? formData.discountValue : 0
     };
 
     // Include created_by if set
@@ -297,7 +308,9 @@ const Quotes = () => {
       notes: quote.notes || '',
       status: quote.status as any,
       validDays: 30,
-      createdBy: quote.created_by || ''
+      createdBy: quote.created_by || '',
+      discountType: (quote.discount_type as 'amount' | 'percentage') || 'amount',
+      discountValue: Number(quote.discount_value) || 0
     });
     setEditingQuote(quote.id);
     openEditDialog(true);
@@ -423,7 +436,9 @@ const Quotes = () => {
       notes: quote.notes || '',
       status: 'draft',
       validDays: 30,
-      createdBy: ''
+      createdBy: '',
+      discountType: (quote.discount_type as 'amount' | 'percentage') || 'amount',
+      discountValue: Number(quote.discount_value) || 0
     });
     setEditingQuote(null);
     openEditDialog(true);
@@ -450,7 +465,9 @@ const Quotes = () => {
       notes: template.notes || '',
       status: 'draft',
       validDays: template.valid_days || 30,
-      createdBy: ''
+      createdBy: '',
+      discountType: 'amount',
+      discountValue: 0
     });
     setEditingQuote(null);
     openEditDialog(true);
@@ -663,8 +680,28 @@ const Quotes = () => {
                         </div>
                       </div>)}
 
-                    <div className="text-right font-semibold text-lg">
-                      Total: ${calculateTotal(formData.items).toLocaleString()}
+                    {/* Discount and Totals */}
+                    <div className="border-t pt-3 space-y-2">
+                      <DiscountInput
+                        discountType={formData.discountType}
+                        discountValue={formData.discountValue}
+                        onDiscountTypeChange={(type) => setFormData({ ...formData, discountType: type })}
+                        onDiscountValueChange={(value) => setFormData({ ...formData, discountValue: value })}
+                      />
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal:</span>
+                        <span>${calculateTotal(formData.items).toLocaleString()}</span>
+                      </div>
+                      {formData.discountValue > 0 && (
+                        <div className="flex justify-between text-sm text-success">
+                          <span>Discount ({formatDiscount(formData.discountType, formData.discountValue)}):</span>
+                          <span>-${calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue).toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-semibold text-lg pt-1 border-t">
+                        <span>Total:</span>
+                        <span>${(calculateTotal(formData.items) - calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue)).toLocaleString()}</span>
+                      </div>
                     </div>
                   </div>
                   
@@ -1051,17 +1088,23 @@ const Quotes = () => {
 
               {/* Totals */}
               <div className="flex justify-end">
-                <div className="w-full sm:w-48 space-y-1">
+                <div className="w-full sm:w-56 space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>${Number(viewingQuote.subtotal).toLocaleString()}</span>
                   </div>
+                  {Number(viewingQuote.discount_value) > 0 && (
+                    <div className="flex justify-between text-sm text-success">
+                      <span>Discount ({formatDiscount(viewingQuote.discount_type, Number(viewingQuote.discount_value))})</span>
+                      <span>-${calculateDiscountAmount(Number(viewingQuote.subtotal), viewingQuote.discount_type, Number(viewingQuote.discount_value)).toLocaleString()}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Tax</span>
                     <span>${Number(viewingQuote.tax).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
-                    
+                    <span>Total</span>
                     <span>${Number(viewingQuote.total).toLocaleString()}</span>
                   </div>
                 </div>
