@@ -66,6 +66,7 @@ const Quotes = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
   const [viewingQuote, setViewingQuote] = useState<typeof quotes[0] | null>(null);
+  const [quoteToDelete, setQuoteToDelete] = useState<typeof quotes[0] | null>(null);
 
   // Wrapped setters for scroll restoration
   const openViewingQuote = useCallback((quote: typeof quotes[0] | null) => {
@@ -225,8 +226,15 @@ const Quotes = () => {
     openEditDialog(true);
   };
 
-  const handleDeleteClick = (id: string) => {
-    scheduleQuoteDelete(id);
+  const handleDeleteClick = (quote: typeof quotes[0]) => {
+    setQuoteToDelete(quote);
+  };
+
+  const handleConfirmDelete = () => {
+    if (quoteToDelete) {
+      scheduleQuoteDelete(quoteToDelete.id);
+      setQuoteToDelete(null);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -599,7 +607,7 @@ const Quotes = () => {
                           Email Quote
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDeleteClick(quote.id)} className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => handleDeleteClick(quote)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -709,7 +717,7 @@ const Quotes = () => {
                           </>
                         )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDeleteClick(quote.id)} className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => handleDeleteClick(quote)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -932,6 +940,25 @@ const Quotes = () => {
         onConfirm={handleAddItemsToJob}
         isPending={addItemsToJob.isPending}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!quoteToDelete} onOpenChange={(open) => !open && setQuoteToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Quote</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete quote "{quoteToDelete?.quote_number}"? 
+              You can undo this action within a few seconds.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Mobile Floating Action Button */}
       <Button
