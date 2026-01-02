@@ -235,48 +235,6 @@ const Profile = () => {
         </CardContent>
       </Card>
 
-      {/* On Leave Status Card */}
-      <Card className={isOnLeave ? 'border-yellow-500/50 bg-yellow-500/5' : ''}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className={`w-5 h-5 ${isOnLeave ? 'text-yellow-600' : ''}`} />
-            Availability Status
-          </CardTitle>
-          <CardDescription>
-            Set yourself as on leave when you're unavailable for job assignments
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="font-medium">On Leave</p>
-              <p className="text-sm text-muted-foreground">
-                {isOnLeave 
-                  ? "You won't be assigned to new jobs while on leave"
-                  : "Toggle this when you need time off"
-                }
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {isUpdatingStatus && <Loader2 className="w-4 h-4 animate-spin" />}
-              <Switch
-                checked={isOnLeave}
-                onCheckedChange={handleOnLeaveToggle}
-                disabled={isUpdatingStatus}
-              />
-            </div>
-          </div>
-          {isOnLeave && (
-            <div className="mt-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-              <p className="text-sm text-yellow-600 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
-                You are currently marked as on leave. Team members will see this status.
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Edit Profile Form */}
       <Card>
         <CardHeader>
@@ -362,6 +320,48 @@ const Profile = () => {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* On Leave Status */}
+      <Card className={isOnLeave ? 'border-yellow-500/50 bg-yellow-500/5' : ''}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className={`w-5 h-5 ${isOnLeave ? 'text-yellow-600' : ''}`} />
+            Availability Status
+          </CardTitle>
+          <CardDescription>
+            Set yourself as on leave when you're unavailable for job assignments
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="font-medium">On Leave</p>
+              <p className="text-sm text-muted-foreground">
+                {isOnLeave 
+                  ? "You won't be assigned to new jobs while on leave"
+                  : "Toggle this when you need time off"
+                }
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isUpdatingStatus && <Loader2 className="w-4 h-4 animate-spin" />}
+              <Switch
+                checked={isOnLeave}
+                onCheckedChange={handleOnLeaveToggle}
+                disabled={isUpdatingStatus}
+              />
+            </div>
+          </div>
+          {isOnLeave && (
+            <div className="mt-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+              <p className="text-sm text-yellow-600 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                You are currently marked as on leave. Team members will see this status.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -41,7 +41,7 @@ const navItems = [
   { icon: FileText, label: 'Quotes', path: '/quotes', roles: ['admin', 'technician'] },
   { icon: Receipt, label: 'Invoices', path: '/invoices', roles: ['admin', 'technician', 'customer'] },
   { icon: Bell, label: 'Notifications', path: '/notifications', roles: ['admin', 'manager'] },
-  { icon: UserCog, label: 'Technicians', path: '/technicians', roles: ['admin'] },
+  { icon: UserCog, label: 'Technicians', path: '/technicians', roles: ['admin', 'technician'] },
   { icon: Building2, label: 'Company', path: '/company', roles: ['admin'] },
   { icon: Shield, label: 'Super Admin', path: '/super-admin', roles: ['super_admin'] },
 ];
