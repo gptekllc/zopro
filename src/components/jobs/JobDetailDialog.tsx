@@ -4,12 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   Edit, PenTool, Calendar, User, Briefcase, 
-  Clock, FileText, ArrowUp, ArrowDown, Plus
+  Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerJob } from '@/hooks/useCustomerHistory';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
-import { useJobRelatedQuotes, useConvertJobToQuote, Job } from '@/hooks/useJobs';
+import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job } from '@/hooks/useJobs';
 import { Quote } from '@/hooks/useQuotes';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 
@@ -53,6 +53,7 @@ export function JobDetailDialog({
     job?.quote_id || null
   );
   const convertJobToQuote = useConvertJobToQuote();
+  const convertJobToInvoice = useConvertJobToInvoice();
 
   if (!job) return null;
 
@@ -86,6 +87,37 @@ export function JobDetailDialog({
       items: [], // Will use job items if available
     };
     convertJobToQuote.mutate(jobForConversion);
+  };
+
+  const handleCreateInvoice = () => {
+    const jobForConversion: Job = {
+      id: job.id,
+      job_number: job.job_number,
+      company_id: '',
+      customer_id: job.customer_id,
+      quote_id: job.quote_id,
+      assigned_to: job.assigned_to,
+      status: job.status,
+      priority: job.priority,
+      title: job.title,
+      description: job.description,
+      scheduled_start: job.scheduled_start,
+      scheduled_end: job.scheduled_end,
+      actual_start: job.actual_start,
+      actual_end: job.actual_end,
+      notes: job.notes,
+      created_by: null,
+      created_at: job.created_at,
+      updated_at: '',
+      archived_at: null,
+      subtotal: null,
+      tax: null,
+      total: null,
+      discount_type: null,
+      discount_value: null,
+      items: [],
+    };
+    convertJobToInvoice.mutate(jobForConversion);
   };
 
   return (
@@ -298,8 +330,17 @@ export function JobDetailDialog({
               onClick={handleCreateUpsellQuote}
               disabled={convertJobToQuote.isPending}
             >
-              <Plus className="w-4 h-4 mr-1" />
+              <FileText className="w-4 h-4 mr-1" />
               Create Quote
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleCreateInvoice}
+              disabled={convertJobToInvoice.isPending}
+            >
+              <Receipt className="w-4 h-4 mr-1" />
+              Create Invoice
             </Button>
             <Button variant="outline" size="sm" onClick={() => onEdit?.(job.id)}>
               <Edit className="w-4 h-4 mr-1" /> Open in Jobs
