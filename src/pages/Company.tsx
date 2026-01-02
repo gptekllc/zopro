@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Users } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Users, PenTool } from 'lucide-react';
 import TeamMembersManager from '@/components/team/TeamMembersManager';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -36,6 +37,9 @@ const Company = () => {
     late_fee_percentage: 0,
     default_payment_method: 'any',
   });
+  const [signatureSettings, setSignatureSettings] = useState({
+    require_job_completion_signature: false,
+  });
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formInitialized, setFormInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
@@ -58,6 +62,9 @@ const Company = () => {
       late_fee_percentage: company.late_fee_percentage ?? 0,
       default_payment_method: company.default_payment_method ?? 'any',
     });
+    setSignatureSettings({
+      require_job_completion_signature: company.require_job_completion_signature ?? false,
+    });
     setLogoUrl(company.logo_url || null);
     setFormInitialized(true);
   }
@@ -77,6 +84,15 @@ const Company = () => {
       payment_terms_days: billingData.payment_terms_days,
       late_fee_percentage: billingData.late_fee_percentage,
       default_payment_method: billingData.default_payment_method,
+    });
+  };
+
+  const handleSignatureSettingsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!company) return;
+    await updateCompany.mutateAsync({ 
+      id: company.id, 
+      require_job_completion_signature: signatureSettings.require_job_completion_signature,
     });
   };
 
@@ -382,6 +398,47 @@ const Company = () => {
               </form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="billing">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <PenTool className="w-5 h-5" />
+                  Signature Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSignatureSettingsSubmit} className="space-y-6 max-w-xl">
+                  <div className="flex items-center justify-between space-x-4">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="require_signature" className="font-medium">
+                        Require Customer Signature for Job Completion
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        When enabled, jobs cannot be marked as completed without a customer signature
+                      </p>
+                    </div>
+                    <Switch
+                      id="require_signature"
+                      checked={signatureSettings.require_job_completion_signature}
+                      onCheckedChange={(checked) => setSignatureSettings({ ...signatureSettings, require_job_completion_signature: checked })}
+                    />
+                  </div>
+
+                  <Button type="submit" className="gap-2" disabled={updateCompany.isPending}>
+                    {updateCompany.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    Save Signature Settings
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {isAdmin && (
