@@ -256,11 +256,11 @@ function generateHTML(
 <body>
   <div class="container">
     <div class="header">
-      ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company.name}" class="company-logo" />` : ''}
-      <div class="document-info" style="text-align: right; margin-left: auto;">
+      <div class="document-info" style="text-align: left;">
         <div class="document-type">${title}</div>
         <div class="document-number">${documentNumber}</div>
       </div>
+      ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company.name}" class="company-logo" style="margin-left: auto;" />` : ''}
     </div>
 
     <div class="addresses">
