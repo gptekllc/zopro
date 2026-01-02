@@ -9,6 +9,7 @@ import {
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
+import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 
 interface QuoteDetailDialogProps {
   quote: CustomerQuote | null;
@@ -175,14 +176,16 @@ export function QuoteDetailDialog({
 
           {/* Signature Section */}
           <Separator />
-          <SignatureSection 
-            signatureId={quote.signature_id}
-            title="Customer Signature"
-            onCollectSignature={onCollectSignature ? () => onCollectSignature(quote.id) : undefined}
-            showCollectButton={showCollectButton}
-            collectButtonText="Collect Signature"
-            isCollecting={isCollectingSignature}
-          />
+          <ConstrainedPanel>
+            <SignatureSection 
+              signatureId={quote.signature_id}
+              title="Customer Signature"
+              onCollectSignature={onCollectSignature ? () => onCollectSignature(quote.id) : undefined}
+              showCollectButton={showCollectButton}
+              collectButtonText="Collect Signature"
+              isCollecting={isCollectingSignature}
+            />
+          </ConstrainedPanel>
 
           {/* Send Signature Request Button (separate from in-person collection) */}
           {showCollectButton && !quote.signature_id && customerEmail && onSendSignatureRequest && (

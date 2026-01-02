@@ -26,6 +26,7 @@ import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
+import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 
 interface LineItem {
   id: string;
@@ -1117,7 +1118,7 @@ const Invoices = () => {
               ) : null}
 
               {/* Signature Section */}
-              <div className="sm:max-w-sm">
+              <ConstrainedPanel>
                 <SignatureSection 
                   signatureId={(viewingInvoice as any).signature_id}
                   title="Customer Signature"
@@ -1126,7 +1127,7 @@ const Invoices = () => {
                   collectButtonText="Collect Signature"
                   isCollecting={signInvoice.isPending}
                 />
-              </div>
+              </ConstrainedPanel>
 
               {/* Notes */}
               {viewingInvoice.notes && (
