@@ -1331,7 +1331,32 @@ const Jobs = () => {
                     <div>
                       <Label className="text-muted-foreground text-xs sm:text-sm">Priority</Label>
                       <div className="mt-0.5">
-                        <Badge className={`${getPriorityColor(viewingJob.priority)} text-xs`}>{viewingJob.priority}</Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Badge className={`${getPriorityColor(viewingJob.priority)} cursor-pointer hover:opacity-80 transition-opacity`}>
+                              {viewingJob.priority}
+                              <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                            </Badge>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="bg-popover z-50">
+                            {JOB_PRIORITIES.map(priority => (
+                              <DropdownMenuItem
+                                key={priority}
+                                onClick={() => {
+                                  handlePriorityChange(viewingJob.id, priority);
+                                  setViewingJob(prev => prev ? { ...prev, priority } : null);
+                                }}
+                                disabled={viewingJob.priority === priority}
+                                className={viewingJob.priority === priority ? 'bg-accent' : ''}
+                              >
+                                <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
+                                  {priority}
+                                </Badge>
+                                {viewingJob.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                     {viewingJob.assignee?.full_name && <div>
@@ -1514,17 +1539,35 @@ const Jobs = () => {
               </Tabs>
               
               <DialogFooter className="mt-6 flex-wrap gap-2">
-                {!viewingJob.quote_id && <Button variant="outline" onClick={() => {
-              convertToQuote.mutate(viewingJob);
-              openViewingJob(null);
-            }} disabled={convertToQuote.isPending}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Create Quote
-                  </Button>}
                 <Button variant="outline" onClick={() => handleEdit(viewingJob)}>
                   <Edit className="w-4 h-4 mr-2" />
-                  Edit Job
+                  Edit
                 </Button>
+                <Button variant="outline" onClick={() => {
+                  handleDuplicate(viewingJob);
+                  openViewingJob(null);
+                }}>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Duplicate
+                </Button>
+                {!viewingJob.quote_id && (
+                  <Button variant="outline" onClick={() => {
+                    convertToQuote.mutate(viewingJob);
+                    openViewingJob(null);
+                  }} disabled={convertToQuote.isPending}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Create Quote
+                  </Button>
+                )}
+                {viewingJob.status === 'completed' && (
+                  <Button onClick={() => {
+                    convertToInvoice.mutate(viewingJob);
+                    openViewingJob(null);
+                  }} disabled={convertToInvoice.isPending}>
+                    <Receipt className="w-4 h-4 mr-2" />
+                    Create Invoice
+                  </Button>
+                )}
               </DialogFooter>
             </>}
         </DialogContent>
