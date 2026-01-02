@@ -97,8 +97,8 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center gap-2">
               <CreditCard className="w-5 h-5" />
               <CardTitle>Stripe Payments</CardTitle>
@@ -122,7 +122,7 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
                 </AlertDescription>
               </Alert>
               
-              <Button onClick={handleConnectStripe} disabled={isConnecting} className="gap-2">
+              <Button onClick={handleConnectStripe} disabled={isConnecting} className="gap-2 w-full sm:w-auto">
                 {isConnecting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
@@ -143,7 +143,7 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
                 </AlertDescription>
               </Alert>
               
-              <Button onClick={handleConnectStripe} disabled={isConnecting} className="gap-2">
+              <Button onClick={handleConnectStripe} disabled={isConnecting} className="gap-2 w-full sm:w-auto">
                 {isConnecting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
@@ -157,7 +157,7 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
           {hasStripeAccount && isOnboardingComplete && (
             <>
               <div className="space-y-4">
-                <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-muted/50 rounded-lg">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-2">
                       {chargesEnabled ? (
@@ -183,21 +183,19 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <Button 
-                  onClick={handleOpenDashboard} 
-                  disabled={isLoadingDashboard}
-                  variant="outline"
-                  className="gap-2"
-                >
-                  {isLoadingDashboard ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <ExternalLink className="w-4 h-4" />
-                  )}
-                  Manage Stripe Account
-                </Button>
-              </div>
+              <Button 
+                onClick={handleOpenDashboard} 
+                disabled={isLoadingDashboard}
+                variant="outline"
+                className="gap-2 w-full sm:w-auto"
+              >
+                {isLoadingDashboard ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="w-4 h-4" />
+                )}
+                Manage Stripe Account
+              </Button>
               
               <p className="text-sm text-muted-foreground">
                 Manage your bank account, view payouts, and update your Stripe settings in the Stripe Dashboard.
@@ -220,8 +218,8 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-              <div className="space-y-1">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-muted/50 rounded-lg">
+              <div className="space-y-1 flex-1">
                 <Label htmlFor="stripe-payments-toggle" className="text-base font-medium">
                   Accept Online Card Payments
                 </Label>
