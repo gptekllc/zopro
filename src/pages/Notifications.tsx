@@ -301,19 +301,45 @@ const Notifications = () => {
                 <CardTitle className="text-base lg:text-lg">Activity Feed</CardTitle>
                 <CardDescription className="text-xs">Real-time updates on your business</CardDescription>
               </div>
-              <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'unread')}>
-                <TabsList className="h-7 lg:h-8">
-                  <TabsTrigger value="all" className="text-xs px-2.5">All</TabsTrigger>
-                  <TabsTrigger value="unread" className="text-xs px-2.5">
-                    Unread
-                    {unreadCount > 0 && (
-                      <Badge variant="secondary" className="ml-1.5 text-[10px] h-4 px-1">
-                        {unreadCount}
-                      </Badge>
-                    )}
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
+              <div className="flex items-center gap-2">
+                <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'unread')}>
+                  <TabsList className="h-7 lg:h-8">
+                    <TabsTrigger value="all" className="text-xs px-2.5">All</TabsTrigger>
+                    <TabsTrigger value="unread" className="text-xs px-2.5">
+                      Unread
+                      {unreadCount > 0 && (
+                        <Badge variant="secondary" className="ml-1.5 text-[10px] h-4 px-1">
+                          {unreadCount}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                {notifications.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 lg:h-8 text-xs text-muted-foreground hover:text-destructive"
+                    onClick={async () => {
+                      if (confirm('Are you sure you want to clear all notifications?')) {
+                        const { error } = await supabase
+                          .from('notifications')
+                          .delete()
+                          .eq('user_id', user!.id);
+                        if (error) {
+                          toast.error('Failed to clear notifications');
+                        } else {
+                          setNotifications([]);
+                          toast.success('All notifications cleared');
+                        }
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                    Clear
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="px-3 pb-3 lg:px-4 lg:pb-4 pt-0">
