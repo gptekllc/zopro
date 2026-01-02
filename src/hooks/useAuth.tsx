@@ -11,6 +11,7 @@ interface Profile {
   avatar_url: string | null;
   hourly_rate: number;
   role: string;
+  employment_status: 'active' | 'on_leave' | 'terminated' | null;
 }
 
 interface UserRole {
