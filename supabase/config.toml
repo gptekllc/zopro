@@ -29,3 +29,12 @@ verify_jwt = false
 
 [functions.setup-customer-payment-method]
 verify_jwt = false
+
+[functions.create-stripe-connect-account]
+verify_jwt = true
+
+[functions.stripe-connect-dashboard]
+verify_jwt = true
+
+[functions.stripe-connect-refresh]
+verify_jwt = true

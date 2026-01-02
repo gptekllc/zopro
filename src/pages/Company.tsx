@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Save, Loader2, Globe, Receipt } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard } from 'lucide-react';
 import TeamMembersManager from '@/components/team/TeamMembersManager';
 import LogoUpload from '@/components/company/LogoUpload';
+import StripeConnectSection from '@/components/company/StripeConnectSection';
 import { TIMEZONES } from '@/lib/timezones';
 
 const Company = () => {
@@ -105,6 +106,7 @@ const Company = () => {
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="billing">Billing & Tax</TabsTrigger>
+          {isAdmin && <TabsTrigger value="payments">Payments</TabsTrigger>}
           {isAdmin && <TabsTrigger value="team">Team Members</TabsTrigger>}
         </TabsList>
 
@@ -335,6 +337,12 @@ const Company = () => {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isAdmin && (
+          <TabsContent value="payments">
+            <StripeConnectSection company={company} />
+          </TabsContent>
+        )}
 
         {isAdmin && (
           <TabsContent value="team">

@@ -315,6 +315,43 @@ serve(async (req) => {
       }
     }
 
+    // Handle account.updated - Stripe Connect onboarding status changes
+    if (event.type === "account.updated") {
+      const account = event.data.object as Stripe.Account;
+      logStep("Processing account.updated", { accountId: account.id });
+
+      const companyId = account.metadata?.company_id;
+      
+      if (companyId) {
+        const chargesEnabled = account.charges_enabled ?? false;
+        const payoutsEnabled = account.payouts_enabled ?? false;
+        const detailsSubmitted = account.details_submitted ?? false;
+
+        const { error: updateError } = await supabase
+          .from("companies")
+          .update({
+            stripe_charges_enabled: chargesEnabled,
+            stripe_payouts_enabled: payoutsEnabled,
+            stripe_onboarding_complete: detailsSubmitted && chargesEnabled,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", companyId);
+
+        if (updateError) {
+          logStep("WARNING: Failed to update company Stripe Connect status", { error: updateError.message });
+        } else {
+          logStep("Company Stripe Connect status updated", { 
+            companyId, 
+            chargesEnabled, 
+            payoutsEnabled, 
+            onboardingComplete: detailsSubmitted && chargesEnabled 
+          });
+        }
+      } else {
+        logStep("No company_id in account metadata - skipping");
+      }
+    }
+
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
