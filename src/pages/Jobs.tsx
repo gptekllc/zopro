@@ -835,7 +835,7 @@ const Jobs = () => {
                             </div>
                           </div>
                           <div className="flex justify-end text-sm font-medium">
-                            Total: ${(item.quantity * item.unitPrice).toFixed(2)}
+                            Total: ${(item.quantity * item.unitPrice).toLocaleString()}
                           </div>
                         </div>
                         {/* Desktop layout */}
@@ -850,7 +850,7 @@ const Jobs = () => {
                             <Input type="number" min="0" step="0.01" placeholder="0" value={item.unitPrice === 0 ? '' : item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} />
                           </div>
                           <div className="col-span-1 text-right pt-2 text-sm font-medium">
-                            ${(item.quantity * item.unitPrice).toFixed(2)}
+                            ${(item.quantity * item.unitPrice).toLocaleString()}
                           </div>
                           <div className="col-span-1">
                             <Button type="button" variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="text-destructive">
@@ -864,15 +864,15 @@ const Jobs = () => {
                     <div className="border-t pt-3 space-y-1">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal:</span>
-                        <span>${calculateSubtotal().toFixed(2)}</span>
+                        <span>${calculateSubtotal().toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Tax ({taxRate}%):</span>
-                        <span>${calculateTax().toFixed(2)}</span>
+                        <span>${calculateTax().toLocaleString()}</span>
                       </div>
                       <div className="flex justify-between font-semibold">
                         <span>Total:</span>
-                        <span>${calculateTotal().toFixed(2)}</span>
+                        <span>${calculateTotal().toLocaleString()}</span>
                       </div>
                     </div>
                   </div> : <p className="text-sm text-muted-foreground text-center py-4">
