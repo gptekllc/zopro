@@ -1300,7 +1300,32 @@ const Jobs = () => {
                     <div>
                       <Label className="text-muted-foreground text-xs sm:text-sm">Status</Label>
                       <div className="mt-0.5">
-                        <Badge className={`${getStatusColor(viewingJob.status)} text-xs`}>{viewingJob.status}</Badge>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Badge className={`${getStatusColor(viewingJob.status)} cursor-pointer hover:opacity-80 transition-opacity`}>
+                              {viewingJob.status.replace('_', ' ')}
+                              <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                            </Badge>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="bg-popover z-50">
+                            {JOB_STATUSES.map(status => (
+                              <DropdownMenuItem
+                                key={status}
+                                onClick={() => {
+                                  handleStatusChange(viewingJob.id, status);
+                                  setViewingJob(prev => prev ? { ...prev, status } : null);
+                                }}
+                                disabled={viewingJob.status === status}
+                                className={viewingJob.status === status ? 'bg-accent' : ''}
+                              >
+                                <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
+                                  {status.replace('_', ' ')}
+                                </Badge>
+                                {viewingJob.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                     <div>
