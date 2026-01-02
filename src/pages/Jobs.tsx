@@ -1396,14 +1396,16 @@ const Jobs = () => {
                   </div>
 
                   {/* Completion Signature Section */}
-                  <SignatureSection 
-                    signatureId={(viewingJob as any).completion_signature_id}
-                    title="Customer Completion Signature"
-                    onCollectSignature={() => handleOpenSignatureDialog(viewingJob)}
-                    showCollectButton={viewingJob.status === 'completed' || viewingJob.status === 'in_progress'}
-                    collectButtonText="Collect Completion Signature"
-                    isCollecting={signJobCompletion.isPending}
-                  />
+                  <div className="sm:max-w-sm">
+                    <SignatureSection 
+                      signatureId={(viewingJob as any).completion_signature_id}
+                      title="Customer Completion Signature"
+                      onCollectSignature={() => handleOpenSignatureDialog(viewingJob)}
+                      showCollectButton={viewingJob.status === 'completed' || viewingJob.status === 'in_progress'}
+                      collectButtonText="Collect Completion Signature"
+                      isCollecting={signJobCompletion.isPending}
+                    />
+                  </div>
                 </TabsContent>
                 
                 <TabsContent value="photos" className="mt-4">
