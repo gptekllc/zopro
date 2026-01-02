@@ -278,6 +278,8 @@ const Invoices = () => {
     openEditDialog(true);
     toast.success('Invoice duplicated - make changes and save');
   };
+
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'paid': return 'bg-success/10 text-success';
       case 'sent': return 'bg-primary/10 text-primary';
