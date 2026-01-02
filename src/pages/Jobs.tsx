@@ -21,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -336,6 +336,34 @@ const Jobs = () => {
   };
   const handleDelete = async (jobId: string) => {
     await deleteJob.mutateAsync(jobId);
+  };
+  const handleDuplicate = (job: Job) => {
+    setFormData({
+      customer_id: job.customer_id,
+      quote_id: null, // Don't copy quote reference
+      assigned_to: job.assigned_to,
+      title: `${job.title} (Copy)`,
+      description: job.description || '',
+      priority: job.priority,
+      status: 'draft', // Always start as draft
+      scheduled_start: '',
+      scheduled_end: '',
+      notes: job.notes || '',
+      estimated_duration: job.estimated_duration ?? 60
+    });
+    // Copy line items
+    if (job.items && job.items.length > 0) {
+      setLineItems(job.items.map(item => ({
+        id: crypto.randomUUID(),
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unit_price
+      })));
+    } else {
+      setLineItems([]);
+    }
+    setEditingJob(null); // Not editing, creating new
+    openEditDialog(true);
   };
   const handleImportQuote = () => {
     if (!importQuoteId) return;
@@ -836,6 +864,10 @@ const Jobs = () => {
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDuplicate(job)}>
+                                <Copy className="w-4 h-4 mr-2" />
+                                Duplicate
+                              </DropdownMenuItem>
                               {job.archived_at ? (
                                 <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
                                   <ArchiveRestore className="w-4 h-4 mr-2" />
@@ -967,6 +999,10 @@ const Jobs = () => {
                               <DropdownMenuItem onClick={() => handleEdit(job)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDuplicate(job)}>
+                                <Copy className="w-4 h-4 mr-2" />
+                                Duplicate
                               </DropdownMenuItem>
                               {job.archived_at ? (
                                 <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
