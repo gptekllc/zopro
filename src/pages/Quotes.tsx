@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useJobs, useCreateJobFromQuoteItems, useAddQuoteItemsToJob } from '@/hooks/useJobs';
 import { useConvertQuoteToInvoice, useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
+import { useApproveQuoteWithSignature } from '@/hooks/useSignatures';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,8 +17,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore, PenTool, Eye } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { SignatureDialog } from '@/components/signatures/SignatureDialog';
+import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
@@ -53,6 +56,7 @@ const Quotes = () => {
   const downloadDocument = useDownloadDocument();
   const createJobFromQuote = useCreateJobFromQuoteItems();
   const addItemsToJob = useAddQuoteItemsToJob();
+  const approveWithSignature = useApproveQuoteWithSignature();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
   
   // Undo-able delete
@@ -76,6 +80,12 @@ const Quotes = () => {
   
   // Select template dialog
   const [selectTemplateDialogOpen, setSelectTemplateDialogOpen] = useState(false);
+  
+  // Signature dialogs
+  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+  const [signatureQuote, setSignatureQuote] = useState<Quote | null>(null);
+  const [viewSignatureId, setViewSignatureId] = useState<string | null>(null);
+  const [viewSignatureOpen, setViewSignatureOpen] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [archiveConfirmQuote, setArchiveConfirmQuote] = useState<Quote | null>(null);
@@ -398,6 +408,28 @@ const Quotes = () => {
     await unarchiveQuote.mutateAsync(quote.id);
   };
 
+  const handleOpenSignatureDialog = (quote: Quote) => {
+    setSignatureQuote(quote);
+    setSignatureDialogOpen(true);
+  };
+
+  const handleSignatureComplete = async (signatureData: string, signerName: string) => {
+    if (!signatureQuote) return;
+    await approveWithSignature.mutateAsync({
+      quoteId: signatureQuote.id,
+      signatureData,
+      signerName,
+      customerId: signatureQuote.customer_id,
+    });
+    setSignatureDialogOpen(false);
+    setSignatureQuote(null);
+  };
+
+  const handleViewSignature = (signatureId: string) => {
+    setViewSignatureId(signatureId);
+    setViewSignatureOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -717,7 +749,18 @@ const Quotes = () => {
                           <Mail className="w-4 h-4 mr-2" />
                           Email Quote
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
+                        {/* Signature Actions */}
+                        {quote.signature_id ? (
+                          <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Signature
+                          </DropdownMenuItem>
+                        ) : (quote.status === 'sent' || quote.status === 'draft') && (
+                          <DropdownMenuItem onClick={() => handleOpenSignatureDialog(quote)}>
+                            <PenTool className="w-4 h-4 mr-2" />
+                            Collect Signature
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => handleDeleteClick(quote)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
@@ -818,6 +861,18 @@ const Quotes = () => {
                           <Mail className="w-4 h-4 mr-2" />
                           Email Quote
                         </DropdownMenuItem>
+                        {/* Signature Actions */}
+                        {quote.signature_id ? (
+                          <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Signature
+                          </DropdownMenuItem>
+                        ) : (quote.status === 'sent' || quote.status === 'draft') && (
+                          <DropdownMenuItem onClick={() => handleOpenSignatureDialog(quote)}>
+                            <PenTool className="w-4 h-4 mr-2" />
+                            Collect Signature
+                          </DropdownMenuItem>
+                        )}
                         {quote.status === 'accepted' && (
                           <>
                             <DropdownMenuSeparator />
@@ -1142,6 +1197,30 @@ const Quotes = () => {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Signature Dialog */}
+      <SignatureDialog
+        open={signatureDialogOpen}
+        onOpenChange={(open) => {
+          setSignatureDialogOpen(open);
+          if (!open) setSignatureQuote(null);
+        }}
+        title="Approve Quote"
+        description="Customer signature to approve this quote"
+        signerName={signatureQuote ? customers.find(c => c.id === signatureQuote.customer_id)?.name || '' : ''}
+        onSignatureComplete={handleSignatureComplete}
+        isSubmitting={approveWithSignature.isPending}
+      />
+
+      {/* View Signature Dialog */}
+      <ViewSignatureDialog
+        signatureId={viewSignatureId}
+        open={viewSignatureOpen}
+        onOpenChange={(open) => {
+          setViewSignatureOpen(open);
+          if (!open) setViewSignatureId(null);
+        }}
+      />
     </div>
   );
 };

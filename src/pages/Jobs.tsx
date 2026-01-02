@@ -11,6 +11,7 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
+import { useSignJobCompletion } from '@/hooks/useSignatures';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,8 +24,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter, PenTool } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { SignatureDialog } from '@/components/signatures/SignatureDialog';
+import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import JobCalendar from '@/components/jobs/JobCalendar';
@@ -99,6 +102,7 @@ const Jobs = () => {
   const convertToQuote = useConvertJobToQuote();
   const archiveJob = useArchiveJob();
   const unarchiveJob = useUnarchiveJob();
+  const signJobCompletion = useSignJobCompletion();
   
   // Undo-able delete
   const { scheduleDelete: scheduleJobDelete, filterPendingDeletes: filterPendingJobDeletes } = useUndoableDelete(
@@ -119,6 +123,13 @@ const Jobs = () => {
   const [archiveConfirmJob, setArchiveConfirmJob] = useState<Job | null>(null);
   const [deleteConfirmJob, setDeleteConfirmJob] = useState<Job | null>(null);
   const [saveAsTemplateJob, setSaveAsTemplateJob] = useState<Job | null>(null);
+  
+  // Signature dialogs
+  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+  const [signatureJob, setSignatureJob] = useState<Job | null>(null);
+  const [viewSignatureId, setViewSignatureId] = useState<string | null>(null);
+  const [viewSignatureOpen, setViewSignatureOpen] = useState(false);
+  
   const { data: templates = [] } = useJobTemplates();
   // Wrapped setters for scroll restoration
   const openViewingJob = useCallback((job: Job | null) => {

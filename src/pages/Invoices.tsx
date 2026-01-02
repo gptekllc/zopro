@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
+import { useSignInvoice } from '@/hooks/useSignatures';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,8 +17,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore } from 'lucide-react';
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { SignatureDialog } from '@/components/signatures/SignatureDialog';
+import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
@@ -47,6 +50,7 @@ const Invoices = () => {
   const applyLateFee = useApplyLateFee();
   const emailDocument = useEmailDocument();
   const downloadDocument = useDownloadDocument();
+  const signInvoice = useSignInvoice();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
   
   // Undo-able delete
@@ -65,6 +69,12 @@ const Invoices = () => {
   const [editingInvoice, setEditingInvoice] = useState<string | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<typeof invoices[0] | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = useState<typeof invoices[0] | null>(null);
+  
+  // Signature dialogs
+  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+  const [signatureInvoice, setSignatureInvoice] = useState<Invoice | null>(null);
+  const [viewSignatureId, setViewSignatureId] = useState<string | null>(null);
+  const [viewSignatureOpen, setViewSignatureOpen] = useState(false);
 
   // Wrapped setters for scroll restoration
   const openViewingInvoice = useCallback((invoice: typeof invoices[0] | null) => {
@@ -354,6 +364,28 @@ const Invoices = () => {
 
   const handleUnarchiveInvoice = async (invoice: Invoice) => {
     await unarchiveInvoice.mutateAsync(invoice.id);
+  };
+
+  const handleOpenSignatureDialog = (invoice: Invoice) => {
+    setSignatureInvoice(invoice);
+    setSignatureDialogOpen(true);
+  };
+
+  const handleSignatureComplete = async (signatureData: string, signerName: string) => {
+    if (!signatureInvoice) return;
+    await signInvoice.mutateAsync({
+      invoiceId: signatureInvoice.id,
+      signatureData,
+      signerName,
+      customerId: signatureInvoice.customer_id,
+    });
+    setSignatureDialogOpen(false);
+    setSignatureInvoice(null);
+  };
+
+  const handleViewSignature = (signatureId: string) => {
+    setViewSignatureId(signatureId);
+    setViewSignatureOpen(true);
   };
 
   if (isLoading) {
@@ -690,6 +722,18 @@ const Invoices = () => {
                             </DropdownMenuItem>
                           </>
                         )}
+                        {/* Signature Actions */}
+                        {(invoice as any).signature_id ? (
+                          <DropdownMenuItem onClick={() => handleViewSignature((invoice as any).signature_id)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Signature
+                          </DropdownMenuItem>
+                        ) : invoice.status !== 'paid' && (
+                          <DropdownMenuItem onClick={() => handleOpenSignatureDialog(invoice as Invoice)}>
+                            <PenTool className="w-4 h-4 mr-2" />
+                            Collect Signature
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuSeparator />
                         {(invoice as any).archived_at ? (
                           <DropdownMenuItem onClick={() => handleUnarchiveInvoice(invoice as Invoice)}>
@@ -829,6 +873,18 @@ const Invoices = () => {
                               Mark as Paid
                             </DropdownMenuItem>
                           </>
+                        )}
+                        {/* Signature Actions */}
+                        {(invoice as any).signature_id ? (
+                          <DropdownMenuItem onClick={() => handleViewSignature((invoice as any).signature_id)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Signature
+                          </DropdownMenuItem>
+                        ) : invoice.status !== 'paid' && (
+                          <DropdownMenuItem onClick={() => handleOpenSignatureDialog(invoice as Invoice)}>
+                            <PenTool className="w-4 h-4 mr-2" />
+                            Collect Signature
+                          </DropdownMenuItem>
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleDeleteClick(invoice)} className="text-destructive focus:text-destructive">
@@ -1070,6 +1126,30 @@ const Invoices = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Signature Dialog */}
+      <SignatureDialog
+        open={signatureDialogOpen}
+        onOpenChange={(open) => {
+          setSignatureDialogOpen(open);
+          if (!open) setSignatureInvoice(null);
+        }}
+        title="Sign Invoice"
+        description="Customer signature to acknowledge this invoice"
+        signerName={signatureInvoice ? customers.find(c => c.id === signatureInvoice.customer_id)?.name || '' : ''}
+        onSignatureComplete={handleSignatureComplete}
+        isSubmitting={signInvoice.isPending}
+      />
+
+      {/* View Signature Dialog */}
+      <ViewSignatureDialog
+        signatureId={viewSignatureId}
+        open={viewSignatureOpen}
+        onOpenChange={(open) => {
+          setViewSignatureOpen(open);
+          if (!open) setViewSignatureId(null);
+        }}
+      />
 
       <Button
         className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50"
