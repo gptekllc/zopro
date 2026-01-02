@@ -957,13 +957,20 @@ const TeamMembersManager = () => {
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {AVAILABLE_ROLES.map((role) => (
+                  {AVAILABLE_ROLES.filter(role => {
+                    // Managers cannot assign admin role - only admins can
+                    if (role === 'admin' && !isAdmin) return false;
+                    return true;
+                  }).map((role) => (
                     <SelectItem key={role} value={role}>
                       <span className="capitalize">{role}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {!isAdmin && (
+                <p className="text-xs text-muted-foreground">Only admins can assign the admin role</p>
+              )}
             </div>
 
             <div className="space-y-2">
