@@ -324,162 +324,177 @@ const Quotes = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Quotes</h1>
-          <p className="text-muted-foreground mt-1">{quotes.length} total quotes</p>
-        </div>
-        
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          openEditDialog(open);
-          if (!open) resetForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 hidden sm:flex">
-              <Plus className="w-4 h-4" />
-              Create Quote
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingQuote ? 'Edit Quote' : 'Create New Quote'}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InlineCustomerForm
-                  customers={customers}
-                  selectedCustomerId={formData.customerId}
-                  onCustomerSelect={(value) => setFormData({ ...formData, customerId: value })}
-                />
-                
-                <div className="space-y-2">
-                  <Label>Valid For (days)</Label>
-                  <Input
-                    type="number"
-                    value={formData.validDays}
-                    onChange={(e) => setFormData({ ...formData, validDays: parseInt(e.target.value) || 30 })}
-                  />
-                </div>
-              </div>
-
-              {/* Line Items */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Line Items</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
-                    <Plus className="w-4 h-4 mr-1" /> Add Item
-                  </Button>
-                </div>
-                
-                {formData.items.map((item) => (
-                  <div key={item.id} className="space-y-2 sm:space-y-0">
-                    {/* Mobile layout */}
-                    <div className="sm:hidden space-y-2 p-3 bg-muted/50 rounded-lg">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Quotes</h1>
+            <p className="text-muted-foreground mt-1">{quotes.length} total quotes</p>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-28 sm:w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="sent">Sent</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              openEditDialog(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2 hidden sm:flex">
+                  <Plus className="w-4 h-4" />
+                  Create Quote
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingQuote ? 'Edit Quote' : 'Create New Quote'}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InlineCustomerForm
+                      customers={customers}
+                      selectedCustomerId={formData.customerId}
+                      onCustomerSelect={(value) => setFormData({ ...formData, customerId: value })}
+                    />
+                    
+                    <div className="space-y-2">
+                      <Label>Valid For (days)</Label>
                       <Input
-                        placeholder="Description"
-                        value={item.description}
-                        onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                        type="number"
+                        value={formData.validDays}
+                        onChange={(e) => setFormData({ ...formData, validDays: parseInt(e.target.value) || 30 })}
                       />
-                      <div className="flex gap-2">
-                        <div className="w-20">
-                          <Label className="text-xs text-muted-foreground">Qty</Label>
+                    </div>
+                  </div>
+
+                  {/* Line Items */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label>Line Items</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
+                        <Plus className="w-4 h-4 mr-1" /> Add Item
+                      </Button>
+                    </div>
+                    
+                    {formData.items.map((item) => (
+                      <div key={item.id} className="space-y-2 sm:space-y-0">
+                        {/* Mobile layout */}
+                        <div className="sm:hidden space-y-2 p-3 bg-muted/50 rounded-lg">
+                          <Input
+                            placeholder="Description"
+                            value={item.description}
+                            onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                          />
+                          <div className="flex gap-2">
+                            <div className="w-20">
+                              <Label className="text-xs text-muted-foreground">Qty</Label>
+                              <Input
+                                type="number"
+                                value={item.quantity}
+                                onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <Label className="text-xs text-muted-foreground">Price</Label>
+                              <Input
+                                type="number"
+                                placeholder="0"
+                                value={item.unitPrice === 0 ? '' : item.unitPrice}
+                                onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleRemoveItem(item.id)}
+                                disabled={formData.items.length === 1}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex justify-end text-sm font-medium">
+                            Total: ${(item.quantity * item.unitPrice).toFixed(2)}
+                          </div>
+                        </div>
+                        {/* Desktop layout */}
+                        <div className="hidden sm:flex gap-2 items-start">
+                          <Input
+                            placeholder="Description"
+                            value={item.description}
+                            onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                            className="flex-1"
+                          />
                           <Input
                             type="number"
+                            placeholder="Qty"
                             value={item.quantity}
                             onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                            className="w-20"
                           />
-                        </div>
-                        <div className="flex-1">
-                          <Label className="text-xs text-muted-foreground">Price</Label>
                           <Input
                             type="number"
                             placeholder="0"
                             value={item.unitPrice === 0 ? '' : item.unitPrice}
                             onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                            className="w-24"
                           />
-                        </div>
-                        <div className="flex items-end">
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
                             onClick={() => handleRemoveItem(item.id)}
                             disabled={formData.items.length === 1}
-                            className="text-destructive"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </div>
-                      <div className="flex justify-end text-sm font-medium">
-                        Total: ${(item.quantity * item.unitPrice).toFixed(2)}
-                      </div>
-                    </div>
-                    {/* Desktop layout */}
-                    <div className="hidden sm:flex gap-2 items-start">
-                      <Input
-                        placeholder="Description"
-                        value={item.description}
-                        onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                        className="flex-1"
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Qty"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                        className="w-20"
-                      />
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={item.unitPrice === 0 ? '' : item.unitPrice}
-                        onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                        className="w-24"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveItem(item.id)}
-                        disabled={formData.items.length === 1}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                    ))}
+
+                    <div className="text-right font-semibold text-lg">
+                      Total: ${calculateTotal(formData.items).toLocaleString()}
                     </div>
                   </div>
-                ))}
-
-                <div className="text-right font-semibold text-lg">
-                  Total: ${calculateTotal(formData.items).toLocaleString()}
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={3}
-                />
-              </div>
-              
-              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" className="flex-1" disabled={createQuote.isPending || updateQuote.isPending}>
-                  {(createQuote.isPending || updateQuote.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {editingQuote ? 'Update' : 'Create'} Quote
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
+                  
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      rows={3}
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={createQuote.isPending || updateQuote.isPending}>
+                      {(createQuote.isPending || updateQuote.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      {editingQuote ? 'Update' : 'Create'} Quote
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+        
+        {/* Search bar */}
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -489,18 +504,6 @@ const Quotes = () => {
             className="pl-9"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="sent">Sent</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Quote List */}
