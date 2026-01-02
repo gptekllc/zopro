@@ -1,23 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { User, Mail, Phone, Building2, DollarSign, Loader2, Save } from 'lucide-react';
+import { User, Mail, Phone, Building2, DollarSign, Loader2, Save, Camera } from 'lucide-react';
 import { toast } from 'sonner';
+import { compressImageToFile } from '@/lib/imageCompression';
 
 const Profile = () => {
-  const { user, profile, roles, isLoading: authLoading } = useAuth();
+  const { user, profile, roles, isLoading: authLoading, refreshProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
     phone: '',
     hourly_rate: 0,
+    avatar_url: '',
   });
 
   useEffect(() => {
@@ -27,6 +31,7 @@ const Profile = () => {
         email: profile.email || '',
         phone: profile.phone || '',
         hourly_rate: profile.hourly_rate || 0,
+        avatar_url: profile.avatar_url || '',
       });
     }
   }, [profile]);
@@ -34,6 +39,45 @@ const Profile = () => {
   const getInitials = (name: string | null) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      // Compress to 70kb
+      const compressedFile = await compressImageToFile(file, 70, 400);
+      const fileName = `${user.id}-${Date.now()}.jpg`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(filePath, compressedFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('company-logos')
+        .getPublicUrl(filePath);
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await (supabase as any)
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
+      await refreshProfile();
+      toast.success('Profile photo updated');
+    } catch (error: any) {
+      toast.error('Failed to upload photo: ' + error.message);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -82,11 +126,35 @@ const Profile = () => {
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center gap-6">
-            <Avatar className="w-20 h-20">
-              <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                {getInitials(profile?.full_name)}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="w-20 h-20">
+                <AvatarImage src={formData.avatar_url || undefined} alt={profile?.full_name || 'User'} />
+                <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                  {getInitials(profile?.full_name)}
+                </AvatarFallback>
+              </Avatar>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+              >
+                {isUploadingAvatar ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Camera className="h-4 w-4" />
+                )}
+              </Button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
+            </div>
             <div className="flex-1">
               <h2 className="text-2xl font-semibold">{profile?.full_name || 'User'}</h2>
               <p className="text-muted-foreground">{profile?.email}</p>
