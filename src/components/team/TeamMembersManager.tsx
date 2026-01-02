@@ -75,6 +75,9 @@ const TeamMembersManager = () => {
   const [newMemberRole, setNewMemberRole] = useState<AppRole>('technician');
 
   // Edit member form state
+  const [editFullName, setEditFullName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState<AppRole>('technician');
   const [editEmploymentStatus, setEditEmploymentStatus] = useState<EmploymentStatus>('active');
   const [editHireDate, setEditHireDate] = useState('');
   const [editTerminationDate, setEditTerminationDate] = useState('');
@@ -135,6 +138,9 @@ const TeamMembersManager = () => {
   const updateTeamMemberMutation = useMutation({
     mutationFn: async ({ 
       userId, 
+      full_name,
+      email,
+      role,
       employment_status, 
       hire_date, 
       termination_date,
@@ -142,13 +148,32 @@ const TeamMembersManager = () => {
       hourly_rate 
     }: { 
       userId: string; 
+      full_name: string;
+      email: string;
+      role: AppRole;
       employment_status: EmploymentStatus;
       hire_date: string | null;
       termination_date: string | null;
       phone: string | null;
       hourly_rate: number | null;
     }) => {
+      // Update role in user_roles table
+      const { error: deleteError } = await (supabase as any)
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId);
+      
+      if (deleteError) throw deleteError;
+
+      const { error: insertError } = await (supabase as any)
+        .from('user_roles')
+        .insert({ user_id: userId, role: role });
+      
+      if (insertError) throw insertError;
+
       const updates: Record<string, any> = {
+        full_name: full_name || null,
+        role: role,
         employment_status,
         hire_date: hire_date || null,
         phone: phone || null,
@@ -289,6 +314,9 @@ const TeamMembersManager = () => {
 
   const handleEditMember = (member: TeamMember) => {
     setSelectedMember(member);
+    setEditFullName(member.full_name || '');
+    setEditEmail(member.email || '');
+    setEditRole((getMemberRole(member) as AppRole) || 'technician');
     setEditEmploymentStatus((member.employment_status as EmploymentStatus) || 'active');
     setEditHireDate(member.hire_date || '');
     setEditTerminationDate(member.termination_date || '');
@@ -322,6 +350,9 @@ const TeamMembersManager = () => {
 
     updateTeamMemberMutation.mutate({
       userId: selectedMember.id,
+      full_name: editFullName,
+      email: editEmail,
+      role: editRole,
       employment_status: editEmploymentStatus,
       hire_date: editHireDate || null,
       termination_date: editTerminationDate || null,
@@ -472,33 +503,14 @@ const TeamMembersManager = () => {
                             </TableCell>
                             <TableCell className="text-right">
                               {member.id !== user?.id && (
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleEditMember(member)}
-                                  >
-                                    <Edit className="w-4 h-4 mr-1" />
-                                    Edit
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleRoleChange(member)}
-                                  >
-                                    <UserCog className="w-4 h-4 mr-1" />
-                                    Role
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleRemoveMember(member)}
-                                    className="text-destructive hover:text-destructive"
-                                  >
-                                    <UserMinus className="w-4 h-4 mr-1" />
-                                    Remove
-                                  </Button>
-                                </div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditMember(member)}
+                                >
+                                  <Edit className="w-4 h-4 mr-1" />
+                                  Edit
+                                </Button>
                               )}
                             </TableCell>
                           </TableRow>
@@ -544,7 +556,7 @@ const TeamMembersManager = () => {
                         </div>
 
                         {member.id !== user?.id && (
-                          <div className="flex flex-wrap gap-2 pt-2 border-t">
+                          <div className="flex gap-2 pt-2 border-t">
                             <Button
                               variant="outline"
                               size="sm"
@@ -553,23 +565,6 @@ const TeamMembersManager = () => {
                             >
                               <Edit className="w-4 h-4 mr-1" />
                               Edit
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRoleChange(member)}
-                              className="flex-1"
-                            >
-                              <UserCog className="w-4 h-4 mr-1" />
-                              Role
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRemoveMember(member)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <UserMinus className="w-4 h-4" />
                             </Button>
                           </div>
                         )}
@@ -825,14 +820,52 @@ const TeamMembersManager = () => {
 
       {/* Edit Team Member Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Team Member</DialogTitle>
             <DialogDescription>
-              Update employment details for {selectedMember?.full_name || selectedMember?.email}
+              Update details for {selectedMember?.full_name || selectedMember?.email}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="editFullName">Full Name</Label>
+              <Input
+                id="editFullName"
+                value={editFullName}
+                onChange={(e) => setEditFullName(e.target.value)}
+                placeholder="John Doe"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="editEmail">Email</Label>
+              <Input
+                id="editEmail"
+                type="email"
+                value={editEmail}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="editRole">Role</Label>
+              <Select value={editRole} onValueChange={(v) => setEditRole(v as AppRole)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AVAILABLE_ROLES.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      <span className="capitalize">{role}</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="employmentStatus">Employment Status</Label>
               <Select value={editEmploymentStatus} onValueChange={(v) => setEditEmploymentStatus(v as EmploymentStatus)}>
@@ -897,6 +930,24 @@ const TeamMembersManager = () => {
                 onChange={(e) => setEditHourlyRate(e.target.value)}
                 placeholder="0.00"
               />
+            </div>
+
+            {/* Remove Member Section */}
+            <div className="pt-4 border-t">
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  setIsEditDialogOpen(false);
+                  handleRemoveMember(selectedMember!);
+                }}
+                className="w-full"
+              >
+                <UserMinus className="w-4 h-4 mr-2" />
+                Remove Team Member
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                This will remove the member from your company. You can restore them later.
+              </p>
             </div>
           </div>
           <DialogFooter>
