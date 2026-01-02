@@ -12,6 +12,8 @@ import {
   isInvoiceOverdue,
   getTotalWithLateFee,
   Invoice,
+  useSendPaymentReminder,
+  useInvoiceReminders,
 } from "@/hooks/useInvoices";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -59,6 +61,9 @@ import {
   PenTool,
   Eye,
   Send,
+  Bell,
+  UserCog,
+  Wrench,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -111,6 +116,7 @@ const Invoices = () => {
   const downloadDocument = useDownloadDocument();
   const signInvoice = useSignInvoice();
   const sendSignatureRequest = useSendSignatureRequest();
+  const sendPaymentReminder = useSendPaymentReminder();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
 
   // Undo-able delete
@@ -138,7 +144,9 @@ const Invoices = () => {
   const [signatureInvoice, setSignatureInvoice] = useState<Invoice | null>(null);
   const [viewSignatureId, setViewSignatureId] = useState<string | null>(null);
   const [viewSignatureOpen, setViewSignatureOpen] = useState(false);
-
+  
+  // Fetch reminders for the currently viewed invoice
+  const { data: invoiceReminders = [] } = useInvoiceReminders(viewingInvoice?.id || null);
   // Wrapped setters for scroll restoration
   const openViewingInvoice = useCallback(
     (invoice: (typeof invoices)[0] | null) => {
@@ -1155,6 +1163,26 @@ const Invoices = () => {
                     {getCustomerName(viewingInvoice.customer_id)}
                   </p>
                 </div>
+                {(viewingInvoice as any).creator?.full_name && (
+                  <div>
+                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                      <UserCog className="w-3 h-3" /> Created By
+                    </p>
+                    <p className="font-medium text-sm sm:text-base truncate">
+                      {(viewingInvoice as any).creator.full_name}
+                    </p>
+                  </div>
+                )}
+                {(viewingInvoice as any).quote?.job?.assigned_technician?.full_name && (
+                  <div>
+                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                      <Wrench className="w-3 h-3" /> Assigned Technician
+                    </p>
+                    <p className="font-medium text-sm sm:text-base truncate">
+                      {(viewingInvoice as any).quote.job.assigned_technician.full_name}
+                    </p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
                   <p className="font-medium text-sm sm:text-base">
@@ -1325,6 +1353,32 @@ const Invoices = () => {
                 </div>
               )}
 
+              {/* Reminder History */}
+              {invoiceReminders.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
+                    <Bell className="w-4 h-4" />
+                    Payment Reminders Sent ({invoiceReminders.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {invoiceReminders.map((reminder) => (
+                      <div key={reminder.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 px-3 bg-muted/50 rounded text-sm">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">{reminder.recipient_email}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {reminder.sent_by_profile?.full_name && (
+                            <span>by {reminder.sent_by_profile.full_name}</span>
+                          )}
+                          <span>{format(new Date(reminder.sent_at), 'MMM d, yyyy h:mm a')}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
                 <Button
@@ -1346,15 +1400,27 @@ const Invoices = () => {
                   <span className="hidden sm:inline">Email</span>
                 </Button>
                 {viewingInvoice.status !== "paid" && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => handleMarkPaid(viewingInvoice.id)}
-                    className="flex-1 sm:flex-none"
-                  >
-                    <CheckCircle className="w-4 h-4 sm:mr-1" />
-                    <span className="hidden sm:inline">Mark Paid</span>
-                  </Button>
+                  <>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleMarkPaid(viewingInvoice.id)}
+                      className="flex-1 sm:flex-none"
+                    >
+                      <CheckCircle className="w-4 h-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Mark Paid</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => sendPaymentReminder.mutate(viewingInvoice.id)}
+                      disabled={sendPaymentReminder.isPending}
+                      className="flex-1 sm:flex-none"
+                    >
+                      <Bell className="w-4 h-4 sm:mr-1" />
+                      <span className="hidden sm:inline">{sendPaymentReminder.isPending ? 'Sending...' : 'Send Reminder'}</span>
+                    </Button>
+                  </>
                 )}
                 <Button
                   variant="outline"
