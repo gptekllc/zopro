@@ -11,7 +11,7 @@ import {
 import { 
   FileDown, Mail, Edit, PenTool, Calendar, 
   DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
-  ChevronRight, CheckCircle2, Copy
+  ChevronRight, CheckCircle2, Copy, Briefcase
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -29,6 +29,7 @@ interface InvoiceDetailDialogProps {
   invoice: CustomerInvoice | null;
   customerName?: string;
   creatorName?: string;
+  linkedJobNumber?: string | null;
   lateFeePercentage?: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -57,6 +58,7 @@ export function InvoiceDetailDialog({
   invoice,
   customerName,
   creatorName,
+  linkedJobNumber,
   lateFeePercentage = 0,
   open,
   onOpenChange,
@@ -133,6 +135,14 @@ export function InvoiceDetailDialog({
                   <UserCog className="w-3 h-3" /> Created By
                 </p>
                 <p className="font-medium text-sm sm:text-base truncate">{creatorName}</p>
+              </div>
+            )}
+            {linkedJobNumber && (
+              <div>
+                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                  <Briefcase className="w-3 h-3" /> Linked Job
+                </p>
+                <p className="font-medium text-sm sm:text-base">{linkedJobNumber}</p>
               </div>
             )}
             <div>

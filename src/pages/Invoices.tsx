@@ -1087,6 +1087,15 @@ const Invoices = () => {
                       {(viewingInvoice as any).creator.full_name}
                     </p>
                   </div>}
+                {/* Linked Job */}
+                {((viewingInvoice as any).job?.job_number || (viewingInvoice as any).quote?.job?.job_number) && <div>
+                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                      <Briefcase className="w-3 h-3" /> Linked Job
+                    </p>
+                    <p className="font-medium text-sm sm:text-base">
+                      {(viewingInvoice as any).job?.job_number || (viewingInvoice as any).quote?.job?.job_number}
+                    </p>
+                  </div>}
                 {((viewingInvoice as any).assigned_technician?.full_name || (viewingInvoice as any).quote?.job?.assigned_technician?.full_name) && <div>
                     <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
                       <Wrench className="w-3 h-3" /> Assigned Technician

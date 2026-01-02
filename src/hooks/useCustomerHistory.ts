@@ -71,6 +71,8 @@ export interface CustomerInvoice {
   signed_at: string | null;
   signature_id: string | null;
   items?: InvoiceItem[];
+  job?: { job_number: string } | null;
+  quote?: { job?: { job_number: string } | null } | null;
 }
 
 export interface InvoiceItem {
@@ -196,7 +198,9 @@ export function useCustomerInvoices(customerId: string | undefined) {
           notes,
           signed_at,
           signature_id,
-          items:invoice_items(id, description, quantity, unit_price, total)
+          items:invoice_items(id, description, quantity, unit_price, total),
+          job:jobs!invoices_job_id_fkey(job_number),
+          quote:quotes(job:jobs!quotes_job_id_fkey(job_number))
         `)
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
