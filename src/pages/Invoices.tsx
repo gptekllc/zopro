@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle } from 'lucide-react';
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
@@ -586,25 +586,43 @@ const Invoices = () => {
                     </DropdownMenu>
                   </div>
                   
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownload(invoice.id)} title="Download PDF">
-                      <FileDown className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEmailDialog(invoice.id, invoice.customer_id)} title="Email Invoice">
-                      <Mail className="w-3.5 h-3.5" />
-                    </Button>
-                    {invoice.status !== 'paid' && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={() => handleMarkPaid(invoice.id)} title="Mark Paid">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(invoice)} title="Edit">
-                      <Edit className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(invoice.id)} title="Delete">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                  {/* Action Menu */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover z-50">
+                        <DropdownMenuItem onClick={() => handleEdit(invoice)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownload(invoice.id)}>
+                          <FileDown className="w-4 h-4 mr-2" />
+                          Download PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenEmailDialog(invoice.id, invoice.customer_id)}>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email Invoice
+                        </DropdownMenuItem>
+                        {invoice.status !== 'paid' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleMarkPaid(invoice.id)}>
+                              <CheckCircle className="w-4 h-4 mr-2 text-success" />
+                              Mark as Paid
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleDelete(invoice.id)} className="text-destructive focus:text-destructive">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>
@@ -693,26 +711,43 @@ const Invoices = () => {
                     </DropdownMenu>
                   </div>
                   
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" onClick={() => handleDownload(invoice.id)} title="Download PDF">
-                      <FileDown className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenEmailDialog(invoice.id, invoice.customer_id)} title="Email Invoice">
-                      <Mail className="w-4 h-4" />
-                    </Button>
-                    {invoice.status !== 'paid' && (
-                      <Button variant="outline" size="sm" onClick={() => handleMarkPaid(invoice.id)} className="text-xs">
-                        <CheckCircle className="w-3.5 h-3.5 mr-1 text-success" />
-                        Mark Paid
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(invoice)} title="Edit">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(invoice.id)} title="Delete">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  {/* Action Menu */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover z-50">
+                        <DropdownMenuItem onClick={() => handleEdit(invoice)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownload(invoice.id)}>
+                          <FileDown className="w-4 h-4 mr-2" />
+                          Download PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenEmailDialog(invoice.id, invoice.customer_id)}>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email Invoice
+                        </DropdownMenuItem>
+                        {invoice.status !== 'paid' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleMarkPaid(invoice.id)}>
+                              <CheckCircle className="w-4 h-4 mr-2 text-success" />
+                              Mark as Paid
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleDelete(invoice.id)} className="text-destructive focus:text-destructive">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>
