@@ -14,7 +14,7 @@ const logStep = (step: string, details?: any) => {
 };
 
 interface NotificationRequest {
-  type: "invoice_paid" | "quote_approved" | "payment_failed" | "late_fee_applied";
+  type: "invoice_paid" | "quote_approved" | "payment_failed" | "late_fee_applied" | "payment_reminder";
   invoiceNumber?: string;
   quoteNumber?: string;
   customerName: string;
@@ -27,6 +27,7 @@ interface NotificationRequest {
   lateFeePercentage?: number;
   dueDate?: string;
   errorMessage?: string;
+  paymentLink?: string;
 }
 
 serve(async (req) => {
@@ -188,6 +189,41 @@ serve(async (req) => {
         `,
       });
       logStep("Late fee email sent to company", { response: companyEmailResponse });
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    if (payload.type === "payment_reminder") {
+      const isOverdue = payload.dueDate && new Date(payload.dueDate) < new Date();
+      const totalDue = payload.lateFeeAmount 
+        ? (payload.amount || 0) + payload.lateFeeAmount
+        : payload.amount || 0;
+      
+      const customerEmailResponse = await resend.emails.send({
+        from: "FieldFlow <onboarding@resend.dev>",
+        to: [payload.customerEmail],
+        subject: `${isOverdue ? 'Overdue ' : ''}Payment Reminder - Invoice #${payload.invoiceNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: ${isOverdue ? '#dc2626' : '#2563eb'};">${isOverdue ? 'Overdue Payment Reminder' : 'Payment Reminder'}</h1>
+            <p>Hello ${payload.customerName},</p>
+            <p>This is a friendly reminder that Invoice #${payload.invoiceNumber} from <strong>${payload.companyName}</strong> ${isOverdue ? 'is overdue' : 'is awaiting payment'}.</p>
+            <div style="background: ${isOverdue ? '#fef2f2' : '#f3f4f6'}; padding: 20px; border-radius: 8px; margin: 20px 0; ${isOverdue ? 'border-left: 4px solid #dc2626;' : ''}">
+              <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Amount Due:</strong> $${totalDue.toFixed(2)}</p>
+              ${payload.lateFeeAmount ? `<p style="margin: 10px 0 0 0; color: #dc2626;"><strong>Includes Late Fee:</strong> $${payload.lateFeeAmount.toFixed(2)}</p>` : ''}
+              ${payload.dueDate ? `<p style="margin: 10px 0 0 0; ${isOverdue ? 'color: #dc2626;' : ''}"><strong>${isOverdue ? 'Was Due:' : 'Due Date:'}</strong> ${payload.dueDate}</p>` : ''}
+            </div>
+            <p>Please submit payment at your earliest convenience${isOverdue ? ' to avoid any additional fees' : ''}.</p>
+            <p>If you have already made a payment, please disregard this reminder.</p>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Thank you for your business!<br>${payload.companyName}</p>
+          </div>
+        `,
+      });
+      logStep("Payment reminder email sent to customer", { response: customerEmailResponse });
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
