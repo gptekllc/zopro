@@ -438,6 +438,16 @@ const Jobs = () => {
           </div>
           
           <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-32 sm:w-40">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-9"
+              />
+            </div>
+            
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-28 sm:w-32">
                 <SelectValue />
@@ -813,18 +823,6 @@ const Jobs = () => {
           </div>
         </div>
         
-        {/* Search bar row */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search jobs..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </div>
         
         {/* Include archived in search toggle - shows when searching */}
         {searchQuery && (
