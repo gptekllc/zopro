@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase } from 'lucide-react';
@@ -58,6 +59,8 @@ const Quotes = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
   const [viewingQuote, setViewingQuote] = useState<typeof quotes[0] | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null);
 
   // Wrapped setters for scroll restoration
   const openViewingQuote = useCallback((quote: typeof quotes[0] | null) => {
@@ -214,15 +217,21 @@ const Quotes = () => {
     openEditDialog(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this quote?')) {
-      try {
-        await deleteQuote.mutateAsync(id);
-        toast.success('Quote deleted');
-      } catch (error) {
-        toast.error('Failed to delete quote');
-      }
+  const handleDeleteClick = (id: string) => {
+    setQuoteToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!quoteToDelete) return;
+    try {
+      await deleteQuote.mutateAsync(quoteToDelete);
+      toast.success('Quote deleted');
+    } catch (error) {
+      toast.error('Failed to delete quote');
     }
+    setDeleteConfirmOpen(false);
+    setQuoteToDelete(null);
   };
 
   const getStatusColor = (status: string) => {
@@ -595,7 +604,7 @@ const Quotes = () => {
                           Email Quote
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDelete(quote.id)} className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => handleDeleteClick(quote.id)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -705,7 +714,7 @@ const Quotes = () => {
                           </>
                         )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDelete(quote.id)} className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => handleDeleteClick(quote.id)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -928,6 +937,24 @@ const Quotes = () => {
         onConfirm={handleAddItemsToJob}
         isPending={addItemsToJob.isPending}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Quote</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this quote? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Mobile Floating Action Button */}
       <Button
