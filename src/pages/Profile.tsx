@@ -113,7 +113,7 @@ const Profile = () => {
   };
 
   const handleOnLeaveToggle = async (checked: boolean) => {
-    if (!user) return;
+    if (!user || !profile) return;
 
     setIsUpdatingStatus(true);
     try {
@@ -124,6 +124,36 @@ const Profile = () => {
         .eq('id', user.id);
 
       if (error) throw error;
+
+      // If going on leave, notify managers in the same company
+      if (checked && profile.company_id) {
+        // Get all managers and admins in the same company
+        const { data: managers } = await (supabase as any)
+          .from('profiles')
+          .select('id, full_name, email')
+          .eq('company_id', profile.company_id)
+          .in('role', ['admin', 'manager'])
+          .neq('id', user.id);
+
+        if (managers && managers.length > 0) {
+          // Create in-app notifications for each manager
+          const notifications = managers.map((manager: any) => ({
+            user_id: manager.id,
+            type: 'member_on_leave',
+            title: 'Team Member On Leave',
+            message: `${profile.full_name || profile.email} has set themselves as on leave.`,
+            data: {
+              member_id: user.id,
+              member_name: profile.full_name,
+              member_email: profile.email,
+            },
+          }));
+
+          await (supabase as any)
+            .from('notifications')
+            .insert(notifications);
+        }
+      }
 
       setIsOnLeave(checked);
       await refreshProfile();
