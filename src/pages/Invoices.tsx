@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical } from 'lucide-react';
@@ -50,6 +51,8 @@ const Invoices = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<string | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<typeof invoices[0] | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
 
   // Wrapped setters for scroll restoration
   const openViewingInvoice = useCallback((invoice: typeof invoices[0] | null) => {
@@ -206,15 +209,21 @@ const Invoices = () => {
     openEditDialog(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this invoice?')) {
-      try {
-        await deleteInvoice.mutateAsync(id);
-        toast.success('Invoice deleted');
-      } catch (error) {
-        toast.error('Failed to delete invoice');
-      }
+  const handleDeleteClick = (id: string) => {
+    setInvoiceToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!invoiceToDelete) return;
+    try {
+      await deleteInvoice.mutateAsync(invoiceToDelete);
+      toast.success('Invoice deleted');
+    } catch (error) {
+      toast.error('Failed to delete invoice');
     }
+    setDeleteConfirmOpen(false);
+    setInvoiceToDelete(null);
   };
 
   const handleMarkPaid = async (id: string) => {
@@ -617,7 +626,7 @@ const Invoices = () => {
                           </>
                         )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDelete(invoice.id)} className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => handleDeleteClick(invoice.id)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -742,7 +751,7 @@ const Invoices = () => {
                           </>
                         )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDelete(invoice.id)} className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => handleDeleteClick(invoice.id)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -943,6 +952,24 @@ const Invoices = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this invoice? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Mobile Floating Action Button */}
       <Button
