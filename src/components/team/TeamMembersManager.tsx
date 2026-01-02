@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useTeamMembers, TeamMember } from '@/hooks/useCompany';
 import { useTeamInvitations, useCancelInvitation, useResendInvitation } from '@/hooks/useTeamInvitations';
 import { useAuth } from '@/hooks/useAuth';
@@ -6,9 +6,10 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { compressImageToFile } from '@/lib/imageCompression';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
@@ -44,7 +45,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Users, UserCog, UserMinus, Loader2, Shield, Mail, UserPlus, RefreshCw, X, RotateCcw, Clock, Edit, Calendar, AlertTriangle } from 'lucide-react';
+import { Users, UserCog, UserMinus, Loader2, Shield, Mail, UserPlus, RefreshCw, X, RotateCcw, Clock, Edit, Calendar, AlertTriangle, Camera } from 'lucide-react';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -83,6 +84,13 @@ const TeamMembersManager = () => {
   const [editTerminationDate, setEditTerminationDate] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editHourlyRate, setEditHourlyRate] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editState, setEditState] = useState('');
+  const [editZip, setEditZip] = useState('');
+  const [editAvatarUrl, setEditAvatarUrl] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch deleted team members
   const { data: deletedMembers = [] } = useQuery({
@@ -145,7 +153,12 @@ const TeamMembersManager = () => {
       hire_date, 
       termination_date,
       phone,
-      hourly_rate 
+      hourly_rate,
+      address,
+      city,
+      state,
+      zip,
+      avatar_url
     }: { 
       userId: string; 
       full_name: string;
@@ -156,6 +169,11 @@ const TeamMembersManager = () => {
       termination_date: string | null;
       phone: string | null;
       hourly_rate: number | null;
+      address: string | null;
+      city: string | null;
+      state: string | null;
+      zip: string | null;
+      avatar_url: string | null;
     }) => {
       // Update role in user_roles table
       const { error: deleteError } = await (supabase as any)
@@ -178,6 +196,11 @@ const TeamMembersManager = () => {
         hire_date: hire_date || null,
         phone: phone || null,
         hourly_rate: hourly_rate,
+        address: address || null,
+        city: city || null,
+        state: state || null,
+        zip: zip || null,
+        avatar_url: avatar_url || null,
       };
 
       // If terminating, also set deleted_at to move to Removed tab
@@ -322,6 +345,11 @@ const TeamMembersManager = () => {
     setEditTerminationDate(member.termination_date || '');
     setEditPhone(member.phone || '');
     setEditHourlyRate(member.hourly_rate?.toString() || '');
+    setEditAddress(member.address || '');
+    setEditCity(member.city || '');
+    setEditState(member.state || '');
+    setEditZip(member.zip || '');
+    setEditAvatarUrl(member.avatar_url || '');
     setIsEditDialogOpen(true);
   };
 
@@ -345,6 +373,35 @@ const TeamMembersManager = () => {
     }
   };
 
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !selectedMember) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      const compressedFile = await compressImageToFile(file, 200, 400);
+      const fileName = `${selectedMember.id}-${Date.now()}.jpg`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(filePath, compressedFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('company-logos')
+        .getPublicUrl(filePath);
+
+      setEditAvatarUrl(publicUrl);
+      toast.success('Avatar uploaded');
+    } catch (error: any) {
+      toast.error('Failed to upload avatar: ' + error.message);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const handleSaveEdit = () => {
     if (!selectedMember) return;
 
@@ -358,6 +415,11 @@ const TeamMembersManager = () => {
       termination_date: editTerminationDate || null,
       phone: editPhone || null,
       hourly_rate: editHourlyRate ? parseFloat(editHourlyRate) : null,
+      address: editAddress || null,
+      city: editCity || null,
+      state: editState || null,
+      zip: editZip || null,
+      avatar_url: editAvatarUrl || null,
     });
   };
 
@@ -465,6 +527,7 @@ const TeamMembersManager = () => {
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="w-8 h-8">
+                                  <AvatarImage src={member.avatar_url || undefined} alt={member.full_name || 'User'} />
                                   <AvatarFallback className="text-xs">
                                     {getInitials(member.full_name)}
                                   </AvatarFallback>
@@ -526,6 +589,7 @@ const TeamMembersManager = () => {
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
                             <Avatar className="w-10 h-10">
+                              <AvatarImage src={member.avatar_url || undefined} alt={member.full_name || 'User'} />
                               <AvatarFallback className="text-sm">
                                 {getInitials(member.full_name)}
                               </AvatarFallback>
@@ -774,11 +838,12 @@ const TeamMembersManager = () => {
                     {deletedMembers.map((member) => (
                       <div key={member.id} className="border rounded-lg p-4 space-y-3 opacity-60">
                         <div className="flex items-center gap-3">
-                          <Avatar className="w-10 h-10">
-                            <AvatarFallback className="text-sm">
-                              {getInitials(member.full_name)}
-                            </AvatarFallback>
-                          </Avatar>
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={member.avatar_url || undefined} alt={member.full_name || 'User'} />
+                          <AvatarFallback className="text-sm">
+                            {getInitials(member.full_name)}
+                          </AvatarFallback>
+                        </Avatar>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{member.full_name || 'Unnamed User'}</p>
                             <p className="text-xs text-muted-foreground truncate">{member.email}</p>
@@ -828,6 +893,40 @@ const TeamMembersManager = () => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {/* Avatar Upload */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                <Avatar className="w-20 h-20">
+                  <AvatarImage src={editAvatarUrl} alt={editFullName} />
+                  <AvatarFallback className="text-lg">
+                    {editFullName ? editFullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                >
+                  {isUploadingAvatar ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </Button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Click the camera to upload a photo</p>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="editFullName">Full Name</Label>
               <Input
@@ -930,6 +1029,52 @@ const TeamMembersManager = () => {
                 onChange={(e) => setEditHourlyRate(e.target.value)}
                 placeholder="0.00"
               />
+            </div>
+
+            {/* Address Section */}
+            <div className="pt-4 border-t space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Address</h4>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editAddress">Street Address</Label>
+                <Input
+                  id="editAddress"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                  placeholder="123 Main St"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="editCity">City</Label>
+                  <Input
+                    id="editCity"
+                    value={editCity}
+                    onChange={(e) => setEditCity(e.target.value)}
+                    placeholder="City"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editState">State</Label>
+                  <Input
+                    id="editState"
+                    value={editState}
+                    onChange={(e) => setEditState(e.target.value)}
+                    placeholder="State"
+                  />
+                </div>
+              </div>
+
+              <div className="w-1/2 space-y-2">
+                <Label htmlFor="editZip">ZIP Code</Label>
+                <Input
+                  id="editZip"
+                  value={editZip}
+                  onChange={(e) => setEditZip(e.target.value)}
+                  placeholder="12345"
+                />
+              </div>
             </div>
 
             {/* Remove Member Section */}
