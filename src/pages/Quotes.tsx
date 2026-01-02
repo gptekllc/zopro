@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore, PenTool, Eye } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore, PenTool, Eye, UserCog } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
@@ -710,10 +710,19 @@ const Quotes = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                      {quote.valid_until && (
-                        <span className="flex items-center gap-1 shrink-0">
-                          Valid: {format(new Date(quote.valid_until), 'MMM d')}
+                      {(quote as any).creator?.full_name && (
+                        <span className="flex items-center gap-1">
+                          <UserCog className="w-3 h-3" />
+                          {(quote as any).creator.full_name}
                         </span>
+                      )}
+                      {quote.valid_until && (
+                        <>
+                          {(quote as any).creator?.full_name && <span>•</span>}
+                          <span className="flex items-center gap-1 shrink-0">
+                            Valid: {format(new Date(quote.valid_until), 'MMM d')}
+                          </span>
+                        </>
                       )}
                     </div>
                     {quote.notes && (
@@ -837,10 +846,19 @@ const Quotes = () => {
                       )}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
-                      {quote.valid_until && (
-                        <span className="flex items-center gap-1 shrink-0">
-                          Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}
+                      {(quote as any).creator?.full_name && (
+                        <span className="flex items-center gap-1">
+                          <UserCog className="w-3 h-3" />
+                          {(quote as any).creator.full_name}
                         </span>
+                      )}
+                      {quote.valid_until && (
+                        <>
+                          {(quote as any).creator?.full_name && <span>•</span>}
+                          <span className="flex items-center gap-1 shrink-0">
+                            Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}
+                          </span>
+                        </>
                       )}
                     </div>
                     {quote.notes && (

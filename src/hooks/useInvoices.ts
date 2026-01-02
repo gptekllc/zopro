@@ -33,7 +33,8 @@ export interface Invoice {
   created_at: string;
   updated_at: string;
   items?: InvoiceItem[];
-  customer?: { name: string };
+  customer?: { name: string; email?: string | null };
+  creator?: { full_name: string | null };
 }
 
 // Helper to check if invoice is overdue
@@ -65,7 +66,8 @@ export function useInvoices(includeArchived: boolean = false) {
         .from('invoices')
         .select(`
           *,
-          customer:customers(name),
+          customer:customers(name, email),
+          creator:profiles!invoices_created_by_fkey(full_name),
           items:invoice_items(*)
         `)
         .order('created_at', { ascending: false });
