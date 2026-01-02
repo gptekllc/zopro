@@ -53,8 +53,24 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
     try {
       const { data, error } = await supabase.functions.invoke('create-stripe-connect-account');
       
-      if (error) throw new Error(error.message);
-      if (!data?.url) throw new Error('No onboarding URL returned');
+      if (error) {
+        // Parse specific error messages
+        let errorMessage = 'Failed to start Stripe onboarding';
+        if (error.message?.includes('Unauthorized') || error.message?.includes('authenticated')) {
+          errorMessage = 'Please log in again to connect your Stripe account';
+        } else if (error.message?.includes('admin')) {
+          errorMessage = 'Only company admins can connect Stripe accounts';
+        } else if (error.message?.includes('STRIPE_SECRET_KEY')) {
+          errorMessage = 'Stripe is not configured. Please contact support.';
+        } else if (error.message?.includes('company')) {
+          errorMessage = 'Company not found. Please refresh and try again.';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        throw new Error(errorMessage);
+      }
+      
+      if (!data?.url) throw new Error('No onboarding URL returned from Stripe');
 
       // Invalidate company query before redirect
       await queryClient.invalidateQueries({ queryKey: ['company'] });
@@ -65,6 +81,7 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to start Stripe onboarding';
       toast.error(message);
+      console.error('Stripe Connect error:', error);
     } finally {
       setIsConnecting(false);
     }
@@ -75,13 +92,25 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
     try {
       const { data, error } = await supabase.functions.invoke('stripe-connect-dashboard');
       
-      if (error) throw new Error(error.message);
+      if (error) {
+        let errorMessage = 'Failed to open Stripe dashboard';
+        if (error.message?.includes('Unauthorized') || error.message?.includes('authenticated')) {
+          errorMessage = 'Please log in again to access the Stripe dashboard';
+        } else if (error.message?.includes('account')) {
+          errorMessage = 'Stripe account not found. Please reconnect.';
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        throw new Error(errorMessage);
+      }
+      
       if (!data?.url) throw new Error('No dashboard URL returned');
 
       window.open(data.url, '_blank');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to open Stripe dashboard';
       toast.error(message);
+      console.error('Stripe Dashboard error:', error);
     } finally {
       setIsLoadingDashboard(false);
     }
