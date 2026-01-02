@@ -1117,14 +1117,16 @@ const Invoices = () => {
               ) : null}
 
               {/* Signature Section */}
-              <SignatureSection 
-                signatureId={(viewingInvoice as any).signature_id}
-                title="Customer Signature"
-                onCollectSignature={() => handleOpenSignatureDialog(viewingInvoice as Invoice)}
-                showCollectButton={viewingInvoice.status !== 'paid'}
-                collectButtonText="Collect Signature"
-                isCollecting={signInvoice.isPending}
-              />
+              <div className="sm:max-w-sm">
+                <SignatureSection 
+                  signatureId={(viewingInvoice as any).signature_id}
+                  title="Customer Signature"
+                  onCollectSignature={() => handleOpenSignatureDialog(viewingInvoice as Invoice)}
+                  showCollectButton={viewingInvoice.status !== 'paid'}
+                  collectButtonText="Collect Signature"
+                  isCollecting={signInvoice.isPending}
+                />
+              </div>
 
               {/* Notes */}
               {viewingInvoice.notes && (
