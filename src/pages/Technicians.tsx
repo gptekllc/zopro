@@ -345,18 +345,30 @@ const Technicians = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold">Team Members</h1>
-          <p className="text-muted-foreground mt-1">{teamMembers.length} team members</p>
+          <p className="text-muted-foreground mt-1 hidden sm:block">{teamMembers.length} team members</p>
         </div>
         
-        {isAdmin && (
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add Member
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          <div className="relative w-32 sm:w-48">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-9"
+            />
+          </div>
+          
+          {isAdmin && (
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <UserPlus className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Member</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Edit Dialog */}
@@ -654,16 +666,6 @@ const Technicians = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search team members..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
-      </div>
 
       {/* View Member Dialog */}
       <ViewMemberDialog
