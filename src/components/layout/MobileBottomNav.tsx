@@ -7,12 +7,17 @@ import {
   Receipt,
   Users,
   MoreHorizontal,
+  UserCog,
+  Building2,
+  Bell,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
@@ -35,11 +40,19 @@ const MobileBottomNav = () => {
   ];
 
   const moreNavItems = [
-    { icon: Users, label: 'Customers', path: '/customers' },
+    { icon: Users, label: 'Customers', path: '/customers', showFor: 'all' },
+    { icon: Bell, label: 'Notifications', path: '/notifications', showFor: 'admin' },
+    { icon: UserCog, label: 'Technicians', path: '/technicians', showFor: 'admin' },
+    { icon: Building2, label: 'Company', path: '/company', showFor: 'admin' },
+    { icon: Settings, label: 'Settings', path: '/settings', showFor: 'all' },
   ];
 
+  const filteredMoreItems = moreNavItems.filter(item => 
+    item.showFor === 'all' || (item.showFor === 'admin' && isAdmin)
+  );
+
   const isActive = (path: string) => location.pathname === path;
-  const isMoreActive = moreNavItems.some(item => location.pathname === item.path);
+  const isMoreActive = filteredMoreItems.some(item => location.pathname === item.path);
 
   return (
     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t z-40 safe-area-pb">
@@ -75,13 +88,17 @@ const MobileBottomNav = () => {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="mb-2 w-48">
-            {moreNavItems.map((item) => (
-              <DropdownMenuItem key={item.path} asChild>
-                <Link to={item.path} className="flex items-center gap-2">
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                </Link>
-              </DropdownMenuItem>
+            {filteredMoreItems.map((item, index) => (
+              <div key={item.path}>
+                {index === 1 && isAdmin && <DropdownMenuSeparator />}
+                {index === 4 && <DropdownMenuSeparator />}
+                <DropdownMenuItem asChild>
+                  <Link to={item.path} className="flex items-center gap-2">
+                    <item.icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
+                </DropdownMenuItem>
+              </div>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
