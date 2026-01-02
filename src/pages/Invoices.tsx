@@ -495,7 +495,7 @@ const Invoices = () => {
 
       {/* Invoice List */}
       <PullToRefresh onRefresh={async () => { await refetchInvoices(); }} className="sm:contents">
-      <div className="space-y-3">
+      <div className="space-y-3 lg:max-w-4xl lg:mx-auto">
         {filteredInvoices.map((invoice) => (
           <Card key={invoice.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingInvoice(invoice)}>
             <CardContent className="p-4 sm:p-5">

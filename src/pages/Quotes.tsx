@@ -505,7 +505,7 @@ const Quotes = () => {
 
       {/* Quote List */}
       <PullToRefresh onRefresh={async () => { await refetchQuotes(); }} className="sm:contents">
-      <div className="space-y-3">
+      <div className="space-y-3 lg:max-w-4xl lg:mx-auto">
         {filteredQuotes.map((quote) => (
           <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingQuote(quote)}>
             <CardContent className="p-4 sm:p-5">
