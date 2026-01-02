@@ -614,8 +614,6 @@ const Invoices = () => {
               key={invoice.id}
               invoice={invoice as Invoice}
               lateFeePercentage={lateFeePercentage}
-              getCustomerName={getCustomerName}
-              getCustomerEmail={getCustomerEmail}
               isInvoiceOverdue={isInvoiceOverdue}
               getTotalWithLateFee={getTotalWithLateFee}
               onOpen={(inv) => openViewingInvoice(inv)}

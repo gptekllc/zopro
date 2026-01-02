@@ -32,7 +32,8 @@ export interface Quote {
   signature_id: string | null;
   signed_at: string | null;
   items?: QuoteItem[];
-  customer?: { name: string };
+  customer?: { name: string; email?: string | null };
+  creator?: { full_name: string | null };
 }
 
 export function useQuotes(includeArchived: boolean = false) {
@@ -45,7 +46,8 @@ export function useQuotes(includeArchived: boolean = false) {
         .from('quotes')
         .select(`
           *,
-          customer:customers(name),
+          customer:customers(name, email),
+          creator:profiles!quotes_created_by_fkey(full_name),
           items:quote_items(*)
         `)
         .order('created_at', { ascending: false });
