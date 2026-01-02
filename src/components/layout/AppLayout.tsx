@@ -1,9 +1,11 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,8 +27,10 @@ import {
   User,
   Briefcase,
   Bell,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 
@@ -49,12 +53,72 @@ const navItems = [
 const AppLayout = ({ children }: AppLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { profile, roles, signOut } = useAuth();
+  const { user, profile, roles, signOut, refreshProfile } = useAuth();
   const { data: company } = useCompany();
+  const [isOnLeave, setIsOnLeave] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  useEffect(() => {
+    if (profile?.employment_status) {
+      setIsOnLeave(profile.employment_status === 'on_leave');
+    }
+  }, [profile?.employment_status]);
 
   const handleLogout = async () => {
     await signOut();
     navigate('/');
+  };
+
+  const handleOnLeaveToggle = async (checked: boolean) => {
+    if (!user || !profile) return;
+
+    setIsUpdatingStatus(true);
+    try {
+      const newStatus = checked ? 'on_leave' : 'active';
+      const { error } = await (supabase as any)
+        .from('profiles')
+        .update({ employment_status: newStatus })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // If going on leave, notify managers in the same company
+      if (checked && profile.company_id) {
+        const { data: managers } = await (supabase as any)
+          .from('profiles')
+          .select('id, full_name, email')
+          .eq('company_id', profile.company_id)
+          .in('role', ['admin', 'manager'])
+          .neq('id', user.id);
+
+        if (managers && managers.length > 0) {
+          const notifications = managers.map((manager: any) => ({
+            user_id: manager.id,
+            type: 'member_on_leave',
+            title: 'Team Member On Leave',
+            message: `${profile.full_name || profile.email} has set themselves as on leave.`,
+            data: {
+              member_id: user.id,
+              member_name: profile.full_name,
+              member_email: profile.email,
+            },
+          }));
+
+          await (supabase as any)
+            .from('notifications')
+            .insert(notifications);
+        }
+      }
+
+      setIsOnLeave(checked);
+      await refreshProfile();
+      toast.success(checked ? 'You are now marked as on leave' : 'You are now marked as active');
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status: ' + error.message);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
 
   const userRoles = roles.map(r => r.role);
@@ -92,9 +156,21 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-popover">
+              <div className="flex items-center justify-between px-2 py-1.5">
+                <span className="text-sm">On Leave</span>
+                <div className="flex items-center gap-1">
+                  {isUpdatingStatus && <Loader2 className="w-3 h-3 animate-spin" />}
+                  <Switch
+                    checked={isOnLeave}
+                    onCheckedChange={handleOnLeaveToggle}
+                    disabled={isUpdatingStatus}
+                  />
+                </div>
+              </div>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate('/profile')}>
-                <User className="w-4 h-4 mr-2" /> Profile
+                <User className="w-4 h-4 mr-2" /> Edit Profile
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/settings')}>
                 <Settings className="w-4 h-4 mr-2" /> Settings
@@ -161,7 +237,19 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                   </div>
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="start" className="w-56">
+              <DropdownMenuContent side="top" align="start" className="w-56 bg-popover">
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-sm">On Leave</span>
+                  <div className="flex items-center gap-1">
+                    {isUpdatingStatus && <Loader2 className="w-3 h-3 animate-spin" />}
+                    <Switch
+                      checked={isOnLeave}
+                      onCheckedChange={handleOnLeaveToggle}
+                      disabled={isUpdatingStatus}
+                    />
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="w-4 h-4 mr-2" />
                   Edit Profile
