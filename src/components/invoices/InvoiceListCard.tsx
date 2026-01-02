@@ -85,7 +85,7 @@ export function InvoiceListCard({
   const archivedAt = (invoice as any).archived_at as string | undefined;
 
   const total = typeof invoice.total === "string" ? Number(invoice.total) : invoice.total ?? 0;
-  const hasLateFee = invoice.late_fee_amount && invoice.late_fee_amount > 0;
+  const hasLateFee = invoice.late_fee_amount && invoice.late_fee_amount > 0 && lateFeePercentage > 0;
   const displayTotal = hasLateFee ? getTotalWithLateFee(invoice) : total;
   const lateFeeFormatted = hasLateFee ? `+$${Number(invoice.late_fee_amount).toFixed(2)} late fee` : null;
 
