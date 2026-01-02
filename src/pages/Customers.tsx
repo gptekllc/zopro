@@ -166,7 +166,7 @@ const Customers = () => {
               
               <Dialog open={isDialogOpen} onOpenChange={(open) => { openEditDialog(open); if (!open) resetForm(); }}>
                 <DialogTrigger asChild>
-                  <Button className="gap-2 hidden sm:flex"><Plus className="w-4 h-4" />Add Customer</Button>
+                  <Button className="gap-2 hidden sm:flex"><Plus className="w-4 h-4" />Add</Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
