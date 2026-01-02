@@ -10,12 +10,17 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { 
   FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, 
-  DollarSign, FileText, CheckCircle, Send, UserCog, ChevronRight, CheckCircle2
+  DollarSign, FileText, CheckCircle, Send, UserCog, ChevronRight, CheckCircle2,
+  Briefcase, Receipt, Link2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
+import { useJobs, Job } from '@/hooks/useJobs';
+import { useInvoices, Invoice } from '@/hooks/useInvoices';
+import { useMemo } from 'react';
+import { formatAmount } from '@/lib/formatAmount';
 
 const QUOTE_STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'expired'] as const;
 
@@ -62,7 +67,20 @@ export function QuoteDetailDialog({
   isCollectingSignature = false,
   customerEmail,
 }: QuoteDetailDialogProps) {
-  if (!quote) return null;
+  const { data: allJobs = [], isLoading: loadingJobs } = useJobs(false);
+  const { data: allInvoices = [], isLoading: loadingInvoices } = useInvoices(false);
+
+  // Find job linked to this quote
+  const linkedJob = useMemo(() => {
+    if (!quote || !allJobs.length) return null;
+    return allJobs.find((job: Job) => job.quote_id === quote.id) || null;
+  }, [quote, allJobs]);
+
+  // Find invoices linked to this quote
+  const linkedInvoices = useMemo(() => {
+    if (!quote || !allInvoices.length) return [];
+    return allInvoices.filter((invoice: Invoice) => invoice.quote_id === quote.id);
+  }, [quote, allInvoices]);
 
   const isApprovedOrAccepted = quote.status === 'approved' || quote.status === 'accepted';
   const showCollectButton = !isApprovedOrAccepted && quote.status !== 'rejected';
@@ -219,6 +237,82 @@ export function QuoteDetailDialog({
               </div>
             </>
           )}
+
+          {/* Linked Documents Section */}
+          <Separator />
+          <div>
+            <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
+              <Link2 className="w-4 h-4" /> Linked Documents
+            </h4>
+            
+            {(loadingJobs || loadingInvoices) ? (
+              <p className="text-xs sm:text-sm text-muted-foreground">Loading linked documents...</p>
+            ) : (linkedJob || linkedInvoices.length > 0) ? (
+              <div className="space-y-3">
+                {/* Linked Job */}
+                {linkedJob && (
+                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                    <div className="flex items-center gap-3">
+                      <Briefcase className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">{linkedJob.job_number}</p>
+                        <p className="text-xs text-muted-foreground">{linkedJob.title}</p>
+                      </div>
+                    </div>
+                    <Badge className={`text-xs ${
+                      linkedJob.status === 'completed' || linkedJob.status === 'paid'
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        : linkedJob.status === 'in_progress'
+                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                        : linkedJob.status === 'scheduled'
+                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {linkedJob.status.replace('_', ' ')}
+                    </Badge>
+                  </div>
+                )}
+
+                {/* Linked Invoices */}
+                {linkedInvoices.length > 0 && linkedInvoices.map((invoice: Invoice) => (
+                  <div 
+                    key={invoice.id}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Receipt className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">{invoice.invoice_number}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">
+                        {formatAmount(invoice.total)}
+                      </span>
+                      <Badge className={`text-xs ${
+                        invoice.status === 'paid' 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : invoice.status === 'sent'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          : invoice.status === 'overdue'
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {invoice.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs sm:text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                No linked jobs or invoices yet
+              </p>
+            )}
+          </div>
 
           {/* Signature Section */}
           <Separator />

@@ -72,10 +72,20 @@ export function JobDetailDialog({
       relatedQuotes.childQuotes.forEach((q: Quote) => relatedQuoteIds.add(q.id));
     }
     
-    // Filter invoices that have quote_id matching any related quote
-    return allInvoices.filter((invoice: Invoice) => 
-      invoice.quote_id && relatedQuoteIds.has(invoice.quote_id)
-    );
+    // Filter invoices that have quote_id matching any related quote OR are linked via job's origin quote
+    // Also check if quote has job_id matching this job
+    return allInvoices.filter((invoice: Invoice) => {
+      // Direct quote link
+      if (invoice.quote_id && relatedQuoteIds.has(invoice.quote_id)) {
+        return true;
+      }
+      // Check if invoice's quote has this job_id
+      if (invoice.quote_id && job.quote_id) {
+        // The origin quote is the one that created this job
+        return invoice.quote_id === job.quote_id;
+      }
+      return false;
+    });
   }, [job, allInvoices, relatedQuotes]);
 
   if (!job) return null;
