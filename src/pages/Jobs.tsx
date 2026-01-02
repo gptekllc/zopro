@@ -7,7 +7,7 @@ import { useJobTemplates, JobTemplate } from '@/hooks/useJobTemplates';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes, Quote } from '@/hooks/useQuotes';
-import { useInvoices } from '@/hooks/useInvoices';
+import { useInvoices, Invoice } from '@/hooks/useInvoices';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -172,6 +172,23 @@ const Jobs = () => {
   const [saveAsTemplateJob, setSaveAsTemplateJob] = useState<Job | null>(null);
   const [createQuoteConfirmJob, setCreateQuoteConfirmJob] = useState<Job | null>(null);
   const [createInvoiceConfirmJob, setCreateInvoiceConfirmJob] = useState<Job | null>(null);
+
+  const viewingJobInvoices = useMemo(() => {
+    if (!viewingJob) return [] as Invoice[];
+
+    // invoices directly created from this job typically point to the job's origin quote
+    const originQuoteId = viewingJob.quote_id;
+
+    // upsell quotes created during the job have quote.job_id = job.id
+    const upsellQuoteIds = new Set(
+      safeQuotes.filter((q: any) => q?.job_id === viewingJob.id).map((q: any) => q.id)
+    );
+
+    return (safeInvoices as Invoice[]).filter((inv: any) => {
+      if (!inv?.quote_id) return false;
+      return inv.quote_id === originQuoteId || upsellQuoteIds.has(inv.quote_id);
+    });
+  }, [viewingJob, safeInvoices, safeQuotes]);
   
   // Signature dialogs
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
@@ -1370,6 +1387,9 @@ const Jobs = () => {
                 <TabsList className="flex-wrap h-auto gap-1 p-1">
                   <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-3">Details</TabsTrigger>
                   <TabsTrigger value="quotes" className="text-xs sm:text-sm px-2 sm:px-3">Quotes</TabsTrigger>
+                  <TabsTrigger value="invoices" className="text-xs sm:text-sm px-2 sm:px-3">
+                    Invoices ({viewingJobInvoices.length})
+                  </TabsTrigger>
                   <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
                   <TabsTrigger value="time" className="text-xs sm:text-sm px-2 sm:px-3">Time</TabsTrigger>
                 </TabsList>
@@ -1608,6 +1628,33 @@ const Jobs = () => {
                 
                 <TabsContent value="time" className="mt-4">
                   <JobTimeTracker jobId={viewingJob.id} jobNumber={viewingJob.job_number} />
+                </TabsContent>
+
+                <TabsContent value="invoices" className="mt-4">
+                  {viewingJobInvoices.length > 0 ? (
+                    <div className="space-y-2">
+                      {viewingJobInvoices.map((invoice: Invoice) => (
+                        <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                          <div>
+                            <p className="font-medium text-sm">{invoice.invoice_number}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium text-sm">${Number(invoice.total).toFixed(2)}</p>
+                            <Badge variant="secondary" className="text-xs">
+                              {invoice.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-lg border bg-muted/50 text-sm text-muted-foreground">
+                      No invoices linked to this job yet.
+                    </div>
+                  )}
                 </TabsContent>
                 
                 
