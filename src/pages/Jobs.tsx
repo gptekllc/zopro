@@ -450,6 +450,16 @@ const Jobs = () => {
               </SelectContent>
             </Select>
             
+            <Button
+              variant={showArchived ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setShowArchived(!showArchived)}
+              className="gap-1 whitespace-nowrap"
+            >
+              {showArchived ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              <span className="hidden sm:inline">{showArchived ? 'Hide Archived' : 'Archived'}</span>
+            </Button>
+            
             <div className="flex gap-1 border rounded-md p-1">
               <Button
                 variant={viewMode === 'list' ? 'default' : 'ghost'}
@@ -814,16 +824,6 @@ const Jobs = () => {
               className="pl-9"
             />
           </div>
-          
-          <Button
-            variant={showArchived ? 'secondary' : 'outline'}
-            size="sm"
-            onClick={() => setShowArchived(!showArchived)}
-            className="gap-1 whitespace-nowrap"
-          >
-            {showArchived ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            <span className="hidden sm:inline">{showArchived ? 'Hide Archived' : 'Archived'}</span>
-          </Button>
         </div>
         
         {/* Include archived in search toggle - shows when searching */}
