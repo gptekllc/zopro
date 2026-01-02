@@ -381,6 +381,9 @@ export function useApplyLateFee() {
 
 // Send payment reminder email
 export function useSendPaymentReminder() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
   return useMutation({
     mutationFn: async (invoiceId: string) => {
       // Get the invoice with customer and company info
@@ -427,13 +430,56 @@ export function useSendPaymentReminder() {
       
       if (emailError) throw emailError;
       
+      // Record the reminder in the database
+      const { error: insertError } = await (supabase as any)
+        .from('invoice_reminders')
+        .insert({
+          invoice_id: invoiceId,
+          company_id: invoice.company_id,
+          sent_by: user?.id,
+          recipient_email: invoice.customer.email,
+        });
+      
+      if (insertError) {
+        console.error('Failed to record reminder:', insertError);
+        // Don't throw - email was sent successfully
+      }
+      
       return { customerEmail: invoice.customer.email };
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['invoice-reminders'] });
       toast.success(`Payment reminder sent to ${data.customerEmail}`);
     },
     onError: (error: unknown) => {
       toast.error('Failed to send reminder: ' + sanitizeErrorMessage(error));
     },
+  });
+}
+
+// Fetch reminder history for an invoice
+export function useInvoiceReminders(invoiceId: string | null) {
+  return useQuery({
+    queryKey: ['invoice-reminders', invoiceId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('invoice_reminders')
+        .select(`
+          *,
+          sent_by_profile:profiles!invoice_reminders_sent_by_fkey(full_name)
+        `)
+        .eq('invoice_id', invoiceId)
+        .order('sent_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as Array<{
+        id: string;
+        invoice_id: string;
+        sent_at: string;
+        recipient_email: string;
+        sent_by_profile?: { full_name: string | null };
+      }>;
+    },
+    enabled: !!invoiceId,
   });
 }

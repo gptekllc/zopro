@@ -9,6 +9,13 @@ import {
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
 
+interface ReminderHistory {
+  id: string;
+  sent_at: string;
+  recipient_email: string;
+  sent_by_profile?: { full_name: string | null };
+}
+
 interface InvoiceDetailDialogProps {
   invoice: CustomerInvoice | null;
   customerName?: string;
@@ -25,6 +32,7 @@ interface InvoiceDetailDialogProps {
   isApplyingLateFee?: boolean;
   onSendReminder?: (invoiceId: string) => void;
   isSendingReminder?: boolean;
+  reminders?: ReminderHistory[];
 }
 
 const statusColors: Record<string, string> = {
@@ -50,6 +58,7 @@ export function InvoiceDetailDialog({
   isApplyingLateFee = false,
   onSendReminder,
   isSendingReminder = false,
+  reminders = [],
 }: InvoiceDetailDialogProps) {
   if (!invoice) return null;
 
@@ -248,6 +257,35 @@ export function InvoiceDetailDialog({
                   >
                     View Signature
                   </Button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Reminder History */}
+          {reminders.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
+                  <Bell className="w-4 h-4" />
+                  Payment Reminders Sent ({reminders.length})
+                </h4>
+                <div className="space-y-2">
+                  {reminders.map((reminder) => (
+                    <div key={reminder.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 px-3 bg-muted/50 rounded text-sm">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <span className="text-muted-foreground">{reminder.recipient_email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {reminder.sent_by_profile?.full_name && (
+                          <span>by {reminder.sent_by_profile.full_name}</span>
+                        )}
+                        <span>{format(new Date(reminder.sent_at), 'MMM d, yyyy h:mm a')}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </>
