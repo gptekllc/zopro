@@ -665,7 +665,15 @@ const Technicians = () => {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-semibold">{profile.full_name || 'Unnamed'}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{profile.full_name || 'Unnamed'}</h3>
+                      {profile.employment_status === 'on_leave' && (
+                        <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-xs">
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                          On Leave
+                        </Badge>
+                      )}
+                    </div>
                     <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${getRoleBadge(profile.role)}`}>
                       {profile.role}
                     </span>
