@@ -20,7 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
-  ArrowLeft, Mail, Phone, MapPin, User, Loader2, 
+  ArrowLeft, Mail, Phone, MapPin, User, Loader2, ExternalLink, 
   Briefcase, FileText, Receipt, DollarSign, Clock,
   Plus, Edit, PenTool, History, Navigation, Camera, Archive, Eye, EyeOff
 } from 'lucide-react';
@@ -52,6 +52,8 @@ const CustomerDetail = () => {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
+  const [sendingPortalLink, setSendingPortalLink] = useState(false);
+  const [portalLinkConfirmOpen, setPortalLinkConfirmOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [showArchivedJobs, setShowArchivedJobs] = useState(false);
@@ -125,6 +127,31 @@ const CustomerDetail = () => {
   const emailDocument = useEmailDocument();
   const convertToInvoice = useConvertQuoteToInvoice();
   const updateInvoice = useUpdateInvoice();
+
+  const handleSendPortalLink = async () => {
+    if (!customer?.email) {
+      toast.error('Customer must have an email address');
+      return;
+    }
+
+    setPortalLinkConfirmOpen(false);
+    setSendingPortalLink(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { action: 'send-link', email: customer.email },
+      });
+      if (error) throw error;
+      if (data?.error) {
+        toast.error(data.error);
+      } else {
+        toast.success(`Portal link sent to ${customer.email}`);
+      }
+    } catch {
+      toast.error('Failed to send portal link');
+    } finally {
+      setSendingPortalLink(false);
+    }
+  };
 
   const handleOpenEdit = () => {
     if (customer) {
@@ -254,6 +281,12 @@ const CustomerDetail = () => {
             <Edit className="w-4 h-4" />
             Edit
           </Button>
+          {customer.email && (
+            <Button variant="outline" size="sm" onClick={() => setPortalLinkConfirmOpen(true)} disabled={sendingPortalLink} className="gap-1.5">
+              {sendingPortalLink ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+              Send Portal Link
+            </Button>
+          )}
         </div>
       </div>
 
@@ -575,6 +608,26 @@ const CustomerDetail = () => {
             </Tabs>
           </CardContent>
         </Card>
+
+      {/* Portal Link Confirmation Dialog */}
+      <Dialog open={portalLinkConfirmOpen} onOpenChange={setPortalLinkConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Send Portal Link</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Send portal link to customer?
+          </p>
+          <div className="flex gap-2 justify-end pt-4">
+            <Button variant="outline" onClick={() => setPortalLinkConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendPortalLink}>
+              Yes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Activity Modal */}
       <Dialog open={activityDialogOpen} onOpenChange={setActivityDialogOpen}>
