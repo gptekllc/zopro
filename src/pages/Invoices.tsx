@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
-import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useApplyLateFee, useArchiveInvoice, useUnarchiveInvoice, useSendPaymentReminder, isInvoiceOverdue, getTotalWithLateFee, Invoice } from '@/hooks/useInvoices';
+import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useApplyLateFee, useArchiveInvoice, useUnarchiveInvoice, useSendPaymentReminder, useInvoiceReminders, isInvoiceOverdue, getTotalWithLateFee, Invoice } from '@/hooks/useInvoices';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
@@ -105,6 +105,9 @@ const Invoices = () => {
   const [signatureInvoice, setSignatureInvoice] = useState<Invoice | null>(null);
   const [viewSignatureId, setViewSignatureId] = useState<string | null>(null);
   const [viewSignatureOpen, setViewSignatureOpen] = useState(false);
+
+  // Reminder history for viewing invoice
+  const { data: invoiceReminders = [] } = useInvoiceReminders(viewingInvoice?.id ?? null);
 
   // Wrapped setters for scroll restoration
   const openViewingInvoice = useCallback((invoice: typeof invoices[0] | null) => {
@@ -850,6 +853,32 @@ const Invoices = () => {
               <ConstrainedPanel>
                 <SignatureSection signatureId={(viewingInvoice as any).signature_id} title="Customer Signature" onCollectSignature={() => handleOpenSignatureDialog(viewingInvoice as Invoice)} showCollectButton={viewingInvoice.status !== 'paid'} collectButtonText="Collect Signature" isCollecting={signInvoice.isPending} />
               </ConstrainedPanel>
+
+              {/* Reminder History */}
+              {invoiceReminders.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
+                    <Bell className="w-4 h-4" />
+                    Payment Reminders Sent ({invoiceReminders.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {invoiceReminders.map((reminder) => (
+                      <div key={reminder.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 px-3 bg-muted/50 rounded text-sm">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
+                          <span className="text-muted-foreground">{reminder.recipient_email}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {reminder.sent_by_profile?.full_name && (
+                            <span>by {reminder.sent_by_profile.full_name}</span>
+                          )}
+                          <span>{format(new Date(reminder.sent_at), 'MMM d, yyyy h:mm a')}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Notes */}
               {viewingInvoice.notes && <div>
