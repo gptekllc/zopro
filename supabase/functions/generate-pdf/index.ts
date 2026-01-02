@@ -227,6 +227,7 @@ function generateHTML(
     .notes { margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
     .notes h3 { font-size: 14px; color: #888; margin-bottom: 10px; }
     .footer { margin-top: 60px; text-align: center; color: #888; font-size: 12px; }
+    .company-logo { max-height: 60px; max-width: 180px; object-fit: contain; }
     .job-info { margin-bottom: 30px; }
     .info-row { display: flex; gap: 30px; margin-bottom: 20px; }
     .info-item { }
@@ -255,7 +256,8 @@ function generateHTML(
 <body>
   <div class="container">
     <div class="header">
-      <div class="document-info" style="text-align: left;">
+      ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company.name}" class="company-logo" />` : ''}
+      <div class="document-info" style="text-align: right; margin-left: auto;">
         <div class="document-type">${title}</div>
         <div class="document-number">${documentNumber}</div>
       </div>
