@@ -862,7 +862,7 @@ const Jobs = () => {
       {/* Job List - Mobile Optimized */}
       {viewMode === 'list' && (
         <PullToRefresh onRefresh={async () => { await refetchJobs(); }} className="sm:contents">
-        <div className="space-y-3">
+        <div className="space-y-3 lg:max-w-4xl lg:mx-auto">
           {filteredJobs.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center text-muted-foreground">
