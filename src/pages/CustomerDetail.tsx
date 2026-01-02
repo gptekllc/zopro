@@ -823,6 +823,7 @@ const CustomerDetail = () => {
       <InvoiceDetailDialog
         invoice={selectedInvoice}
         customerName={customer.name}
+        linkedJobNumber={(selectedInvoice as any)?.job?.job_number || (selectedInvoice as any)?.quote?.job?.job_number || null}
         open={!!selectedInvoice}
         onOpenChange={(open) => !open && openSelectedInvoice(null)}
         onDownload={handleDownloadInvoice}

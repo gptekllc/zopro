@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Archive,
   ArchiveRestore,
+  Briefcase,
   CheckCircle,
   Copy,
   Edit,
@@ -92,6 +93,9 @@ export function InvoiceListCard({
   const customerEmail = invoice.customer?.email || null;
   const creatorName = (invoice as any).creator?.full_name || null;
   const dueText = invoice.due_date ? format(new Date(invoice.due_date), "MMM d") : null;
+  
+  // Get linked job number - prefer direct job_id link, fallback to quote's job
+  const linkedJobNumber = (invoice as any).job?.job_number || (invoice as any).quote?.job?.job_number || null;
 
   return (
     <Card
@@ -123,9 +127,18 @@ export function InvoiceListCard({
                     {creatorName}
                   </span>
                 )}
-                {dueText && (
+                {linkedJobNumber && (
                   <>
                     {creatorName && <span>•</span>}
+                    <span className="flex items-center gap-1">
+                      <Briefcase className="w-3 h-3" />
+                      {linkedJobNumber}
+                    </span>
+                  </>
+                )}
+                {dueText && (
+                  <>
+                    {(creatorName || linkedJobNumber) && <span>•</span>}
                     <span className="shrink-0">Due {dueText}</span>
                   </>
                 )}
@@ -285,9 +298,18 @@ export function InvoiceListCard({
                     {creatorName}
                   </span>
                 )}
-                {dueText && (
+                {linkedJobNumber && (
                   <>
                     {creatorName && <span>•</span>}
+                    <span className="flex items-center gap-1">
+                      <Briefcase className="w-3 h-3" />
+                      {linkedJobNumber}
+                    </span>
+                  </>
+                )}
+                {dueText && (
+                  <>
+                    {(creatorName || linkedJobNumber) && <span>•</span>}
                     <span className="shrink-0">Due {dueText}</span>
                   </>
                 )}
