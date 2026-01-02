@@ -756,6 +756,13 @@ const Invoices = () => {
                           <PenTool className="w-3 h-3" />
                           Signed
                         </span>}
+                      {/* Source Quote Badge */}
+                      {invoice.quote_id && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          From Quote
+                        </span>
+                      )}
                     </div>
 
                     {/* Action Menu */}
@@ -889,6 +896,13 @@ const Invoices = () => {
                           <PenTool className="w-3 h-3" />
                           Signed
                         </span>}
+                      {/* Source Quote Badge */}
+                      {invoice.quote_id && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 flex items-center gap-1">
+                          <FileText className="w-3 h-3" />
+                          From Quote
+                        </span>
+                      )}
                     </div>
 
                     {/* Action Menu */}
