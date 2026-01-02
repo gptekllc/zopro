@@ -6,6 +6,7 @@ import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
+import { useProfiles } from '@/hooks/useProfiles';
 import { useJobs, useCreateJobFromQuoteItems, useAddQuoteItemsToJob } from '@/hooks/useJobs';
 import { useConvertQuoteToInvoice, useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
@@ -51,6 +52,7 @@ const Quotes = () => {
   const { data: quotes = [], isLoading, refetch: refetchQuotes } = useQuotes(needsArchivedData);
   const { data: customers = [] } = useCustomers();
   const { data: company } = useCompany();
+  const { data: profiles = [] } = useProfiles();
   const { data: jobs = [] } = useJobs(false);
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
@@ -119,12 +121,14 @@ const Quotes = () => {
     notes: string;
     status: string;
     validDays: number;
+    createdBy: string;
   }>({
     customerId: '',
     items: [{ id: '1', description: '', quantity: 1, unitPrice: 0 }],
     notes: '',
     status: 'draft',
     validDays: 30,
+    createdBy: '',
   });
 
   // Handle URL param to auto-open quote detail
@@ -168,6 +172,7 @@ const Quotes = () => {
       notes: '',
       status: 'draft',
       validDays: 30,
+      createdBy: '',
     });
     setEditingQuote(null);
   };
@@ -210,7 +215,7 @@ const Quotes = () => {
     }
 
     const subtotal = calculateTotal(formData.items);
-    const quoteData = {
+    const quoteData: any = {
       customer_id: formData.customerId,
       notes: formData.notes || null,
       status: formData.status,
@@ -219,6 +224,11 @@ const Quotes = () => {
       tax: 0,
       total: subtotal,
     };
+
+    // Include created_by if set
+    if (formData.createdBy) {
+      quoteData.created_by = formData.createdBy;
+    }
 
     try {
       const itemsData = formData.items.map(item => ({
@@ -262,6 +272,7 @@ const Quotes = () => {
       notes: quote.notes || '',
       status: quote.status as any,
       validDays: 30,
+      createdBy: quote.created_by || '',
     });
     setEditingQuote(quote.id);
     openEditDialog(true);
@@ -378,6 +389,7 @@ const Quotes = () => {
       notes: quote.notes || '',
       status: 'draft',
       validDays: 30,
+      createdBy: '',
     });
     setEditingQuote(null);
     openEditDialog(true);
@@ -401,6 +413,7 @@ const Quotes = () => {
       notes: template.notes || '',
       status: 'draft',
       validDays: template.valid_days || 30,
+      createdBy: '',
     });
     setEditingQuote(null);
     openEditDialog(true);
@@ -567,19 +580,28 @@ const Quotes = () => {
                     </div>
                   </div>
 
-                  {/* Created By (read-only when editing) */}
-                  {editingQuote && (() => {
-                    const quote = quotes.find(q => q.id === editingQuote);
-                    const creatorName = (quote as any)?.creator?.full_name;
-                    return creatorName ? (
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1">
-                          <UserCog className="w-3 h-3" /> Created By
-                        </Label>
-                        <Input value={creatorName} disabled className="bg-muted" />
-                      </div>
-                    ) : null;
-                  })()}
+                  {/* Assigned Technician */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      <UserCog className="w-3 h-3" /> Assigned Technician
+                    </Label>
+                    <Select
+                      value={formData.createdBy || 'unassigned'}
+                      onValueChange={(value) => setFormData({ ...formData, createdBy: value === 'unassigned' ? '' : value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select technician" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {profiles.filter(p => p.employment_status === 'active' || !p.employment_status).map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.full_name || p.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* Line Items */}
                   <div className="space-y-3">
