@@ -233,186 +233,160 @@ const Notifications = () => {
           </div>
         </div>
 
-        {/* Desktop: 2-column layout, Mobile: stacked */}
-        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[280px_1fr] xl:grid-cols-[320px_1fr]">
-          {/* Left column: Stats Cards */}
-          <div className="space-y-3 sm:space-y-4">
-            <div className="grid gap-3 grid-cols-2 lg:grid-cols-1">
-              <Card>
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
-                      <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-lg sm:text-xl font-bold">{notifications.length}</p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total Notifications</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="p-1.5 sm:p-2 bg-amber-500/10 rounded-lg shrink-0">
-                      <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-lg sm:text-xl font-bold">{unreadCount}</p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Unread</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="p-1.5 sm:p-2 bg-emerald-500/10 rounded-lg shrink-0">
-                      <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-lg sm:text-xl font-bold">
-                        {notifications.filter((n) => n.type === 'payment_received').length}
-                      </p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Payments</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-3 sm:p-4">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
-                      <FileCheck className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-lg sm:text-xl font-bold">
-                        {notifications.filter((n) => n.type === 'quote_approved').length}
-                      </p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Approvals</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Filter tabs - shown in left column on desktop */}
-            <Card className="hidden lg:block">
-              <CardContent className="p-4">
-                <p className="text-sm font-medium mb-3 text-muted-foreground">Filter</p>
-                <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'unread')} className="w-full">
-                  <TabsList className="w-full grid grid-cols-2">
-                    <TabsTrigger value="all">All</TabsTrigger>
-                    <TabsTrigger value="unread">
-                      Unread
-                      {unreadCount > 0 && (
-                        <Badge variant="secondary" className="ml-2 text-xs">
-                          {unreadCount}
-                        </Badge>
-                      )}
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right column: Activity Feed */}
-          <Card className="lg:h-fit">
-            <CardHeader className="p-4 sm:p-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <CardTitle className="text-lg sm:text-xl">Activity Feed</CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">Real-time updates on your business</CardDescription>
+        {/* Stats Cards */}
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
+                  <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                 </div>
-                {/* Filter tabs - shown in header on mobile/tablet */}
-                <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'unread')} className="lg:hidden">
-                  <TabsList className="h-8 sm:h-9">
-                    <TabsTrigger value="all" className="text-xs sm:text-sm px-2.5 sm:px-3">All</TabsTrigger>
-                    <TabsTrigger value="unread" className="text-xs sm:text-sm px-2.5 sm:px-3">
-                      Unread
-                      {unreadCount > 0 && (
-                        <Badge variant="secondary" className="ml-1.5 sm:ml-2 text-[10px] sm:text-xs h-4 sm:h-5 px-1 sm:px-1.5">
-                          {unreadCount}
-                        </Badge>
-                      )}
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                <div className="min-w-0">
+                  <p className="text-lg sm:text-xl font-bold">{notifications.length}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Total</p>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
-              {filteredNotifications.length === 0 ? (
-                <div className="text-center py-8 sm:py-12">
-                  <Bell className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
-                  <p className="text-sm sm:text-base text-muted-foreground">
-                    {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
-                  </p>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    You'll see payment and quote updates here
-                  </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-amber-500/10 rounded-lg shrink-0">
+                  <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
                 </div>
-              ) : (
-                <ScrollArea className="h-[400px] sm:h-[500px] lg:h-[600px] -mr-4 pr-4">
-                  <div className="space-y-2 sm:space-y-3">
-                    {filteredNotifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={`flex items-start gap-2 sm:gap-3 p-2.5 sm:p-4 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
-                          !notification.is_read ? 'bg-primary/5 border-primary/20' : ''
-                        }`}
-                        onClick={() => handleNotificationClick(notification)}
-                      >
-                        <div className="shrink-0 mt-0.5">
-                          {getNotificationIcon(notification.type)}
-                        </div>
-                        <div className="flex-1 min-w-0 overflow-hidden">
-                          <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1 flex-wrap">
-                            {getNotificationBadge(notification.type)}
-                            {!notification.is_read && (
-                              <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full shrink-0" />
-                            )}
-                          </div>
-                          <p className="font-medium text-xs sm:text-sm md:text-base truncate">{notification.title}</p>
-                          <p className="text-[10px] sm:text-xs md:text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
-                          <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 sm:mt-1.5">
-                            {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
-                          </p>
-                        </div>
-                        <div className="flex gap-0.5 sm:gap-1 shrink-0">
+                <div className="min-w-0">
+                  <p className="text-lg sm:text-xl font-bold">{unreadCount}</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Unread</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-emerald-500/10 rounded-lg shrink-0">
+                  <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-lg sm:text-xl font-bold">
+                    {notifications.filter((n) => n.type === 'payment_received').length}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Payments</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg shrink-0">
+                  <FileCheck className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-lg sm:text-xl font-bold">
+                    {notifications.filter((n) => n.type === 'quote_approved').length}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Approvals</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Notifications List */}
+        <Card>
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <CardTitle className="text-lg sm:text-xl">Activity Feed</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Real-time updates on your business</CardDescription>
+              </div>
+              <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'unread')}>
+                <TabsList className="h-8 sm:h-9">
+                  <TabsTrigger value="all" className="text-xs sm:text-sm px-2.5 sm:px-3">All</TabsTrigger>
+                  <TabsTrigger value="unread" className="text-xs sm:text-sm px-2.5 sm:px-3">
+                    Unread
+                    {unreadCount > 0 && (
+                      <Badge variant="secondary" className="ml-1.5 sm:ml-2 text-[10px] sm:text-xs h-4 sm:h-5 px-1 sm:px-1.5">
+                        {unreadCount}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
+            {filteredNotifications.length === 0 ? (
+              <div className="text-center py-8 sm:py-12">
+                <Bell className="w-10 h-10 sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-3 sm:mb-4" />
+                <p className="text-sm sm:text-base text-muted-foreground">
+                  {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
+                </p>
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+                  You'll see payment and quote updates here
+                </p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[400px] sm:h-[500px] -mr-4 pr-4">
+                <div className="space-y-2 sm:space-y-3">
+                  {filteredNotifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`flex items-start gap-2 sm:gap-3 p-2.5 sm:p-4 rounded-lg border cursor-pointer transition-colors hover:bg-muted/50 ${
+                        !notification.is_read ? 'bg-primary/5 border-primary/20' : ''
+                      }`}
+                      onClick={() => handleNotificationClick(notification)}
+                    >
+                      <div className="shrink-0 mt-0.5">
+                        {getNotificationIcon(notification.type)}
+                      </div>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-1.5 sm:gap-2 mb-0.5 sm:mb-1 flex-wrap">
+                          {getNotificationBadge(notification.type)}
                           {!notification.is_read && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 sm:h-8 sm:w-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                markAsRead(notification.id);
-                              }}
-                            >
-                              <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            </Button>
+                            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary rounded-full shrink-0" />
                           )}
+                        </div>
+                        <p className="font-medium text-xs sm:text-sm md:text-base truncate">{notification.title}</p>
+                        <p className="text-[10px] sm:text-xs md:text-sm text-muted-foreground line-clamp-2">{notification.message}</p>
+                        <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 sm:mt-1.5">
+                          {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <div className="flex gap-0.5 sm:gap-1 shrink-0">
+                        {!notification.is_read && (
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 sm:h-8 sm:w-8"
                             onClick={(e) => {
                               e.stopPropagation();
-                              deleteNotification(notification.id);
+                              markAsRead(notification.id);
                             }}
                           >
-                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                            <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </Button>
-                        </div>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 sm:h-8 sm:w-8"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteNotification(notification.id);
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                        </Button>
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AppLayout>
   );
