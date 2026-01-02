@@ -143,82 +143,85 @@ const Customers = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <Tabs defaultValue="active" className="w-full">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Customers</h1>
-            <p className="text-muted-foreground mt-1">{customers.length} total customers</p>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <TabsList>
-              <TabsTrigger value="active">Active</TabsTrigger>
-              {isAdmin && (
-                <TabsTrigger value="deleted">
-                  Deleted
-                  {deletedCustomers.length > 0 && (
-                    <Badge variant="secondary" className="ml-2">{deletedCustomers.length}</Badge>
-                  )}
-                </TabsTrigger>
-              )}
-            </TabsList>
+        {/* Header */}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Customers</h1>
+              <p className="text-muted-foreground mt-1">{customers.length} total customers</p>
+            </div>
             
-            <Dialog open={isDialogOpen} onOpenChange={(open) => { openEditDialog(open); if (!open) resetForm(); }}>
-              <DialogTrigger asChild>
-                <Button className="gap-2 hidden sm:flex"><Plus className="w-4 h-4" />Add Customer</Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Name *</Label>
-                    <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <TabsList>
+                <TabsTrigger value="active">Active</TabsTrigger>
+                {isAdmin && (
+                  <TabsTrigger value="deleted">
+                    Deleted
+                    {deletedCustomers.length > 0 && (
+                      <Badge variant="secondary" className="ml-2">{deletedCustomers.length}</Badge>
+                    )}
+                  </TabsTrigger>
+                )}
+              </TabsList>
+              
+              <Dialog open={isDialogOpen} onOpenChange={(open) => { openEditDialog(open); if (!open) resetForm(); }}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2 hidden sm:flex"><Plus className="w-4 h-4" />Add Customer</Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <EmailInput id="email" value={formData.email} onChange={(value) => setFormData({ ...formData, email: value })} />
+                      <Label htmlFor="name">Name *</Label>
+                      <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <EmailInput id="email" value={formData.email} onChange={(value) => setFormData({ ...formData, email: value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone</Label>
+                        <PhoneInput id="phone" value={formData.phone} onChange={(value) => setFormData({ ...formData, phone: value })} />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="address">Street Address</Label>
+                      <Input id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="123 Main St" />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="space-y-2 col-span-2 sm:col-span-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input id="city" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="state">State</Label>
+                        <Input id="state" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} placeholder="CA" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="zip">ZIP</Label>
+                        <Input id="zip" value={formData.zip} onChange={(e) => setFormData({ ...formData, zip: e.target.value })} placeholder="12345" />
+                      </div>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="phone">Phone</Label>
-                      <PhoneInput id="phone" value={formData.phone} onChange={(value) => setFormData({ ...formData, phone: value })} />
+                      <Label htmlFor="notes">Notes</Label>
+                      <Textarea id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} />
                     </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Street Address</Label>
-                    <Input id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="123 Main St" />
-                  </div>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="space-y-2 col-span-2 sm:col-span-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input id="city" value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} />
+                    <div className="flex gap-3 pt-4">
+                      <Button type="button" variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>Cancel</Button>
+                      <Button type="submit" className="flex-1" disabled={createCustomer.isPending || updateCustomer.isPending}>
+                        {editingCustomer ? 'Update' : 'Add'} Customer
+                      </Button>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="state">State</Label>
-                      <Input id="state" value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} placeholder="CA" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="zip">ZIP</Label>
-                      <Input id="zip" value={formData.zip} onChange={(e) => setFormData({ ...formData, zip: e.target.value })} placeholder="12345" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} />
-                  </div>
-                  <div className="flex gap-3 pt-4">
-                    <Button type="button" variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>Cancel</Button>
-                    <Button type="submit" className="flex-1" disabled={createCustomer.isPending || updateCustomer.isPending}>
-                      {editingCustomer ? 'Update' : 'Add'} Customer
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
           </div>
         </div>
 
