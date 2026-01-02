@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +18,7 @@ const AVAILABLE_ROLES = ['admin', 'manager', 'technician', 'customer'] as const;
 type AppRole = typeof AVAILABLE_ROLES[number];
 
 const Technicians = () => {
-  const { user, profile: currentProfile } = useAuth();
+  const { user, profile: currentProfile, isAdmin } = useAuth();
   const { data: profiles = [], isLoading } = useProfiles();
   const { data: company } = useCompany();
   const updateProfile = useUpdateProfile();
@@ -160,10 +161,12 @@ const Technicians = () => {
           <p className="text-muted-foreground mt-1">{teamMembers.length} team members</p>
         </div>
         
-        <Button onClick={() => setIsAddDialogOpen(true)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Add Member
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add Member
+          </Button>
+        )}
       </div>
 
       {/* Edit Dialog */}
@@ -326,9 +329,12 @@ const Technicians = () => {
             <CardContent className="p-5">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <UserCog className="w-6 h-6 text-primary" />
-                  </div>
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name || 'User'} />
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {profile.full_name ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'}
+                    </AvatarFallback>
+                  </Avatar>
                   <div>
                     <h3 className="font-semibold">{profile.full_name || 'Unnamed'}</h3>
                     <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${getRoleBadge(profile.role)}`}>
@@ -336,11 +342,13 @@ const Technicians = () => {
                     </span>
                   </div>
                 </div>
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(profile)}>
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                </div>
+                {isAdmin && (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(profile)}>
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
               
               <div className="space-y-2 text-sm">
