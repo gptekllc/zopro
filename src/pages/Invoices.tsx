@@ -24,6 +24,7 @@ import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
+import { SignatureSection } from '@/components/signatures/SignatureSection';
 
 interface LineItem {
   id: string;
@@ -686,6 +687,13 @@ const Invoices = () => {
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    {/* Signature Badge */}
+                    {(invoice as any).signature_id && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success flex items-center gap-1">
+                        <PenTool className="w-3 h-3" />
+                        Signed
+                      </span>
+                    )}
                   </div>
                   
                   {/* Action Menu */}
@@ -838,6 +846,13 @@ const Invoices = () => {
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    {/* Signature Badge */}
+                    {(invoice as any).signature_id && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success flex items-center gap-1">
+                        <PenTool className="w-3 h-3" />
+                        Signed
+                      </span>
+                    )}
                   </div>
                   
                   {/* Action Menu */}
@@ -1055,6 +1070,16 @@ const Invoices = () => {
                   <span className="font-medium text-xs sm:text-sm">Overdue - was due on {format(new Date(viewingInvoice.due_date), 'MMM d, yyyy')}</span>
                 </div>
               ) : null}
+
+              {/* Signature Section */}
+              <SignatureSection 
+                signatureId={(viewingInvoice as any).signature_id}
+                title="Customer Signature"
+                onCollectSignature={() => handleOpenSignatureDialog(viewingInvoice as Invoice)}
+                showCollectButton={viewingInvoice.status !== 'paid'}
+                collectButtonText="Collect Signature"
+                isCollecting={signInvoice.isPending}
+              />
 
               {/* Notes */}
               {viewingInvoice.notes && (

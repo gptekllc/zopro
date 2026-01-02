@@ -4,10 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, 
-  DollarSign, FileText, CheckCircle 
+  DollarSign, FileText, CheckCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
+import { SignatureSection } from '@/components/signatures/SignatureSection';
 
 interface QuoteDetailDialogProps {
   quote: CustomerQuote | null;
@@ -161,26 +162,13 @@ export function QuoteDetailDialog({
             </>
           )}
 
-          {/* Signature */}
-          {quote.signed_at && quote.signature_id && (
-            <>
-              <Separator />
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                  <PenTool className="w-4 h-4 shrink-0" />
-                  <span className="text-xs sm:text-sm font-medium">This quote has been signed</span>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onViewSignature?.(quote.signature_id!)}
-                  className="w-full sm:w-auto"
-                >
-                  View Signature
-                </Button>
-              </div>
-            </>
-          )}
+          {/* Signature Section */}
+          <Separator />
+          <SignatureSection 
+            signatureId={quote.signature_id}
+            title="Customer Signature"
+            showCollectButton={false}
+          />
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
