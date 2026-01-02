@@ -20,7 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send, Bell, UserCog, Wrench, ChevronRight, CheckCircle2, Briefcase } from "lucide-react";
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send, Bell, UserCog, Wrench, ChevronRight, CheckCircle2, Briefcase, Link2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { SignatureDialog } from "@/components/signatures/SignatureDialog";
 import { ViewSignatureDialog } from "@/components/signatures/ViewSignatureDialog";
@@ -1234,6 +1234,75 @@ const Invoices = () => {
               <ConstrainedPanel>
                 <SignatureSection signatureId={(viewingInvoice as any).signature_id} title="Customer Signature" onCollectSignature={() => handleOpenSignatureDialog(viewingInvoice as Invoice)} showCollectButton={viewingInvoice.status !== "paid"} collectButtonText="Collect Signature" isCollecting={signInvoice.isPending} />
               </ConstrainedPanel>
+
+              {/* Linked Docs */}
+              {(viewingInvoice.quote_id || (viewingInvoice as any).job_id) && (
+                <div>
+                  <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
+                    <Link2 className="w-4 h-4" />
+                    Linked Documents
+                  </h4>
+                  <div className="space-y-2">
+                    {/* Linked Quote */}
+                    {viewingInvoice.quote_id && (viewingInvoice as any).quote && (
+                      <div
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                        onClick={() => {
+                          openViewingInvoice(null);
+                          navigate(`/quotes?view=${viewingInvoice.quote_id}`);
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium text-sm">{(viewingInvoice as any).quote.quote_number}</span>
+                          <span className="text-xs text-muted-foreground">Quote</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                          (viewingInvoice as any).quote.status === 'approved' || (viewingInvoice as any).quote.status === 'accepted' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : (viewingInvoice as any).quote.status === 'sent'
+                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                              : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {(viewingInvoice as any).quote.status}
+                        </span>
+                      </div>
+                    )}
+                    {/* Linked Job - from direct job_id or via quote */}
+                    {((viewingInvoice as any).job || (viewingInvoice as any).quote?.job) && (
+                      <div
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                        onClick={() => {
+                          const job = (viewingInvoice as any).job || (viewingInvoice as any).quote?.job;
+                          openViewingInvoice(null);
+                          navigate(`/jobs?view=${job.id}`);
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium text-sm">
+                            {(viewingInvoice as any).job?.job_number || (viewingInvoice as any).quote?.job?.job_number}
+                          </span>
+                          <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                            {(viewingInvoice as any).job?.title || (viewingInvoice as any).quote?.job?.title}
+                          </span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                          ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'completed'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'in_progress'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                              : ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'scheduled'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status || '').replace('_', ' ')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Notes */}
               {viewingInvoice.notes && <div>

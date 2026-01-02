@@ -41,10 +41,15 @@ export interface Invoice {
   customer?: { name: string; email?: string | null };
   creator?: { full_name: string | null };
   assigned_technician?: { full_name: string | null };
-  job?: { job_number: string } | null;
+  job?: { id: string; job_number: string; title: string; status: string } | null;
   quote?: { 
+    quote_number?: string;
+    status?: string;
     job?: { 
+      id?: string;
       job_number?: string;
+      title?: string;
+      status?: string;
       assigned_technician?: { full_name: string | null } | null 
     } | null 
   } | null;
@@ -83,10 +88,15 @@ export function useInvoices(includeArchived: boolean = false) {
           creator:profiles!invoices_created_by_fkey(full_name),
           assigned_technician:profiles!invoices_assigned_to_fkey(full_name),
           items:invoice_items(*),
-          job:jobs!invoices_job_id_fkey(job_number),
+          job:jobs!invoices_job_id_fkey(id, job_number, title, status),
           quote:quotes(
+            quote_number,
+            status,
             job:jobs!quotes_job_id_fkey(
+              id,
               job_number,
+              title,
+              status,
               assigned_technician:profiles!jobs_assigned_to_fkey(full_name)
             )
           )
