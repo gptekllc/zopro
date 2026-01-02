@@ -104,51 +104,56 @@ const Company = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        {/* Mobile: Select dropdown for tabs */}
-        <div className="block sm:hidden">
-          <Select value={activeTab} onValueChange={setActiveTab}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select tab" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="details">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
-                  Details
-                </div>
-              </SelectItem>
-              <SelectItem value="billing">
-                <div className="flex items-center gap-2">
-                  <Receipt className="w-4 h-4" />
-                  Billing & Tax
-                </div>
-              </SelectItem>
-              {isAdmin && (
-                <SelectItem value="payments">
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="w-4 h-4" />
-                    Payments
-                  </div>
-                </SelectItem>
-              )}
-              {isAdmin && (
-                <SelectItem value="team">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Team Members
-                  </div>
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Mobile: Icon-only tabs */}
+        <TabsList className="sm:hidden w-full grid grid-cols-4">
+          <TabsTrigger value="details" className="flex-col gap-1 py-2">
+            <Building2 className="w-5 h-5" />
+            <span className="text-xs">Details</span>
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="flex-col gap-1 py-2">
+            <Receipt className="w-5 h-5" />
+            <span className="text-xs">Billing</span>
+          </TabsTrigger>
+          {isAdmin ? (
+            <TabsTrigger value="payments" className="flex-col gap-1 py-2">
+              <CreditCard className="w-5 h-5" />
+              <span className="text-xs">Payments</span>
+            </TabsTrigger>
+          ) : (
+            <div className="hidden" />
+          )}
+          {isAdmin ? (
+            <TabsTrigger value="team" className="flex-col gap-1 py-2">
+              <Users className="w-5 h-5" />
+              <span className="text-xs">Team</span>
+            </TabsTrigger>
+          ) : (
+            <div className="hidden" />
+          )}
+        </TabsList>
         
-        {/* Desktop: TabsList */}
+        {/* Desktop: Full tabs with icons */}
         <TabsList className="hidden sm:inline-flex">
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="billing">Billing & Tax</TabsTrigger>
-          {isAdmin && <TabsTrigger value="payments">Payments</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="team">Team Members</TabsTrigger>}
+          <TabsTrigger value="details" className="gap-2">
+            <Building2 className="w-4 h-4" />
+            Details
+          </TabsTrigger>
+          <TabsTrigger value="billing" className="gap-2">
+            <Receipt className="w-4 h-4" />
+            Billing & Tax
+          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="payments" className="gap-2">
+              <CreditCard className="w-4 h-4" />
+              Payments
+            </TabsTrigger>
+          )}
+          {isAdmin && (
+            <TabsTrigger value="team" className="gap-2">
+              <Users className="w-4 h-4" />
+              Team Members
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="details">
