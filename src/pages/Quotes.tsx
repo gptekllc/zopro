@@ -573,20 +573,34 @@ const Quotes = () => {
                     </DropdownMenu>
                   </div>
                   
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownload(quote.id)} title="Download PDF">
-                      <FileDown className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenEmailDialog(quote.id, quote.customer_id)} title="Email Quote">
-                      <Mail className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(quote)} title="Edit">
-                      <Edit className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(quote.id)} title="Delete">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                  {/* Action Menu */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover z-50">
+                        <DropdownMenuItem onClick={() => handleEdit(quote)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownload(quote.id)}>
+                          <FileDown className="w-4 h-4 mr-2" />
+                          Download PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenEmailDialog(quote.id, quote.customer_id)}>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email Quote
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleDelete(quote.id)} className="text-destructive focus:text-destructive">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>
@@ -652,45 +666,51 @@ const Quotes = () => {
                     </DropdownMenu>
                   </div>
                   
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" onClick={() => handleDownload(quote.id)} title="Download PDF">
-                      <FileDown className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleOpenEmailDialog(quote.id, quote.customer_id)} title="Email Quote">
-                      <Mail className="w-4 h-4" />
-                    </Button>
-                    {quote.status === 'accepted' && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-xs gap-1">
-                            <Briefcase className="w-3.5 h-3.5" />
-                            Job
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-popover z-50">
-                          <DropdownMenuItem onClick={() => handleOpenCreateJobDialog(quote)}>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create New Job
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleOpenAddToJobDialog(quote)}>
-                            <Briefcase className="w-4 h-4 mr-2" />
-                            Add to Existing Job
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleConvertToInvoice(quote.id)}>
-                            <ArrowRight className="w-4 h-4 mr-2" />
-                            Convert to Invoice
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(quote)} title="Edit">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(quote.id)} title="Delete">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  {/* Action Menu */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover z-50">
+                        <DropdownMenuItem onClick={() => handleEdit(quote)}>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDownload(quote.id)}>
+                          <FileDown className="w-4 h-4 mr-2" />
+                          Download PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenEmailDialog(quote.id, quote.customer_id)}>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email Quote
+                        </DropdownMenuItem>
+                        {quote.status === 'accepted' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleOpenCreateJobDialog(quote)}>
+                              <Plus className="w-4 h-4 mr-2" />
+                              Create New Job
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleOpenAddToJobDialog(quote)}>
+                              <Briefcase className="w-4 h-4 mr-2" />
+                              Add to Existing Job
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleConvertToInvoice(quote.id)}>
+                              <ArrowRight className="w-4 h-4 mr-2" />
+                              Convert to Invoice
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => handleDelete(quote.id)} className="text-destructive focus:text-destructive">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>
