@@ -108,6 +108,8 @@ const Jobs = () => {
   const [importQuoteId, setImportQuoteId] = useState<string>('');
   const [completingJob, setCompletingJob] = useState<Job | null>(null);
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
+  const [archiveConfirmJob, setArchiveConfirmJob] = useState<Job | null>(null);
+  const [deleteConfirmJob, setDeleteConfirmJob] = useState<Job | null>(null);
 
   // Wrapped setters for scroll restoration
   const openViewingJob = useCallback((job: Job | null) => {
@@ -830,34 +832,43 @@ const Jobs = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-popover">
-                            {job.archived_at ? (
-                              <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
-                                <ArchiveRestore className="w-4 h-4 mr-2" />
-                                Unarchive
+                              <DropdownMenuItem onClick={() => handleEdit(job)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
                               </DropdownMenuItem>
-                            ) : (
-                              <>
-                                {job.status === 'completed' && (
-                                  <DropdownMenuItem onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending}>
-                                    <Receipt className="w-4 h-4 mr-2" />
-                                    Create Invoice
-                                  </DropdownMenuItem>
-                                )}
-                                {!job.quote_id && (
-                                  <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
-                                    <FileText className="w-4 h-4 mr-2" />
-                                    Create Quote
-                                  </DropdownMenuItem>
-                                )}
-                                {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
-                                  <DropdownMenuItem onClick={() => archiveJob.mutate(job.id)} disabled={archiveJob.isPending}>
-                                    <Archive className="w-4 h-4 mr-2" />
-                                    Archive
-                                  </DropdownMenuItem>
-                                )}
-                              </>
-                            )}
-                          </DropdownMenuContent>
+                              {job.archived_at ? (
+                                <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
+                                  <ArchiveRestore className="w-4 h-4 mr-2" />
+                                  Unarchive
+                                </DropdownMenuItem>
+                              ) : (
+                                <>
+                                  {job.status === 'completed' && (
+                                    <DropdownMenuItem onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending}>
+                                      <Receipt className="w-4 h-4 mr-2" />
+                                      Create Invoice
+                                    </DropdownMenuItem>
+                                  )}
+                                  {!job.quote_id && (
+                                    <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
+                                      <FileText className="w-4 h-4 mr-2" />
+                                      Create Quote
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
+                                    <DropdownMenuItem onClick={() => setArchiveConfirmJob(job)}>
+                                      <Archive className="w-4 h-4 mr-2" />
+                                      Archive
+                                    </DropdownMenuItem>
+                                  )}
+                                </>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setDeleteConfirmJob(job)} className="text-destructive focus:text-destructive">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
                     </div>
@@ -953,6 +964,10 @@ const Jobs = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-popover">
+                              <DropdownMenuItem onClick={() => handleEdit(job)}>
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
                               {job.archived_at ? (
                                 <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
                                   <ArchiveRestore className="w-4 h-4 mr-2" />
@@ -973,13 +988,18 @@ const Jobs = () => {
                                     </DropdownMenuItem>
                                   )}
                                   {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
-                                    <DropdownMenuItem onClick={() => archiveJob.mutate(job.id)} disabled={archiveJob.isPending}>
+                                    <DropdownMenuItem onClick={() => setArchiveConfirmJob(job)}>
                                       <Archive className="w-4 h-4 mr-2" />
                                       Archive
                                     </DropdownMenuItem>
                                   )}
                                 </>
                               )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setDeleteConfirmJob(job)} className="text-destructive focus:text-destructive">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -1226,6 +1246,63 @@ const Jobs = () => {
         toast.error('Customer has no email');
       }
     }} onEdit={() => setViewingQuote(null)} />
+
+      {/* Archive Confirmation Dialog */}
+      <AlertDialog open={!!archiveConfirmJob} onOpenChange={(open) => !open && setArchiveConfirmJob(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Job</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive "{archiveConfirmJob?.job_number} - {archiveConfirmJob?.title}"? 
+              You can unarchive it later from the archived jobs view.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (archiveConfirmJob) {
+                  archiveJob.mutate(archiveConfirmJob.id);
+                  setArchiveConfirmJob(null);
+                }
+              }}
+              disabled={archiveJob.isPending}
+            >
+              {archiveJob.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmJob} onOpenChange={(open) => !open && setDeleteConfirmJob(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Job</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteConfirmJob?.job_number} - {deleteConfirmJob?.title}"? 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (deleteConfirmJob) {
+                  deleteJob.mutate(deleteConfirmJob.id);
+                  setDeleteConfirmJob(null);
+                }
+              }}
+              disabled={deleteJob.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteJob.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Mobile Floating Action Button */}
       <Button className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50" onClick={() => openEditDialog(true)}>
