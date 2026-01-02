@@ -5,10 +5,12 @@ import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote, useArchiveQu
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
 import { useJobs, useCreateJobFromQuoteItems, useAddQuoteItemsToJob } from '@/hooks/useJobs';
 import { useConvertQuoteToInvoice, useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useApproveQuoteWithSignature } from '@/hooks/useSignatures';
+import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +47,7 @@ const Quotes = () => {
   const needsArchivedData = statusFilter === 'archived';
   const { data: quotes = [], isLoading, refetch: refetchQuotes } = useQuotes(needsArchivedData);
   const { data: customers = [] } = useCustomers();
+  const { data: company } = useCompany();
   const { data: jobs = [] } = useJobs(false);
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
@@ -57,6 +60,7 @@ const Quotes = () => {
   const createJobFromQuote = useCreateJobFromQuoteItems();
   const addItemsToJob = useAddQuoteItemsToJob();
   const approveWithSignature = useApproveQuoteWithSignature();
+  const sendSignatureRequest = useSendSignatureRequest();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
   
   // Undo-able delete
@@ -430,6 +434,23 @@ const Quotes = () => {
     setViewSignatureOpen(true);
   };
 
+  const handleSendSignatureRequest = async (quote: Quote) => {
+    const customer = customers.find(c => c.id === quote.customer_id);
+    if (!customer?.email) {
+      toast.error('Customer does not have an email address on file');
+      return;
+    }
+    await sendSignatureRequest.mutateAsync({
+      documentType: 'quote',
+      documentId: quote.id,
+      recipientEmail: customer.email,
+      recipientName: customer.name,
+      companyName: company?.name || '',
+      documentNumber: quote.quote_number,
+      customerId: quote.customer_id,
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -763,10 +784,18 @@ const Quotes = () => {
                             View Signature
                           </DropdownMenuItem>
                         ) : (quote.status === 'sent' || quote.status === 'draft') && (
-                          <DropdownMenuItem onClick={() => handleOpenSignatureDialog(quote)}>
-                            <PenTool className="w-4 h-4 mr-2" />
-                            Collect Signature
-                          </DropdownMenuItem>
+                          <>
+                            <DropdownMenuItem onClick={() => handleOpenSignatureDialog(quote)}>
+                              <PenTool className="w-4 h-4 mr-2" />
+                              Collect Signature
+                            </DropdownMenuItem>
+                            {getCustomerEmail(quote.customer_id) && (
+                              <DropdownMenuItem onClick={() => handleSendSignatureRequest(quote)} disabled={sendSignatureRequest.isPending}>
+                                <Send className="w-4 h-4 mr-2" />
+                                Send Signature Request
+                              </DropdownMenuItem>
+                            )}
+                          </>
                         )}
                         <DropdownMenuItem onClick={() => handleDeleteClick(quote)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />

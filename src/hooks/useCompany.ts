@@ -25,6 +25,8 @@ export interface Company {
   stripe_payouts_enabled: boolean | null;
   stripe_payments_enabled: boolean | null;
   platform_fee_percentage: number | null;
+  // Signature settings
+  require_job_completion_signature: boolean | null;
   created_at: string;
   updated_at: string;
 }

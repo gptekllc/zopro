@@ -28,6 +28,7 @@ export type Database = {
           payment_terms_days: number | null
           phone: string | null
           platform_fee_percentage: number | null
+          require_job_completion_signature: boolean
           state: string | null
           stripe_account_id: string | null
           stripe_charges_enabled: boolean | null
@@ -52,6 +53,7 @@ export type Database = {
           payment_terms_days?: number | null
           phone?: string | null
           platform_fee_percentage?: number | null
+          require_job_completion_signature?: boolean
           state?: string | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean | null
@@ -76,6 +78,7 @@ export type Database = {
           payment_terms_days?: number | null
           phone?: string | null
           platform_fee_percentage?: number | null
+          require_job_completion_signature?: boolean
           state?: string | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean | null

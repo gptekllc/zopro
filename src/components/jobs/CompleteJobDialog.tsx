@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Job, useUpdateJob, useConvertJobToInvoice } from '@/hooks/useJobs';
 import { useEmailDocument } from '@/hooks/useDocumentActions';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useCompany } from '@/hooks/useCompany';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Loader2, CheckCircle2, FileText, Mail } from 'lucide-react';
+import { Loader2, CheckCircle2, FileText, Mail, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CompleteJobDialogProps {
@@ -36,9 +37,15 @@ export function CompleteJobDialog({ job, open, onOpenChange, onComplete }: Compl
   const convertToInvoice = useConvertJobToInvoice();
   const emailDocument = useEmailDocument();
   const { data: customers = [] } = useCustomers();
+  const { data: company } = useCompany();
 
   const customer = customers.find((c) => c.id === job.customer_id);
   const customerEmail = customer?.email;
+  
+  // Check if signature is required but missing
+  const requiresSignature = company?.require_job_completion_signature ?? false;
+  const hasSignature = !!(job as any).completion_signature_id;
+  const signatureBlocked = requiresSignature && !hasSignature;
 
   const handleComplete = async () => {
     setIsProcessing(true);
