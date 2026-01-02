@@ -455,6 +455,21 @@ const TeamMembersManager = () => {
     return member.roles?.[0]?.role || member.role || 'technician';
   };
 
+  // Check if current user can edit a specific team member
+  const canEditMember = (member: TeamMember) => {
+    // Can't edit yourself
+    if (member.id === user?.id) return false;
+    
+    // Admins can edit anyone
+    if (isAdmin) return true;
+    
+    // Managers can only edit technicians, not other managers or admins
+    const memberRole = getMemberRole(member);
+    if (isManager && (memberRole === 'admin' || memberRole === 'manager')) return false;
+    
+    return true;
+  };
+
   if (!canManageTeam) {
     return (
       <Card>
@@ -566,7 +581,7 @@ const TeamMembersManager = () => {
                               )}
                             </TableCell>
                             <TableCell className="text-right">
-                              {member.id !== user?.id && (
+                              {canEditMember(member) && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -620,7 +635,7 @@ const TeamMembersManager = () => {
                           )}
                         </div>
 
-                        {member.id !== user?.id && (
+                        {canEditMember(member) && (
                           <div className="flex gap-2 pt-2 border-t">
                             <Button
                               variant="outline"
