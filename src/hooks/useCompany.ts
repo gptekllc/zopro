@@ -18,6 +18,12 @@ export interface Company {
   payment_terms_days: number | null;
   late_fee_percentage: number | null;
   default_payment_method: string | null;
+  // Stripe Connect fields
+  stripe_account_id: string | null;
+  stripe_onboarding_complete: boolean | null;
+  stripe_charges_enabled: boolean | null;
+  stripe_payouts_enabled: boolean | null;
+  platform_fee_percentage: number | null;
   created_at: string;
   updated_at: string;
 }

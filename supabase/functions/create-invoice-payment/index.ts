@@ -55,10 +55,10 @@ serve(async (req) => {
     }
     logStep("Token verified");
 
-    // Fetch invoice details
+    // Fetch invoice details with company Stripe Connect info
     const { data: invoice, error: invoiceError } = await adminClient
       .from('invoices')
-      .select('*, customers(id, name, email), companies(name)')
+      .select('*, customers(id, name, email), companies(name, stripe_account_id, stripe_charges_enabled, platform_fee_percentage)')
       .eq('id', invoiceId)
       .eq('customer_id', customerId)
       .single();
@@ -124,8 +124,27 @@ serve(async (req) => {
 
     const origin = req.headers.get("origin") || "https://lovable.dev";
 
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
+    // Check if company has Stripe Connect set up
+    const companyStripeAccountId = invoice.companies?.stripe_account_id;
+    const chargesEnabled = invoice.companies?.stripe_charges_enabled;
+    const platformFee = invoice.companies?.platform_fee_percentage || 0;
+
+    if (companyStripeAccountId && !chargesEnabled) {
+      throw new Error("Company's Stripe account is not fully set up for payments");
+    }
+
+    logStep("Stripe Connect status", { 
+      hasConnectedAccount: !!companyStripeAccountId, 
+      chargesEnabled, 
+      platformFee 
+    });
+
+    // Calculate amounts
+    const totalCents = Math.round(Number(invoice.total) * 100);
+    const applicationFeeCents = platformFee > 0 ? Math.round(totalCents * (platformFee / 100)) : 0;
+
+    // Build checkout session options
+    const sessionOptions: any = {
       customer: stripeCustomerId,
       customer_email: stripeCustomerId ? undefined : customerEmail,
       line_items: [
@@ -136,7 +155,7 @@ serve(async (req) => {
               name: `Invoice ${invoice.invoice_number}`,
               description: `Payment for invoice from ${invoice.companies?.name || 'Company'}`,
             },
-            unit_amount: Math.round(Number(invoice.total) * 100), // Convert to cents
+            unit_amount: totalCents,
           },
           quantity: 1,
         },
@@ -149,7 +168,29 @@ serve(async (req) => {
         customer_id: customerId,
         invoice_number: invoice.invoice_number,
       },
-    });
+    };
+
+    // If company has Stripe Connect, route payment to their account
+    if (companyStripeAccountId && chargesEnabled) {
+      sessionOptions.payment_intent_data = {
+        transfer_data: {
+          destination: companyStripeAccountId,
+        },
+      };
+      
+      // Add platform fee if configured
+      if (applicationFeeCents > 0) {
+        sessionOptions.payment_intent_data.application_fee_amount = applicationFeeCents;
+      }
+      
+      logStep("Routing payment to connected account", { 
+        destination: companyStripeAccountId, 
+        applicationFee: applicationFeeCents 
+      });
+    }
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create(sessionOptions);
 
     logStep("Checkout session created", { sessionId: session.id, url: session.url });
 

@@ -21,6 +21,8 @@ import Profile from "./pages/Profile";
 import SuperAdmin from "./pages/SuperAdmin";
 import CustomerPortal from "./pages/CustomerPortal";
 import Notifications from "./pages/Notifications";
+import StripeConnectReturn from "./pages/StripeConnectReturn";
+import StripeConnectRefresh from "./pages/StripeConnectRefresh";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
@@ -53,6 +55,8 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/super-admin" element={<SuperAdmin />} />
+              <Route path="/stripe-connect/return" element={<StripeConnectReturn />} />
+              <Route path="/stripe-connect/refresh" element={<StripeConnectRefresh />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

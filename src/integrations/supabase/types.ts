@@ -27,7 +27,12 @@ export type Database = {
           name: string
           payment_terms_days: number | null
           phone: string | null
+          platform_fee_percentage: number | null
           state: string | null
+          stripe_account_id: string | null
+          stripe_charges_enabled: boolean | null
+          stripe_onboarding_complete: boolean | null
+          stripe_payouts_enabled: boolean | null
           tax_rate: number | null
           timezone: string | null
           updated_at: string
@@ -45,7 +50,12 @@ export type Database = {
           name: string
           payment_terms_days?: number | null
           phone?: string | null
+          platform_fee_percentage?: number | null
           state?: string | null
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean | null
+          stripe_onboarding_complete?: boolean | null
+          stripe_payouts_enabled?: boolean | null
           tax_rate?: number | null
           timezone?: string | null
           updated_at?: string
@@ -63,7 +73,12 @@ export type Database = {
           name?: string
           payment_terms_days?: number | null
           phone?: string | null
+          platform_fee_percentage?: number | null
           state?: string | null
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean | null
+          stripe_onboarding_complete?: boolean | null
+          stripe_payouts_enabled?: boolean | null
           tax_rate?: number | null
           timezone?: string | null
           updated_at?: string
