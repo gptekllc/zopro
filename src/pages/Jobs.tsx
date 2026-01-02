@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, useJobRelatedQuotes, Job, JobItem } from '@/hooks/useJobs';
+import { useJobTemplates, JobTemplate } from '@/hooks/useJobTemplates';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes, Quote } from '@/hooks/useQuotes';
@@ -21,7 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -33,6 +34,8 @@ import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 import { QuoteDetailDialog } from '@/components/quotes/QuoteDetailDialog';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
+import { SaveAsTemplateDialog } from '@/components/jobs/SaveAsTemplateDialog';
+import { TemplateManagerDialog } from '@/components/jobs/TemplateManagerDialog';
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 interface LineItem {
@@ -110,7 +113,9 @@ const Jobs = () => {
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
   const [archiveConfirmJob, setArchiveConfirmJob] = useState<Job | null>(null);
   const [deleteConfirmJob, setDeleteConfirmJob] = useState<Job | null>(null);
-
+  const [saveAsTemplateJob, setSaveAsTemplateJob] = useState<Job | null>(null);
+  const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
+  const { data: templates = [] } = useJobTemplates();
   // Wrapped setters for scroll restoration
   const openViewingJob = useCallback((job: Job | null) => {
     if (job) saveScrollPosition();
@@ -365,6 +370,26 @@ const Jobs = () => {
     setEditingJob(null); // Not editing, creating new
     openEditDialog(true);
   };
+  const handleLoadTemplate = (template: JobTemplate) => {
+    setFormData({
+      ...formData,
+      title: template.title,
+      description: template.description || '',
+      priority: template.priority,
+      notes: template.notes || '',
+      estimated_duration: template.estimated_duration ?? 60,
+    });
+    // Load template line items
+    if (template.items && template.items.length > 0) {
+      setLineItems(template.items.map(item => ({
+        id: crypto.randomUUID(),
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unit_price
+      })));
+    }
+    toast.success(`Loaded template: ${template.name}`);
+  };
   const handleImportQuote = () => {
     if (!importQuoteId) return;
     const quote: any = safeQuotes.find((q: any) => q?.id === importQuoteId);
@@ -494,6 +519,11 @@ const Jobs = () => {
               {showArchived ? <Archive className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               <span>{showArchived ? 'Hide Archived' : 'Archived'}</span>
             </Button>
+
+            <Button variant="outline" size="sm" onClick={() => setTemplateManagerOpen(true)} className="gap-1 whitespace-nowrap hidden sm:flex">
+              <BookTemplate className="w-4 h-4" />
+              <span>Templates</span>
+            </Button>
             
             <div className="hidden sm:flex gap-1 border rounded-md p-1">
               <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')} title="List View">
@@ -522,25 +552,50 @@ const Jobs = () => {
               <DialogTitle>{editingJob ? 'Edit Job' : 'Create New Job'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Import from Quote */}
-              {!editingJob && <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                  <div className="flex-1 space-y-2">
-                    <Label>Import from Quote (optional)</Label>
-                    <Select value={importQuoteId} onValueChange={setImportQuoteId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a quote" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {safeQuotes.filter((q: any) => (q?.status === 'accepted' || q?.status === 'sent') && q?.id).map((q: any) => <SelectItem key={q.id} value={q.id}>
-                              {String(q.quote_number ?? 'Quote')} - {safeCustomers.find((c: any) => c?.id === q?.customer_id)?.name}
-                            </SelectItem>)}
-                      </SelectContent>
-                    </Select>
+              {/* Import from Quote or Template */}
+              {!editingJob && <div className="flex flex-col gap-3">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                    <div className="flex-1 space-y-2">
+                      <Label>Import from Quote (optional)</Label>
+                      <Select value={importQuoteId} onValueChange={setImportQuoteId}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a quote" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {safeQuotes.filter((q: any) => (q?.status === 'accepted' || q?.status === 'sent') && q?.id).map((q: any) => <SelectItem key={q.id} value={q.id}>
+                                {String(q.quote_number ?? 'Quote')} - {safeCustomers.find((c: any) => c?.id === q?.customer_id)?.name}
+                              </SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button type="button" variant="outline" onClick={handleImportQuote} disabled={!importQuoteId} className="w-full sm:w-auto">
+                      <FileText className="w-4 h-4 mr-2" />
+                      Import
+                    </Button>
                   </div>
-                  <Button type="button" variant="outline" onClick={handleImportQuote} disabled={!importQuoteId} className="w-full sm:w-auto">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Import
-                  </Button>
+                  
+                  {templates.length > 0 && (
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                      <div className="flex-1 space-y-2">
+                        <Label>Load from Template (optional)</Label>
+                        <Select onValueChange={(templateId) => {
+                          const template = templates.find(t => t.id === templateId);
+                          if (template) handleLoadTemplate(template);
+                        }}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a template" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {templates.map((t) => (
+                              <SelectItem key={t.id} value={t.id}>
+                                {t.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
                 </div>}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -868,6 +923,10 @@ const Jobs = () => {
                                 <Copy className="w-4 h-4 mr-2" />
                                 Duplicate
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setSaveAsTemplateJob(job)}>
+                                <Save className="w-4 h-4 mr-2" />
+                                Save as Template
+                              </DropdownMenuItem>
                               {job.archived_at ? (
                                 <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
                                   <ArchiveRestore className="w-4 h-4 mr-2" />
@@ -1003,6 +1062,10 @@ const Jobs = () => {
                               <DropdownMenuItem onClick={() => handleDuplicate(job)}>
                                 <Copy className="w-4 h-4 mr-2" />
                                 Duplicate
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setSaveAsTemplateJob(job)}>
+                                <Save className="w-4 h-4 mr-2" />
+                                Save as Template
                               </DropdownMenuItem>
                               {job.archived_at ? (
                                 <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
@@ -1339,6 +1402,30 @@ const Jobs = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Save as Template Dialog */}
+      <SaveAsTemplateDialog
+        open={!!saveAsTemplateJob}
+        onOpenChange={(open) => !open && setSaveAsTemplateJob(null)}
+        job={saveAsTemplateJob ? {
+          title: saveAsTemplateJob.title,
+          description: saveAsTemplateJob.description,
+          priority: saveAsTemplateJob.priority,
+          estimated_duration: saveAsTemplateJob.estimated_duration,
+          notes: saveAsTemplateJob.notes,
+          items: saveAsTemplateJob.items?.map(item => ({
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+          })),
+        } : null}
+      />
+
+      {/* Template Manager Dialog */}
+      <TemplateManagerDialog
+        open={templateManagerOpen}
+        onOpenChange={setTemplateManagerOpen}
+      />
 
       {/* Mobile Floating Action Button */}
       <Button className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50" onClick={() => openEditDialog(true)}>
