@@ -315,14 +315,14 @@ const Invoices = () => {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <h1 className="text-3xl font-bold">Invoices</h1>
-            <p className="text-muted-foreground mt-1">{invoices.length} total invoices</p>
+            <p className="text-muted-foreground mt-1 hidden sm:block">{invoices.length} total invoices</p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-32 sm:w-40">
+          <div className="flex items-center gap-2">
+            <div className="relative w-32 sm:w-40 hidden sm:block">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search..."
@@ -349,6 +349,11 @@ const Invoices = () => {
               openEditDialog(open);
               if (!open) resetForm();
             }}>
+              <DialogTrigger asChild>
+                <Button size="icon" className="sm:hidden">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </DialogTrigger>
               <DialogTrigger asChild>
                 <Button className="gap-2 hidden sm:flex">
                   <Plus className="w-4 h-4" />
