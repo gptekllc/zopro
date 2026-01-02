@@ -102,82 +102,107 @@ export function CompleteJobDialog({ job, open, onOpenChange, onComplete }: Compl
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div className="space-y-4 pt-2">
-              <p>This will mark the job as completed. Choose what actions to take:</p>
-              
-              <div className="space-y-3 bg-muted/50 rounded-lg p-4">
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="generate-invoice"
-                    checked={generateInvoice}
-                    onCheckedChange={(checked) => setGenerateInvoice(checked as boolean)}
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <Label
-                      htmlFor="generate-invoice"
-                      className="flex items-center gap-2 cursor-pointer font-medium"
-                    >
-                      <FileText className="w-4 h-4" />
-                      Generate Invoice
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Create an invoice from the job details and linked quote items
-                    </p>
+              {signatureBlocked ? (
+                <>
+                  <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                    <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-destructive">Customer Signature Required</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Your company requires a customer signature before marking jobs as completed. 
+                        Please collect a signature from the customer first.
+                      </p>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="flex items-start space-x-3">
-                  <Checkbox
-                    id="email-customer"
-                    checked={emailCustomer}
-                    disabled={!generateInvoice || !customerEmail}
-                    onCheckedChange={(checked) => setEmailCustomer(checked as boolean)}
-                  />
-                  <div className="grid gap-1.5 leading-none">
-                    <Label
-                      htmlFor="email-customer"
-                      className={`flex items-center gap-2 cursor-pointer font-medium ${(!generateInvoice || !customerEmail) ? 'text-muted-foreground' : ''}`}
-                    >
-                      <Mail className="w-4 h-4" />
-                      Email Invoice to Customer
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      {customerEmail 
-                        ? `Send invoice to ${customerEmail}`
-                        : 'Customer has no email address on file'}
-                    </p>
+                  <p className="text-sm text-muted-foreground">
+                    You can collect a signature from the job detail view by clicking "Collect Completion Signature" in the actions menu.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p>This will mark the job as completed. Choose what actions to take:</p>
+                  
+                  <div className="space-y-3 bg-muted/50 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id="generate-invoice"
+                        checked={generateInvoice}
+                        onCheckedChange={(checked) => setGenerateInvoice(checked as boolean)}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label
+                          htmlFor="generate-invoice"
+                          className="flex items-center gap-2 cursor-pointer font-medium"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Generate Invoice
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Create an invoice from the job details and linked quote items
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id="email-customer"
+                        checked={emailCustomer}
+                        disabled={!generateInvoice || !customerEmail}
+                        onCheckedChange={(checked) => setEmailCustomer(checked as boolean)}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label
+                          htmlFor="email-customer"
+                          className={`flex items-center gap-2 cursor-pointer font-medium ${(!generateInvoice || !customerEmail) ? 'text-muted-foreground' : ''}`}
+                        >
+                          <Mail className="w-4 h-4" />
+                          Email Invoice to Customer
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          {customerEmail 
+                            ? `Send invoice to ${customerEmail}`
+                            : 'Customer has no email address on file'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-              
-              <div className="text-sm text-muted-foreground border-l-2 border-primary pl-3">
-                <strong>Summary:</strong>
-                <ul className="mt-1 space-y-1">
-                  <li>✓ Job status will be set to "Completed"</li>
-                  <li>✓ Actual end time will be recorded</li>
-                  {generateInvoice && <li>✓ Invoice will be created from job</li>}
-                  {generateInvoice && emailCustomer && customerEmail && (
-                    <li>✓ Invoice will be emailed to customer</li>
-                  )}
-                </ul>
-              </div>
+                  
+                  <div className="text-sm text-muted-foreground border-l-2 border-primary pl-3">
+                    <strong>Summary:</strong>
+                    <ul className="mt-1 space-y-1">
+                      <li>✓ Job status will be set to "Completed"</li>
+                      <li>✓ Actual end time will be recorded</li>
+                      {hasSignature && <li>✓ Customer signature already collected</li>}
+                      {generateInvoice && <li>✓ Invoice will be created from job</li>}
+                      {generateInvoice && emailCustomer && customerEmail && (
+                        <li>✓ Invoice will be emailed to customer</li>
+                      )}
+                    </ul>
+                  </div>
+                </>
+              )}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleComplete} disabled={isProcessing}>
-            {isProcessing ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Complete Job
-              </>
-            )}
-          </AlertDialogAction>
+          <AlertDialogCancel disabled={isProcessing}>
+            {signatureBlocked ? 'Close' : 'Cancel'}
+          </AlertDialogCancel>
+          {!signatureBlocked && (
+            <AlertDialogAction onClick={handleComplete} disabled={isProcessing}>
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Complete Job
+                </>
+              )}
+            </AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

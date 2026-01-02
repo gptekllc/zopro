@@ -482,12 +482,21 @@ const Jobs = () => {
 
   const handleSignatureComplete = async (signatureData: string, signerName: string) => {
     if (!signatureJob) return;
-    await signJobCompletion.mutateAsync({
+    const signature = await signJobCompletion.mutateAsync({
       jobId: signatureJob.id,
       signatureData,
       signerName,
       customerId: signatureJob.customer_id,
     });
+    // Update viewing job with the new signature if it's open
+    if (viewingJob?.id === signatureJob.id) {
+      setViewingJob({
+        ...viewingJob,
+        completion_signature_id: signature.id,
+        completion_signed_at: new Date().toISOString(),
+        completion_signed_by: signerName,
+      } as any);
+    }
     setSignatureDialogOpen(false);
     setSignatureJob(null);
   };

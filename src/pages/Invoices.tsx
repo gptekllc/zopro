@@ -374,12 +374,20 @@ const Invoices = () => {
 
   const handleSignatureComplete = async (signatureData: string, signerName: string) => {
     if (!signatureInvoice) return;
-    await signInvoice.mutateAsync({
+    const signature = await signInvoice.mutateAsync({
       invoiceId: signatureInvoice.id,
       signatureData,
       signerName,
       customerId: signatureInvoice.customer_id,
     });
+    // Update viewing invoice with the new signature if it's open
+    if (viewingInvoice?.id === signatureInvoice.id) {
+      setViewingInvoice({
+        ...viewingInvoice,
+        signature_id: signature.id,
+        signed_at: new Date().toISOString(),
+      } as any);
+    }
     setSignatureDialogOpen(false);
     setSignatureInvoice(null);
   };

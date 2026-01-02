@@ -419,12 +419,21 @@ const Quotes = () => {
 
   const handleSignatureComplete = async (signatureData: string, signerName: string) => {
     if (!signatureQuote) return;
-    await approveWithSignature.mutateAsync({
+    const signature = await approveWithSignature.mutateAsync({
       quoteId: signatureQuote.id,
       signatureData,
       signerName,
       customerId: signatureQuote.customer_id,
     });
+    // Update viewing quote with the new signature if it's open
+    if (viewingQuote?.id === signatureQuote.id) {
+      setViewingQuote({
+        ...viewingQuote,
+        signature_id: signature.id,
+        signed_at: new Date().toISOString(),
+        status: 'accepted',
+      });
+    }
     setSignatureDialogOpen(false);
     setSignatureQuote(null);
   };
