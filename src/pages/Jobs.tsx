@@ -838,9 +838,6 @@ const Jobs = () => {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(job)}>
                               <Edit className="w-3.5 h-3.5" />
                             </Button>
-                            {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => archiveJob.mutate(job.id)} disabled={archiveJob.isPending} title="Archive job">
-                                <Archive className="w-3.5 h-3.5" />
-                              </Button>}
                             {isAdmin && <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
@@ -963,9 +960,6 @@ const Jobs = () => {
                               <Button variant="ghost" size="icon" onClick={() => handleEdit(job)}>
                                 <Edit className="w-4 h-4" />
                               </Button>
-                              {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && <Button variant="ghost" size="icon" onClick={() => archiveJob.mutate(job.id)} disabled={archiveJob.isPending} title="Archive job">
-                                  <Archive className="w-4 h-4" />
-                                </Button>}
                               {isAdmin && <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="icon" className="text-destructive">
