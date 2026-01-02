@@ -438,14 +438,14 @@ const Jobs = () => {
   return <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <h1 className="text-3xl font-bold">Jobs</h1>
-            <p className="text-muted-foreground mt-1">{safeJobs.length} total jobs</p>
+            <p className="text-muted-foreground mt-1 hidden sm:block">{safeJobs.length} total jobs</p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative w-32 sm:w-40">
+          <div className="flex items-center gap-2">
+            <div className="relative w-24 sm:w-40">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9" />
             </div>
@@ -460,19 +460,19 @@ const Jobs = () => {
               </SelectContent>
             </Select>
             
-            <Button variant={showArchived ? 'secondary' : 'outline'} size="sm" onClick={() => setShowArchived(!showArchived)} className="gap-1 whitespace-nowrap">
+            <Button variant={showArchived ? 'secondary' : 'outline'} size="sm" onClick={() => setShowArchived(!showArchived)} className="gap-1 whitespace-nowrap hidden sm:flex">
               {showArchived ? <Archive className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span className="hidden sm:inline">{showArchived ? 'Hide Archived' : 'Archived'}</span>
+              <span>{showArchived ? 'Hide Archived' : 'Archived'}</span>
             </Button>
             
-            <div className="flex gap-1 border rounded-md p-1">
+            <div className="hidden sm:flex gap-1 border rounded-md p-1">
               <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')} title="List View">
                 <List className="w-4 h-4" />
               </Button>
               <Button variant={viewMode === 'calendar' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('calendar')} title="Calendar View">
                 <CalendarDays className="w-4 h-4" />
               </Button>
-              {isAdmin && <Button variant={viewMode === 'scheduler' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('scheduler')} title="Scheduler View" className="hidden sm:flex">
+              {isAdmin && <Button variant={viewMode === 'scheduler' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('scheduler')} title="Scheduler View">
                   <Users className="w-4 h-4" />
                 </Button>}
             </div>
