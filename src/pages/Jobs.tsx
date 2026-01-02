@@ -7,6 +7,7 @@ import { useJobTemplates, JobTemplate } from '@/hooks/useJobTemplates';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes, Quote } from '@/hooks/useQuotes';
+import { useInvoices } from '@/hooks/useInvoices';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -88,6 +89,9 @@ const Jobs = () => {
     data: quotes = []
   } = useQuotes();
   const {
+    data: invoices = []
+  } = useInvoices();
+  const {
     data: profiles = []
   } = useProfiles();
   const {
@@ -96,7 +100,45 @@ const Jobs = () => {
   const taxRate = company?.tax_rate ?? 8.25;
   const safeCustomers = useMemo(() => (Array.isArray(customers) ? customers : []).filter((c: any) => c && c.id) as any[], [customers]);
   const safeQuotes = useMemo(() => (Array.isArray(quotes) ? quotes : []).filter((q: any) => q && q.id) as any[], [quotes]);
+  const safeInvoices = useMemo(() => (Array.isArray(invoices) ? invoices : []).filter((i: any) => i && i.id) as any[], [invoices]);
   const safeProfiles = useMemo(() => (Array.isArray(profiles) ? profiles : []).filter((p: any) => p && p.id) as any[], [profiles]);
+  
+  // Track quotes created from jobs (upsell quotes where job_id matches)
+  const quotesPerJob = useMemo(() => {
+    const counts = new Map<string, number>();
+    safeQuotes.forEach((quote: any) => {
+      if (quote.job_id) {
+        counts.set(quote.job_id, (counts.get(quote.job_id) || 0) + 1);
+      }
+    });
+    return counts;
+  }, [safeQuotes]);
+
+  // Track invoices linked to jobs through quotes
+  // An invoice is linked to a job if:
+  // 1. The invoice's quote_id matches a quote where quote.job_id = job.id, OR
+  // 2. The invoice's quote_id matches the job's origin quote_id
+  const invoicesPerJob = useMemo(() => {
+    const counts = new Map<string, number>();
+    
+    // Build a map of quote_id -> job_id for quotes created from jobs
+    const quoteToJobMap = new Map<string, string>();
+    safeQuotes.forEach((quote: any) => {
+      if (quote.job_id) {
+        quoteToJobMap.set(quote.id, quote.job_id);
+      }
+    });
+    
+    safeInvoices.forEach((invoice: any) => {
+      if (invoice.quote_id) {
+        const jobId = quoteToJobMap.get(invoice.quote_id);
+        if (jobId) {
+          counts.set(jobId, (counts.get(jobId) || 0) + 1);
+        }
+      }
+    });
+    return counts;
+  }, [safeQuotes, safeInvoices]);
   const createJob = useCreateJob();
   const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
@@ -1018,6 +1060,20 @@ const Jobs = () => {
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
                           {job.status.replace('_', ' ')}
                         </span>
+                        {/* Linked Quotes Badge */}
+                        {(quotesPerJob.get(job.id) || 0) > 0 && (
+                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 gap-1 text-xs">
+                            <FileText className="w-3 h-3" />
+                            {quotesPerJob.get(job.id)} Quote{(quotesPerJob.get(job.id) || 0) > 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                        {/* Linked Invoices Badge */}
+                        {(invoicesPerJob.get(job.id) || 0) > 0 && (
+                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800 gap-1 text-xs">
+                            <Receipt className="w-3 h-3" />
+                            {invoicesPerJob.get(job.id)} Invoice{(invoicesPerJob.get(job.id) || 0) > 1 ? 's' : ''}
+                          </Badge>
+                        )}
                       </div>
                       
                       {/* Action Menu */}
@@ -1181,6 +1237,20 @@ const Jobs = () => {
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
                             {job.status.replace('_', ' ')}
                           </span>
+                          {/* Linked Quotes Badge */}
+                          {(quotesPerJob.get(job.id) || 0) > 0 && (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 gap-1">
+                              <FileText className="w-3 h-3" />
+                              {quotesPerJob.get(job.id)} Quote{(quotesPerJob.get(job.id) || 0) > 1 ? 's' : ''}
+                            </Badge>
+                          )}
+                          {/* Linked Invoices Badge */}
+                          {(invoicesPerJob.get(job.id) || 0) > 0 && (
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800 gap-1">
+                              <Receipt className="w-3 h-3" />
+                              {invoicesPerJob.get(job.id)} Invoice{(invoicesPerJob.get(job.id) || 0) > 1 ? 's' : ''}
+                            </Badge>
+                          )}
                         </div>
                         
                         {/* Action Menu */}
