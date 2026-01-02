@@ -55,13 +55,13 @@ export function getTotalWithLateFee(invoice: Invoice): number {
   return Number(invoice.total) + Number(invoice.late_fee_amount || 0);
 }
 
-export function useInvoices() {
+export function useInvoices(includeArchived: boolean = false) {
   const { profile } = useAuth();
   
   return useQuery({
-    queryKey: ['invoices', profile?.company_id],
+    queryKey: ['invoices', profile?.company_id, includeArchived],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('invoices')
         .select(`
           *,
@@ -69,6 +69,12 @@ export function useInvoices() {
           items:invoice_items(*)
         `)
         .order('created_at', { ascending: false });
+      
+      if (!includeArchived) {
+        query = query.is('archived_at', null);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data as Invoice[];
@@ -238,6 +244,50 @@ export function useDeleteInvoice() {
     },
     onError: (error: unknown) => {
       toast.error('Failed to delete invoice: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
+export function useArchiveInvoice() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('invoices')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success('Invoice archived');
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to archive invoice: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
+export function useUnarchiveInvoice() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('invoices')
+        .update({ archived_at: null })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success('Invoice restored');
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to restore invoice: ' + sanitizeErrorMessage(error));
     },
   });
 }

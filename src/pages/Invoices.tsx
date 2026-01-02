@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
-import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useApplyLateFee, isInvoiceOverdue, getTotalWithLateFee } from '@/hooks/useInvoices';
+import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useApplyLateFee, useArchiveInvoice, useUnarchiveInvoice, isInvoiceOverdue, getTotalWithLateFee, Invoice } from '@/hooks/useInvoices';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy } from 'lucide-react';
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
@@ -32,12 +32,18 @@ interface LineItem {
 const Invoices = () => {
   const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: invoices = [], isLoading, refetch: refetchInvoices } = useInvoices();
+  const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Determine if we need archived data
+  const needsArchivedData = statusFilter === 'archived';
+  const { data: invoices = [], isLoading, refetch: refetchInvoices } = useInvoices(needsArchivedData);
   const { data: customers = [] } = useCustomers();
   const { data: company } = useCompany();
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
   const deleteInvoice = useDeleteInvoice();
+  const archiveInvoice = useArchiveInvoice();
+  const unarchiveInvoice = useUnarchiveInvoice();
   const applyLateFee = useApplyLateFee();
   const emailDocument = useEmailDocument();
   const downloadDocument = useDownloadDocument();
@@ -54,7 +60,7 @@ const Invoices = () => {
   const [emailRecipient, setEmailRecipient] = useState('');
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [archiveConfirmInvoice, setArchiveConfirmInvoice] = useState<Invoice | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<string | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<typeof invoices[0] | null>(null);
@@ -106,8 +112,16 @@ const Invoices = () => {
       const customerName = customer?.name || '';
       const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         inv.invoice_number.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Handle archived filter separately
+      if (statusFilter === 'archived') {
+        return matchesSearch && !!(inv as any).archived_at;
+      }
+      
       const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      // Hide archived invoices when not viewing archived filter
+      const notArchived = !(inv as any).archived_at;
+      return matchesSearch && matchesStatus && notArchived;
     });
     return filterPendingInvoiceDeletes(filtered);
   }, [invoices, customers, searchQuery, statusFilter, filterPendingInvoiceDeletes]);
@@ -333,6 +347,15 @@ const Invoices = () => {
     setEmailRecipient('');
   };
 
+  const handleArchiveInvoice = async (invoice: Invoice) => {
+    await archiveInvoice.mutateAsync(invoice.id);
+    setArchiveConfirmInvoice(null);
+  };
+
+  const handleUnarchiveInvoice = async (invoice: Invoice) => {
+    await unarchiveInvoice.mutateAsync(invoice.id);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -362,18 +385,35 @@ const Invoices = () => {
               />
             </div>
             
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-28 sm:w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="sent">Sent</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="overdue">Overdue</SelectItem>
-              </SelectContent>
-            </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant={statusFilter !== 'all' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9">
+                  <Filter className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
+                  All Status
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('draft')} className={statusFilter === 'draft' ? 'bg-accent' : ''}>
+                  Draft
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('sent')} className={statusFilter === 'sent' ? 'bg-accent' : ''}>
+                  Sent
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('paid')} className={statusFilter === 'paid' ? 'bg-accent' : ''}>
+                  Paid
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('overdue')} className={statusFilter === 'overdue' ? 'bg-accent' : ''}>
+                  Overdue
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setStatusFilter('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
+                  <Archive className="w-4 h-4 mr-2" />
+                  Archived
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
               openEditDialog(open);
@@ -651,6 +691,17 @@ const Invoices = () => {
                           </>
                         )}
                         <DropdownMenuSeparator />
+                        {(invoice as any).archived_at ? (
+                          <DropdownMenuItem onClick={() => handleUnarchiveInvoice(invoice as Invoice)}>
+                            <ArchiveRestore className="w-4 h-4 mr-2" />
+                            Restore
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => setArchiveConfirmInvoice(invoice as Invoice)}>
+                            <Archive className="w-4 h-4 mr-2" />
+                            Archive
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => handleDeleteClick(invoice)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
@@ -1001,7 +1052,25 @@ const Invoices = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Mobile Floating Action Button */}
+      {/* Archive Confirmation Dialog */}
+      <AlertDialog open={!!archiveConfirmInvoice} onOpenChange={(open) => !open && setArchiveConfirmInvoice(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Invoice</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive invoice "{archiveConfirmInvoice?.invoice_number}"? 
+              Archived invoices can be restored later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => archiveConfirmInvoice && handleArchiveInvoice(archiveConfirmInvoice)}>
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Button
         className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50"
         onClick={() => openEditDialog(true)}

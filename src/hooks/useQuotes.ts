@@ -35,13 +35,13 @@ export interface Quote {
   customer?: { name: string };
 }
 
-export function useQuotes() {
+export function useQuotes(includeArchived: boolean = false) {
   const { profile } = useAuth();
   
   return useQuery({
-    queryKey: ['quotes', profile?.company_id],
+    queryKey: ['quotes', profile?.company_id, includeArchived],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('quotes')
         .select(`
           *,
@@ -49,6 +49,12 @@ export function useQuotes() {
           items:quote_items(*)
         `)
         .order('created_at', { ascending: false });
+      
+      if (!includeArchived) {
+        query = query.is('archived_at', null);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data as Quote[];
@@ -218,6 +224,66 @@ export function useDeleteQuote() {
     },
     onError: (error: unknown) => {
       toast.error('Failed to delete quote: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
+export function useArchiveQuote() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('quotes')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      toast.success('Quote archived');
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to archive quote: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
+export function useUnarchiveQuote() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from('quotes')
+        .update({ archived_at: null })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      toast.success('Quote restored');
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to restore quote: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
+export function useAutoArchiveOldQuotes() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await (supabase as any).rpc('auto_archive_old_records');
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
     },
   });
 }

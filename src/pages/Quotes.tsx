@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
-import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote, Quote } from '@/hooks/useQuotes';
+import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote, useArchiveQuote, useUnarchiveQuote, Quote } from '@/hooks/useQuotes';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
@@ -36,12 +36,18 @@ interface LineItem {
 const Quotes = () => {
   const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { data: quotes = [], isLoading, refetch: refetchQuotes } = useQuotes();
+  const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Determine if we need archived data
+  const needsArchivedData = statusFilter === 'archived';
+  const { data: quotes = [], isLoading, refetch: refetchQuotes } = useQuotes(needsArchivedData);
   const { data: customers = [] } = useCustomers();
   const { data: jobs = [] } = useJobs(false);
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
   const deleteQuote = useDeleteQuote();
+  const archiveQuote = useArchiveQuote();
+  const unarchiveQuote = useUnarchiveQuote();
   const convertToInvoice = useConvertQuoteToInvoice();
   const emailDocument = useEmailDocument();
   const downloadDocument = useDownloadDocument();
@@ -72,7 +78,7 @@ const Quotes = () => {
   const [selectTemplateDialogOpen, setSelectTemplateDialogOpen] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [archiveConfirmQuote, setArchiveConfirmQuote] = useState<Quote | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
   const [viewingQuote, setViewingQuote] = useState<typeof quotes[0] | null>(null);
@@ -124,8 +130,16 @@ const Quotes = () => {
       const customerName = customer?.name || '';
       const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         q.quote_number.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Handle archived filter separately
+      if (statusFilter === 'archived') {
+        return matchesSearch && !!(q as any).archived_at;
+      }
+      
       const matchesStatus = statusFilter === 'all' || q.status === statusFilter;
-      return matchesSearch && matchesStatus;
+      // Hide archived quotes when not viewing archived filter
+      const notArchived = !(q as any).archived_at;
+      return matchesSearch && matchesStatus && notArchived;
     });
     return filterPendingQuoteDeletes(filtered);
   }, [quotes, customers, searchQuery, statusFilter, filterPendingQuoteDeletes]);
@@ -375,6 +389,15 @@ const Quotes = () => {
     openEditDialog(true);
   };
 
+  const handleArchiveQuote = async (quote: Quote) => {
+    await archiveQuote.mutateAsync(quote.id);
+    setArchiveConfirmQuote(null);
+  };
+
+  const handleUnarchiveQuote = async (quote: Quote) => {
+    await unarchiveQuote.mutateAsync(quote.id);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -404,18 +427,35 @@ const Quotes = () => {
               />
             </div>
             
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-28 sm:w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="sent">Sent</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="rejected">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant={statusFilter !== 'all' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9">
+                  <Filter className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
+                  All Status
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('draft')} className={statusFilter === 'draft' ? 'bg-accent' : ''}>
+                  Draft
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('sent')} className={statusFilter === 'sent' ? 'bg-accent' : ''}>
+                  Sent
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('approved')} className={statusFilter === 'approved' ? 'bg-accent' : ''}>
+                  Approved
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter('rejected')} className={statusFilter === 'rejected' ? 'bg-accent' : ''}>
+                  Rejected
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setStatusFilter('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
+                  <Archive className="w-4 h-4 mr-2" />
+                  Archived
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -796,6 +836,17 @@ const Quotes = () => {
                           </>
                         )}
                         <DropdownMenuSeparator />
+                        {(quote as any).archived_at ? (
+                          <DropdownMenuItem onClick={() => handleUnarchiveQuote(quote)}>
+                            <ArchiveRestore className="w-4 h-4 mr-2" />
+                            Restore
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem onClick={() => setArchiveConfirmQuote(quote)}>
+                            <Archive className="w-4 h-4 mr-2" />
+                            Archive
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => handleDeleteClick(quote)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
@@ -1039,7 +1090,25 @@ const Quotes = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Save as Template Dialog */}
+      {/* Archive Confirmation Dialog */}
+      <AlertDialog open={!!archiveConfirmQuote} onOpenChange={(open) => !open && setArchiveConfirmQuote(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Quote</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive quote "{archiveConfirmQuote?.quote_number}"? 
+              Archived quotes can be restored later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => archiveConfirmQuote && handleArchiveQuote(archiveConfirmQuote)}>
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <SaveAsQuoteTemplateDialog
         open={saveTemplateDialogOpen}
         onOpenChange={setSaveTemplateDialogOpen}
