@@ -170,6 +170,8 @@ const Jobs = () => {
   const [archiveConfirmJob, setArchiveConfirmJob] = useState<Job | null>(null);
   const [deleteConfirmJob, setDeleteConfirmJob] = useState<Job | null>(null);
   const [saveAsTemplateJob, setSaveAsTemplateJob] = useState<Job | null>(null);
+  const [createQuoteConfirmJob, setCreateQuoteConfirmJob] = useState<Job | null>(null);
+  const [createInvoiceConfirmJob, setCreateInvoiceConfirmJob] = useState<Job | null>(null);
   
   // Signature dialogs
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
@@ -578,6 +580,26 @@ const Jobs = () => {
       documentNumber: job.job_number,
       customerId: customer.id,
     });
+  };
+
+  // Handle Create Quote with duplicate confirmation
+  const handleCreateQuote = (job: Job) => {
+    const existingQuotes = quotesPerJob.get(job.id) || 0;
+    if (existingQuotes > 0) {
+      setCreateQuoteConfirmJob(job);
+    } else {
+      convertToQuote.mutate(job);
+    }
+  };
+
+  // Handle Create Invoice with duplicate confirmation
+  const handleCreateInvoice = (job: Job) => {
+    const existingInvoices = invoicesPerJob.get(job.id) || 0;
+    if (existingInvoices > 0) {
+      setCreateInvoiceConfirmJob(job);
+    } else {
+      convertToInvoice.mutate(job);
+    }
   };
   const getStatusColor = (status: Job['status']) => {
     switch (status) {
@@ -1124,11 +1146,11 @@ const Jobs = () => {
                                 </DropdownMenuItem>
                               ) : (
                                 <>
-                                  <DropdownMenuItem onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending}>
+                                  <DropdownMenuItem onClick={() => handleCreateInvoice(job)} disabled={convertToInvoice.isPending}>
                                     <Receipt className="w-4 h-4 mr-2" />
                                     Create Invoice
                                   </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
+                              <DropdownMenuItem onClick={() => handleCreateQuote(job)} disabled={convertToQuote.isPending}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 Create Quote
                               </DropdownMenuItem>
@@ -1301,11 +1323,11 @@ const Jobs = () => {
                                 </DropdownMenuItem>
                               ) : (
                                 <>
-                                  <DropdownMenuItem onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending}>
+                                  <DropdownMenuItem onClick={() => handleCreateInvoice(job)} disabled={convertToInvoice.isPending}>
                                     <Receipt className="w-4 h-4 mr-2" />
                                     Create Invoice
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
+                                  <DropdownMenuItem onClick={() => handleCreateQuote(job)} disabled={convertToQuote.isPending}>
                                     <FileText className="w-4 h-4 mr-2" />
                                     Create Quote
                                   </DropdownMenuItem>
@@ -1594,8 +1616,10 @@ const Jobs = () => {
                 openViewingJob(null);
                 setViewingQuote(quote);
               }} onCreateUpsellQuote={() => {
-                convertToQuote.mutate(viewingJob);
-                openViewingJob(null);
+                handleCreateQuote(viewingJob);
+                if ((quotesPerJob.get(viewingJob.id) || 0) === 0) {
+                  openViewingJob(null);
+                }
               }} isCreatingQuote={convertToQuote.isPending} />
                 </TabsContent>
               </Tabs>
@@ -1613,15 +1637,19 @@ const Jobs = () => {
                   Duplicate
                 </Button>
                 <Button variant="outline" onClick={() => {
-                  convertToQuote.mutate(viewingJob);
-                  openViewingJob(null);
+                  handleCreateQuote(viewingJob);
+                  if ((quotesPerJob.get(viewingJob.id) || 0) === 0) {
+                    openViewingJob(null);
+                  }
                 }} disabled={convertToQuote.isPending}>
                   <FileText className="w-4 h-4 mr-2" />
                   Create Quote
                 </Button>
                 <Button onClick={() => {
-                  convertToInvoice.mutate(viewingJob);
-                  openViewingJob(null);
+                  handleCreateInvoice(viewingJob);
+                  if ((invoicesPerJob.get(viewingJob.id) || 0) === 0) {
+                    openViewingJob(null);
+                  }
                 }} disabled={convertToInvoice.isPending}>
                   <Receipt className="w-4 h-4 mr-2" />
                   Create Invoice
@@ -1723,6 +1751,70 @@ const Jobs = () => {
           })),
         } : null}
       />
+
+      {/* Create Quote Confirmation Dialog */}
+      <AlertDialog open={!!createQuoteConfirmJob} onOpenChange={(open) => !open && setCreateQuoteConfirmJob(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-500" />
+              Quote Already Exists
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This job already has {quotesPerJob.get(createQuoteConfirmJob?.id || '') || 0} quote(s) created from it. 
+              Are you sure you want to create another quote? This may result in duplicate quotes.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (createQuoteConfirmJob) {
+                  convertToQuote.mutate(createQuoteConfirmJob);
+                  setCreateQuoteConfirmJob(null);
+                  openViewingJob(null);
+                }
+              }}
+              disabled={convertToQuote.isPending}
+            >
+              {convertToQuote.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Create Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Invoice Confirmation Dialog */}
+      <AlertDialog open={!!createInvoiceConfirmJob} onOpenChange={(open) => !open && setCreateInvoiceConfirmJob(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Receipt className="w-5 h-5 text-orange-500" />
+              Invoice Already Exists
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This job already has {invoicesPerJob.get(createInvoiceConfirmJob?.id || '') || 0} invoice(s) created from it. 
+              Are you sure you want to create another invoice? This may result in duplicate invoices.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (createInvoiceConfirmJob) {
+                  convertToInvoice.mutate(createInvoiceConfirmJob);
+                  setCreateInvoiceConfirmJob(null);
+                  openViewingJob(null);
+                }
+              }}
+              disabled={convertToInvoice.isPending}
+            >
+              {convertToInvoice.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Create Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
 
       {/* Signature Dialog */}
