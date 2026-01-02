@@ -57,8 +57,9 @@ export function useApproveQuoteWithSignature() {
 
       return signature;
     },
-    onSuccess: () => {
+    onSuccess: (signature) => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['signature', signature.id] });
       toast.success('Quote approved with signature');
     },
     onError: (error: unknown) => {
@@ -111,8 +112,9 @@ export function useSignInvoice() {
 
       return signature;
     },
-    onSuccess: () => {
+    onSuccess: (signature) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['signature', signature.id] });
       toast.success('Invoice signed successfully');
     },
     onError: (error: unknown) => {
@@ -166,9 +168,10 @@ export function useSignJobCompletion() {
 
       return signature;
     },
-    onSuccess: () => {
+    onSuccess: (signature) => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['job'] });
+      queryClient.invalidateQueries({ queryKey: ['signature', signature.id] });
       toast.success('Job completion signed successfully');
     },
     onError: (error: unknown) => {
