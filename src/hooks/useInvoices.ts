@@ -75,7 +75,7 @@ export function useInvoices(includeArchived: boolean = false) {
           creator:profiles!invoices_created_by_fkey(full_name),
           items:invoice_items(*),
           quote:quotes(
-            job:jobs(
+            job:jobs!quotes_job_id_fkey(
               assigned_technician:profiles!jobs_assigned_to_fkey(full_name)
             )
           )
