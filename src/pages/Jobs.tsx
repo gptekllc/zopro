@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, useJobRelatedQuotes, Job, JobItem } from '@/hooks/useJobs';
+import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useJobTemplates, JobTemplate } from '@/hooks/useJobTemplates';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -98,6 +99,12 @@ const Jobs = () => {
   const convertToQuote = useConvertJobToQuote();
   const archiveJob = useArchiveJob();
   const unarchiveJob = useUnarchiveJob();
+  
+  // Undo-able delete
+  const { scheduleDelete: scheduleJobDelete, filterPendingDeletes: filterPendingJobDeletes } = useUndoableDelete(
+    async (id) => { await deleteJob.mutateAsync(id); },
+    { itemLabel: 'job', timeout: 5000 }
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -201,7 +208,7 @@ const Jobs = () => {
     return new Date(job.created_at) < twoYearsAgo && (job.status === 'paid' || job.status === 'completed') && !job.archived_at;
   };
   const filteredJobs = useMemo(() => {
-    return safeJobs.filter((job: any) => {
+    const filtered = safeJobs.filter((job: any) => {
       if (!job) return false;
       const matchesSearch = String(job.title ?? '').toLowerCase().includes(searchQuery.toLowerCase()) || String(job.job_number ?? '').toLowerCase().includes(searchQuery.toLowerCase()) || String(job.customer?.name ?? '').toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
@@ -218,7 +225,8 @@ const Jobs = () => {
       }
       return matchesSearch && matchesStatus && matchesArchiveFilter;
     });
-  }, [safeJobs, searchQuery, statusFilter, showArchived, includeArchivedInSearch]);
+    return filterPendingJobDeletes(filtered);
+  }, [safeJobs, searchQuery, statusFilter, showArchived, includeArchivedInSearch, filterPendingJobDeletes]);
   const resetForm = () => {
     setFormData({
       customer_id: '',
@@ -337,8 +345,8 @@ const Jobs = () => {
     setEditingJob(job);
     openEditDialog(true);
   };
-  const handleDelete = async (jobId: string) => {
-    await deleteJob.mutateAsync(jobId);
+  const handleDelete = (jobId: string) => {
+    scheduleJobDelete(jobId);
   };
   const handleDuplicate = (job: Job) => {
     setFormData({

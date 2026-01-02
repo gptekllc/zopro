@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
 import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useApplyLateFee, isInvoiceOverdue, getTotalWithLateFee } from '@/hooks/useInvoices';
@@ -7,6 +7,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
+import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +43,12 @@ const Invoices = () => {
   const downloadDocument = useDownloadDocument();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
   
+  // Undo-able delete
+  const { scheduleDelete: scheduleInvoiceDelete, filterPendingDeletes: filterPendingInvoiceDeletes } = useUndoableDelete(
+    async (id) => { await deleteInvoice.mutateAsync(id); },
+    { itemLabel: 'invoice', timeout: 5000 }
+  );
+  
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedInvoiceForEmail, setSelectedInvoiceForEmail] = useState<string | null>(null);
   const [emailRecipient, setEmailRecipient] = useState('');
@@ -51,8 +58,6 @@ const Invoices = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<string | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<typeof invoices[0] | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [invoiceToDelete, setInvoiceToDelete] = useState<string | null>(null);
 
   // Wrapped setters for scroll restoration
   const openViewingInvoice = useCallback((invoice: typeof invoices[0] | null) => {
@@ -94,14 +99,17 @@ const Invoices = () => {
     }
   }, [searchParams, invoices, setSearchParams]);
 
-  const filteredInvoices = invoices.filter(inv => {
-    const customer = customers.find(c => c.id === inv.customer_id);
-    const customerName = customer?.name || '';
-    const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.invoice_number.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredInvoices = useMemo(() => {
+    const filtered = invoices.filter(inv => {
+      const customer = customers.find(c => c.id === inv.customer_id);
+      const customerName = customer?.name || '';
+      const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.invoice_number.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+    return filterPendingInvoiceDeletes(filtered);
+  }, [invoices, customers, searchQuery, statusFilter, filterPendingInvoiceDeletes]);
 
   const resetForm = () => {
     setFormData({
@@ -210,20 +218,7 @@ const Invoices = () => {
   };
 
   const handleDeleteClick = (id: string) => {
-    setInvoiceToDelete(id);
-    setDeleteConfirmOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!invoiceToDelete) return;
-    try {
-      await deleteInvoice.mutateAsync(invoiceToDelete);
-      toast.success('Invoice deleted');
-    } catch (error) {
-      toast.error('Failed to delete invoice');
-    }
-    setDeleteConfirmOpen(false);
-    setInvoiceToDelete(null);
+    scheduleInvoiceDelete(id);
   };
 
   const handleMarkPaid = async (id: string) => {
@@ -952,24 +947,6 @@ const Invoices = () => {
           </DialogContent>
         </Dialog>
       )}
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this invoice? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Mobile Floating Action Button */}
       <Button

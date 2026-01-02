@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
 import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote } from '@/hooks/useQuotes';
@@ -7,6 +7,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { useJobs, useCreateJobFromQuoteItems, useAddQuoteItemsToJob } from '@/hooks/useJobs';
 import { useConvertQuoteToInvoice, useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
+import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +46,12 @@ const Quotes = () => {
   const addItemsToJob = useAddQuoteItemsToJob();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
   
+  // Undo-able delete
+  const { scheduleDelete: scheduleQuoteDelete, filterPendingDeletes: filterPendingQuoteDeletes } = useUndoableDelete(
+    async (id) => { await deleteQuote.mutateAsync(id); },
+    { itemLabel: 'quote', timeout: 5000 }
+  );
+  
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedQuoteForEmail, setSelectedQuoteForEmail] = useState<string | null>(null);
   const [emailRecipient, setEmailRecipient] = useState('');
@@ -59,8 +66,6 @@ const Quotes = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
   const [viewingQuote, setViewingQuote] = useState<typeof quotes[0] | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null);
 
   // Wrapped setters for scroll restoration
   const openViewingQuote = useCallback((quote: typeof quotes[0] | null) => {
@@ -102,14 +107,17 @@ const Quotes = () => {
     }
   }, [searchParams, quotes, setSearchParams]);
 
-  const filteredQuotes = quotes.filter(q => {
-    const customer = customers.find(c => c.id === q.customer_id);
-    const customerName = customer?.name || '';
-    const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.quote_number.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || q.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredQuotes = useMemo(() => {
+    const filtered = quotes.filter(q => {
+      const customer = customers.find(c => c.id === q.customer_id);
+      const customerName = customer?.name || '';
+      const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        q.quote_number.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || q.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+    return filterPendingQuoteDeletes(filtered);
+  }, [quotes, customers, searchQuery, statusFilter, filterPendingQuoteDeletes]);
 
   const resetForm = () => {
     setFormData({
@@ -218,20 +226,7 @@ const Quotes = () => {
   };
 
   const handleDeleteClick = (id: string) => {
-    setQuoteToDelete(id);
-    setDeleteConfirmOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!quoteToDelete) return;
-    try {
-      await deleteQuote.mutateAsync(quoteToDelete);
-      toast.success('Quote deleted');
-    } catch (error) {
-      toast.error('Failed to delete quote');
-    }
-    setDeleteConfirmOpen(false);
-    setQuoteToDelete(null);
+    scheduleQuoteDelete(id);
   };
 
   const getStatusColor = (status: string) => {
@@ -937,24 +932,6 @@ const Quotes = () => {
         onConfirm={handleAddItemsToJob}
         isPending={addItemsToJob.isPending}
       />
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Quote</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this quote? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Mobile Floating Action Button */}
       <Button
