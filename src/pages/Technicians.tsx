@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useProfiles, useUpdateProfile } from '@/hooks/useProfiles';
+import { useProfiles, useUpdateProfile, Profile } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { compressImageToFile } from '@/lib/imageCompression';
 import { format } from 'date-fns';
+import ViewMemberDialog from '@/components/team/ViewMemberDialog';
 
 const AVAILABLE_ROLES = ['admin', 'manager', 'technician'] as const;
 type AppRole = typeof AVAILABLE_ROLES[number];
@@ -33,6 +34,8 @@ const Technicians = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewingMember, setViewingMember] = useState<Profile | null>(null);
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -278,6 +281,17 @@ const Technicians = () => {
     });
     setEditingUser(profile.id);
     setIsDialogOpen(true);
+  };
+
+  const handleViewMember = (profile: Profile) => {
+    setViewingMember(profile);
+    setIsViewDialogOpen(true);
+  };
+
+  const getCurrentUserRole = (): 'admin' | 'manager' | 'technician' => {
+    if (isAdmin) return 'admin';
+    if (isManager) return 'manager';
+    return 'technician';
   };
 
   // Check if current user can edit a specific team member
@@ -651,10 +665,24 @@ const Technicians = () => {
         />
       </div>
 
+      {/* View Member Dialog */}
+      <ViewMemberDialog
+        member={viewingMember}
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+        currentUserRole={getCurrentUserRole()}
+        onEdit={handleEdit}
+        canEdit={viewingMember ? canEditMember(viewingMember) : false}
+      />
+
       {/* Team Member List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredUsers.map((profile) => (
-          <Card key={profile.id} className="overflow-hidden hover:shadow-md transition-shadow">
+          <Card 
+            key={profile.id} 
+            className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => handleViewMember(profile)}
+          >
             <CardContent className="p-5">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -679,9 +707,16 @@ const Technicians = () => {
                     </span>
                   </div>
                 </div>
-                {isAdmin && (
+                {canEditMember(profile) && (
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(profile)}>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(profile);
+                      }}
+                    >
                       <Edit className="w-4 h-4" />
                     </Button>
                   </div>
