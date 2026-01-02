@@ -1074,12 +1074,10 @@ const Jobs = () => {
                                       Create Invoice
                                     </DropdownMenuItem>
                                   )}
-                                  {!job.quote_id && (
-                                    <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
-                                      <FileText className="w-4 h-4 mr-2" />
-                                      Create Quote
-                                    </DropdownMenuItem>
-                                  )}
+                              <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
+                                <FileText className="w-4 h-4 mr-2" />
+                                Create Quote
+                              </DropdownMenuItem>
                                   {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
                                     <DropdownMenuItem onClick={() => setArchiveConfirmJob(job)}>
                                       <Archive className="w-4 h-4 mr-2" />
@@ -1241,12 +1239,10 @@ const Jobs = () => {
                                       Create Invoice
                                     </DropdownMenuItem>
                                   )}
-                                  {!job.quote_id && (
-                                    <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
-                                      <FileText className="w-4 h-4 mr-2" />
-                                      Create Quote
-                                    </DropdownMenuItem>
-                                  )}
+                                  <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Create Quote
+                                  </DropdownMenuItem>
                                   {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
                                     <DropdownMenuItem onClick={() => setArchiveConfirmJob(job)}>
                                       <Archive className="w-4 h-4 mr-2" />
@@ -1550,15 +1546,13 @@ const Jobs = () => {
                   <Copy className="w-4 h-4 mr-2" />
                   Duplicate
                 </Button>
-                {!viewingJob.quote_id && (
-                  <Button variant="outline" onClick={() => {
-                    convertToQuote.mutate(viewingJob);
-                    openViewingJob(null);
-                  }} disabled={convertToQuote.isPending}>
-                    <FileText className="w-4 h-4 mr-2" />
-                    Create Quote
-                  </Button>
-                )}
+                <Button variant="outline" onClick={() => {
+                  convertToQuote.mutate(viewingJob);
+                  openViewingJob(null);
+                }} disabled={convertToQuote.isPending}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Create Quote
+                </Button>
                 {viewingJob.status === 'completed' && (
                   <Button onClick={() => {
                     convertToInvoice.mutate(viewingJob);
