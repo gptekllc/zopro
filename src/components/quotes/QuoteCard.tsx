@@ -1,13 +1,13 @@
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Quote } from '@/hooks/useQuotes';
+import { Button } from "@/components/ui/button";
+import { DocumentListCard } from "@/components/shared/DocumentListCard";
+import type { Quote } from "@/hooks/useQuotes";
 
 const quoteStatusColors: Record<string, string> = {
-  draft: 'bg-muted text-muted-foreground',
-  sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  accepted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-  expired: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  draft: "bg-muted text-muted-foreground",
+  sent: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  accepted: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  expired: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
 };
 
 interface QuoteCardProps {
@@ -16,30 +16,30 @@ interface QuoteCardProps {
 }
 
 export function QuoteCard({ quote, onView }: QuoteCardProps) {
+  const totalFormatted = `$${Number(quote.total).toFixed(2)}`;
+
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 p-3 border rounded-lg bg-card">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-sm">{quote.quote_number}</span>
-          <Badge className={`${quoteStatusColors[quote.status] || 'bg-muted'} text-xs`} variant="secondary">
-            {quote.status}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3 mt-1 text-xs sm:text-sm text-muted-foreground flex-wrap">
-          <span>${quote.total.toFixed(2)}</span>
-          <span className="hidden sm:inline">•</span>
-          <span>{quote.items?.length || 0} items</span>
-          {quote.notes && (
-            <>
-              <span className="hidden sm:inline">•</span>
-              <span className="truncate max-w-[150px] sm:max-w-[200px] hidden sm:inline">{quote.notes}</span>
-            </>
-          )}
-        </div>
-      </div>
-      <Button variant="ghost" size="sm" onClick={onView} className="w-full sm:w-auto">
-        View
-      </Button>
-    </div>
+    <DocumentListCard
+      documentNumber={quote.quote_number}
+      status={quote.status}
+      statusColorClass={quoteStatusColors[quote.status] || "bg-muted"}
+      totalFormatted={totalFormatted}
+      itemCount={quote.items?.length || 0}
+      notes={quote.notes}
+      onClick={onView}
+      actionButton={
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onView();
+          }}
+          className="w-full sm:w-auto"
+        >
+          View
+        </Button>
+      }
+    />
   );
 }

@@ -616,7 +616,6 @@ const Invoices = () => {
               lateFeePercentage={lateFeePercentage}
               getCustomerName={getCustomerName}
               getCustomerEmail={getCustomerEmail}
-              getStatusColor={getStatusColor}
               isInvoiceOverdue={isInvoiceOverdue}
               getTotalWithLateFee={getTotalWithLateFee}
               onOpen={(inv) => openViewingInvoice(inv)}
