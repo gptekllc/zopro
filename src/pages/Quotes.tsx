@@ -34,26 +34,38 @@ import { CreateJobFromQuoteDialog, AddQuoteItemsToJobDialog } from '@/components
 import { SaveAsQuoteTemplateDialog } from '@/components/quotes/SaveAsQuoteTemplateDialog';
 import { SelectQuoteTemplateDialog } from '@/components/quotes/SelectQuoteTemplateDialog';
 import { QuoteTemplate } from '@/hooks/useQuoteTemplates';
-
 interface LineItem {
   id: string;
   description: string;
   quantity: number;
   unitPrice: number;
 }
-
 const Quotes = () => {
-  const { profile } = useAuth();
+  const {
+    profile
+  } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState('all');
-  
+
   // Determine if we need archived data
   const needsArchivedData = statusFilter === 'archived';
-  const { data: quotes = [], isLoading, refetch: refetchQuotes } = useQuotes(needsArchivedData);
-  const { data: customers = [] } = useCustomers();
-  const { data: company } = useCompany();
-  const { data: profiles = [] } = useProfiles();
-  const { data: jobs = [] } = useJobs(false);
+  const {
+    data: quotes = [],
+    isLoading,
+    refetch: refetchQuotes
+  } = useQuotes(needsArchivedData);
+  const {
+    data: customers = []
+  } = useCustomers();
+  const {
+    data: company
+  } = useCompany();
+  const {
+    data: profiles = []
+  } = useProfiles();
+  const {
+    data: jobs = []
+  } = useJobs(false);
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
   const deleteQuote = useDeleteQuote();
@@ -66,36 +78,42 @@ const Quotes = () => {
   const addItemsToJob = useAddQuoteItemsToJob();
   const approveWithSignature = useApproveQuoteWithSignature();
   const sendSignatureRequest = useSendSignatureRequest();
-  const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
-  
+  const {
+    saveScrollPosition,
+    restoreScrollPosition
+  } = useScrollRestoration();
+
   // Undo-able delete
-  const { scheduleDelete: scheduleQuoteDelete, filterPendingDeletes: filterPendingQuoteDeletes } = useUndoableDelete(
-    async (id) => { await deleteQuote.mutateAsync(id); },
-    { itemLabel: 'quote', timeout: 5000 }
-  );
-  
+  const {
+    scheduleDelete: scheduleQuoteDelete,
+    filterPendingDeletes: filterPendingQuoteDeletes
+  } = useUndoableDelete(async id => {
+    await deleteQuote.mutateAsync(id);
+  }, {
+    itemLabel: 'quote',
+    timeout: 5000
+  });
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedQuoteForEmail, setSelectedQuoteForEmail] = useState<string | null>(null);
   const [emailRecipient, setEmailRecipient] = useState('');
-  
+
   // Quote to Job dialogs
   const [createJobDialogOpen, setCreateJobDialogOpen] = useState(false);
   const [addToJobDialogOpen, setAddToJobDialogOpen] = useState(false);
   const [selectedQuoteForJob, setSelectedQuoteForJob] = useState<typeof quotes[0] | null>(null);
-  
+
   // Save as template dialog
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
   const [selectedQuoteForTemplate, setSelectedQuoteForTemplate] = useState<Quote | null>(null);
-  
+
   // Select template dialog
   const [selectTemplateDialogOpen, setSelectTemplateDialogOpen] = useState(false);
-  
+
   // Signature dialogs
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
   const [signatureQuote, setSignatureQuote] = useState<Quote | null>(null);
   const [viewSignatureId, setViewSignatureId] = useState<string | null>(null);
   const [viewSignatureOpen, setViewSignatureOpen] = useState(false);
-  
   const [searchQuery, setSearchQuery] = useState('');
   const [archiveConfirmQuote, setArchiveConfirmQuote] = useState<Quote | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -109,7 +127,6 @@ const Quotes = () => {
     setViewingQuote(quote);
     if (!quote) restoreScrollPosition();
   }, [saveScrollPosition, restoreScrollPosition]);
-
   const openEditDialog = useCallback((open: boolean) => {
     if (open) saveScrollPosition();
     setIsDialogOpen(open);
@@ -124,11 +141,16 @@ const Quotes = () => {
     createdBy: string;
   }>({
     customerId: '',
-    items: [{ id: '1', description: '', quantity: 1, unitPrice: 0 }],
+    items: [{
+      id: '1',
+      description: '',
+      quantity: 1,
+      unitPrice: 0
+    }],
     notes: '',
     status: 'draft',
     validDays: 30,
-    createdBy: '',
+    createdBy: ''
   });
 
   // Handle URL param to auto-open quote detail
@@ -140,23 +162,22 @@ const Quotes = () => {
         setViewingQuote(quote);
         // Clear the URL param after opening
         searchParams.delete('view');
-        setSearchParams(searchParams, { replace: true });
+        setSearchParams(searchParams, {
+          replace: true
+        });
       }
     }
   }, [searchParams, quotes, setSearchParams]);
-
   const filteredQuotes = useMemo(() => {
     const filtered = quotes.filter(q => {
       const customer = customers.find(c => c.id === q.customer_id);
       const customerName = customer?.name || '';
-      const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        q.quote_number.toLowerCase().includes(searchQuery.toLowerCase());
-      
+      const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) || q.quote_number.toLowerCase().includes(searchQuery.toLowerCase());
+
       // Handle archived filter separately
       if (statusFilter === 'archived') {
         return matchesSearch && !!(q as any).archived_at;
       }
-      
       const matchesStatus = statusFilter === 'all' || q.status === statusFilter;
       // Hide archived quotes when not viewing archived filter
       const notArchived = !(q as any).archived_at;
@@ -164,56 +185,59 @@ const Quotes = () => {
     });
     return filterPendingQuoteDeletes(filtered);
   }, [quotes, customers, searchQuery, statusFilter, filterPendingQuoteDeletes]);
-
   const resetForm = () => {
     setFormData({
       customerId: '',
-      items: [{ id: '1', description: '', quantity: 1, unitPrice: 0 }],
+      items: [{
+        id: '1',
+        description: '',
+        quantity: 1,
+        unitPrice: 0
+      }],
       notes: '',
       status: 'draft',
       validDays: 30,
-      createdBy: '',
+      createdBy: ''
     });
     setEditingQuote(null);
   };
-
   const handleAddItem = () => {
     setFormData({
       ...formData,
-      items: [...formData.items, { id: Date.now().toString(), description: '', quantity: 1, unitPrice: 0 }],
+      items: [...formData.items, {
+        id: Date.now().toString(),
+        description: '',
+        quantity: 1,
+        unitPrice: 0
+      }]
     });
   };
-
   const handleRemoveItem = (id: string) => {
     if (formData.items.length > 1) {
       setFormData({
         ...formData,
-        items: formData.items.filter(item => item.id !== id),
+        items: formData.items.filter(item => item.id !== id)
       });
     }
   };
-
   const handleItemChange = (id: string, field: keyof LineItem, value: string | number) => {
     setFormData({
       ...formData,
-      items: formData.items.map(item =>
-        item.id === id ? { ...item, [field]: value } : item
-      ),
+      items: formData.items.map(item => item.id === id ? {
+        ...item,
+        [field]: value
+      } : item)
     });
   };
-
   const calculateTotal = (items: LineItem[]) => {
-    return items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+    return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!formData.customerId) {
       toast.error('Please select a customer');
       return;
     }
-
     const subtotal = calculateTotal(formData.items);
     const quoteData: any = {
       customer_id: formData.customerId,
@@ -222,44 +246,40 @@ const Quotes = () => {
       valid_until: format(addDays(new Date(), formData.validDays), 'yyyy-MM-dd'),
       subtotal,
       tax: 0,
-      total: subtotal,
+      total: subtotal
     };
 
     // Include created_by if set
     if (formData.createdBy) {
       quoteData.created_by = formData.createdBy;
     }
-
     try {
       const itemsData = formData.items.map(item => ({
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unitPrice,
-        total: item.quantity * item.unitPrice,
+        total: item.quantity * item.unitPrice
       }));
-
       if (editingQuote) {
         await updateQuote.mutateAsync({
           id: editingQuote,
           ...quoteData,
-          items: itemsData,
+          items: itemsData
         } as any);
         toast.success('Quote updated successfully');
       } else {
         await createQuote.mutateAsync({
           ...quoteData,
-          items: itemsData,
+          items: itemsData
         } as any);
         toast.success('Quote created successfully');
       }
-      
       openEditDialog(false);
       resetForm();
     } catch (error) {
       toast.error(editingQuote ? 'Failed to update quote' : 'Failed to create quote');
     }
   };
-
   const handleEdit = (quote: typeof quotes[0]) => {
     setFormData({
       customerId: quote.customer_id,
@@ -267,35 +287,41 @@ const Quotes = () => {
         id: item.id,
         description: item.description,
         quantity: item.quantity,
-        unitPrice: Number(item.unit_price),
-      })) || [{ id: '1', description: '', quantity: 1, unitPrice: 0 }],
+        unitPrice: Number(item.unit_price)
+      })) || [{
+        id: '1',
+        description: '',
+        quantity: 1,
+        unitPrice: 0
+      }],
       notes: quote.notes || '',
       status: quote.status as any,
       validDays: 30,
-      createdBy: quote.created_by || '',
+      createdBy: quote.created_by || ''
     });
     setEditingQuote(quote.id);
     openEditDialog(true);
   };
-
   const handleDeleteClick = (quote: typeof quotes[0]) => {
     setQuoteToDelete(quote);
   };
-
   const handleConfirmDelete = () => {
     if (quoteToDelete) {
       scheduleQuoteDelete(quoteToDelete.id);
       setQuoteToDelete(null);
     }
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'approved': 
-      case 'accepted': return 'bg-success/10 text-success';
-      case 'sent': return 'bg-primary/10 text-primary';
-      case 'rejected': return 'bg-destructive/10 text-destructive';
-      default: return 'bg-muted text-muted-foreground';
+      case 'approved':
+      case 'accepted':
+        return 'bg-success/10 text-success';
+      case 'sent':
+        return 'bg-primary/10 text-primary';
+      case 'rejected':
+        return 'bg-destructive/10 text-destructive';
+      default:
+        return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -310,25 +336,23 @@ const Quotes = () => {
     if (displayStatus === 'approved') return 'accepted';
     return displayStatus;
   };
-
   const getCustomerName = (customerId: string) => {
     return customers.find(c => c.id === customerId)?.name || 'Unknown';
   };
-
   const getCustomerEmail = (customerId: string) => {
     return customers.find(c => c.id === customerId)?.email || '';
   };
-
   const handleDownload = (quoteId: string) => {
-    downloadDocument.mutate({ type: 'quote', documentId: quoteId });
+    downloadDocument.mutate({
+      type: 'quote',
+      documentId: quoteId
+    });
   };
-
   const handleOpenEmailDialog = (quoteId: string, customerId: string) => {
     setSelectedQuoteForEmail(quoteId);
     setEmailRecipient(getCustomerEmail(customerId));
     setEmailDialogOpen(true);
   };
-
   const handleSendEmail = async () => {
     if (!selectedQuoteForEmail || !emailRecipient) {
       toast.error('Please enter a recipient email');
@@ -337,46 +361,51 @@ const Quotes = () => {
     await emailDocument.mutateAsync({
       type: 'quote',
       documentId: selectedQuoteForEmail,
-      recipientEmail: emailRecipient,
+      recipientEmail: emailRecipient
     });
     setEmailDialogOpen(false);
     setSelectedQuoteForEmail(null);
     setEmailRecipient('');
   };
-
   const handleConvertToInvoice = async (quoteId: string) => {
     if (confirm('Convert this quote to an invoice?')) {
-      await convertToInvoice.mutateAsync({ quoteId });
+      await convertToInvoice.mutateAsync({
+        quoteId
+      });
     }
   };
-
   const handleStatusChange = async (quoteId: string, newStatus: string) => {
     try {
-      await updateQuote.mutateAsync({ id: quoteId, status: newStatus } as any);
+      await updateQuote.mutateAsync({
+        id: quoteId,
+        status: newStatus
+      } as any);
       toast.success(`Quote marked as ${newStatus}`);
     } catch (error) {
       toast.error('Failed to update status');
     }
   };
-
   const handleOpenCreateJobDialog = (quote: typeof quotes[0]) => {
     setSelectedQuoteForJob(quote);
     setCreateJobDialogOpen(true);
   };
-
   const handleOpenAddToJobDialog = (quote: typeof quotes[0]) => {
     setSelectedQuoteForJob(quote);
     setAddToJobDialogOpen(true);
   };
-
   const handleCreateJobFromQuote = async (quoteId: string, selectedItemIds: string[]) => {
-    await createJobFromQuote.mutateAsync({ quoteId, selectedItemIds });
+    await createJobFromQuote.mutateAsync({
+      quoteId,
+      selectedItemIds
+    });
   };
-
   const handleAddItemsToJob = async (quoteId: string, jobId: string, selectedItemIds: string[]) => {
-    await addItemsToJob.mutateAsync({ quoteId, jobId, selectedItemIds });
+    await addItemsToJob.mutateAsync({
+      quoteId,
+      jobId,
+      selectedItemIds
+    });
   };
-
   const handleDuplicateQuote = (quote: Quote) => {
     setFormData({
       customerId: quote.customer_id,
@@ -384,62 +413,66 @@ const Quotes = () => {
         id: Date.now().toString() + Math.random(),
         description: item.description,
         quantity: item.quantity,
-        unitPrice: Number(item.unit_price),
-      })) || [{ id: '1', description: '', quantity: 1, unitPrice: 0 }],
+        unitPrice: Number(item.unit_price)
+      })) || [{
+        id: '1',
+        description: '',
+        quantity: 1,
+        unitPrice: 0
+      }],
       notes: quote.notes || '',
       status: 'draft',
       validDays: 30,
-      createdBy: '',
+      createdBy: ''
     });
     setEditingQuote(null);
     openEditDialog(true);
     toast.success('Quote duplicated - make changes and save');
   };
-
   const handleSaveAsTemplate = (quote: Quote) => {
     setSelectedQuoteForTemplate(quote);
     setSaveTemplateDialogOpen(true);
   };
-
   const handleSelectTemplate = (template: QuoteTemplate) => {
     setFormData({
       customerId: '',
-      items: template.items?.map((item) => ({
+      items: template.items?.map(item => ({
         id: Date.now().toString() + Math.random(),
         description: item.description,
         quantity: item.quantity,
-        unitPrice: item.unit_price,
-      })) || [{ id: '1', description: '', quantity: 1, unitPrice: 0 }],
+        unitPrice: item.unit_price
+      })) || [{
+        id: '1',
+        description: '',
+        quantity: 1,
+        unitPrice: 0
+      }],
       notes: template.notes || '',
       status: 'draft',
       validDays: template.valid_days || 30,
-      createdBy: '',
+      createdBy: ''
     });
     setEditingQuote(null);
     openEditDialog(true);
   };
-
   const handleArchiveQuote = async (quote: Quote) => {
     await archiveQuote.mutateAsync(quote.id);
     setArchiveConfirmQuote(null);
   };
-
   const handleUnarchiveQuote = async (quote: Quote) => {
     await unarchiveQuote.mutateAsync(quote.id);
   };
-
   const handleOpenSignatureDialog = (quote: Quote) => {
     setSignatureQuote(quote);
     setSignatureDialogOpen(true);
   };
-
   const handleSignatureComplete = async (signatureData: string, signerName: string) => {
     if (!signatureQuote) return;
     const signature = await approveWithSignature.mutateAsync({
       quoteId: signatureQuote.id,
       signatureData,
       signerName,
-      customerId: signatureQuote.customer_id,
+      customerId: signatureQuote.customer_id
     });
     // Update viewing quote with the new signature and status if it's open
     if (viewingQuote?.id === signatureQuote.id) {
@@ -447,18 +480,16 @@ const Quotes = () => {
         ...viewingQuote,
         signature_id: signature.id,
         signed_at: new Date().toISOString(),
-        status: 'accepted',
+        status: 'accepted'
       });
     }
     setSignatureDialogOpen(false);
     setSignatureQuote(null);
   };
-
   const handleViewSignature = (signatureId: string) => {
     setViewSignatureId(signatureId);
     setViewSignatureOpen(true);
   };
-
   const handleSendSignatureRequest = async (quote: Quote) => {
     const customer = customers.find(c => c.id === quote.customer_id);
     if (!customer?.email) {
@@ -472,20 +503,15 @@ const Quotes = () => {
       recipientName: customer.name,
       companyName: company?.name || '',
       documentNumber: quote.quote_number,
-      customerId: quote.customer_id,
+      customerId: quote.customer_id
     });
   };
-
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
+    return <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6 animate-fade-in">
+  return <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
@@ -497,12 +523,7 @@ const Quotes = () => {
           <div className="flex items-center gap-2">
             <div className="relative w-24 sm:w-40">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 h-9"
-              />
+              <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9" />
             </div>
             
             <DropdownMenu>
@@ -554,29 +575,27 @@ const Quotes = () => {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <Dialog open={isDialogOpen} onOpenChange={(open) => {
-              openEditDialog(open);
-              if (!open) resetForm();
-            }}>
+            <Dialog open={isDialogOpen} onOpenChange={open => {
+            openEditDialog(open);
+            if (!open) resetForm();
+          }}>
               <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingQuote ? 'Edit Quote' : 'Create New Quote'}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InlineCustomerForm
-                      customers={customers}
-                      selectedCustomerId={formData.customerId}
-                      onCustomerSelect={(value) => setFormData({ ...formData, customerId: value })}
-                    />
+                    <InlineCustomerForm customers={customers} selectedCustomerId={formData.customerId} onCustomerSelect={value => setFormData({
+                    ...formData,
+                    customerId: value
+                  })} />
                     
                     <div className="space-y-2">
                       <Label>Valid For (days)</Label>
-                      <Input
-                        type="number"
-                        value={formData.validDays}
-                        onChange={(e) => setFormData({ ...formData, validDays: parseInt(e.target.value) || 30 })}
-                      />
+                      <Input type="number" value={formData.validDays} onChange={e => setFormData({
+                      ...formData,
+                      validDays: parseInt(e.target.value) || 30
+                    })} />
                     </div>
                   </div>
 
@@ -585,20 +604,18 @@ const Quotes = () => {
                     <Label className="flex items-center gap-1">
                       <UserCog className="w-3 h-3" /> Assigned Technician
                     </Label>
-                    <Select
-                      value={formData.createdBy || 'unassigned'}
-                      onValueChange={(value) => setFormData({ ...formData, createdBy: value === 'unassigned' ? '' : value })}
-                    >
+                    <Select value={formData.createdBy || 'unassigned'} onValueChange={value => setFormData({
+                    ...formData,
+                    createdBy: value === 'unassigned' ? '' : value
+                  })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select technician" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="unassigned">Unassigned</SelectItem>
-                        {profiles.filter(p => p.employment_status === 'active' || !p.employment_status).map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
+                        {profiles.filter(p => p.employment_status === 'active' || !p.employment_status).map(p => <SelectItem key={p.id} value={p.id}>
                             {p.full_name || p.email}
-                          </SelectItem>
-                        ))}
+                          </SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
@@ -612,42 +629,21 @@ const Quotes = () => {
                       </Button>
                     </div>
                     
-                    {formData.items.map((item) => (
-                      <div key={item.id} className="space-y-2 sm:space-y-0">
+                    {formData.items.map(item => <div key={item.id} className="space-y-2 sm:space-y-0">
                         {/* Mobile layout */}
                         <div className="sm:hidden space-y-2 p-3 bg-muted/50 rounded-lg">
-                          <Input
-                            placeholder="Description"
-                            value={item.description}
-                            onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                          />
+                          <Input placeholder="Description" value={item.description} onChange={e => handleItemChange(item.id, 'description', e.target.value)} />
                           <div className="flex gap-2">
                             <div className="w-20">
                               <Label className="text-xs text-muted-foreground">Qty</Label>
-                              <Input
-                                type="number"
-                                value={item.quantity}
-                                onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                              />
+                              <Input type="number" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} />
                             </div>
                             <div className="flex-1">
                               <Label className="text-xs text-muted-foreground">Price</Label>
-                              <Input
-                                type="number"
-                                placeholder="0"
-                                value={item.unitPrice === 0 ? '' : item.unitPrice}
-                                onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                              />
+                              <Input type="number" placeholder="0" value={item.unitPrice === 0 ? '' : item.unitPrice} onChange={e => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} />
                             </div>
                             <div className="flex items-end">
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRemoveItem(item.id)}
-                                disabled={formData.items.length === 1}
-                                className="text-destructive"
-                              >
+                              <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} disabled={formData.items.length === 1} className="text-destructive">
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
@@ -658,38 +654,14 @@ const Quotes = () => {
                         </div>
                         {/* Desktop layout */}
                         <div className="hidden sm:flex gap-2 items-start">
-                          <Input
-                            placeholder="Description"
-                            value={item.description}
-                            onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
-                            className="flex-1"
-                          />
-                          <Input
-                            type="number"
-                            placeholder="Qty"
-                            value={item.quantity}
-                            onChange={(e) => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                            className="w-20"
-                          />
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            value={item.unitPrice === 0 ? '' : item.unitPrice}
-                            onChange={(e) => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                            className="w-24"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveItem(item.id)}
-                            disabled={formData.items.length === 1}
-                          >
+                          <Input placeholder="Description" value={item.description} onChange={e => handleItemChange(item.id, 'description', e.target.value)} className="flex-1" />
+                          <Input type="number" placeholder="Qty" value={item.quantity} onChange={e => handleItemChange(item.id, 'quantity', parseInt(e.target.value) || 0)} className="w-20" />
+                          <Input type="number" placeholder="0" value={item.unitPrice === 0 ? '' : item.unitPrice} onChange={e => handleItemChange(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} className="w-24" />
+                          <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} disabled={formData.items.length === 1}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
-                      </div>
-                    ))}
+                      </div>)}
 
                     <div className="text-right font-semibold text-lg">
                       Total: ${calculateTotal(formData.items).toLocaleString()}
@@ -698,11 +670,10 @@ const Quotes = () => {
                   
                   <div className="space-y-2">
                     <Label>Notes</Label>
-                    <Textarea
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      rows={3}
-                    />
+                    <Textarea value={formData.notes} onChange={e => setFormData({
+                    ...formData,
+                    notes: e.target.value
+                  })} rows={3} />
                   </div>
                   
                   <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
@@ -723,10 +694,11 @@ const Quotes = () => {
       </div>
 
       {/* Quote List */}
-      <PullToRefresh onRefresh={async () => { await refetchQuotes(); }} className="sm:contents">
+      <PullToRefresh onRefresh={async () => {
+      await refetchQuotes();
+    }} className="sm:contents">
       <div className="space-y-3 lg:max-w-4xl lg:mx-auto">
-        {filteredQuotes.map((quote) => (
-          <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingQuote(quote)}>
+        {filteredQuotes.map(quote => <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingQuote(quote)}>
             <CardContent className="p-4 sm:p-5">
               {/* Mobile Layout */}
               <div className="flex flex-col gap-2 sm:hidden">
@@ -738,39 +710,31 @@ const Quotes = () => {
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
                       <span className="truncate">{getCustomerName(quote.customer_id)}</span>
-                      {getCustomerEmail(quote.customer_id) && (
-                        <>
+                      {getCustomerEmail(quote.customer_id) && <>
                           <span>•</span>
                           <span className="truncate">{getCustomerEmail(quote.customer_id)}</span>
-                        </>
-                      )}
+                        </>}
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                      {(quote as any).creator?.full_name && (
-                        <span className="flex items-center gap-1">
+                      {(quote as any).creator?.full_name && <span className="flex items-center gap-1">
                           <UserCog className="w-3 h-3" />
                           {(quote as any).creator.full_name}
-                        </span>
-                      )}
-                      {quote.valid_until && (
-                        <>
+                        </span>}
+                      {quote.valid_until && <>
                           {(quote as any).creator?.full_name && <span>•</span>}
                           <span className="flex items-center gap-1 shrink-0">
                             Valid: {format(new Date(quote.valid_until), 'MMM d')}
                           </span>
-                        </>
-                      )}
+                        </>}
                     </div>
-                    {quote.notes && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{quote.notes}</p>
-                    )}
+                    {quote.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{quote.notes}</p>}
                   </div>
                   <span className="text-sm font-medium text-primary shrink-0">${Number(quote.total).toLocaleString()}</span>
                 </div>
                 
                 {/* Row 2: Tags + Actions */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(quote.status)}`}>
@@ -779,34 +743,26 @@ const Quotes = () => {
                         </span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="bg-popover z-50">
-                        {['draft', 'sent', 'approved', 'rejected'].map((displayStatus) => {
-                          const dbStatus = getDbStatus(displayStatus);
-                          return (
-                          <DropdownMenuItem
-                            key={displayStatus}
-                            onClick={() => handleStatusChange(quote.id, dbStatus)}
-                            disabled={quote.status === dbStatus}
-                            className={quote.status === dbStatus ? 'bg-accent' : ''}
-                          >
+                        {['draft', 'sent', 'approved', 'rejected'].map(displayStatus => {
+                        const dbStatus = getDbStatus(displayStatus);
+                        return <DropdownMenuItem key={displayStatus} onClick={() => handleStatusChange(quote.id, dbStatus)} disabled={quote.status === dbStatus} className={quote.status === dbStatus ? 'bg-accent' : ''}>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(displayStatus)}`}>
                               {displayStatus}
                             </span>
                             {quote.status === dbStatus && <CheckCircle className="w-4 h-4 ml-auto" />}
-                          </DropdownMenuItem>
-                        )})}
+                          </DropdownMenuItem>;
+                      })}
                       </DropdownMenuContent>
                     </DropdownMenu>
                     {/* Signature Badge */}
-                    {quote.signature_id && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success flex items-center gap-1">
+                    {quote.signature_id && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success flex items-center gap-1">
                         <PenTool className="w-3 h-3" />
                         Signed
-                      </span>
-                    )}
+                      </span>}
                   </div>
                   
                   {/* Action Menu */}
-                  <div onClick={(e) => e.stopPropagation()}>
+                  <div onClick={e => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -835,25 +791,19 @@ const Quotes = () => {
                           Email Quote
                         </DropdownMenuItem>
                         {/* Signature Actions */}
-                        {quote.signature_id ? (
-                          <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
+                        {quote.signature_id ? <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
                             <Eye className="w-4 h-4 mr-2" />
                             View Signature
-                          </DropdownMenuItem>
-                        ) : (quote.status === 'sent' || quote.status === 'draft') && (
-                          <>
+                          </DropdownMenuItem> : (quote.status === 'sent' || quote.status === 'draft') && <>
                             <DropdownMenuItem onClick={() => handleOpenSignatureDialog(quote)}>
                               <PenTool className="w-4 h-4 mr-2" />
                               Collect Signature
                             </DropdownMenuItem>
-                            {getCustomerEmail(quote.customer_id) && (
-                              <DropdownMenuItem onClick={() => handleSendSignatureRequest(quote)} disabled={sendSignatureRequest.isPending}>
+                            {getCustomerEmail(quote.customer_id) && <DropdownMenuItem onClick={() => handleSendSignatureRequest(quote)} disabled={sendSignatureRequest.isPending}>
                                 <Send className="w-4 h-4 mr-2" />
                                 Send Signature Request
-                              </DropdownMenuItem>
-                            )}
-                          </>
-                        )}
+                              </DropdownMenuItem>}
+                          </>}
                         <DropdownMenuItem onClick={() => handleDeleteClick(quote)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
@@ -874,39 +824,31 @@ const Quotes = () => {
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
                       <span className="truncate">{getCustomerName(quote.customer_id)}</span>
-                      {getCustomerEmail(quote.customer_id) && (
-                        <>
+                      {getCustomerEmail(quote.customer_id) && <>
                           <span>•</span>
                           <span className="truncate">{getCustomerEmail(quote.customer_id)}</span>
-                        </>
-                      )}
+                        </>}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
-                      {(quote as any).creator?.full_name && (
-                        <span className="flex items-center gap-1">
+                      {(quote as any).creator?.full_name && <span className="flex items-center gap-1">
                           <UserCog className="w-3 h-3" />
                           {(quote as any).creator.full_name}
-                        </span>
-                      )}
-                      {quote.valid_until && (
-                        <>
+                        </span>}
+                      {quote.valid_until && <>
                           {(quote as any).creator?.full_name && <span>•</span>}
                           <span className="flex items-center gap-1 shrink-0">
                             Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}
                           </span>
-                        </>
-                      )}
+                        </>}
                     </div>
-                    {quote.notes && (
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{quote.notes}</p>
-                    )}
+                    {quote.notes && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{quote.notes}</p>}
                   </div>
                   <span className="text-base font-semibold text-primary shrink-0">${Number(quote.total).toLocaleString()}</span>
                 </div>
                 
                 {/* Row 2: Tags + Actions */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(quote.status)}`}>
@@ -915,34 +857,26 @@ const Quotes = () => {
                         </span>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="bg-popover z-50">
-                        {['draft', 'sent', 'approved', 'rejected'].map((displayStatus) => {
-                          const dbStatus = getDbStatus(displayStatus);
-                          return (
-                          <DropdownMenuItem
-                            key={displayStatus}
-                            onClick={() => handleStatusChange(quote.id, dbStatus)}
-                            disabled={quote.status === dbStatus}
-                            className={quote.status === dbStatus ? 'bg-accent' : ''}
-                          >
+                        {['draft', 'sent', 'approved', 'rejected'].map(displayStatus => {
+                        const dbStatus = getDbStatus(displayStatus);
+                        return <DropdownMenuItem key={displayStatus} onClick={() => handleStatusChange(quote.id, dbStatus)} disabled={quote.status === dbStatus} className={quote.status === dbStatus ? 'bg-accent' : ''}>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(displayStatus)}`}>
                               {displayStatus}
                             </span>
                             {quote.status === dbStatus && <CheckCircle className="w-4 h-4 ml-auto" />}
-                          </DropdownMenuItem>
-                        )})}
+                          </DropdownMenuItem>;
+                      })}
                       </DropdownMenuContent>
                     </DropdownMenu>
                     {/* Signature Badge */}
-                    {quote.signature_id && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success flex items-center gap-1">
+                    {quote.signature_id && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success flex items-center gap-1">
                         <PenTool className="w-3 h-3" />
                         Signed
-                      </span>
-                    )}
+                      </span>}
                   </div>
                   
                   {/* Action Menu */}
-                  <div onClick={(e) => e.stopPropagation()}>
+                  <div onClick={e => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -971,19 +905,14 @@ const Quotes = () => {
                           Email Quote
                         </DropdownMenuItem>
                         {/* Signature Actions */}
-                        {quote.signature_id ? (
-                          <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
+                        {quote.signature_id ? <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
                             <Eye className="w-4 h-4 mr-2" />
                             View Signature
-                          </DropdownMenuItem>
-                        ) : (quote.status === 'sent' || quote.status === 'draft') && (
-                          <DropdownMenuItem onClick={() => handleOpenSignatureDialog(quote)}>
+                          </DropdownMenuItem> : (quote.status === 'sent' || quote.status === 'draft') && <DropdownMenuItem onClick={() => handleOpenSignatureDialog(quote)}>
                             <PenTool className="w-4 h-4 mr-2" />
                             Collect Signature
-                          </DropdownMenuItem>
-                        )}
-                        {quote.status === 'accepted' && (
-                          <>
+                          </DropdownMenuItem>}
+                        {quote.status === 'accepted' && <>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleOpenCreateJobDialog(quote)}>
                               <Plus className="w-4 h-4 mr-2" />
@@ -997,20 +926,15 @@ const Quotes = () => {
                               <ArrowRight className="w-4 h-4 mr-2" />
                               Convert to Invoice
                             </DropdownMenuItem>
-                          </>
-                        )}
+                          </>}
                         <DropdownMenuSeparator />
-                        {(quote as any).archived_at ? (
-                          <DropdownMenuItem onClick={() => handleUnarchiveQuote(quote)}>
+                        {(quote as any).archived_at ? <DropdownMenuItem onClick={() => handleUnarchiveQuote(quote)}>
                             <ArchiveRestore className="w-4 h-4 mr-2" />
                             Restore
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem onClick={() => setArchiveConfirmQuote(quote)}>
+                          </DropdownMenuItem> : <DropdownMenuItem onClick={() => setArchiveConfirmQuote(quote)}>
                             <Archive className="w-4 h-4 mr-2" />
                             Archive
-                          </DropdownMenuItem>
-                        )}
+                          </DropdownMenuItem>}
                         <DropdownMenuItem onClick={() => handleDeleteClick(quote)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
@@ -1021,15 +945,12 @@ const Quotes = () => {
                 </div>
               </div>
             </CardContent>
-          </Card>
-        ))}
-        {filteredQuotes.length === 0 && (
-          <Card>
+          </Card>)}
+        {filteredQuotes.length === 0 && <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
               No quotes found
             </CardContent>
-          </Card>
-        )}
+          </Card>}
       </div>
       </PullToRefresh>
 
@@ -1042,22 +963,13 @@ const Quotes = () => {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Recipient Email</Label>
-              <Input
-                type="email"
-                value={emailRecipient}
-                onChange={(e) => setEmailRecipient(e.target.value)}
-                placeholder="customer@example.com"
-              />
+              <Input type="email" value={emailRecipient} onChange={e => setEmailRecipient(e.target.value)} placeholder="customer@example.com" />
             </div>
             <div className="flex gap-3">
               <Button variant="outline" className="flex-1" onClick={() => setEmailDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button 
-                className="flex-1" 
-                onClick={handleSendEmail}
-                disabled={emailDocument.isPending || !emailRecipient}
-              >
+              <Button className="flex-1" onClick={handleSendEmail} disabled={emailDocument.isPending || !emailRecipient}>
                 {emailDocument.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Send Email
               </Button>
@@ -1067,8 +979,7 @@ const Quotes = () => {
       </Dialog>
 
       {/* Quote Detail Dialog for viewing from URL */}
-      {viewingQuote && (
-        <Dialog open={!!viewingQuote} onOpenChange={(open) => !open && openViewingQuote(null)}>
+      {viewingQuote && <Dialog open={!!viewingQuote} onOpenChange={open => !open && openViewingQuote(null)}>
           <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <div className="flex items-center justify-between pr-8">
@@ -1089,32 +1000,27 @@ const Quotes = () => {
                   <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
                   <p className="font-medium text-sm sm:text-base truncate">{getCustomerName(viewingQuote.customer_id)}</p>
                 </div>
-                {(viewingQuote as any).creator?.full_name && (
-                  <div>
+                {(viewingQuote as any).creator?.full_name && <div>
                     <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
                       <UserCog className="w-3 h-3" /> Created By
                     </p>
                     <p className="font-medium text-sm sm:text-base truncate">{(viewingQuote as any).creator.full_name}</p>
-                  </div>
-                )}
+                  </div>}
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
                   <p className="font-medium text-sm sm:text-base">{format(new Date(viewingQuote.created_at), 'MMM d, yyyy')}</p>
                 </div>
-                {viewingQuote.valid_until && (
-                  <div>
+                {viewingQuote.valid_until && <div>
                     <p className="text-xs sm:text-sm text-muted-foreground">Valid Until</p>
                     <p className="font-medium text-sm sm:text-base">{format(new Date(viewingQuote.valid_until), 'MMM d, yyyy')}</p>
-                  </div>
-                )}
+                  </div>}
               </div>
 
               {/* Line Items */}
               <div>
                 <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
                 <div className="space-y-2">
-                  {viewingQuote.items && viewingQuote.items.length > 0 ? (
-                    <>
+                  {viewingQuote.items && viewingQuote.items.length > 0 ? <>
                       {/* Desktop header - hidden on mobile */}
                       <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
                         <div className="col-span-6">Description</div>
@@ -1122,8 +1028,7 @@ const Quotes = () => {
                         <div className="col-span-2 text-right">Price</div>
                         <div className="col-span-2 text-right">Total</div>
                       </div>
-                      {viewingQuote.items.map((item: any) => (
-                        <div key={item.id} className="py-2 px-2 sm:px-3 bg-muted/50 rounded text-sm">
+                      {viewingQuote.items.map((item: any) => <div key={item.id} className="py-2 px-2 sm:px-3 bg-muted/50 rounded text-sm">
                           {/* Mobile layout */}
                           <div className="sm:hidden space-y-1">
                             <p className="font-medium">{item.description}</p>
@@ -1139,12 +1044,8 @@ const Quotes = () => {
                             <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
                             <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
                           </div>
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No line items</p>
-                  )}
+                        </div>)}
+                    </> : <p className="text-sm text-muted-foreground">No line items</p>}
                 </div>
               </div>
 
@@ -1160,55 +1061,34 @@ const Quotes = () => {
                     <span>${Number(viewingQuote.tax).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
-                    <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
+                    
                     <span>${Number(viewingQuote.total).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
 
               {/* Notes */}
-              {viewingQuote.notes && (
-                <div>
+              {viewingQuote.notes && <div>
                   <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
                   <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{viewingQuote.notes}</p>
-                </div>
-              )}
+                </div>}
 
               {/* Signature Section */}
               <Separator />
               <ConstrainedPanel>
-                <SignatureSection 
-                  signatureId={viewingQuote.signature_id}
-                  title="Customer Signature"
-                  onCollectSignature={() => {
-                    setSignatureQuote(viewingQuote);
-                    setSignatureDialogOpen(true);
-                  }}
-                  showCollectButton={viewingQuote.status !== 'accepted' && viewingQuote.status !== 'rejected'}
-                  collectButtonText="Collect Signature"
-                  isCollecting={approveWithSignature.isPending}
-                />
+                <SignatureSection signatureId={viewingQuote.signature_id} title="Customer Signature" onCollectSignature={() => {
+              setSignatureQuote(viewingQuote);
+              setSignatureDialogOpen(true);
+            }} showCollectButton={viewingQuote.status !== 'accepted' && viewingQuote.status !== 'rejected'} collectButtonText="Collect Signature" isCollecting={approveWithSignature.isPending} />
 
                 {/* Send Signature Request Button */}
                 {viewingQuote.status !== 'accepted' && viewingQuote.status !== 'rejected' && !viewingQuote.signature_id && (() => {
-                  const customer = customers.find(c => c.id === viewingQuote.customer_id);
-                  return customer?.email ? (
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => handleSendSignatureRequest(viewingQuote)}
-                      className="w-full mt-2"
-                      disabled={sendSignatureRequest.isPending}
-                    >
-                      {sendSignatureRequest.isPending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4 mr-2" />
-                      )}
+              const customer = customers.find(c => c.id === viewingQuote.customer_id);
+              return customer?.email ? <Button variant="outline" size="sm" onClick={() => handleSendSignatureRequest(viewingQuote)} className="w-full mt-2" disabled={sendSignatureRequest.isPending}>
+                      {sendSignatureRequest.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                       Send Signature Request via Email
-                    </Button>
-                  ) : null;
-                })()}
+                    </Button> : null;
+            })()}
               </ConstrainedPanel>
 
               {/* Actions */}
@@ -1221,8 +1101,7 @@ const Quotes = () => {
                   <Mail className="w-4 h-4 sm:mr-1" />
                   <span className="hidden sm:inline">Email</span>
                 </Button>
-                {viewingQuote.status === 'accepted' && (
-                  <DropdownMenu>
+                {viewingQuote.status === 'accepted' && <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-1">
                         <Briefcase className="w-4 h-4" />
@@ -1230,11 +1109,17 @@ const Quotes = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-popover z-50">
-                      <DropdownMenuItem onClick={() => { openViewingQuote(null); handleOpenCreateJobDialog(viewingQuote); }}>
+                      <DropdownMenuItem onClick={() => {
+                  openViewingQuote(null);
+                  handleOpenCreateJobDialog(viewingQuote);
+                }}>
                         <Plus className="w-4 h-4 mr-2" />
                         Create New Job
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { openViewingQuote(null); handleOpenAddToJobDialog(viewingQuote); }}>
+                      <DropdownMenuItem onClick={() => {
+                  openViewingQuote(null);
+                  handleOpenAddToJobDialog(viewingQuote);
+                }}>
                         <Briefcase className="w-4 h-4 mr-2" />
                         Add to Existing Job
                       </DropdownMenuItem>
@@ -1244,44 +1129,30 @@ const Quotes = () => {
                         Convert to Invoice
                       </DropdownMenuItem>
                     </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                {viewingQuote.status !== 'rejected' && viewingQuote.status !== 'accepted' && (
-                  <Button variant="outline" size="sm" onClick={() => handleConvertToInvoice(viewingQuote.id)} className="flex-1 sm:flex-none">
+                  </DropdownMenu>}
+                {viewingQuote.status !== 'rejected' && viewingQuote.status !== 'accepted' && <Button variant="outline" size="sm" onClick={() => handleConvertToInvoice(viewingQuote.id)} className="flex-1 sm:flex-none">
                     <ArrowRight className="w-4 h-4 sm:mr-1" />
                     <span className="hidden sm:inline">Convert to Invoice</span>
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={() => { handleEdit(viewingQuote); openViewingQuote(null); }} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
+                  </Button>}
+                <Button variant="outline" size="sm" onClick={() => {
+              handleEdit(viewingQuote);
+              openViewingQuote(null);
+            }} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
                   <Edit className="w-4 h-4 mr-1" /> Edit
                 </Button>
               </div>
             </div>
           </DialogContent>
-        </Dialog>
-      )}
+        </Dialog>}
 
       {/* Create Job from Quote Dialog */}
-      <CreateJobFromQuoteDialog
-        quote={selectedQuoteForJob}
-        open={createJobDialogOpen}
-        onOpenChange={setCreateJobDialogOpen}
-        onConfirm={handleCreateJobFromQuote}
-        isPending={createJobFromQuote.isPending}
-      />
+      <CreateJobFromQuoteDialog quote={selectedQuoteForJob} open={createJobDialogOpen} onOpenChange={setCreateJobDialogOpen} onConfirm={handleCreateJobFromQuote} isPending={createJobFromQuote.isPending} />
 
       {/* Add Items to Existing Job Dialog */}
-      <AddQuoteItemsToJobDialog
-        quote={selectedQuoteForJob}
-        jobs={jobs as any[]}
-        open={addToJobDialogOpen}
-        onOpenChange={setAddToJobDialogOpen}
-        onConfirm={handleAddItemsToJob}
-        isPending={addItemsToJob.isPending}
-      />
+      <AddQuoteItemsToJobDialog quote={selectedQuoteForJob} jobs={jobs as any[]} open={addToJobDialogOpen} onOpenChange={setAddToJobDialogOpen} onConfirm={handleAddItemsToJob} isPending={addItemsToJob.isPending} />
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!quoteToDelete} onOpenChange={(open) => !open && setQuoteToDelete(null)}>
+      <AlertDialog open={!!quoteToDelete} onOpenChange={open => !open && setQuoteToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Quote</AlertDialogTitle>
@@ -1300,7 +1171,7 @@ const Quotes = () => {
       </AlertDialog>
 
       {/* Archive Confirmation Dialog */}
-      <AlertDialog open={!!archiveConfirmQuote} onOpenChange={(open) => !open && setArchiveConfirmQuote(null)}>
+      <AlertDialog open={!!archiveConfirmQuote} onOpenChange={open => !open && setArchiveConfirmQuote(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Archive Quote</AlertDialogTitle>
@@ -1318,25 +1189,15 @@ const Quotes = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      <SaveAsQuoteTemplateDialog
-        open={saveTemplateDialogOpen}
-        onOpenChange={setSaveTemplateDialogOpen}
-        quote={selectedQuoteForTemplate}
-      />
+      <SaveAsQuoteTemplateDialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen} quote={selectedQuoteForTemplate} />
 
       {/* Select Template Dialog */}
-      <SelectQuoteTemplateDialog
-        open={selectTemplateDialogOpen}
-        onOpenChange={setSelectTemplateDialogOpen}
-        onSelect={handleSelectTemplate}
-      />
+      <SelectQuoteTemplateDialog open={selectTemplateDialogOpen} onOpenChange={setSelectTemplateDialogOpen} onSelect={handleSelectTemplate} />
 
       {/* Mobile Floating Action Button */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50"
-          >
+          <Button className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50">
             <Plus className="w-6 h-6" />
           </Button>
         </DropdownMenuTrigger>
@@ -1353,30 +1214,16 @@ const Quotes = () => {
       </DropdownMenu>
 
       {/* Signature Dialog */}
-      <SignatureDialog
-        open={signatureDialogOpen}
-        onOpenChange={(open) => {
-          setSignatureDialogOpen(open);
-          if (!open) setSignatureQuote(null);
-        }}
-        title="Approve Quote"
-        description="Customer signature to approve this quote"
-        signerName={signatureQuote ? customers.find(c => c.id === signatureQuote.customer_id)?.name || '' : ''}
-        onSignatureComplete={handleSignatureComplete}
-        isSubmitting={approveWithSignature.isPending}
-      />
+      <SignatureDialog open={signatureDialogOpen} onOpenChange={open => {
+      setSignatureDialogOpen(open);
+      if (!open) setSignatureQuote(null);
+    }} title="Approve Quote" description="Customer signature to approve this quote" signerName={signatureQuote ? customers.find(c => c.id === signatureQuote.customer_id)?.name || '' : ''} onSignatureComplete={handleSignatureComplete} isSubmitting={approveWithSignature.isPending} />
 
       {/* View Signature Dialog */}
-      <ViewSignatureDialog
-        signatureId={viewSignatureId}
-        open={viewSignatureOpen}
-        onOpenChange={(open) => {
-          setViewSignatureOpen(open);
-          if (!open) setViewSignatureId(null);
-        }}
-      />
-    </div>
-  );
+      <ViewSignatureDialog signatureId={viewSignatureId} open={viewSignatureOpen} onOpenChange={open => {
+      setViewSignatureOpen(open);
+      if (!open) setViewSignatureId(null);
+    }} />
+    </div>;
 };
-
 export default Quotes;
