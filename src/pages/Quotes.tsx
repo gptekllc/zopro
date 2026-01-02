@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore, PenTool, Eye, UserCog } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore, PenTool, Eye, UserCog, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
@@ -1024,9 +1024,35 @@ const Quotes = () => {
                   <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
                   <span className="truncate">{viewingQuote.quote_number}</span>
                 </DialogTitle>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0 ${getStatusColor(viewingQuote.status)}`}>
-                  {getStatusLabel(viewingQuote.status)}
-                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0 cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(viewingQuote.status)}`}>
+                      {getStatusLabel(viewingQuote.status)}
+                      <ChevronRight className="w-3 h-3 rotate-90" />
+                    </span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-popover z-50">
+                    {['draft', 'sent', 'approved', 'rejected'].map(displayStatus => {
+                      const dbStatus = getDbStatus(displayStatus);
+                      return (
+                        <DropdownMenuItem
+                          key={displayStatus}
+                          onClick={() => {
+                            handleStatusChange(viewingQuote.id, dbStatus);
+                            setViewingQuote(prev => prev ? { ...prev, status: dbStatus as Quote['status'] } : null);
+                          }}
+                          disabled={viewingQuote.status === dbStatus}
+                          className={viewingQuote.status === dbStatus ? 'bg-accent' : ''}
+                        >
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(displayStatus)}`}>
+                            {displayStatus}
+                          </span>
+                          {viewingQuote.status === dbStatus && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </DialogHeader>
 
