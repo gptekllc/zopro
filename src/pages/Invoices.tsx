@@ -630,7 +630,7 @@ const Invoices = () => {
                     {invoice.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{invoice.notes}</p>}
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-sm font-medium text-primary">${formatAmount(normalizeMoneyInput(invoice.total))}</span>
+                    <span className="text-sm font-medium text-primary">${Number(normalizeMoneyInput(invoice.total) ?? 0).toFixed(2)}</span>
                     {invoice.late_fee_amount && invoice.late_fee_amount > 0 && <div className="text-xs text-destructive flex items-center gap-1 justify-end mt-0.5">
                         <AlertCircle className="w-3 h-3" />
                         +${Number(invoice.late_fee_amount).toFixed(2)} late fee
@@ -761,7 +761,7 @@ const Invoices = () => {
                     {invoice.notes && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{invoice.notes}</p>}
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-sm font-medium text-primary">${formatAmount(normalizeMoneyInput(invoice.total))}</span>
+                    <span className="text-sm font-medium text-primary">${Number(normalizeMoneyInput(invoice.total) ?? 0).toFixed(2)}</span>
                     {invoice.late_fee_amount && invoice.late_fee_amount > 0 && <div className="text-xs text-destructive flex items-center gap-1 justify-end mt-0.5">
                         <AlertCircle className="w-3 h-3" />
                         +${Number(invoice.late_fee_amount).toFixed(2)} late fee
