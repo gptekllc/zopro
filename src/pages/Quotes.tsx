@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
-import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote } from '@/hooks/useQuotes';
+import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote, Quote } from '@/hooks/useQuotes';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,12 +16,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 import { CreateJobFromQuoteDialog, AddQuoteItemsToJobDialog } from '@/components/quotes/QuoteToJobDialogs';
+import { SaveAsQuoteTemplateDialog } from '@/components/quotes/SaveAsQuoteTemplateDialog';
 
 interface LineItem {
   id: string;
@@ -60,6 +61,10 @@ const Quotes = () => {
   const [createJobDialogOpen, setCreateJobDialogOpen] = useState(false);
   const [addToJobDialogOpen, setAddToJobDialogOpen] = useState(false);
   const [selectedQuoteForJob, setSelectedQuoteForJob] = useState<typeof quotes[0] | null>(null);
+  
+  // Save as template dialog
+  const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
+  const [selectedQuoteForTemplate, setSelectedQuoteForTemplate] = useState<Quote | null>(null);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -323,6 +328,29 @@ const Quotes = () => {
 
   const handleAddItemsToJob = async (quoteId: string, jobId: string, selectedItemIds: string[]) => {
     await addItemsToJob.mutateAsync({ quoteId, jobId, selectedItemIds });
+  };
+
+  const handleDuplicateQuote = (quote: Quote) => {
+    setFormData({
+      customerId: quote.customer_id,
+      items: quote.items?.map((item: any) => ({
+        id: Date.now().toString() + Math.random(),
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: Number(item.unit_price),
+      })) || [{ id: '1', description: '', quantity: 1, unitPrice: 0 }],
+      notes: quote.notes || '',
+      status: 'draft',
+      validDays: 30,
+    });
+    setEditingQuote(null);
+    openEditDialog(true);
+    toast.success('Quote duplicated - make changes and save');
+  };
+
+  const handleSaveAsTemplate = (quote: Quote) => {
+    setSelectedQuoteForTemplate(quote);
+    setSaveTemplateDialogOpen(true);
   };
 
   if (isLoading) {
@@ -598,6 +626,14 @@ const Quotes = () => {
                           <Edit className="w-4 h-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicateQuote(quote)}>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSaveAsTemplate(quote)}>
+                          <BookTemplate className="w-4 h-4 mr-2" />
+                          Save as Template
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDownload(quote.id)}>
                           <FileDown className="w-4 h-4 mr-2" />
                           Download PDF
@@ -690,6 +726,14 @@ const Quotes = () => {
                         <DropdownMenuItem onClick={() => handleEdit(quote)}>
                           <Edit className="w-4 h-4 mr-2" />
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicateQuote(quote)}>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleSaveAsTemplate(quote)}>
+                          <BookTemplate className="w-4 h-4 mr-2" />
+                          Save as Template
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDownload(quote.id)}>
                           <FileDown className="w-4 h-4 mr-2" />
@@ -959,6 +1003,13 @@ const Quotes = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Save as Template Dialog */}
+      <SaveAsQuoteTemplateDialog
+        open={saveTemplateDialogOpen}
+        onOpenChange={setSaveTemplateDialogOpen}
+        quote={selectedQuoteForTemplate}
+      />
 
       {/* Mobile Floating Action Button */}
       <Button

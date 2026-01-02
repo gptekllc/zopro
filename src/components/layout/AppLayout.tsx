@@ -38,12 +38,15 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
+import { BookTemplate } from 'lucide-react';
+
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'technician', 'super_admin'] },
   { icon: Users, label: 'Customers', path: '/customers', roles: ['admin', 'technician'] },
   { icon: Briefcase, label: 'Jobs', path: '/jobs', roles: ['admin', 'technician'] },
   { icon: FileText, label: 'Quotes', path: '/quotes', roles: ['admin', 'technician'] },
   { icon: Receipt, label: 'Invoices', path: '/invoices', roles: ['admin', 'technician', 'customer'] },
+  { icon: BookTemplate, label: 'Templates', path: '/templates', roles: ['admin', 'technician'] },
   { icon: Bell, label: 'Notifications', path: '/notifications', roles: ['admin', 'manager'] },
   { icon: UserCog, label: 'Technicians', path: '/technicians', roles: ['admin', 'technician'] },
   { icon: Building2, label: 'Company', path: '/company', roles: ['admin'] },
