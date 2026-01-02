@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Users } from 'lucide-react';
 import TeamMembersManager from '@/components/team/TeamMembersManager';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -38,6 +38,7 @@ const Company = () => {
   });
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formInitialized, setFormInitialized] = useState(false);
+  const [activeTab, setActiveTab] = useState('details');
 
   // Initialize form when company loads
   if (company && !formInitialized) {
@@ -102,8 +103,48 @@ const Company = () => {
         <p className="text-muted-foreground mt-1">Manage your company details and team</p>
       </div>
 
-      <Tabs defaultValue="details" className="space-y-6">
-        <TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        {/* Mobile: Select dropdown for tabs */}
+        <div className="block sm:hidden">
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select tab" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="details">
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  Details
+                </div>
+              </SelectItem>
+              <SelectItem value="billing">
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4" />
+                  Billing & Tax
+                </div>
+              </SelectItem>
+              {isAdmin && (
+                <SelectItem value="payments">
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    Payments
+                  </div>
+                </SelectItem>
+              )}
+              {isAdmin && (
+                <SelectItem value="team">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Team Members
+                  </div>
+                </SelectItem>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {/* Desktop: TabsList */}
+        <TabsList className="hidden sm:inline-flex">
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="billing">Billing & Tax</TabsTrigger>
           {isAdmin && <TabsTrigger value="payments">Payments</TabsTrigger>}
