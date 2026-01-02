@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useApplyLateFee, useArchiveInvoice, useUnarchiveInvoice, isInvoiceOverdue, getTotalWithLateFee, Invoice, useSendPaymentReminder, useInvoiceReminders } from "@/hooks/useInvoices";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -20,7 +20,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send, Bell, UserCog, Wrench, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send, Bell, UserCog, Wrench, ChevronRight, CheckCircle2, Briefcase } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { SignatureDialog } from "@/components/signatures/SignatureDialog";
 import { ViewSignatureDialog } from "@/components/signatures/ViewSignatureDialog";
@@ -49,6 +49,7 @@ const Invoices = () => {
     profile
   } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState("all");
 
   // Determine if we need archived data
@@ -756,11 +757,30 @@ const Invoices = () => {
                           <PenTool className="w-3 h-3" />
                           Signed
                         </span>}
-                      {/* Source Quote Badge */}
+                      {/* Source Quote Badge - Clickable */}
                       {invoice.quote_id && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 flex items-center gap-1">
+                        <span 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/quotes?view=${invoice.quote_id}`);
+                          }}
+                          className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 flex items-center gap-1 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/40 transition-colors"
+                        >
                           <FileText className="w-3 h-3" />
                           From Quote
+                        </span>
+                      )}
+                      {/* Source Job Badge - Shows if invoice came from job workflow */}
+                      {(invoice as any).quote?.job && (
+                        <span 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/jobs?view=${(invoice as any).quote.job.id}`);
+                          }}
+                          className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary flex items-center gap-1 cursor-pointer hover:bg-primary/20 transition-colors"
+                        >
+                          <Briefcase className="w-3 h-3" />
+                          From Job
                         </span>
                       )}
                     </div>
@@ -896,11 +916,30 @@ const Invoices = () => {
                           <PenTool className="w-3 h-3" />
                           Signed
                         </span>}
-                      {/* Source Quote Badge */}
+                      {/* Source Quote Badge - Clickable */}
                       {invoice.quote_id && (
-                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 flex items-center gap-1">
+                        <span 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/quotes?view=${invoice.quote_id}`);
+                          }}
+                          className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 flex items-center gap-1 cursor-pointer hover:bg-blue-200 dark:hover:bg-blue-900/40 transition-colors"
+                        >
                           <FileText className="w-3 h-3" />
                           From Quote
+                        </span>
+                      )}
+                      {/* Source Job Badge - Shows if invoice came from job workflow */}
+                      {(invoice as any).quote?.job && (
+                        <span 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/jobs?view=${(invoice as any).quote.job.id}`);
+                          }}
+                          className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary flex items-center gap-1 cursor-pointer hover:bg-primary/20 transition-colors"
+                        >
+                          <Briefcase className="w-3 h-3" />
+                          From Job
                         </span>
                       )}
                     </div>
