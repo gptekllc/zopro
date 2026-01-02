@@ -1185,7 +1185,7 @@ const Quotes = () => {
                   <Mail className="w-4 h-4 mr-1" />
                   Email
                 </Button>
-                {viewingQuote.status === 'accepted' && (
+                {viewingQuote.status !== 'rejected' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="sm" className="gap-1">
