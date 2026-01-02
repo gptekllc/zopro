@@ -11,7 +11,7 @@ const corsHeaders = {
 };
 
 interface NotificationRequest {
-  type: 'company_assigned' | 'roles_changed' | 'join_request_admin' | 'join_request_approved' | 'join_request_rejected';
+  type: 'company_assigned' | 'roles_changed' | 'join_request_admin' | 'join_request_approved' | 'join_request_rejected' | 'member_on_leave';
   recipientEmail: string;
   recipientName: string;
   companyName?: string;
@@ -20,6 +20,8 @@ interface NotificationRequest {
   requesterName?: string;
   requesterEmail?: string;
   assignedRole?: string;
+  memberName?: string;
+  memberEmail?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -84,7 +86,9 @@ const handler = async (req: Request): Promise<Response> => {
       previousRoles,
       requesterName,
       requesterEmail,
-      assignedRole
+      assignedRole,
+      memberName,
+      memberEmail
     }: NotificationRequest = await req.json();
 
     console.log("Processing notification:", { type, recipientEmail, companyName, callingUserId: user.id });
@@ -275,6 +279,47 @@ const handler = async (req: Request): Promise<Response> => {
                 <p>Unfortunately, your request to join <strong>${companyName || 'the company'}</strong> was not approved.</p>
                 
                 <p>If you believe this was a mistake, please contact the company administrator directly.</p>
+                
+                <div class="footer">
+                  <p>This is an automated notification from Service App.</p>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+    } else if (type === 'member_on_leave') {
+      subject = `Team Member On Leave: ${memberName || 'A team member'} is now on leave`;
+      htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; }
+              .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+              .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #eab308; }
+              .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1 style="margin: 0;">⚠️ Team Member On Leave</h1>
+              </div>
+              <div class="content">
+                <p>Hi ${recipientName || 'Manager'},</p>
+                <p>A team member has set themselves as on leave.</p>
+                
+                <div class="info-box">
+                  <p><strong>Team Member Details:</strong></p>
+                  <p>Name: ${memberName || 'Not provided'}</p>
+                  <p>Email: ${memberEmail || 'Not provided'}</p>
+                </div>
+                
+                <p>This team member will not be available for job assignments until they set themselves as active again.</p>
+                <p>Please review any scheduled jobs that may be affected.</p>
                 
                 <div class="footer">
                   <p>This is an automated notification from Service App.</p>
