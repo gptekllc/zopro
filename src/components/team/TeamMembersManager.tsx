@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { Users, UserCog, UserMinus, Loader2, Shield, Mail, UserPlus, RefreshCw, X, RotateCcw, Clock, Edit, Calendar, AlertTriangle, Camera } from 'lucide-react';
+import ViewMemberDialog from './ViewMemberDialog';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, format } from 'date-fns';
 
@@ -70,6 +71,8 @@ const TeamMembersManager = () => {
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [viewingMember, setViewingMember] = useState<TeamMember | null>(null);
   
   // Add member form state
   const [newMemberEmail, setNewMemberEmail] = useState('');
@@ -354,6 +357,17 @@ const TeamMembersManager = () => {
     setIsEditDialogOpen(true);
   };
 
+  const handleViewMember = (member: TeamMember) => {
+    setViewingMember(member);
+    setIsViewDialogOpen(true);
+  };
+
+  const getCurrentUserRole = (): 'admin' | 'manager' | 'technician' => {
+    if (isAdmin) return 'admin';
+    if (isManager) return 'manager';
+    return 'technician';
+  };
+
   const handleRemoveMember = (member: TeamMember) => {
     setSelectedMember(member);
     setIsRemoveDialogOpen(true);
@@ -539,7 +553,11 @@ const TeamMembersManager = () => {
                       </TableHeader>
                       <TableBody>
                         {teamMembers.map((member: TeamMember) => (
-                          <TableRow key={member.id}>
+                          <TableRow 
+                            key={member.id} 
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => handleViewMember(member)}
+                          >
                             <TableCell>
                               <div className="flex items-center gap-3">
                                 <Avatar className="w-8 h-8">
@@ -585,7 +603,10 @@ const TeamMembersManager = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleEditMember(member)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditMember(member);
+                                  }}
                                 >
                                   <Edit className="w-4 h-4 mr-1" />
                                   Edit
@@ -601,7 +622,11 @@ const TeamMembersManager = () => {
                   {/* Mobile Card View */}
                   <div className="md:hidden space-y-3">
                     {teamMembers.map((member: TeamMember) => (
-                      <div key={member.id} className="border rounded-lg p-4 space-y-3">
+                      <div 
+                        key={member.id} 
+                        className="border rounded-lg p-4 space-y-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => handleViewMember(member)}
+                      >
                         <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
                             <Avatar className="w-10 h-10">
@@ -640,7 +665,10 @@ const TeamMembersManager = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleEditMember(member)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditMember(member);
+                              }}
                               className="flex-1"
                             >
                               <Edit className="w-4 h-4 mr-1" />
@@ -898,6 +926,16 @@ const TeamMembersManager = () => {
           </Tabs>
         </CardContent>
       </Card>
+
+      {/* View Member Dialog */}
+      <ViewMemberDialog
+        member={viewingMember}
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+        currentUserRole={getCurrentUserRole()}
+        onEdit={handleEditMember}
+        canEdit={viewingMember ? canEditMember(viewingMember) : false}
+      />
 
       {/* Edit Team Member Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
