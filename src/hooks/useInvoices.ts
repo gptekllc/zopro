@@ -378,3 +378,62 @@ export function useApplyLateFee() {
     },
   });
 }
+
+// Send payment reminder email
+export function useSendPaymentReminder() {
+  return useMutation({
+    mutationFn: async (invoiceId: string) => {
+      // Get the invoice with customer and company info
+      const { data: invoice, error: fetchError } = await (supabase as any)
+        .from('invoices')
+        .select(`
+          total, status, due_date, late_fee_amount, invoice_number, company_id,
+          customer:customers(name, email),
+          company:companies(name, email)
+        `)
+        .eq('id', invoiceId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      if (invoice.status === 'paid') {
+        throw new Error('Invoice is already paid');
+      }
+      
+      if (!invoice.customer?.email) {
+        throw new Error('Customer does not have an email address');
+      }
+      
+      if (!invoice.company?.email) {
+        throw new Error('Company email is not configured');
+      }
+      
+      const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
+      
+      // Send reminder email
+      const { error: emailError } = await supabase.functions.invoke('send-payment-notification', {
+        body: {
+          type: 'payment_reminder',
+          invoiceNumber: invoice.invoice_number,
+          customerName: invoice.customer.name || 'Customer',
+          customerEmail: invoice.customer.email,
+          companyName: invoice.company.name || 'Company',
+          companyEmail: invoice.company.email,
+          amount: Number(invoice.total),
+          lateFeeAmount: invoice.late_fee_amount ? Number(invoice.late_fee_amount) : undefined,
+          dueDate: invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : undefined,
+        },
+      });
+      
+      if (emailError) throw emailError;
+      
+      return { customerEmail: invoice.customer.email };
+    },
+    onSuccess: (data) => {
+      toast.success(`Payment reminder sent to ${data.customerEmail}`);
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to send reminder: ' + sanitizeErrorMessage(error));
+    },
+  });
+}

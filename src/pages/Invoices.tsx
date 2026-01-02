@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
-import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useApplyLateFee, useArchiveInvoice, useUnarchiveInvoice, isInvoiceOverdue, getTotalWithLateFee, Invoice } from '@/hooks/useInvoices';
+import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useApplyLateFee, useArchiveInvoice, useUnarchiveInvoice, useSendPaymentReminder, isInvoiceOverdue, getTotalWithLateFee, Invoice } from '@/hooks/useInvoices';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send, UserCog } from 'lucide-react';
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send, UserCog, Bell } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
@@ -70,6 +70,7 @@ const Invoices = () => {
   const archiveInvoice = useArchiveInvoice();
   const unarchiveInvoice = useUnarchiveInvoice();
   const applyLateFee = useApplyLateFee();
+  const sendPaymentReminder = useSendPaymentReminder();
   const emailDocument = useEmailDocument();
   const downloadDocument = useDownloadDocument();
   const signInvoice = useSignInvoice();
@@ -866,10 +867,22 @@ const Invoices = () => {
                   <Mail className="w-4 h-4 sm:mr-1" />
                   <span className="hidden sm:inline">Email</span>
                 </Button>
-                {viewingInvoice.status !== 'paid' && <Button variant="default" size="sm" onClick={() => handleMarkPaid(viewingInvoice.id)} className="flex-1 sm:flex-none">
-                    <CheckCircle className="w-4 h-4 sm:mr-1" />
-                    <span className="hidden sm:inline">Mark Paid</span>
-                  </Button>}
+                {viewingInvoice.status !== 'paid' && <>
+                    <Button variant="default" size="sm" onClick={() => handleMarkPaid(viewingInvoice.id)} className="flex-1 sm:flex-none">
+                      <CheckCircle className="w-4 h-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Mark Paid</span>
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => sendPaymentReminder.mutate(viewingInvoice.id)} 
+                      disabled={sendPaymentReminder.isPending}
+                      className="flex-1 sm:flex-none"
+                    >
+                      <Bell className="w-4 h-4 sm:mr-1" />
+                      <span className="hidden sm:inline">{sendPaymentReminder.isPending ? 'Sending...' : 'Send Reminder'}</span>
+                    </Button>
+                  </>}
                 <Button variant="outline" size="sm" onClick={() => {
               handleEdit(viewingInvoice);
               openViewingInvoice(null);

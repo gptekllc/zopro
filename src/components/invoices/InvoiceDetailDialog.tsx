@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   FileDown, Mail, Edit, PenTool, Calendar, 
-  DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog
+  DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -23,6 +23,8 @@ interface InvoiceDetailDialogProps {
   onViewSignature?: (signatureId: string) => void;
   onApplyLateFee?: (invoiceId: string) => void;
   isApplyingLateFee?: boolean;
+  onSendReminder?: (invoiceId: string) => void;
+  isSendingReminder?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -46,6 +48,8 @@ export function InvoiceDetailDialog({
   onViewSignature,
   onApplyLateFee,
   isApplyingLateFee = false,
+  onSendReminder,
+  isSendingReminder = false,
 }: InvoiceDetailDialogProps) {
   if (!invoice) return null;
 
@@ -260,10 +264,24 @@ export function InvoiceDetailDialog({
               <span className="hidden sm:inline">Email</span>
             </Button>
             {invoice.status !== 'paid' && (
-              <Button variant="default" size="sm" onClick={() => onMarkPaid?.(invoice.id)} className="flex-1 sm:flex-none">
-                <CheckCircle className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Mark Paid</span>
-              </Button>
+              <>
+                <Button variant="default" size="sm" onClick={() => onMarkPaid?.(invoice.id)} className="flex-1 sm:flex-none">
+                  <CheckCircle className="w-4 h-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Mark Paid</span>
+                </Button>
+                {onSendReminder && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onSendReminder(invoice.id)} 
+                    disabled={isSendingReminder}
+                    className="flex-1 sm:flex-none"
+                  >
+                    <Bell className="w-4 h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">{isSendingReminder ? 'Sending...' : 'Send Reminder'}</span>
+                  </Button>
+                )}
+              </>
             )}
             <Button variant="outline" size="sm" onClick={() => onEdit?.(invoice.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
               <Edit className="w-4 h-4 mr-1" /> Open in Invoices
