@@ -114,31 +114,62 @@ const Jobs = () => {
     return counts;
   }, [safeQuotes]);
 
-  // Track invoices linked to jobs through quotes
+  // Track invoices linked to jobs.
   // An invoice is linked to a job if:
-  // 1. The invoice's quote_id matches a quote where quote.job_id = job.id, OR
-  // 2. The invoice's quote_id matches the job's origin quote_id
+  // 1) invoice.quote_id matches the job's origin quote_id, OR
+  // 2) invoice.quote_id matches an upsell quote where quote.job_id = job.id, OR
+  // 3) invoice.notes matches the standard "Invoice for Job {job_number}" pattern (for jobs without quotes)
   const invoicesPerJob = useMemo(() => {
     const counts = new Map<string, number>();
-    
-    // Build a map of quote_id -> job_id for quotes created from jobs
+
+    const originQuoteByJob = new Map<string, string>();
+    safeJobs.forEach((job: any) => {
+      if (job?.id && job?.quote_id) originQuoteByJob.set(job.id, job.quote_id);
+    });
+
+    // Build a map of quote_id -> job_id for upsell quotes
     const quoteToJobMap = new Map<string, string>();
     safeQuotes.forEach((quote: any) => {
-      if (quote.job_id) {
-        quoteToJobMap.set(quote.id, quote.job_id);
-      }
+      if (quote?.job_id) quoteToJobMap.set(quote.id, quote.job_id);
     });
-    
+
     safeInvoices.forEach((invoice: any) => {
+      if (!invoice?.id) return;
+
+      // (1) origin quote link
+      if (invoice.quote_id) {
+        for (const [jobId, originQuoteId] of originQuoteByJob.entries()) {
+          if (invoice.quote_id === originQuoteId) {
+            counts.set(jobId, (counts.get(jobId) || 0) + 1);
+            return;
+          }
+        }
+      }
+
+      // (2) upsell quote link
       if (invoice.quote_id) {
         const jobId = quoteToJobMap.get(invoice.quote_id);
         if (jobId) {
           counts.set(jobId, (counts.get(jobId) || 0) + 1);
+          return;
+        }
+      }
+
+      // (3) fallback: invoice created directly from a job without a quote
+      if (typeof invoice.notes === 'string') {
+        const m = invoice.notes.match(/Invoice for Job\s+(J-\d{4}-\d{3})/);
+        if (m?.[1]) {
+          const jobNumber = m[1];
+          const job = safeJobs.find((j: any) => j?.job_number === jobNumber);
+          if (job?.id) {
+            counts.set(job.id, (counts.get(job.id) || 0) + 1);
+          }
         }
       }
     });
+
     return counts;
-  }, [safeQuotes, safeInvoices]);
+  }, [safeJobs, safeQuotes, safeInvoices]);
   const createJob = useCreateJob();
   const updateJob = useUpdateJob();
   const deleteJob = useDeleteJob();
@@ -176,17 +207,30 @@ const Jobs = () => {
   const viewingJobInvoices = useMemo(() => {
     if (!viewingJob) return [] as Invoice[];
 
-    // invoices directly created from this job typically point to the job's origin quote
     const originQuoteId = viewingJob.quote_id;
 
-    // upsell quotes created during the job have quote.job_id = job.id
+    // Upsell quotes created during the job have quote.job_id = job.id
     const upsellQuoteIds = new Set(
       safeQuotes.filter((q: any) => q?.job_id === viewingJob.id).map((q: any) => q.id)
     );
 
+    const directJobInvoiceMatcher = `Invoice for Job ${viewingJob.job_number}`;
+
     return (safeInvoices as Invoice[]).filter((inv: any) => {
-      if (!inv?.quote_id) return false;
-      return inv.quote_id === originQuoteId || upsellQuoteIds.has(inv.quote_id);
+      if (!inv?.id) return false;
+
+      // Linked via quote
+      if (inv.quote_id) {
+        if (originQuoteId && inv.quote_id === originQuoteId) return true;
+        if (upsellQuoteIds.has(inv.quote_id)) return true;
+      }
+
+      // Fallback: created directly from job without a quote
+      if (!inv.quote_id && typeof (inv as any).notes === 'string') {
+        return (inv as any).notes === directJobInvoiceMatcher;
+      }
+
+      return false;
     });
   }, [viewingJob, safeInvoices, safeQuotes]);
   
@@ -1383,16 +1427,15 @@ const Jobs = () => {
                 </DialogTitle>
               </DialogHeader>
               
-              <Tabs defaultValue="details" className="mt-2 sm:mt-4">
-                <TabsList className="flex-wrap h-auto gap-1 p-1">
-                  <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-3">Details</TabsTrigger>
-                  <TabsTrigger value="quotes" className="text-xs sm:text-sm px-2 sm:px-3">Quotes</TabsTrigger>
-                  <TabsTrigger value="invoices" className="text-xs sm:text-sm px-2 sm:px-3">
-                    Invoices ({viewingJobInvoices.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
-                  <TabsTrigger value="time" className="text-xs sm:text-sm px-2 sm:px-3">Time</TabsTrigger>
-                </TabsList>
+               <Tabs defaultValue="details" className="mt-2 sm:mt-4">
+                 <TabsList className="flex-wrap h-auto gap-1 p-1">
+                   <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-3">Details</TabsTrigger>
+                   <TabsTrigger value="linked" className="text-xs sm:text-sm px-2 sm:px-3">
+                     Linked Docs ({(quotesPerJob.get(viewingJob.id) || 0) + viewingJobInvoices.length + (viewingJob.quote_id ? 1 : 0)})
+                   </TabsTrigger>
+                   <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
+                   <TabsTrigger value="time" className="text-xs sm:text-sm px-2 sm:px-3">Time</TabsTrigger>
+                 </TabsList>
                 
                 <TabsContent value="details" className="space-y-6 mt-4">
                   {/* Basic Info - responsive grid */}
@@ -1626,48 +1669,84 @@ const Jobs = () => {
                   </div>
                 </TabsContent>
                 
-                <TabsContent value="time" className="mt-4">
-                  <JobTimeTracker jobId={viewingJob.id} jobNumber={viewingJob.job_number} />
+                <TabsContent value="linked" className="mt-4 space-y-4">
+                  {/* Quotes */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-sm">Quotes</h4>
+                    </div>
+                    <JobRelatedQuotesSection
+                      job={viewingJob}
+                      onViewQuote={(quote) => {
+                        openViewingJob(null);
+                        setViewingQuote(quote);
+                      }}
+                      onCreateUpsellQuote={() => {
+                        handleCreateQuote(viewingJob);
+                        if ((quotesPerJob.get(viewingJob.id) || 0) === 0) {
+                          openViewingJob(null);
+                        }
+                      }}
+                      isCreatingQuote={convertToQuote.isPending}
+                    />
+                  </div>
+
+                  {/* Invoices */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-sm">Invoices</h4>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          handleCreateInvoice(viewingJob);
+                          if ((invoicesPerJob.get(viewingJob.id) || 0) === 0) {
+                            openViewingJob(null);
+                          }
+                        }}
+                        disabled={convertToInvoice.isPending}
+                      >
+                        <Receipt className="w-4 h-4 mr-2" />
+                        Create Invoice
+                      </Button>
+                    </div>
+
+                    {viewingJobInvoices.length > 0 ? (
+                      <div className="space-y-2">
+                        {viewingJobInvoices.map((invoice: Invoice) => (
+                          <div
+                            key={invoice.id}
+                            className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                            onClick={() => {
+                              openViewingJob(null);
+                              window.location.href = `/invoices?view=${invoice.id}`;
+                            }}
+                          >
+                            <div>
+                              <p className="font-medium text-sm">{invoice.invoice_number}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-sm">${Number(invoice.total).toFixed(2)}</p>
+                              <Badge variant="secondary" className="text-xs">
+                                {invoice.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 rounded-lg border bg-muted/50 text-sm text-muted-foreground">
+                        No invoices linked to this job yet.
+                      </div>
+                    )}
+                  </div>
                 </TabsContent>
 
-                <TabsContent value="invoices" className="mt-4">
-                  {viewingJobInvoices.length > 0 ? (
-                    <div className="space-y-2">
-                      {viewingJobInvoices.map((invoice: Invoice) => (
-                        <div key={invoice.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
-                          <div>
-                            <p className="font-medium text-sm">{invoice.invoice_number}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(invoice.created_at), 'MMM d, yyyy')}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-sm">${Number(invoice.total).toFixed(2)}</p>
-                            <Badge variant="secondary" className="text-xs">
-                              {invoice.status}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-4 rounded-lg border bg-muted/50 text-sm text-muted-foreground">
-                      No invoices linked to this job yet.
-                    </div>
-                  )}
-                </TabsContent>
-                
-                
-                <TabsContent value="quotes" className="mt-4">
-                  <JobRelatedQuotesSection job={viewingJob} onViewQuote={quote => {
-                openViewingJob(null);
-                setViewingQuote(quote);
-              }} onCreateUpsellQuote={() => {
-                handleCreateQuote(viewingJob);
-                if ((quotesPerJob.get(viewingJob.id) || 0) === 0) {
-                  openViewingJob(null);
-                }
-              }} isCreatingQuote={convertToQuote.isPending} />
+                <TabsContent value="time" className="mt-4">
+                  <JobTimeTracker jobId={viewingJob.id} jobNumber={viewingJob.job_number} />
                 </TabsContent>
               </Tabs>
               
