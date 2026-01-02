@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import { quoteSchema, itemSchema, sanitizeErrorMessage } from '@/lib/validation';
+import { calculateDiscountAmount } from '@/components/ui/discount-input';
 
 export interface QuoteItem {
   id: string;
@@ -23,6 +24,8 @@ export interface Quote {
   subtotal: number;
   tax: number;
   total: number;
+  discount_type: 'amount' | 'percentage' | null;
+  discount_value: number | null;
   notes: string | null;
   valid_until: string | null;
   created_by: string | null;
@@ -110,8 +113,10 @@ export function useCreateQuote() {
       
       // Calculate totals
       const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const tax = subtotal * taxRate;
-      const total = subtotal + tax;
+      const discountAmount = calculateDiscountAmount(subtotal, (quoteValidation.data as any).discount_type, (quoteValidation.data as any).discount_value);
+      const afterDiscount = subtotal - discountAmount;
+      const tax = afterDiscount * taxRate;
+      const total = afterDiscount + tax;
       
       // Create quote
       const { data: quoteData, error: quoteError } = await (supabase as any)

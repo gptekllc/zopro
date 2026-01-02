@@ -81,6 +81,8 @@ export function JobDetailDialog({
       subtotal: null,
       tax: null,
       total: null,
+      discount_type: null,
+      discount_value: null,
       items: [], // Will use job items if available
     };
     convertJobToQuote.mutate(jobForConversion);

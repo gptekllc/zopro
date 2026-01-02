@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import { invoiceSchema, itemSchema, sanitizeErrorMessage } from '@/lib/validation';
+import { calculateDiscountAmount } from '@/components/ui/discount-input';
 
 export interface InvoiceItem {
   id: string;
@@ -24,6 +25,8 @@ export interface Invoice {
   subtotal: number;
   tax: number;
   total: number;
+  discount_type: 'amount' | 'percentage' | null;
+  discount_value: number | null;
   late_fee_amount: number | null;
   late_fee_applied_at: string | null;
   notes: string | null;
@@ -143,8 +146,10 @@ export function useCreateInvoice() {
       
       // Calculate totals
       const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      const tax = subtotal * taxRate;
-      const total = subtotal + tax;
+      const discountAmount = calculateDiscountAmount(subtotal, (invoiceValidation.data as any).discount_type, (invoiceValidation.data as any).discount_value);
+      const afterDiscount = subtotal - discountAmount;
+      const tax = afterDiscount * taxRate;
+      const total = afterDiscount + tax;
       
       // Create invoice
       const { data: invoiceData, error: invoiceError } = await (supabase as any)

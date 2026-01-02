@@ -297,6 +297,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           customer_id: string
+          discount_type: string | null
+          discount_value: number | null
           due_date: string | null
           id: string
           invoice_number: string
@@ -320,6 +322,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id: string
+          discount_type?: string | null
+          discount_value?: number | null
           due_date?: string | null
           id?: string
           invoice_number: string
@@ -343,6 +347,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id?: string
+          discount_type?: string | null
+          discount_value?: number | null
           due_date?: string | null
           id?: string
           invoice_number?: string
@@ -599,6 +605,8 @@ export type Database = {
           created_by: string | null
           customer_id: string
           description: string | null
+          discount_type: string | null
+          discount_value: number | null
           estimated_duration: number | null
           id: string
           job_number: string
@@ -627,6 +635,8 @@ export type Database = {
           created_by?: string | null
           customer_id: string
           description?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           estimated_duration?: number | null
           id?: string
           job_number: string
@@ -655,6 +665,8 @@ export type Database = {
           created_by?: string | null
           customer_id?: string
           description?: string | null
+          discount_type?: string | null
+          discount_value?: number | null
           estimated_duration?: number | null
           id?: string
           job_number?: string
@@ -980,6 +992,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           customer_id: string
+          discount_type: string | null
+          discount_value: number | null
           id: string
           job_id: string | null
           notes: string | null
@@ -999,6 +1013,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id: string
+          discount_type?: string | null
+          discount_value?: number | null
           id?: string
           job_id?: string | null
           notes?: string | null
@@ -1018,6 +1034,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id?: string
+          discount_type?: string | null
+          discount_value?: number | null
           id?: string
           job_id?: string | null
           notes?: string | null
