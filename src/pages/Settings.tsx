@@ -54,8 +54,8 @@ const Settings = () => {
     <div className="space-y-8 animate-fade-in max-w-2xl">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your account settings</p>
+        <h1 className="text-2xl sm:text-3xl font-bold">Settings</h1>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">Manage your account settings</p>
       </div>
 
       {/* Profile Card */}
@@ -67,13 +67,13 @@ const Settings = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4 mb-6">
-            <Avatar className="w-20 h-20">
-              <AvatarFallback className="bg-primary text-primary-foreground text-xl">
+          <div className="flex flex-col sm:flex-row items-center gap-4 mb-6">
+            <Avatar className="w-16 h-16 sm:w-20 sm:h-20">
+              <AvatarFallback className="bg-primary text-primary-foreground text-lg sm:text-xl">
                 {profile?.full_name ? getInitials(profile.full_name) : 'U'}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="text-center sm:text-left">
               <h3 className="font-semibold text-lg">{profile?.full_name || 'Unnamed User'}</h3>
               <p className="text-muted-foreground capitalize">User</p>
             </div>
@@ -110,7 +110,7 @@ const Settings = () => {
               />
             </div>
 
-            <Button type="submit" className="gap-2" disabled={updateProfile.isPending}>
+            <Button type="submit" className="gap-2 w-full sm:w-auto" disabled={updateProfile.isPending}>
               {updateProfile.isPending ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
