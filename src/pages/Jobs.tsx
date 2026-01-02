@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -50,15 +50,15 @@ const Jobs = () => {
     roles
   } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [showArchived, setShowArchived] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [includeArchivedInSearch, setIncludeArchivedInSearch] = useState(false);
   const {
     saveScrollPosition,
     restoreScrollPosition
   } = useScrollRestoration();
 
-  // Determine if we need to include archived jobs based on search + toggle
-  const needsArchivedData = showArchived || includeArchivedInSearch;
+  // Determine if we need to include archived jobs based on filter or search
+  const needsArchivedData = statusFilter === 'archived' || includeArchivedInSearch;
   const {
     data: jobs = [],
     isLoading,
@@ -106,7 +106,6 @@ const Jobs = () => {
     { itemLabel: 'job', timeout: 5000 }
   );
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [viewingJob, setViewingJob] = useState<Job | null>(null);
@@ -211,22 +210,26 @@ const Jobs = () => {
     const filtered = safeJobs.filter((job: any) => {
       if (!job) return false;
       const matchesSearch = String(job.title ?? '').toLowerCase().includes(searchQuery.toLowerCase()) || String(job.job_number ?? '').toLowerCase().includes(searchQuery.toLowerCase()) || String(job.customer?.name ?? '').toLowerCase().includes(searchQuery.toLowerCase());
+      
+      // Handle archived filter separately
+      if (statusFilter === 'archived') {
+        return matchesSearch && !!job.archived_at;
+      }
+      
       const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
 
       // When searching with includeArchivedInSearch, include archived jobs
-      // Otherwise, respect showArchived toggle
+      // Otherwise, hide archived jobs
       let matchesArchiveFilter = true;
       if (searchQuery && includeArchivedInSearch) {
-        // Include all jobs (archived and active) when searching with toggle on
         matchesArchiveFilter = true;
-      } else if (!showArchived) {
-        // Hide archived jobs when not showing archived
+      } else {
         matchesArchiveFilter = !job.archived_at;
       }
       return matchesSearch && matchesStatus && matchesArchiveFilter;
     });
     return filterPendingJobDeletes(filtered);
-  }, [safeJobs, searchQuery, statusFilter, showArchived, includeArchivedInSearch, filterPendingJobDeletes]);
+  }, [safeJobs, searchQuery, statusFilter, includeArchivedInSearch, filterPendingJobDeletes]);
   const resetForm = () => {
     setFormData({
       customer_id: '',
@@ -517,20 +520,28 @@ const Jobs = () => {
               <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9" />
             </div>
             
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-28 sm:w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                {JOB_STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            
-            <Button variant={showArchived ? 'secondary' : 'outline'} size="sm" onClick={() => setShowArchived(!showArchived)} className="gap-1 whitespace-nowrap hidden sm:flex">
-              {showArchived ? <Archive className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              <span>{showArchived ? 'Hide Archived' : 'Archived'}</span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant={statusFilter !== 'all' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9">
+                  <Filter className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
+                  All Status
+                </DropdownMenuItem>
+                {JOB_STATUSES.map(s => (
+                  <DropdownMenuItem key={s} onClick={() => setStatusFilter(s)} className={`capitalize ${statusFilter === s ? 'bg-accent' : ''}`}>
+                    {s.replace('_', ' ')}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setStatusFilter('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
+                  <Archive className="w-4 h-4 mr-2" />
+                  Archived
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <Link to="/jobs/templates">
               <Button variant="outline" size="sm" className="gap-1 whitespace-nowrap hidden sm:flex">
