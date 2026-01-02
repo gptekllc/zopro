@@ -784,7 +784,7 @@ const Invoices = () => {
 
               {/* Totals */}
               <div className="flex justify-end">
-                <div className="w-full sm:w-48 space-y-1">
+                <div className="w-full sm:w-56 space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>${Number(viewingInvoice.subtotal).toLocaleString()}</span>
@@ -793,10 +793,47 @@ const Invoices = () => {
                     <span className="text-muted-foreground">Tax</span>
                     <span>${Number(viewingInvoice.tax).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
-                    <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
+                  <div className="flex justify-between font-semibold pt-2 border-t">
+                    <span>Invoice Total</span>
                     <span>${formatAmount(viewingInvoice.total)}</span>
                   </div>
+                  {viewingInvoice.late_fee_amount && Number(viewingInvoice.late_fee_amount) > 0 && (
+                    <>
+                      <div className="flex justify-between text-sm text-destructive">
+                        <span className="flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          Late Fee {lateFeePercentage > 0 && `(${lateFeePercentage}%)`}
+                        </span>
+                        <span>+${Number(viewingInvoice.late_fee_amount).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-base sm:text-lg pt-2 border-t border-destructive/30">
+                        <span className="flex items-center gap-1 text-destructive"><DollarSign className="w-4 h-4" />Total Due</span>
+                        <span className="text-destructive">${(Number(viewingInvoice.total) + Number(viewingInvoice.late_fee_amount)).toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
+                  {(!viewingInvoice.late_fee_amount || Number(viewingInvoice.late_fee_amount) === 0) && (
+                    <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
+                      <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
+                      <span>${formatAmount(viewingInvoice.total)}</span>
+                    </div>
+                  )}
+                  {/* Apply Late Fee button */}
+                  {viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date() && 
+                   viewingInvoice.status !== 'paid' && 
+                   (!viewingInvoice.late_fee_amount || Number(viewingInvoice.late_fee_amount) === 0) && 
+                   lateFeePercentage > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full mt-2"
+                      onClick={() => handleApplyLateFee(viewingInvoice.id)}
+                      disabled={applyLateFee.isPending}
+                    >
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      Apply {lateFeePercentage}% Late Fee
+                    </Button>
+                  )}
                 </div>
               </div>
 
