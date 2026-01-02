@@ -36,6 +36,14 @@ interface LineItem {
   unitPrice: number;
 }
 
+const normalizeMoneyInput = (value: number | string | null | undefined) => {
+  if (typeof value !== 'string') return value;
+  // Supabase numeric fields can come back as strings like "24.2400".
+  // Trim only *trailing* zeros so we don't end up displaying ".00" everywhere.
+  const trimmed = value.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  return trimmed;
+};
+
 const Invoices = () => {
   const { profile } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -665,7 +673,7 @@ const Invoices = () => {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-sm font-medium text-primary">${formatAmount(invoice.total)}</span>
+                    <span className="text-sm font-medium text-primary">${formatAmount(normalizeMoneyInput(invoice.total))}</span>
                     {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
                       <div className="text-xs text-destructive flex items-center gap-1 justify-end mt-0.5">
                         <AlertCircle className="w-3 h-3" />
@@ -832,7 +840,7 @@ const Invoices = () => {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-base font-semibold text-primary">${formatAmount(invoice.total)}</span>
+                    <span className="text-base font-semibold text-primary">${formatAmount(normalizeMoneyInput(invoice.total))}</span>
                     {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
                       <div className="text-sm text-destructive flex items-center gap-1 justify-end mt-0.5">
                         <AlertCircle className="w-3.5 h-3.5" />
