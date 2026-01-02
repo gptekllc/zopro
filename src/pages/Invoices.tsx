@@ -6,6 +6,7 @@ import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
+import { useProfiles } from '@/hooks/useProfiles';
 import { useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useSignInvoice } from '@/hooks/useSignatures';
@@ -62,6 +63,7 @@ const Invoices = () => {
   const {
     data: company
   } = useCompany();
+  const { data: profiles = [] } = useProfiles();
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
   const deleteInvoice = useDeleteInvoice();
@@ -120,6 +122,7 @@ const Invoices = () => {
     notes: string;
     status: string;
     dueDays: number;
+    createdBy: string;
   }>({
     customerId: '',
     items: [{
@@ -130,7 +133,8 @@ const Invoices = () => {
     }],
     notes: '',
     status: 'draft',
-    dueDays: 30
+    dueDays: 30,
+    createdBy: ''
   });
 
   // Handle URL param to auto-open invoice detail
@@ -176,7 +180,8 @@ const Invoices = () => {
       }],
       notes: '',
       status: 'draft',
-      dueDays: 30
+      dueDays: 30,
+      createdBy: ''
     });
     setEditingInvoice(null);
   };
@@ -218,7 +223,7 @@ const Invoices = () => {
       return;
     }
     const subtotal = calculateTotal(formData.items);
-    const invoiceData = {
+    const invoiceData: any = {
       customer_id: formData.customerId,
       notes: formData.notes || null,
       status: formData.status,
@@ -227,6 +232,11 @@ const Invoices = () => {
       tax: 0,
       total: subtotal
     };
+
+    // Include created_by if set
+    if (formData.createdBy) {
+      invoiceData.created_by = formData.createdBy;
+    }
     try {
       const itemsData = formData.items.map(item => ({
         description: item.description,
@@ -270,7 +280,8 @@ const Invoices = () => {
       }],
       notes: invoice.notes || '',
       status: invoice.status as any,
-      dueDays: 30
+      dueDays: 30,
+      createdBy: invoice.created_by || ''
     });
     setEditingInvoice(invoice.id);
     openEditDialog(true);
@@ -334,7 +345,8 @@ const Invoices = () => {
       }],
       notes: invoice.notes || '',
       status: 'draft',
-      dueDays: 30
+      dueDays: 30,
+      createdBy: ''
     });
     setEditingInvoice(null);
     openEditDialog(true);
@@ -528,19 +540,28 @@ const Invoices = () => {
                     </div>
                   </div>
 
-                  {/* Created By (read-only when editing) */}
-                  {editingInvoice && (() => {
-                    const invoice = invoices.find(i => i.id === editingInvoice);
-                    const creatorName = (invoice as any)?.creator?.full_name;
-                    return creatorName ? (
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-1">
-                          <UserCog className="w-3 h-3" /> Created By
-                        </Label>
-                        <Input value={creatorName} disabled className="bg-muted" />
-                      </div>
-                    ) : null;
-                  })()}
+                  {/* Assigned Technician */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">
+                      <UserCog className="w-3 h-3" /> Assigned Technician
+                    </Label>
+                    <Select
+                      value={formData.createdBy || 'unassigned'}
+                      onValueChange={(value) => setFormData({ ...formData, createdBy: value === 'unassigned' ? '' : value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select technician" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {profiles.filter(p => p.employment_status === 'active' || !p.employment_status).map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.full_name || p.email}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {/* Line Items */}
                   <div className="space-y-3">
