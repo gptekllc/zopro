@@ -17,6 +17,7 @@ import {
 } from "@/hooks/useInvoices";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useCustomers } from "@/hooks/useCustomers";
+import { useProfiles } from "@/hooks/useProfiles";
 import { useAuth } from "@/hooks/useAuth";
 import { useCompany } from "@/hooks/useCompany";
 import { useEmailDocument, useDownloadDocument } from "@/hooks/useDocumentActions";
@@ -105,6 +106,7 @@ const Invoices = () => {
   const needsArchivedData = statusFilter === "archived";
   const { data: invoices = [], isLoading, refetch: refetchInvoices } = useInvoices(needsArchivedData);
   const { data: customers = [] } = useCustomers();
+  const { data: profiles = [] } = useProfiles();
   const { data: company } = useCompany();
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
@@ -167,12 +169,14 @@ const Invoices = () => {
   );
   const [formData, setFormData] = useState<{
     customerId: string;
+    assignedTo: string;
     items: LineItem[];
     notes: string;
     status: string;
     dueDays: number;
   }>({
     customerId: "",
+    assignedTo: "",
     items: [{ id: "1", description: "", quantity: 1, unitPrice: 0 }],
     notes: "",
     status: "draft",
@@ -217,6 +221,7 @@ const Invoices = () => {
   const resetForm = () => {
     setFormData({
       customerId: "",
+      assignedTo: "",
       items: [{ id: "1", description: "", quantity: 1, unitPrice: 0 }],
       notes: "",
       status: "draft",
@@ -263,6 +268,7 @@ const Invoices = () => {
     const subtotal = calculateTotal(formData.items);
     const invoiceData = {
       customer_id: formData.customerId,
+      assigned_to: formData.assignedTo || null,
       notes: formData.notes || null,
       status: formData.status,
       due_date: format(addDays(new Date(), formData.dueDays), "yyyy-MM-dd"),
@@ -304,6 +310,7 @@ const Invoices = () => {
   const handleEdit = (invoice: (typeof invoices)[0]) => {
     setFormData({
       customerId: invoice.customer_id,
+      assignedTo: invoice.assigned_to || "",
       items: invoice.items?.map((item: any) => ({
         id: item.id,
         description: item.description,
@@ -364,6 +371,7 @@ const Invoices = () => {
   const handleDuplicateInvoice = (invoice: (typeof invoices)[0]) => {
     setFormData({
       customerId: invoice.customer_id,
+      assignedTo: invoice.assigned_to || "",
       items: invoice.items?.map((item: any) => ({
         id: Date.now().toString() + Math.random(),
         description: item.description,
@@ -620,6 +628,28 @@ const Invoices = () => {
                         onChange={(e) => setFormData({ ...formData, dueDays: parseInt(e.target.value) || 30 })}
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Assigned Technician</Label>
+                    <Select
+                      value={formData.assignedTo}
+                      onValueChange={(value) => setFormData({ ...formData, assignedTo: value === "none" ? "" : value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select technician (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No technician assigned</SelectItem>
+                        {profiles
+                          .filter((p) => p.role === "technician" || p.role === "admin" || p.role === "manager")
+                          .map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {p.full_name || p.email}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   {/* Line Items */}
@@ -1188,13 +1218,13 @@ const Invoices = () => {
                     </p>
                   </div>
                 )}
-                {(viewingInvoice as any).quote?.job?.assigned_technician?.full_name && (
+                {((viewingInvoice as any).assigned_technician?.full_name || (viewingInvoice as any).quote?.job?.assigned_technician?.full_name) && (
                   <div>
                     <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
                       <Wrench className="w-3 h-3" /> Assigned Technician
                     </p>
                     <p className="font-medium text-sm sm:text-base truncate">
-                      {(viewingInvoice as any).quote.job.assigned_technician.full_name}
+                      {(viewingInvoice as any).assigned_technician?.full_name || (viewingInvoice as any).quote?.job?.assigned_technician?.full_name}
                     </p>
                   </div>
                 )}
