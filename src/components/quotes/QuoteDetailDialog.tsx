@@ -3,13 +3,21 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { 
   FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, 
-  DollarSign, FileText, CheckCircle, Send, UserCog
+  DollarSign, FileText, CheckCircle, Send, UserCog, ChevronRight, CheckCircle2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
+
+const QUOTE_STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'expired'] as const;
 
 interface QuoteDetailDialogProps {
   quote: CustomerQuote | null;
@@ -24,6 +32,7 @@ interface QuoteDetailDialogProps {
   onViewSignature?: (signatureId: string) => void;
   onCollectSignature?: (quoteId: string) => void;
   onSendSignatureRequest?: (quoteId: string) => void;
+  onStatusChange?: (quoteId: string, status: string) => void;
   isCollectingSignature?: boolean;
   customerEmail?: string;
 }
@@ -49,6 +58,7 @@ export function QuoteDetailDialog({
   onViewSignature,
   onCollectSignature,
   onSendSignatureRequest,
+  onStatusChange,
   isCollectingSignature = false,
   customerEmail,
 }: QuoteDetailDialogProps) {
@@ -66,9 +76,35 @@ export function QuoteDetailDialog({
               <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
               <span className="truncate">{quote.quote_number}</span>
             </DialogTitle>
-            <Badge className={`${statusColors[quote.status] || 'bg-muted'} shrink-0 text-xs`}>
-              {quote.status}
-            </Badge>
+            {onStatusChange ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Badge className={`${statusColors[quote.status] || 'bg-muted'} shrink-0 text-xs cursor-pointer hover:opacity-80 transition-opacity`}>
+                    {quote.status === 'accepted' ? 'approved' : quote.status}
+                    <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                  </Badge>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover z-50">
+                  {QUOTE_STATUSES.map(status => (
+                    <DropdownMenuItem
+                      key={status}
+                      onClick={() => onStatusChange(quote.id, status)}
+                      disabled={quote.status === status}
+                      className={quote.status === status ? 'bg-accent' : ''}
+                    >
+                      <Badge className={`${statusColors[status] || 'bg-muted'} mr-2`} variant="outline">
+                        {status === 'accepted' ? 'approved' : status}
+                      </Badge>
+                      {quote.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Badge className={`${statusColors[quote.status] || 'bg-muted'} shrink-0 text-xs`}>
+                {quote.status === 'accepted' ? 'approved' : quote.status}
+              </Badge>
+            )}
           </div>
         </DialogHeader>
 
