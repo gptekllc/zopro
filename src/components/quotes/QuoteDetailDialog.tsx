@@ -82,6 +82,8 @@ export function QuoteDetailDialog({
     return allInvoices.filter((invoice: Invoice) => invoice.quote_id === quote.id);
   }, [quote, allInvoices]);
 
+  if (!quote) return null;
+
   const isApprovedOrAccepted = quote.status === 'approved' || quote.status === 'accepted';
   const showCollectButton = !isApprovedOrAccepted && quote.status !== 'rejected';
 
