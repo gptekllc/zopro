@@ -1425,7 +1425,7 @@ const Jobs = () => {
             <AlertDialogTitle>Delete Job</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deleteConfirmJob?.job_number} - {deleteConfirmJob?.title}"? 
-              This action cannot be undone.
+              You can undo this action within a few seconds.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1433,14 +1433,12 @@ const Jobs = () => {
             <AlertDialogAction 
               onClick={() => {
                 if (deleteConfirmJob) {
-                  deleteJob.mutate(deleteConfirmJob.id);
+                  scheduleJobDelete(deleteConfirmJob.id);
                   setDeleteConfirmJob(null);
                 }
               }}
-              disabled={deleteJob.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteJob.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

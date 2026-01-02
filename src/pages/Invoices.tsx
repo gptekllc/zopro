@@ -58,6 +58,7 @@ const Invoices = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<string | null>(null);
   const [viewingInvoice, setViewingInvoice] = useState<typeof invoices[0] | null>(null);
+  const [invoiceToDelete, setInvoiceToDelete] = useState<typeof invoices[0] | null>(null);
 
   // Wrapped setters for scroll restoration
   const openViewingInvoice = useCallback((invoice: typeof invoices[0] | null) => {
@@ -217,8 +218,15 @@ const Invoices = () => {
     openEditDialog(true);
   };
 
-  const handleDeleteClick = (id: string) => {
-    scheduleInvoiceDelete(id);
+  const handleDeleteClick = (invoice: typeof invoices[0]) => {
+    setInvoiceToDelete(invoice);
+  };
+
+  const handleConfirmDelete = () => {
+    if (invoiceToDelete) {
+      scheduleInvoiceDelete(invoiceToDelete.id);
+      setInvoiceToDelete(null);
+    }
   };
 
   const handleMarkPaid = async (id: string) => {
@@ -621,7 +629,7 @@ const Invoices = () => {
                           </>
                         )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDeleteClick(invoice.id)} className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => handleDeleteClick(invoice)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -746,7 +754,7 @@ const Invoices = () => {
                           </>
                         )}
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleDeleteClick(invoice.id)} className="text-destructive focus:text-destructive">
+                        <DropdownMenuItem onClick={() => handleDeleteClick(invoice)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
@@ -947,6 +955,25 @@ const Invoices = () => {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!invoiceToDelete} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invoice</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete invoice "{invoiceToDelete?.invoice_number}"? 
+              You can undo this action within a few seconds.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Mobile Floating Action Button */}
       <Button
