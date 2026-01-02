@@ -2,12 +2,21 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   FileDown, Mail, Edit, PenTool, Calendar, 
-  DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell
+  DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
+  ChevronRight, CheckCircle2, Copy
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
+
+const INVOICE_STATUSES = ['draft', 'sent', 'paid'] as const;
 
 interface ReminderHistory {
   id: string;
@@ -27,6 +36,8 @@ interface InvoiceDetailDialogProps {
   onEmail?: (invoiceId: string) => void;
   onMarkPaid?: (invoiceId: string) => void;
   onEdit?: (invoiceId: string) => void;
+  onDuplicate?: (invoiceId: string) => void;
+  onStatusChange?: (invoiceId: string, status: string) => void;
   onViewSignature?: (signatureId: string) => void;
   onApplyLateFee?: (invoiceId: string) => void;
   isApplyingLateFee?: boolean;
@@ -53,6 +64,8 @@ export function InvoiceDetailDialog({
   onEmail,
   onMarkPaid,
   onEdit,
+  onDuplicate,
+  onStatusChange,
   onViewSignature,
   onApplyLateFee,
   isApplyingLateFee = false,
@@ -75,9 +88,35 @@ export function InvoiceDetailDialog({
               <Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
               <span className="truncate">{invoice.invoice_number}</span>
             </DialogTitle>
-            <Badge className={`${statusColors[invoice.status] || 'bg-muted'} shrink-0 text-xs`}>
-              {invoice.status}
-            </Badge>
+            {onStatusChange ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Badge className={`${statusColors[invoice.status] || 'bg-muted'} shrink-0 text-xs cursor-pointer hover:opacity-80 transition-opacity`}>
+                    {invoice.status}
+                    <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                  </Badge>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover z-50">
+                  {INVOICE_STATUSES.map(status => (
+                    <DropdownMenuItem
+                      key={status}
+                      onClick={() => onStatusChange(invoice.id, status)}
+                      disabled={invoice.status === status}
+                      className={invoice.status === status ? 'bg-accent' : ''}
+                    >
+                      <Badge className={`${statusColors[status] || 'bg-muted'} mr-2`} variant="outline">
+                        {status}
+                      </Badge>
+                      {invoice.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Badge className={`${statusColors[invoice.status] || 'bg-muted'} shrink-0 text-xs`}>
+                {invoice.status}
+              </Badge>
+            )}
           </div>
         </DialogHeader>
 
@@ -292,38 +331,43 @@ export function InvoiceDetailDialog({
           )}
 
           {/* Actions */}
+          <Separator />
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
-            <Button variant="outline" size="sm" onClick={() => onDownload?.(invoice.id)} className="flex-1 sm:flex-none">
-              <FileDown className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Download</span>
+            <Button variant="outline" size="sm" onClick={() => onEdit?.(invoice.id)}>
+              <Edit className="w-4 h-4 mr-1" />
+              Edit
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onEmail?.(invoice.id)} className="flex-1 sm:flex-none">
-              <Mail className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Email</span>
-            </Button>
-            {invoice.status !== 'paid' && (
-              <>
-                <Button variant="default" size="sm" onClick={() => onMarkPaid?.(invoice.id)} className="flex-1 sm:flex-none">
-                  <CheckCircle className="w-4 h-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Mark Paid</span>
-                </Button>
-                {onSendReminder && (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => onSendReminder(invoice.id)} 
-                    disabled={isSendingReminder}
-                    className="flex-1 sm:flex-none"
-                  >
-                    <Bell className="w-4 h-4 sm:mr-1" />
-                    <span className="hidden sm:inline">{isSendingReminder ? 'Sending...' : 'Send Reminder'}</span>
-                  </Button>
-                )}
-              </>
+            {onDuplicate && (
+              <Button variant="outline" size="sm" onClick={() => onDuplicate(invoice.id)}>
+                <Copy className="w-4 h-4 mr-1" />
+                Duplicate
+              </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => onEdit?.(invoice.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
-              <Edit className="w-4 h-4 mr-1" /> Open in Invoices
+            <Button variant="outline" size="sm" onClick={() => onDownload?.(invoice.id)}>
+              <FileDown className="w-4 h-4 mr-1" />
+              Download
             </Button>
+            <Button variant="outline" size="sm" onClick={() => onEmail?.(invoice.id)}>
+              <Mail className="w-4 h-4 mr-1" />
+              Email
+            </Button>
+            {invoice.status !== 'paid' && onSendReminder && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => onSendReminder(invoice.id)} 
+                disabled={isSendingReminder}
+              >
+                <Bell className="w-4 h-4 mr-1" />
+                {isSendingReminder ? 'Sending...' : 'Send Reminder'}
+              </Button>
+            )}
+            {invoice.status !== 'paid' && (
+              <Button size="sm" onClick={() => onMarkPaid?.(invoice.id)}>
+                <CheckCircle className="w-4 h-4 mr-1" />
+                Mark Paid
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>
