@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -16,12 +16,9 @@ import {
   Users,
   FileText,
   Receipt,
-  Clock,
   Settings,
   LogOut,
   Wrench,
-  Menu,
-  X,
   UserCog,
   Building2,
   Shield,
@@ -50,7 +47,6 @@ const navItems = [
 ];
 
 const AppLayout = ({ children }: AppLayoutProps) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { profile, roles, signOut } = useAuth();
@@ -78,13 +74,6 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     <div className="min-h-screen bg-background">
       {/* Mobile header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b z-40 px-4 flex items-center justify-between">
-        <button
-          onClick={() => setSidebarOpen(true)}
-          className="p-2 hover:bg-muted rounded-lg transition-colors"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
-        
         <div className="flex items-center gap-2">
           <Wrench className="w-6 h-6 text-primary" />
           <span className="font-semibold">Service App</span>
@@ -93,65 +82,45 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <div className="flex items-center gap-1">
           <NotificationsBell />
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              <Avatar className="w-8 h-8">
-                <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                  {getInitials(profile?.full_name)}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => navigate('/profile')}>
-              <User className="w-4 h-4 mr-2" /> Profile
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/settings')}>
-              <Settings className="w-4 h-4 mr-2" /> Settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" /> Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Avatar className="w-8 h-8">
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                    {getInitials(profile?.full_name)}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <User className="w-4 h-4 mr-2" /> Profile
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <Settings className="w-4 h-4 mr-2" /> Settings
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" /> Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-foreground/50 z-40"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed top-0 left-0 h-full w-64 bg-sidebar text-sidebar-foreground z-50 transform transition-transform duration-300 lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}
+      {/* Sidebar - Desktop only */}
+      <aside className="hidden lg:block fixed top-0 left-0 h-full w-64 bg-sidebar text-sidebar-foreground z-50"
       >
         <div className="flex flex-col h-full">
           {/* Sidebar header */}
-          <div className="p-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-                <Wrench className="w-5 h-5 text-sidebar-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="font-bold text-lg">Service App</h1>
-                <p className="text-xs text-sidebar-foreground/60">{company?.name || 'No Company'}</p>
-              </div>
+          <div className="p-6 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
+              <Wrench className="w-5 h-5 text-sidebar-primary-foreground" />
             </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden p-1 hover:bg-sidebar-accent rounded"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            <div>
+              <h1 className="font-bold text-lg">Service App</h1>
+              <p className="text-xs text-sidebar-foreground/60">{company?.name || 'No Company'}</p>
+            </div>
           </div>
 
           {/* Navigation */}
@@ -162,7 +131,6 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                 <Link
                   key={item.path}
                   to={item.path}
-                  onClick={() => setSidebarOpen(false)}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
                     isActive
@@ -194,7 +162,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" align="start" className="w-56">
-                <DropdownMenuItem onClick={() => { navigate('/profile'); setSidebarOpen(false); }}>
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="w-4 h-4 mr-2" />
                   Edit Profile
                 </DropdownMenuItem>
