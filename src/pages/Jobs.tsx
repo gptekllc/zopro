@@ -821,43 +821,44 @@ const Jobs = () => {
                         </div>
                       </div>
                       
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                        {job.archived_at ? <Button variant="outline" size="sm" onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending} className="text-xs h-7">
-                            <ArchiveRestore className="w-3 h-3 mr-1" />
-                            Unarchive
-                          </Button> : <>
-                            {job.status === 'completed' && <Button variant="outline" size="sm" onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending} className="text-xs h-7">
-                                <Receipt className="w-3 h-3 mr-1" />
-                                Invoice
-                              </Button>}
-                            {!job.quote_id && <Button variant="ghost" size="sm" onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending} className="text-xs h-7">
-                                <FileText className="w-3 h-3 mr-1" />
-                                Quote
-                              </Button>}
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEdit(job)}>
-                              <Edit className="w-3.5 h-3.5" />
+                      {/* Action Menu */}
+                      <div onClick={e => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreVertical className="w-4 h-4" />
                             </Button>
-                            {isAdmin && <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Job?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This will permanently delete {job.job_number}. This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDelete(job.id)}>Delete</AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>}
-                          </>}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover">
+                            {job.archived_at ? (
+                              <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
+                                <ArchiveRestore className="w-4 h-4 mr-2" />
+                                Unarchive
+                              </DropdownMenuItem>
+                            ) : (
+                              <>
+                                {job.status === 'completed' && (
+                                  <DropdownMenuItem onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending}>
+                                    <Receipt className="w-4 h-4 mr-2" />
+                                    Create Invoice
+                                  </DropdownMenuItem>
+                                )}
+                                {!job.quote_id && (
+                                  <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
+                                    <FileText className="w-4 h-4 mr-2" />
+                                    Create Quote
+                                  </DropdownMenuItem>
+                                )}
+                                {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
+                                  <DropdownMenuItem onClick={() => archiveJob.mutate(job.id)} disabled={archiveJob.isPending}>
+                                    <Archive className="w-4 h-4 mr-2" />
+                                    Archive
+                                  </DropdownMenuItem>
+                                )}
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   </div>
@@ -943,43 +944,44 @@ const Jobs = () => {
                           </div>
                         </div>
                         
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                          {job.archived_at ? <Button variant="outline" size="sm" onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
-                              <ArchiveRestore className="w-4 h-4 mr-1" />
-                              Unarchive
-                            </Button> : <>
-                              {job.status === 'completed' && <Button variant="outline" size="sm" onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending}>
-                                  <Receipt className="w-4 h-4 mr-1" />
-                                  Invoice
-                                </Button>}
-                              {!job.quote_id && <Button variant="ghost" size="sm" onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
-                                  <FileText className="w-4 h-4 mr-1" />
-                                  Quote
-                                </Button>}
-                              <Button variant="ghost" size="icon" onClick={() => handleEdit(job)}>
-                                <Edit className="w-4 h-4" />
+                        {/* Action Menu */}
+                        <div onClick={e => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="w-4 h-4" />
                               </Button>
-                              {isAdmin && <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-destructive">
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Delete Job?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        This will permanently delete {job.job_number}. This action cannot be undone.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                      <AlertDialogAction onClick={() => handleDelete(job.id)}>Delete</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>}
-                            </>}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-popover">
+                              {job.archived_at ? (
+                                <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
+                                  <ArchiveRestore className="w-4 h-4 mr-2" />
+                                  Unarchive
+                                </DropdownMenuItem>
+                              ) : (
+                                <>
+                                  {job.status === 'completed' && (
+                                    <DropdownMenuItem onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending}>
+                                      <Receipt className="w-4 h-4 mr-2" />
+                                      Create Invoice
+                                    </DropdownMenuItem>
+                                  )}
+                                  {!job.quote_id && (
+                                    <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
+                                      <FileText className="w-4 h-4 mr-2" />
+                                      Create Quote
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
+                                    <DropdownMenuItem onClick={() => archiveJob.mutate(job.id)} disabled={archiveJob.isPending}>
+                                      <Archive className="w-4 h-4 mr-2" />
+                                      Archive
+                                    </DropdownMenuItem>
+                                  )}
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </div>
