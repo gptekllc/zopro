@@ -24,6 +24,7 @@ interface AuthContextType {
   roles: UserRole[];
   isLoading: boolean;
   isAdmin: boolean;
+  isManager: boolean;
   isSuperAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const isAdmin = roles.some(r => r.role === 'admin');
+  const isManager = roles.some(r => r.role === 'manager');
   const isSuperAdmin = roles.some(r => r.role === 'super_admin');
 
   const fetchProfile = async (userId: string) => {
@@ -172,6 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roles,
         isLoading,
         isAdmin,
+        isManager,
         isSuperAdmin,
         signIn,
         signUp,

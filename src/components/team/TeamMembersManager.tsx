@@ -56,7 +56,8 @@ const EMPLOYMENT_STATUSES = ['active', 'on_leave', 'terminated'] as const;
 type EmploymentStatus = typeof EMPLOYMENT_STATUSES[number];
 
 const TeamMembersManager = () => {
-  const { profile, user, isAdmin } = useAuth();
+  const { profile, user, isAdmin, isManager } = useAuth();
+  const canManageTeam = isAdmin || isManager;
   const { data: teamMembers, isLoading } = useTeamMembers();
   const { data: invitations = [], isLoading: loadingInvitations } = useTeamInvitations();
   const cancelInvitation = useCancelInvitation();
@@ -105,7 +106,7 @@ const TeamMembersManager = () => {
       if (error) throw error;
       return data as TeamMember[];
     },
-    enabled: !!profile?.company_id && isAdmin,
+    enabled: !!profile?.company_id && canManageTeam,
   });
 
   // Update role mutation
@@ -454,12 +455,12 @@ const TeamMembersManager = () => {
     return member.roles?.[0]?.role || member.role || 'technician';
   };
 
-  if (!isAdmin) {
+  if (!canManageTeam) {
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
           <Shield className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Only admins can manage team members.</p>
+          <p>Only admins and managers can manage team members.</p>
         </CardContent>
       </Card>
     );
