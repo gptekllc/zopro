@@ -1549,15 +1549,13 @@ const Jobs = () => {
                   <FileText className="w-4 h-4 mr-2" />
                   Create Quote
                 </Button>
-                {viewingJob.status === 'completed' && (
-                  <Button onClick={() => {
-                    convertToInvoice.mutate(viewingJob);
-                    openViewingJob(null);
-                  }} disabled={convertToInvoice.isPending}>
-                    <Receipt className="w-4 h-4 mr-2" />
-                    Create Invoice
-                  </Button>
-                )}
+                <Button onClick={() => {
+                  convertToInvoice.mutate(viewingJob);
+                  openViewingJob(null);
+                }} disabled={convertToInvoice.isPending}>
+                  <Receipt className="w-4 h-4 mr-2" />
+                  Create Invoice
+                </Button>
               </DialogFooter>
             </>}
         </DialogContent>
