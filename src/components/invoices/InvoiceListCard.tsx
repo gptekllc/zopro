@@ -87,7 +87,6 @@ export function InvoiceListCard({
   const total = typeof invoice.total === "string" ? Number(invoice.total) : invoice.total ?? 0;
   const hasLateFee = invoice.late_fee_amount && invoice.late_fee_amount > 0 && lateFeePercentage > 0;
   const displayTotal = hasLateFee ? getTotalWithLateFee(invoice) : total;
-  const lateFeeFormatted = hasLateFee ? `+$${Number(invoice.late_fee_amount).toFixed(2)} late fee` : null;
 
   const customerName = invoice.customer?.name || "Unknown";
   const customerEmail = invoice.customer?.email || null;
@@ -128,12 +127,6 @@ export function InvoiceListCard({
                   <>
                     {creatorName && <span>•</span>}
                     <span className="shrink-0">Due {dueText}</span>
-                  </>
-                )}
-                {hasLateFee && (
-                  <>
-                    <span>•</span>
-                    <span className="text-destructive">{lateFeeFormatted}</span>
                   </>
                 )}
               </div>
@@ -296,12 +289,6 @@ export function InvoiceListCard({
                   <>
                     {creatorName && <span>•</span>}
                     <span className="shrink-0">Due {dueText}</span>
-                  </>
-                )}
-                {hasLateFee && (
-                  <>
-                    <span>•</span>
-                    <span className="text-destructive">{lateFeeFormatted}</span>
                   </>
                 )}
               </div>
