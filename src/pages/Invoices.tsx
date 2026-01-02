@@ -831,7 +831,7 @@ const Invoices = () => {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-base font-semibold text-primary">${Number(invoice.total).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <span className="text-base font-semibold text-primary">${Number(invoice.total).toLocaleString()}</span>
                     {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
                       <div className="text-sm text-destructive flex items-center gap-1 justify-end mt-0.5">
                         <AlertCircle className="w-3.5 h-3.5" />
@@ -840,7 +840,7 @@ const Invoices = () => {
                     )}
                     {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
                       <div className="text-sm font-semibold text-foreground mt-0.5">
-                        Total Due: ${getTotalWithLateFee(invoice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        Total Due: ${getTotalWithLateFee(invoice).toLocaleString()}
                       </div>
                     )}
                   </div>
