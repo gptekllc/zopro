@@ -66,10 +66,20 @@ interface Quote {
   quote_number: string;
   status: string;
   total: number;
+  subtotal?: number;
+  tax?: number;
   created_at: string;
   valid_until: string | null;
   notes: string | null;
   signed_at: string | null;
+}
+
+interface SigningDocument {
+  document: any;
+  items: any[];
+  company: any;
+  customer: any;
+  documentType: 'quote' | 'invoice' | 'job';
 }
 
 interface PaymentMethod {
@@ -206,12 +216,22 @@ const CustomerPortal = () => {
     data?: any;
   } | null>(null);
   const [isSubmittingSignature, setIsSubmittingSignature] = useState(false);
+  
+  // Signing mode state (for magic link signature requests)
+  const [signingMode, setSigningMode] = useState<{
+    documentType: 'quote' | 'invoice' | 'job';
+    documentId: string;
+  } | null>(null);
+  const [signingDocument, setSigningDocument] = useState<SigningDocument | null>(null);
+  const [isLoadingSigningDocument, setIsLoadingSigningDocument] = useState(false);
 
   // Check for magic link token and payment status in URL
   useEffect(() => {
     const token = searchParams.get('token');
     const customerId = searchParams.get('customer');
     const paymentStatus = searchParams.get('payment');
+    const signDocType = searchParams.get('sign') as 'quote' | 'invoice' | 'job' | null;
+    const signDocId = searchParams.get('doc');
     
     if (paymentStatus === 'success') {
       toast.success('Payment successful! Thank you.');
@@ -222,21 +242,31 @@ const CustomerPortal = () => {
       navigate('/customer-portal', { replace: true });
     }
     
+    // Check for signing mode params
+    if (signDocType && signDocId && ['quote', 'invoice', 'job'].includes(signDocType)) {
+      setSigningMode({ documentType: signDocType, documentId: signDocId });
+    }
+    
     if (token && customerId) {
-      verifyToken(token, customerId);
+      verifyToken(token, customerId, signDocType, signDocId);
     } else {
       // Check if already authenticated via sessionStorage (more secure than localStorage)
       const savedCustomerId = sessionStorage.getItem('customer_portal_id');
       const savedToken = sessionStorage.getItem('customer_portal_token');
       if (savedCustomerId && savedToken) {
-        verifyToken(savedToken, savedCustomerId);
+        verifyToken(savedToken, savedCustomerId, signDocType, signDocId);
       } else {
         setIsLoading(false);
       }
     }
   }, [searchParams]);
 
-  const verifyToken = async (token: string, customerId: string) => {
+  const verifyToken = async (
+    token: string, 
+    customerId: string, 
+    signDocType?: 'quote' | 'invoice' | 'job' | null, 
+    signDocId?: string | null
+  ) => {
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
         body: { action: 'verify', token, customerId },
@@ -260,6 +290,11 @@ const CustomerPortal = () => {
       setQuotes(data.quotes || []);
       setIsAuthenticated(true);
       
+      // If in signing mode, fetch the specific document details
+      if (signDocType && signDocId) {
+        fetchDocumentForSigning(signDocType, signDocId, customerId, token);
+      }
+      
       // Clean URL
       navigate('/customer-portal', { replace: true });
     } catch (err) {
@@ -267,6 +302,46 @@ const CustomerPortal = () => {
       toast.error('Failed to verify access. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchDocumentForSigning = async (
+    documentType: 'quote' | 'invoice' | 'job',
+    documentId: string,
+    customerId: string,
+    token: string
+  ) => {
+    setIsLoadingSigningDocument(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { 
+          action: 'get-document-for-signing', 
+          documentType, 
+          documentId, 
+          customerId, 
+          token 
+        },
+      });
+
+      if (error || !data?.success) {
+        toast.error('Failed to load document. It may no longer be available.');
+        setSigningMode(null);
+        return;
+      }
+
+      setSigningDocument({
+        document: data.document,
+        items: data.items,
+        company: data.company,
+        customer: data.customer,
+        documentType: data.documentType,
+      });
+    } catch (err) {
+      console.error('Error fetching document for signing:', err);
+      toast.error('Failed to load document');
+      setSigningMode(null);
+    } finally {
+      setIsLoadingSigningDocument(false);
     }
   };
 
@@ -595,6 +670,300 @@ const CustomerPortal = () => {
             )}
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // Signing mode view - when customer clicked a signature request link
+  if (signingMode && isAuthenticated) {
+    const documentTypeLabels: Record<string, string> = {
+      quote: 'Quote',
+      invoice: 'Invoice',
+      job: 'Job Completion',
+    };
+    
+    const handleSigningComplete = async (signatureData: string, signerName: string) => {
+      if (!signingDocument) return;
+      
+      setIsSubmittingSignature(true);
+      try {
+        const customerId = sessionStorage.getItem('customer_portal_id');
+        const token = sessionStorage.getItem('customer_portal_token');
+        
+        if (signingMode.documentType === 'quote') {
+          const { error } = await supabase.functions.invoke('customer-portal-auth', {
+            body: {
+              action: 'approve-quote',
+              quoteId: signingMode.documentId,
+              customerId,
+              token,
+              signatureData,
+              signerName,
+            },
+          });
+          if (error) throw error;
+          toast.success('Quote approved and signed successfully!');
+        } else if (signingMode.documentType === 'invoice') {
+          const { data, error } = await supabase.functions.invoke('create-invoice-payment', {
+            body: {
+              invoiceId: signingMode.documentId,
+              customerId,
+              token,
+              signatureData,
+              signerName,
+            },
+          });
+          if (error || !data?.url) throw new Error(data?.error || 'Failed to create payment');
+          window.location.href = data.url;
+          return;
+        } else if (signingMode.documentType === 'job') {
+          const { error } = await supabase.functions.invoke('customer-portal-auth', {
+            body: {
+              action: 'sign-job-completion',
+              jobId: signingMode.documentId,
+              customerId,
+              token,
+              signatureData,
+              signerName,
+            },
+          });
+          if (error) throw error;
+          toast.success('Job completion confirmed and signed!');
+        }
+        
+        setSigningMode(null);
+        setSigningDocument(null);
+        setSignatureDialogOpen(false);
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to complete signing');
+      } finally {
+        setIsSubmittingSignature(false);
+      }
+    };
+
+    const getDocumentNumber = () => {
+      if (!signingDocument?.document) return '';
+      if (signingMode.documentType === 'quote') return signingDocument.document.quote_number;
+      if (signingMode.documentType === 'invoice') return signingDocument.document.invoice_number;
+      if (signingMode.documentType === 'job') return signingDocument.document.job_number;
+      return '';
+    };
+
+    const isAlreadySigned = () => {
+      if (!signingDocument?.document) return false;
+      if (signingMode.documentType === 'quote') return !!signingDocument.document.signed_at || signingDocument.document.status === 'approved';
+      if (signingMode.documentType === 'invoice') return !!signingDocument.document.signed_at || signingDocument.document.status === 'paid';
+      if (signingMode.documentType === 'job') return !!signingDocument.document.completion_signed_at;
+      return false;
+    };
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10">
+        {/* Header */}
+        <header className="border-b bg-card">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {signingDocument?.company?.logo_url && (
+                <img 
+                  src={signingDocument.company.logo_url} 
+                  alt={signingDocument.company.name}
+                  className="h-10 w-auto object-contain"
+                />
+              )}
+              <div>
+                <h1 className="font-semibold">{signingDocument?.company?.name || 'Loading...'}</h1>
+                <p className="text-sm text-muted-foreground">Document Signing</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => { setSigningMode(null); setSigningDocument(null); }}>
+              View Full Portal
+            </Button>
+          </div>
+        </header>
+
+        <main className="container mx-auto px-4 py-8 max-w-4xl">
+          {isLoadingSigningDocument ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : !signingDocument ? (
+            <Card className="text-center py-12">
+              <CardContent>
+                <p className="text-muted-foreground">Document not found or no longer available.</p>
+                <Button className="mt-4" onClick={() => { setSigningMode(null); setSigningDocument(null); }}>
+                  Go to Portal
+                </Button>
+              </CardContent>
+            </Card>
+          ) : isAlreadySigned() ? (
+            <Card className="text-center py-12">
+              <CardContent className="space-y-4">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
+                <h2 className="text-2xl font-bold">Already Signed</h2>
+                <p className="text-muted-foreground">
+                  This {documentTypeLabels[signingMode.documentType].toLowerCase()} has already been signed.
+                </p>
+                <Button onClick={() => { setSigningMode(null); setSigningDocument(null); }}>
+                  View Full Portal
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {/* Document Header */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText className="w-5 h-5" />
+                        {documentTypeLabels[signingMode.documentType]} {getDocumentNumber()}
+                      </CardTitle>
+                      <CardDescription>
+                        Please review and sign this document
+                      </CardDescription>
+                    </div>
+                    <Badge variant="secondary">{signingDocument.document.status}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Document Info */}
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">From</p>
+                      <p className="font-medium">{signingDocument.company?.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">To</p>
+                      <p className="font-medium">{signingDocument.customer?.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Date</p>
+                      <p className="font-medium">
+                        {format(new Date(signingDocument.document.created_at), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                    {signingDocument.document.total && (
+                      <div>
+                        <p className="text-muted-foreground">Total</p>
+                        <p className="font-medium text-lg">${Number(signingDocument.document.total).toLocaleString()}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Line Items */}
+                  {signingDocument.items && signingDocument.items.length > 0 && (
+                    <div className="border rounded-lg overflow-hidden mt-4">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Description</TableHead>
+                            <TableHead className="text-right">Qty</TableHead>
+                            <TableHead className="text-right">Price</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {signingDocument.items.map((item: any) => (
+                            <TableRow key={item.id}>
+                              <TableCell>{item.description}</TableCell>
+                              <TableCell className="text-right">{item.quantity}</TableCell>
+                              <TableCell className="text-right">${Number(item.unit_price).toLocaleString()}</TableCell>
+                              <TableCell className="text-right font-medium">${Number(item.total).toLocaleString()}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+
+                  {/* Totals */}
+                  {signingDocument.document.total && (
+                    <div className="flex justify-end pt-4 border-t">
+                      <div className="w-48 space-y-1">
+                        {signingDocument.document.subtotal && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Subtotal</span>
+                            <span>${Number(signingDocument.document.subtotal).toLocaleString()}</span>
+                          </div>
+                        )}
+                        {signingDocument.document.tax && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Tax</span>
+                            <span>${Number(signingDocument.document.tax).toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-lg font-semibold pt-2 border-t">
+                          <span>Total</span>
+                          <span>${Number(signingDocument.document.total).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  {signingDocument.document.notes && (
+                    <div className="pt-4 border-t">
+                      <p className="text-sm text-muted-foreground mb-1">Notes</p>
+                      <p className="text-sm whitespace-pre-wrap">{signingDocument.document.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Job-specific content */}
+                  {signingMode.documentType === 'job' && (
+                    <div className="pt-4 border-t">
+                      <p className="text-sm text-muted-foreground mb-1">Job Title</p>
+                      <p className="font-medium">{signingDocument.document.title}</p>
+                      {signingDocument.document.description && (
+                        <>
+                          <p className="text-sm text-muted-foreground mt-3 mb-1">Description</p>
+                          <p className="text-sm whitespace-pre-wrap">{signingDocument.document.description}</p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Sign Button */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center space-y-4">
+                    <p className="text-muted-foreground">
+                      {signingMode.documentType === 'quote' 
+                        ? 'By signing, you approve this quote and authorize the work to proceed.'
+                        : signingMode.documentType === 'invoice'
+                        ? 'By signing, you acknowledge this invoice and will proceed to payment.'
+                        : 'By signing, you confirm that the work has been completed to your satisfaction.'
+                      }
+                    </p>
+                    <Button 
+                      size="lg" 
+                      className="gap-2"
+                      onClick={() => setSignatureDialogOpen(true)}
+                    >
+                      <PenLine className="w-5 h-5" />
+                      Sign {documentTypeLabels[signingMode.documentType]}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </main>
+
+        {/* Signature Dialog for Signing Mode */}
+        <SignatureDialog
+          open={signatureDialogOpen}
+          onOpenChange={setSignatureDialogOpen}
+          title={`Sign ${documentTypeLabels[signingMode.documentType]}`}
+          description={`Your signature for ${documentTypeLabels[signingMode.documentType]} ${getDocumentNumber()}`}
+          signerName={signingDocument?.customer?.name || ''}
+          onSignatureComplete={handleSigningComplete}
+          isSubmitting={isSubmittingSignature}
+        />
       </div>
     );
   }
