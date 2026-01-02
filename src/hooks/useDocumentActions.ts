@@ -88,7 +88,7 @@ export function useConvertQuoteToInvoice() {
 }
 
 interface EmailDocumentParams {
-  type: 'quote' | 'invoice';
+  type: 'quote' | 'invoice' | 'job';
   documentId: string;
   recipientEmail: string;
 }
@@ -108,12 +108,13 @@ export function useEmailDocument() {
       });
 
       if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (data?.error) throw new Error(data.error);
       
       return data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: [variables.type === 'quote' ? 'quotes' : 'invoices'] });
+      const queryKey = variables.type === 'quote' ? 'quotes' : variables.type === 'invoice' ? 'invoices' : 'jobs';
+      queryClient.invalidateQueries({ queryKey: [queryKey] });
       toast.success('Email sent successfully');
     },
     onError: (error: any) => {
@@ -123,7 +124,7 @@ export function useEmailDocument() {
 }
 
 interface DownloadDocumentParams {
-  type: 'quote' | 'invoice';
+  type: 'quote' | 'invoice' | 'job';
   documentId: string;
 }
 
@@ -139,7 +140,7 @@ export function useDownloadDocument() {
       });
 
       if (error) throw error;
-      if (data.error) throw new Error(data.error);
+      if (data?.error) throw new Error(data.error);
 
       // Open HTML in new window for printing/saving as PDF
       const printWindow = window.open('', '_blank');
