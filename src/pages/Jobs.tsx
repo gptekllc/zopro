@@ -114,56 +114,30 @@ const Jobs = () => {
     return counts;
   }, [safeQuotes]);
 
-  // Track invoices linked to jobs.
-  // An invoice is linked to a job if:
-  // 1) invoice.quote_id matches the job's origin quote_id, OR
-  // 2) invoice.quote_id matches an upsell quote where quote.job_id = job.id, OR
-  // 3) invoice.notes matches the standard "Invoice for Job {job_number}" pattern (for jobs without quotes)
+  // Track invoices linked to jobs using direct job_id or fallback to quote matching
   const invoicesPerJob = useMemo(() => {
     const counts = new Map<string, number>();
-
-    const originQuoteByJob = new Map<string, string>();
-    safeJobs.forEach((job: any) => {
-      if (job?.id && job?.quote_id) originQuoteByJob.set(job.id, job.quote_id);
-    });
-
-    // Build a map of quote_id -> job_id for upsell quotes
-    const quoteToJobMap = new Map<string, string>();
-    safeQuotes.forEach((quote: any) => {
-      if (quote?.job_id) quoteToJobMap.set(quote.id, quote.job_id);
-    });
 
     safeInvoices.forEach((invoice: any) => {
       if (!invoice?.id) return;
 
-      // (1) origin quote link
-      if (invoice.quote_id) {
-        for (const [jobId, originQuoteId] of originQuoteByJob.entries()) {
-          if (invoice.quote_id === originQuoteId) {
-            counts.set(jobId, (counts.get(jobId) || 0) + 1);
-            return;
-          }
-        }
+      // Primary: direct job_id link
+      if (invoice.job_id) {
+        counts.set(invoice.job_id, (counts.get(invoice.job_id) || 0) + 1);
+        return;
       }
 
-      // (2) upsell quote link
+      // Fallback: match via origin quote_id
       if (invoice.quote_id) {
-        const jobId = quoteToJobMap.get(invoice.quote_id);
-        if (jobId) {
-          counts.set(jobId, (counts.get(jobId) || 0) + 1);
+        const job = safeJobs.find((j: any) => j?.quote_id === invoice.quote_id);
+        if (job?.id) {
+          counts.set(job.id, (counts.get(job.id) || 0) + 1);
           return;
         }
-      }
-
-      // (3) fallback: invoice created directly from a job without a quote
-      if (typeof invoice.notes === 'string') {
-        const m = invoice.notes.match(/Invoice for Job\s+(J-\d{4}-\d{3})/);
-        if (m?.[1]) {
-          const jobNumber = m[1];
-          const job = safeJobs.find((j: any) => j?.job_number === jobNumber);
-          if (job?.id) {
-            counts.set(job.id, (counts.get(job.id) || 0) + 1);
-          }
+        // Fallback: match via upsell quote
+        const upsellQuote = safeQuotes.find((q: any) => q?.id === invoice.quote_id && q?.job_id);
+        if (upsellQuote?.job_id) {
+          counts.set(upsellQuote.job_id, (counts.get(upsellQuote.job_id) || 0) + 1);
         }
       }
     });
@@ -207,27 +181,19 @@ const Jobs = () => {
   const viewingJobInvoices = useMemo(() => {
     if (!viewingJob) return [] as Invoice[];
 
-    const originQuoteId = viewingJob.quote_id;
-
-    // Upsell quotes created during the job have quote.job_id = job.id
-    const upsellQuoteIds = new Set(
-      safeQuotes.filter((q: any) => q?.job_id === viewingJob.id).map((q: any) => q.id)
-    );
-
-    const directJobInvoiceMatcher = `Invoice for Job ${viewingJob.job_number}`;
-
     return (safeInvoices as Invoice[]).filter((inv: any) => {
       if (!inv?.id) return false;
 
-      // Linked via quote
-      if (inv.quote_id) {
-        if (originQuoteId && inv.quote_id === originQuoteId) return true;
-        if (upsellQuoteIds.has(inv.quote_id)) return true;
-      }
+      // Primary: direct job_id link
+      if (inv.job_id === viewingJob.id) return true;
 
-      // Fallback: created directly from job without a quote
-      if (!inv.quote_id && typeof (inv as any).notes === 'string') {
-        return (inv as any).notes === directJobInvoiceMatcher;
+      // Fallback: linked via origin quote
+      if (inv.quote_id && viewingJob.quote_id && inv.quote_id === viewingJob.quote_id) return true;
+
+      // Fallback: linked via upsell quote
+      if (inv.quote_id) {
+        const upsellQuote = safeQuotes.find((q: any) => q?.id === inv.quote_id && q?.job_id === viewingJob.id);
+        if (upsellQuote) return true;
       }
 
       return false;

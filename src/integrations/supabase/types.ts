@@ -302,6 +302,7 @@ export type Database = {
           due_date: string | null
           id: string
           invoice_number: string
+          job_id: string | null
           late_fee_amount: number | null
           late_fee_applied_at: string | null
           notes: string | null
@@ -327,6 +328,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           invoice_number: string
+          job_id?: string | null
           late_fee_amount?: number | null
           late_fee_applied_at?: string | null
           notes?: string | null
@@ -352,6 +354,7 @@ export type Database = {
           due_date?: string | null
           id?: string
           invoice_number?: string
+          job_id?: string | null
           late_fee_amount?: number | null
           late_fee_applied_at?: string | null
           notes?: string | null
@@ -392,6 +395,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
           {

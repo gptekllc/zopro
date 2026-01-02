@@ -649,6 +649,7 @@ export function useConvertJobToInvoice() {
           company_id: profile.company_id,
           customer_id: job.customer_id,
           quote_id: job.quote_id,
+          job_id: job.id,
           invoice_number: invoiceNumber,
           status: 'draft',
           subtotal,
