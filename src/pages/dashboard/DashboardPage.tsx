@@ -151,10 +151,10 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-6 lg:space-y-8 animate-fade-in">
       <header>
-        <h1 className="text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
+        <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">
           Welcome back, {profile?.full_name || "User"}.
           {isTechnicianDashboardScoped
             ? " Here's your personal summary."
@@ -163,20 +163,20 @@ export default function DashboardPage() {
       </header>
 
       <section aria-label="Key metrics">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {stats.map((stat) => (
             <Card key={stat.title} className="overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">{stat.title}</p>
-                    <p className="text-2xl font-bold mt-2">{stat.value}</p>
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                  <div className="order-2 sm:order-1">
+                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">{stat.title}</p>
+                    <p className="text-xl sm:text-2xl font-bold mt-1 sm:mt-2">{stat.value}</p>
                     {stat.subtext && (
-                      <p className="text-sm text-muted-foreground mt-1">{stat.subtext}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">{stat.subtext}</p>
                     )}
                   </div>
-                  <div className={`p-3 rounded-xl ${stat.iconBg}`}>
-                    <stat.icon className="w-5 h-5 text-primary-foreground" />
+                  <div className={`p-2 sm:p-3 rounded-xl ${stat.iconBg} order-1 sm:order-2 self-start`}>
+                    <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
                   </div>
                 </div>
               </CardContent>
@@ -204,7 +204,7 @@ export default function DashboardPage() {
       )}
 
       <section aria-label="Dashboard widgets">
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {/* Today's Time Entries - only for Admin/Manager, never for technicians */}
           {canSeeTimeEntriesWidget && (
             <Card>
