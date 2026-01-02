@@ -85,6 +85,11 @@ export interface TeamMember {
   termination_date: string | null;
   deleted_at?: string | null;
   roles?: { role: string }[];
+  avatar_url: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
 }
 
 export function useTeamMembers() {
@@ -98,7 +103,7 @@ export function useTeamMembers() {
       // First get profiles with new fields
       const { data: profiles, error: profilesError } = await (supabase as any)
         .from('profiles')
-        .select('id, email, full_name, phone, role, company_id, hourly_rate, employment_status, hire_date, termination_date')
+        .select('id, email, full_name, phone, role, company_id, hourly_rate, employment_status, hire_date, termination_date, avatar_url, address, city, state, zip')
         .eq('company_id', profile.company_id)
         .is('deleted_at', null);
       
