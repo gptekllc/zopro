@@ -560,7 +560,7 @@ const Invoices = () => {
                             </div>
                           </div>
                           <div className="flex justify-end text-sm font-medium">
-                            Total: ${(item.quantity * item.unitPrice).toFixed(2)}
+                            Total: ${(item.quantity * item.unitPrice).toLocaleString()}
                           </div>
                         </div>
                         {/* Desktop layout */}
