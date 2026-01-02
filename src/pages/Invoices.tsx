@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
+import { formatAmount } from '@/lib/formatAmount';
 
 interface LineItem {
   id: string;
@@ -664,7 +665,7 @@ const Invoices = () => {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-sm font-medium text-primary">${Number(invoice.total).toLocaleString()}</span>
+                    <span className="text-sm font-medium text-primary">${formatAmount(invoice.total)}</span>
                     {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
                       <div className="text-xs text-destructive flex items-center gap-1 justify-end mt-0.5">
                         <AlertCircle className="w-3 h-3" />
@@ -673,7 +674,7 @@ const Invoices = () => {
                     )}
                     {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
                       <div className="text-xs font-semibold text-foreground mt-0.5">
-                        Total: ${getTotalWithLateFee(invoice).toLocaleString()}
+                        Total: ${formatAmount(getTotalWithLateFee(invoice))}
                       </div>
                     )}
                   </div>
@@ -831,7 +832,7 @@ const Invoices = () => {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-base font-semibold text-primary">${Number(invoice.total).toLocaleString()}</span>
+                    <span className="text-base font-semibold text-primary">${formatAmount(invoice.total)}</span>
                     {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
                       <div className="text-sm text-destructive flex items-center gap-1 justify-end mt-0.5">
                         <AlertCircle className="w-3.5 h-3.5" />
@@ -840,7 +841,7 @@ const Invoices = () => {
                     )}
                     {invoice.late_fee_amount && invoice.late_fee_amount > 0 && (
                       <div className="text-sm font-semibold text-foreground mt-0.5">
-                        Total Due: ${getTotalWithLateFee(invoice).toLocaleString()}
+                        Total Due: ${formatAmount(getTotalWithLateFee(invoice))}
                       </div>
                     )}
                   </div>
@@ -1100,7 +1101,7 @@ const Invoices = () => {
                   </div>
                   <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
                     <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
-                    <span>${Number(viewingInvoice.total).toLocaleString()}</span>
+                    <span>${formatAmount(viewingInvoice.total)}</span>
                   </div>
                 </div>
               </div>
