@@ -179,10 +179,25 @@ function generateHTML(
         <span>Tax</span>
         <span>${formatCurrency(Number(document.tax))}</span>
       </div>
-      <div class="totals-row total">
-        <span>Total</span>
+      <div class="totals-row" style="border-bottom: 2px solid #eee;">
+        <span>Invoice Total</span>
         <span>${formatCurrency(Number(document.total))}</span>
       </div>
+      ${document.late_fee_amount && Number(document.late_fee_amount) > 0 ? `
+        <div class="totals-row" style="color: #dc2626;">
+          <span>Late Fee${lateFee && lateFee > 0 ? ` (${lateFee}%)` : ''}</span>
+          <span>+${formatCurrency(Number(document.late_fee_amount))}</span>
+        </div>
+        <div class="totals-row total" style="color: #dc2626;">
+          <span>Total Due</span>
+          <span>${formatCurrency(Number(document.total) + Number(document.late_fee_amount))}</span>
+        </div>
+      ` : `
+        <div class="totals-row total">
+          <span>Total</span>
+          <span>${formatCurrency(Number(document.total))}</span>
+        </div>
+      `}
     </div>
 
     ${paymentInfoSection}
