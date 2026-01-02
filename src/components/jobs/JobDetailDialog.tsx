@@ -3,9 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Edit, PenTool, Calendar, User, Briefcase, 
-  Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt
+  Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
+  Download, Mail, Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerJob } from '@/hooks/useCustomerHistory';
@@ -14,8 +17,9 @@ import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job 
 import { Quote } from '@/hooks/useQuotes';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { formatAmount } from '@/lib/formatAmount';
+import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
 
 interface JobDetailDialogProps {
   job: CustomerJob | null;
@@ -59,6 +63,10 @@ export function JobDetailDialog({
   const convertJobToQuote = useConvertJobToQuote();
   const convertJobToInvoice = useConvertJobToInvoice();
   const { data: allInvoices = [], isLoading: loadingInvoices } = useInvoices(false);
+  const downloadDocument = useDownloadDocument();
+  const emailDocument = useEmailDocument();
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [emailAddress, setEmailAddress] = useState('');
 
   // Filter invoices that are linked to this job (via quote_id that matches job's origin quote or child quotes)
   const jobInvoices = useMemo(() => {
@@ -454,8 +462,63 @@ export function JobDetailDialog({
             </>
           )}
 
+          {/* Email Input */}
+          {showEmailInput && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                <Label htmlFor="email-address">Send Job Summary To</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="email-address"
+                    type="email"
+                    placeholder="customer@example.com"
+                    value={emailAddress}
+                    onChange={(e) => setEmailAddress(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (emailAddress) {
+                        emailDocument.mutate(
+                          { type: 'job', documentId: job.id, recipientEmail: emailAddress },
+                          { onSuccess: () => { setShowEmailInput(false); setEmailAddress(''); } }
+                        );
+                      }
+                    }}
+                    disabled={!emailAddress || emailDocument.isPending}
+                  >
+                    {emailDocument.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setShowEmailInput(false)}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4 justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadDocument.mutate({ type: 'job', documentId: job.id })}
+              disabled={downloadDocument.isPending}
+            >
+              {downloadDocument.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+              Download PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEmailInput(true)}
+              disabled={showEmailInput}
+            >
+              <Mail className="w-4 h-4 mr-1" />
+              Email
+            </Button>
             <Button 
               variant="outline" 
               size="sm"
