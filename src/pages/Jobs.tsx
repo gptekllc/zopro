@@ -1068,12 +1068,10 @@ const Jobs = () => {
                                 </DropdownMenuItem>
                               ) : (
                                 <>
-                                  {job.status === 'completed' && (
-                                    <DropdownMenuItem onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending}>
-                                      <Receipt className="w-4 h-4 mr-2" />
-                                      Create Invoice
-                                    </DropdownMenuItem>
-                                  )}
+                                  <DropdownMenuItem onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending}>
+                                    <Receipt className="w-4 h-4 mr-2" />
+                                    Create Invoice
+                                  </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
                                 <FileText className="w-4 h-4 mr-2" />
                                 Create Quote
@@ -1233,12 +1231,10 @@ const Jobs = () => {
                                 </DropdownMenuItem>
                               ) : (
                                 <>
-                                  {job.status === 'completed' && (
-                                    <DropdownMenuItem onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending}>
-                                      <Receipt className="w-4 h-4 mr-2" />
-                                      Create Invoice
-                                    </DropdownMenuItem>
-                                  )}
+                                  <DropdownMenuItem onClick={() => convertToInvoice.mutate(job)} disabled={convertToInvoice.isPending}>
+                                    <Receipt className="w-4 h-4 mr-2" />
+                                    Create Invoice
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem onClick={() => convertToQuote.mutate(job)} disabled={convertToQuote.isPending}>
                                     <FileText className="w-4 h-4 mr-2" />
                                     Create Quote
