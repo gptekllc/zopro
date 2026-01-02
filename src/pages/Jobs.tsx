@@ -430,13 +430,57 @@ const Jobs = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Jobs</h1>
-          <p className="text-muted-foreground mt-1">{safeJobs.length} total jobs</p>
-        </div>
-        
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Jobs</h1>
+            <p className="text-muted-foreground mt-1">{safeJobs.length} total jobs</p>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-28 sm:w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                {JOB_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <div className="flex gap-1 border rounded-md p-1">
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                title="List View"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'calendar' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('calendar')}
+                title="Calendar View"
+              >
+                <CalendarDays className="w-4 h-4" />
+              </Button>
+              {isAdmin && (
+                <Button
+                  variant={viewMode === 'scheduler' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('scheduler')}
+                  title="Scheduler View"
+                  className="hidden sm:flex"
+                >
+                  <Users className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
           openEditDialog(open);
           if (!open) resetForm();
         }}>
@@ -756,75 +800,30 @@ const Jobs = () => {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col gap-4">
-        {/* Search bar row */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search jobs..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+          </div>
         </div>
         
-        {/* Filters row - Status, Archived toggle, View mode */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-32 sm:w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              {JOB_STATUSES.map((s) => (
-                <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        {/* Search bar row */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search jobs..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
           
           <Button
             variant={showArchived ? 'secondary' : 'outline'}
             size="sm"
             onClick={() => setShowArchived(!showArchived)}
-            className="gap-2 whitespace-nowrap"
+            className="gap-1 whitespace-nowrap"
           >
-            <span className="hidden sm:inline">{showArchived ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</span>
-            {showArchived ? 'Hide Archived' : 'Show Archived'}
+            {showArchived ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            <span className="hidden sm:inline">{showArchived ? 'Hide Archived' : 'Archived'}</span>
           </Button>
-          
-          <div className="flex gap-1 border rounded-md p-1 ml-auto">
-            <Button
-              variant={viewMode === 'list' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('list')}
-              title="List View"
-            >
-              <List className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'calendar' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('calendar')}
-              title="Calendar View"
-            >
-              <CalendarDays className="w-4 h-4" />
-            </Button>
-            {/* Scheduler View - Hidden on mobile */}
-            {isAdmin && (
-              <Button
-                variant={viewMode === 'scheduler' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('scheduler')}
-                title="Scheduler View"
-                className="hidden sm:flex"
-              >
-                <Users className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
         </div>
         
         {/* Include archived in search toggle - shows when searching */}
