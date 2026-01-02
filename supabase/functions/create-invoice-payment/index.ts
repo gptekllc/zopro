@@ -58,7 +58,7 @@ serve(async (req) => {
     // Fetch invoice details with company Stripe Connect info
     const { data: invoice, error: invoiceError } = await adminClient
       .from('invoices')
-      .select('*, customers(id, name, email), companies(name, stripe_account_id, stripe_charges_enabled, platform_fee_percentage)')
+      .select('*, customers(id, name, email), companies(name, stripe_account_id, stripe_charges_enabled, stripe_payments_enabled, platform_fee_percentage)')
       .eq('id', invoiceId)
       .eq('customer_id', customerId)
       .single();
@@ -71,6 +71,13 @@ serve(async (req) => {
     if (invoice.status === 'paid') {
       throw new Error("Invoice is already paid");
     }
+
+    // Check if online payments are enabled for this company
+    const stripePaymentsEnabled = invoice.companies?.stripe_payments_enabled ?? true;
+    if (!stripePaymentsEnabled) {
+      throw new Error("Online payments are not available. Please contact the company for alternative payment methods.");
+    }
+    logStep("Online payments enabled check passed");
 
     // Save signature if provided (required for payment)
     if (signatureData && signerName) {

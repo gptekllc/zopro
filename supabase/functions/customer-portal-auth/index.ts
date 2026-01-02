@@ -231,10 +231,10 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Fetch customer data
+      // Fetch customer data with expanded company info including payment settings
       const { data: customer, error: customerError } = await adminClient
         .from('customers')
-        .select('id, name, email, phone, company_id, companies(id, name, logo_url)')
+        .select('id, name, email, phone, company_id, companies(id, name, logo_url, address, city, state, zip, phone, email, stripe_payments_enabled, default_payment_method)')
         .eq('id', customerId)
         .single();
 
