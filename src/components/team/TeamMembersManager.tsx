@@ -385,27 +385,27 @@ const TeamMembersManager = () => {
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <CardTitle className="flex items-center gap-2">
             <Users className="w-5 h-5" />
             Team Members ({teamMembers?.length || 0})
           </CardTitle>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Button onClick={() => setIsAddDialogOpen(true)} className="w-full sm:w-auto">
             <UserPlus className="w-4 h-4 mr-2" />
             Invite Member
           </Button>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="active" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="active">Active Members</TabsTrigger>
-              <TabsTrigger value="pending">
-                Pending Invitations
+            <TabsList className="mb-4 w-full flex-wrap h-auto gap-1">
+              <TabsTrigger value="active" className="flex-1 sm:flex-none">Active</TabsTrigger>
+              <TabsTrigger value="pending" className="flex-1 sm:flex-none">
+                Pending
                 {invitations.length > 0 && (
                   <Badge variant="secondary" className="ml-2">{invitations.length}</Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="deleted">
+              <TabsTrigger value="deleted" className="flex-1 sm:flex-none">
                 Removed
                 {deletedMembers.length > 0 && (
                   <Badge variant="secondary" className="ml-2">{deletedMembers.length}</Badge>
@@ -415,93 +415,168 @@ const TeamMembersManager = () => {
 
             <TabsContent value="active">
               {teamMembers && teamMembers.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Member</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Hire Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Member</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Hire Date</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {teamMembers.map((member: TeamMember) => (
+                          <TableRow key={member.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="w-8 h-8">
+                                  <AvatarFallback className="text-xs">
+                                    {getInitials(member.full_name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <span className="font-medium flex items-center gap-2">
+                                    {member.full_name || 'Unnamed User'}
+                                    {member.id === user?.id && (
+                                      <span className="text-muted-foreground text-sm">(You)</span>
+                                    )}
+                                  </span>
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Mail className="w-3 h-3" />
+                                    {member.email}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getEmploymentStatusBadge(member.employment_status)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={getRoleBadgeVariant(getMemberRole(member))}>
+                                {getMemberRole(member)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {member.hire_date ? (
+                                <span className="text-sm flex items-center gap-1">
+                                  <Calendar className="w-3 h-3 text-muted-foreground" />
+                                  {format(new Date(member.hire_date), 'MMM d, yyyy')}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {member.id !== user?.id && (
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditMember(member)}
+                                  >
+                                    <Edit className="w-4 h-4 mr-1" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleRoleChange(member)}
+                                  >
+                                    <UserCog className="w-4 h-4 mr-1" />
+                                    Role
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleRemoveMember(member)}
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <UserMinus className="w-4 h-4 mr-1" />
+                                    Remove
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-3">
                     {teamMembers.map((member: TeamMember) => (
-                      <TableRow key={member.id}>
-                        <TableCell>
+                      <div key={member.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-start justify-between">
                           <div className="flex items-center gap-3">
-                            <Avatar className="w-8 h-8">
-                              <AvatarFallback className="text-xs">
+                            <Avatar className="w-10 h-10">
+                              <AvatarFallback className="text-sm">
                                 {getInitials(member.full_name)}
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <span className="font-medium flex items-center gap-2">
+                              <p className="font-medium">
                                 {member.full_name || 'Unnamed User'}
                                 {member.id === user?.id && (
-                                  <span className="text-muted-foreground text-sm">(You)</span>
+                                  <span className="text-muted-foreground text-sm ml-1">(You)</span>
                                 )}
-                              </span>
-                              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Mail className="w-3 h-3" />
-                                {member.email}
                               </p>
+                              <p className="text-xs text-muted-foreground">{member.email}</p>
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {getEmploymentStatusBadge(member.employment_status)}
-                        </TableCell>
-                        <TableCell>
                           <Badge variant={getRoleBadgeVariant(getMemberRole(member))}>
                             {getMemberRole(member)}
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {member.hire_date ? (
-                            <span className="text-sm flex items-center gap-1">
-                              <Calendar className="w-3 h-3 text-muted-foreground" />
-                              {format(new Date(member.hire_date), 'MMM d, yyyy')}
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-2 text-sm">
+                          {getEmploymentStatusBadge(member.employment_status)}
+                          {member.hire_date && (
+                            <span className="text-muted-foreground flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              Hired {format(new Date(member.hire_date), 'MMM d, yyyy')}
                             </span>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">-</span>
                           )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {member.id !== user?.id && (
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditMember(member)}
-                              >
-                                <Edit className="w-4 h-4 mr-1" />
-                                Edit
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRoleChange(member)}
-                              >
-                                <UserCog className="w-4 h-4 mr-1" />
-                                Role
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleRemoveMember(member)}
-                                className="text-destructive hover:text-destructive"
-                              >
-                                <UserMinus className="w-4 h-4 mr-1" />
-                                Remove
-                              </Button>
-                            </div>
-                          )}
-                        </TableCell>
-                      </TableRow>
+                        </div>
+
+                        {member.id !== user?.id && (
+                          <div className="flex flex-wrap gap-2 pt-2 border-t">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditMember(member)}
+                              className="flex-1"
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRoleChange(member)}
+                              className="flex-1"
+                            >
+                              <UserCog className="w-4 h-4 mr-1" />
+                              Role
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRemoveMember(member)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <UserMinus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -516,68 +591,125 @@ const TeamMembersManager = () => {
                   <Loader2 className="w-8 h-8 animate-spin mx-auto" />
                 </div>
               ) : invitations.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Sent</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Sent</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invitations.map((invitation) => (
+                          <TableRow key={invitation.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Mail className="w-4 h-4 text-muted-foreground" />
+                                {invitation.email}
+                              </div>
+                            </TableCell>
+                            <TableCell>{invitation.full_name || '-'}</TableCell>
+                            <TableCell>
+                              <Badge variant={getRoleBadgeVariant(invitation.role)}>
+                                {invitation.role}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <Clock className="w-3 h-3" />
+                                {formatDistanceToNow(new Date(invitation.created_at), { addSuffix: true })}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => resendInvitation.mutate(invitation)}
+                                  disabled={resendInvitation.isPending}
+                                >
+                                  {resendInvitation.isPending ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-4 h-4 mr-1" />
+                                  )}
+                                  Resend
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => cancelInvitation.mutate(invitation.id)}
+                                  disabled={cancelInvitation.isPending}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <X className="w-4 h-4 mr-1" />
+                                  Cancel
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-3">
                     {invitations.map((invitation) => (
-                      <TableRow key={invitation.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-muted-foreground" />
-                            {invitation.email}
+                      <div key={invitation.id} className="border rounded-lg p-4 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <p className="font-medium">{invitation.full_name || 'No name'}</p>
+                            <p className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Mail className="w-3 h-3" />
+                              {invitation.email}
+                            </p>
                           </div>
-                        </TableCell>
-                        <TableCell>{invitation.full_name || '-'}</TableCell>
-                        <TableCell>
                           <Badge variant={getRoleBadgeVariant(invitation.role)}>
                             {invitation.role}
                           </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Clock className="w-3 h-3" />
-                            {formatDistanceToNow(new Date(invitation.created_at), { addSuffix: true })}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => resendInvitation.mutate(invitation)}
-                              disabled={resendInvitation.isPending}
-                            >
-                              {resendInvitation.isPending ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <RefreshCw className="w-4 h-4 mr-1" />
-                              )}
-                              Resend
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => cancelInvitation.mutate(invitation.id)}
-                              disabled={cancelInvitation.isPending}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <X className="w-4 h-4 mr-1" />
-                              Cancel
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                        
+                        <div className="text-sm text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Sent {formatDistanceToNow(new Date(invitation.created_at), { addSuffix: true })}
+                        </div>
+
+                        <div className="flex gap-2 pt-2 border-t">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => resendInvitation.mutate(invitation)}
+                            disabled={resendInvitation.isPending}
+                            className="flex-1"
+                          >
+                            {resendInvitation.isPending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-4 h-4 mr-1" />
+                            )}
+                            Resend
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => cancelInvitation.mutate(invitation.id)}
+                            disabled={cancelInvitation.isPending}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Mail className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -588,55 +720,98 @@ const TeamMembersManager = () => {
 
             <TabsContent value="deleted">
               {deletedMembers.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Member</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Termination Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  {/* Desktop Table View */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Member</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Termination Date</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {deletedMembers.map((member) => (
+                          <TableRow key={member.id} className="opacity-60">
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <Avatar className="w-8 h-8">
+                                  <AvatarFallback className="text-xs">
+                                    {getInitials(member.full_name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="font-medium">
+                                  {member.full_name || 'Unnamed User'}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>{member.email}</TableCell>
+                            <TableCell>
+                              {member.termination_date ? (
+                                <span className="text-sm">
+                                  {format(new Date(member.termination_date), 'MMM d, yyyy')}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => restoreMemberMutation.mutate(member.id)}
+                                disabled={restoreMemberMutation.isPending}
+                              >
+                                <RotateCcw className="w-4 h-4 mr-1" />
+                                Restore
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile Card View */}
+                  <div className="md:hidden space-y-3">
                     {deletedMembers.map((member) => (
-                      <TableRow key={member.id} className="opacity-60">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="w-8 h-8">
-                              <AvatarFallback className="text-xs">
-                                {getInitials(member.full_name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="font-medium">
-                              {member.full_name || 'Unnamed User'}
-                            </span>
+                      <div key={member.id} className="border rounded-lg p-4 space-y-3 opacity-60">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="w-10 h-10">
+                            <AvatarFallback className="text-sm">
+                              {getInitials(member.full_name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{member.full_name || 'Unnamed User'}</p>
+                            <p className="text-xs text-muted-foreground truncate">{member.email}</p>
                           </div>
-                        </TableCell>
-                        <TableCell>{member.email}</TableCell>
-                        <TableCell>
-                          {member.termination_date ? (
-                            <span className="text-sm">
-                              {format(new Date(member.termination_date), 'MMM d, yyyy')}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
+                        </div>
+                        
+                        {member.termination_date && (
+                          <p className="text-sm text-muted-foreground">
+                            Terminated {format(new Date(member.termination_date), 'MMM d, yyyy')}
+                          </p>
+                        )}
+
+                        <div className="pt-2 border-t">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => restoreMemberMutation.mutate(member.id)}
                             disabled={restoreMemberMutation.isPending}
+                            className="w-full"
                           >
                             <RotateCcw className="w-4 h-4 mr-1" />
                             Restore
                           </Button>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-                </Table>
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
