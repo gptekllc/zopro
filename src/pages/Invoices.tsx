@@ -322,7 +322,7 @@ const Invoices = () => {
           </div>
           
           <div className="flex items-center gap-2">
-            <div className="relative w-32 sm:w-40 hidden sm:block">
+            <div className="relative w-24 sm:w-40">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search..."
@@ -349,11 +349,6 @@ const Invoices = () => {
               openEditDialog(open);
               if (!open) resetForm();
             }}>
-              <DialogTrigger asChild>
-                <Button size="icon" className="sm:hidden">
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </DialogTrigger>
               <DialogTrigger asChild>
                 <Button className="gap-2 hidden sm:flex">
                   <Plus className="w-4 h-4" />
