@@ -53,18 +53,18 @@ export function DocumentListCard({
           {extraBadges}
         </div>
         <div className="flex items-center gap-2 sm:gap-3 mt-1 text-xs sm:text-sm text-muted-foreground flex-wrap">
-          <span>{totalFormatted}</span>
+          <span className="text-sm sm:text-base font-semibold text-primary">{totalFormatted}</span>
           {itemCount !== undefined && (
             <>
-              <span className="hidden sm:inline">•</span>
+              <span>•</span>
               <span>{itemCount} item{itemCount !== 1 ? "s" : ""}</span>
             </>
           )}
           {secondaryInfo}
           {notes && (
             <>
-              <span className="hidden sm:inline">•</span>
-              <span className="truncate max-w-[150px] sm:max-w-[200px] hidden sm:inline">
+              <span>•</span>
+              <span className="truncate max-w-[120px] sm:max-w-[200px]">
                 {notes}
               </span>
             </>
