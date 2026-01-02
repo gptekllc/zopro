@@ -39,6 +39,7 @@ import { QuoteDetailDialog } from '@/components/quotes/QuoteDetailDialog';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { SaveAsTemplateDialog } from '@/components/jobs/SaveAsTemplateDialog';
+import { SignatureSection } from '@/components/signatures/SignatureSection';
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 interface LineItem {
@@ -471,6 +472,29 @@ const Jobs = () => {
       id: jobId,
       priority: newPriority
     });
+  };
+  
+  // Signature handlers
+  const handleOpenSignatureDialog = (job: Job) => {
+    setSignatureJob(job);
+    setSignatureDialogOpen(true);
+  };
+
+  const handleSignatureComplete = async (signatureData: string, signerName: string) => {
+    if (!signatureJob) return;
+    await signJobCompletion.mutateAsync({
+      jobId: signatureJob.id,
+      signatureData,
+      signerName,
+      customerId: signatureJob.customer_id,
+    });
+    setSignatureDialogOpen(false);
+    setSignatureJob(null);
+  };
+
+  const handleViewSignature = (signatureId: string) => {
+    setViewSignatureId(signatureId);
+    setViewSignatureOpen(true);
   };
   const getStatusColor = (status: Job['status']) => {
     switch (status) {
@@ -978,6 +1002,18 @@ const Jobs = () => {
                                 <Save className="w-4 h-4 mr-2" />
                                 Save as Template
                               </DropdownMenuItem>
+                              {/* Signature Actions */}
+                              {(job as any).completion_signature_id ? (
+                                <DropdownMenuItem onClick={() => handleViewSignature((job as any).completion_signature_id)}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View Signature
+                                </DropdownMenuItem>
+                              ) : (job.status === 'completed' || job.status === 'in_progress') && (
+                                <DropdownMenuItem onClick={() => handleOpenSignatureDialog(job)}>
+                                  <PenTool className="w-4 h-4 mr-2" />
+                                  Collect Completion Signature
+                                </DropdownMenuItem>
+                              )}
                               {job.archived_at ? (
                                 <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
                                   <ArchiveRestore className="w-4 h-4 mr-2" />
@@ -1092,6 +1128,13 @@ const Jobs = () => {
                               <DollarSign className="w-3 h-3" />
                               {Number(job.total).toFixed(2)}
                             </Badge>}
+                          {/* Signature Badge */}
+                          {(job as any).completion_signature_id && (
+                            <Badge variant="outline" className="bg-success/10 text-success border-success/30 gap-1">
+                              <PenTool className="w-3 h-3" />
+                              Signed
+                            </Badge>
+                          )}
                           <div onClick={e => e.stopPropagation()}>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -1133,6 +1176,18 @@ const Jobs = () => {
                                 <Save className="w-4 h-4 mr-2" />
                                 Save as Template
                               </DropdownMenuItem>
+                              {/* Signature Actions */}
+                              {(job as any).completion_signature_id ? (
+                                <DropdownMenuItem onClick={() => handleViewSignature((job as any).completion_signature_id)}>
+                                  <Eye className="w-4 h-4 mr-2" />
+                                  View Signature
+                                </DropdownMenuItem>
+                              ) : (job.status === 'completed' || job.status === 'in_progress') && (
+                                <DropdownMenuItem onClick={() => handleOpenSignatureDialog(job)}>
+                                  <PenTool className="w-4 h-4 mr-2" />
+                                  Collect Completion Signature
+                                </DropdownMenuItem>
+                              )}
                               {job.archived_at ? (
                                 <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
                                   <ArchiveRestore className="w-4 h-4 mr-2" />
@@ -1294,6 +1349,16 @@ const Jobs = () => {
                         <p className="whitespace-pre-wrap text-sm">{viewingJob.notes}</p>
                       </div> : <p className="text-muted-foreground text-sm">No notes added</p>}
                   </div>
+
+                  {/* Completion Signature Section */}
+                  <SignatureSection 
+                    signatureId={(viewingJob as any).completion_signature_id}
+                    title="Customer Completion Signature"
+                    onCollectSignature={() => handleOpenSignatureDialog(viewingJob)}
+                    showCollectButton={viewingJob.status === 'completed' || viewingJob.status === 'in_progress'}
+                    collectButtonText="Collect Completion Signature"
+                    isCollecting={signJobCompletion.isPending}
+                  />
                 </TabsContent>
                 
                 <TabsContent value="photos" className="mt-4">
@@ -1485,6 +1550,30 @@ const Jobs = () => {
         } : null}
       />
 
+
+      {/* Signature Dialog */}
+      <SignatureDialog
+        open={signatureDialogOpen}
+        onOpenChange={(open) => {
+          setSignatureDialogOpen(open);
+          if (!open) setSignatureJob(null);
+        }}
+        title="Job Completion Signature"
+        description="Customer signature to confirm job completion"
+        signerName={signatureJob?.customer?.name || ''}
+        onSignatureComplete={handleSignatureComplete}
+        isSubmitting={signJobCompletion.isPending}
+      />
+
+      {/* View Signature Dialog */}
+      <ViewSignatureDialog
+        signatureId={viewSignatureId}
+        open={viewSignatureOpen}
+        onOpenChange={(open) => {
+          setViewSignatureOpen(open);
+          if (!open) setViewSignatureId(null);
+        }}
+      />
 
       {/* Mobile Floating Action Button */}
       <Button className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50" onClick={() => openEditDialog(true)}>
