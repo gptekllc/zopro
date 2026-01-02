@@ -567,6 +567,20 @@ const Quotes = () => {
                     </div>
                   </div>
 
+                  {/* Created By (read-only when editing) */}
+                  {editingQuote && (() => {
+                    const quote = quotes.find(q => q.id === editingQuote);
+                    const creatorName = (quote as any)?.creator?.full_name;
+                    return creatorName ? (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1">
+                          <UserCog className="w-3 h-3" /> Created By
+                        </Label>
+                        <Input value={creatorName} disabled className="bg-muted" />
+                      </div>
+                    ) : null;
+                  })()}
+
                   {/* Line Items */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -1053,6 +1067,14 @@ const Quotes = () => {
                   <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
                   <p className="font-medium text-sm sm:text-base truncate">{getCustomerName(viewingQuote.customer_id)}</p>
                 </div>
+                {(viewingQuote as any).creator?.full_name && (
+                  <div>
+                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                      <UserCog className="w-3 h-3" /> Created By
+                    </p>
+                    <p className="font-medium text-sm sm:text-base truncate">{(viewingQuote as any).creator.full_name}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
                   <p className="font-medium text-sm sm:text-base">{format(new Date(viewingQuote.created_at), 'MMM d, yyyy')}</p>

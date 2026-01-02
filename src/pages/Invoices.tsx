@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send } from 'lucide-react';
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send, UserCog } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
@@ -528,6 +528,20 @@ const Invoices = () => {
                     </div>
                   </div>
 
+                  {/* Created By (read-only when editing) */}
+                  {editingInvoice && (() => {
+                    const invoice = invoices.find(i => i.id === editingInvoice);
+                    const creatorName = (invoice as any)?.creator?.full_name;
+                    return creatorName ? (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-1">
+                          <UserCog className="w-3 h-3" /> Created By
+                        </Label>
+                        <Input value={creatorName} disabled className="bg-muted" />
+                      </div>
+                    ) : null;
+                  })()}
+
                   {/* Line Items */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
@@ -689,6 +703,14 @@ const Invoices = () => {
                   <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
                   <p className="font-medium text-sm sm:text-base truncate">{getCustomerName(viewingInvoice.customer_id)}</p>
                 </div>
+                {(viewingInvoice as any).creator?.full_name && (
+                  <div>
+                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                      <UserCog className="w-3 h-3" /> Created By
+                    </p>
+                    <p className="font-medium text-sm sm:text-base truncate">{(viewingInvoice as any).creator.full_name}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
                   <p className="font-medium text-sm sm:text-base">{format(new Date(viewingInvoice.created_at), 'MMM d, yyyy')}</p>
