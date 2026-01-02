@@ -430,6 +430,14 @@ export function useSendPaymentReminder() {
       
       if (emailError) throw emailError;
       
+      // Update invoice status to 'sent' if it's still in draft
+      if (invoice.status === 'draft') {
+        await (supabase as any)
+          .from('invoices')
+          .update({ status: 'sent' })
+          .eq('id', invoiceId);
+      }
+      
       // Record the reminder in the database
       const { error: insertError } = await (supabase as any)
         .from('invoice_reminders')
@@ -448,6 +456,7 @@ export function useSendPaymentReminder() {
       return { customerEmail: invoice.customer.email };
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-reminders'] });
       toast.success(`Payment reminder sent to ${data.customerEmail}`);
     },
