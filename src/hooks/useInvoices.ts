@@ -30,11 +30,13 @@ export interface Invoice {
   due_date: string | null;
   paid_at: string | null;
   created_by: string | null;
+  assigned_to: string | null;
   created_at: string;
   updated_at: string;
   items?: InvoiceItem[];
   customer?: { name: string; email?: string | null };
   creator?: { full_name: string | null };
+  assigned_technician?: { full_name: string | null };
   quote?: { 
     job?: { 
       assigned_technician?: { full_name: string | null } | null 
@@ -73,6 +75,7 @@ export function useInvoices(includeArchived: boolean = false) {
           *,
           customer:customers(name, email),
           creator:profiles!invoices_created_by_fkey(full_name),
+          assigned_technician:profiles!invoices_assigned_to_fkey(full_name),
           items:invoice_items(*),
           quote:quotes(
             job:jobs!quotes_job_id_fkey(
