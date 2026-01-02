@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, useJobRelatedQuotes, Job, JobItem } from '@/hooks/useJobs';
 import { useJobTemplates, JobTemplate } from '@/hooks/useJobTemplates';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -35,7 +35,6 @@ import { QuoteDetailDialog } from '@/components/quotes/QuoteDetailDialog';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { SaveAsTemplateDialog } from '@/components/jobs/SaveAsTemplateDialog';
-import { TemplateManagerDialog } from '@/components/jobs/TemplateManagerDialog';
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 interface LineItem {
@@ -114,7 +113,6 @@ const Jobs = () => {
   const [archiveConfirmJob, setArchiveConfirmJob] = useState<Job | null>(null);
   const [deleteConfirmJob, setDeleteConfirmJob] = useState<Job | null>(null);
   const [saveAsTemplateJob, setSaveAsTemplateJob] = useState<Job | null>(null);
-  const [templateManagerOpen, setTemplateManagerOpen] = useState(false);
   const { data: templates = [] } = useJobTemplates();
   // Wrapped setters for scroll restoration
   const openViewingJob = useCallback((job: Job | null) => {
@@ -446,6 +444,12 @@ const Jobs = () => {
       ...updates
     });
   };
+  const handlePriorityChange = async (jobId: string, newPriority: Job['priority']) => {
+    await updateJob.mutateAsync({
+      id: jobId,
+      priority: newPriority
+    });
+  };
   const getStatusColor = (status: Job['status']) => {
     switch (status) {
       case 'draft':
@@ -520,10 +524,12 @@ const Jobs = () => {
               <span>{showArchived ? 'Hide Archived' : 'Archived'}</span>
             </Button>
 
-            <Button variant="outline" size="sm" onClick={() => setTemplateManagerOpen(true)} className="gap-1 whitespace-nowrap hidden sm:flex">
-              <BookTemplate className="w-4 h-4" />
-              <span>Templates</span>
-            </Button>
+            <Link to="/jobs/templates">
+              <Button variant="outline" size="sm" className="gap-1 whitespace-nowrap hidden sm:flex">
+                <BookTemplate className="w-4 h-4" />
+                <span>Templates</span>
+              </Button>
+            </Link>
             
             <div className="hidden sm:flex gap-1 border rounded-md p-1">
               <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')} title="List View">
@@ -883,9 +889,24 @@ const Jobs = () => {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1 flex-wrap">
                         {job.archived_at && <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>}
-                        <Badge className={`${getPriorityColor(job.priority)} text-xs`} variant="outline">
-                          {job.priority}
-                        </Badge>
+                        <div onClick={e => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Badge className={`${getPriorityColor(job.priority)} text-xs cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
+                                {job.priority}
+                                <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                              </Badge>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="bg-popover z-50">
+                              {JOB_PRIORITIES.map(priority => <DropdownMenuItem key={priority} onClick={() => handlePriorityChange(job.id, priority)} disabled={job.priority === priority} className={job.priority === priority ? 'bg-accent' : ''}>
+                                  <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
+                                    {priority}
+                                  </Badge>
+                                  {job.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                                </DropdownMenuItem>)}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                         <div onClick={e => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1019,9 +1040,24 @@ const Jobs = () => {
                       <div className="flex flex-col items-end gap-2 shrink-0">
                         <div className="flex items-center gap-2">
                           {job.archived_at && <Badge variant="outline" className="text-muted-foreground">Archived</Badge>}
-                          <Badge className={getPriorityColor(job.priority)} variant="outline">
-                            {job.priority}
-                          </Badge>
+                          <div onClick={e => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Badge className={`${getPriorityColor(job.priority)} cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
+                                  {job.priority}
+                                  <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                                </Badge>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-popover z-50">
+                                {JOB_PRIORITIES.map(priority => <DropdownMenuItem key={priority} onClick={() => handlePriorityChange(job.id, priority)} disabled={job.priority === priority} className={job.priority === priority ? 'bg-accent' : ''}>
+                                    <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
+                                      {priority}
+                                    </Badge>
+                                    {job.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                                  </DropdownMenuItem>)}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                           {(job.total ?? 0) > 0 && <Badge variant="secondary" className="gap-1">
                               <DollarSign className="w-3 h-3" />
                               {Number(job.total).toFixed(2)}
@@ -1421,11 +1457,6 @@ const Jobs = () => {
         } : null}
       />
 
-      {/* Template Manager Dialog */}
-      <TemplateManagerDialog
-        open={templateManagerOpen}
-        onOpenChange={setTemplateManagerOpen}
-      />
 
       {/* Mobile Floating Action Button */}
       <Button className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50" onClick={() => openEditDialog(true)}>
