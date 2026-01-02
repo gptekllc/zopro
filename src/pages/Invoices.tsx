@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical } from 'lucide-react';
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
@@ -261,7 +261,23 @@ const Invoices = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const handleDuplicateInvoice = (invoice: typeof invoices[0]) => {
+    setFormData({
+      customerId: invoice.customer_id,
+      items: invoice.items?.map((item: any) => ({
+        id: Date.now().toString() + Math.random(),
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: Number(item.unit_price),
+      })) || [{ id: '1', description: '', quantity: 1, unitPrice: 0 }],
+      notes: invoice.notes || '',
+      status: 'draft',
+      dueDays: 30,
+    });
+    setEditingInvoice(null);
+    openEditDialog(true);
+    toast.success('Invoice duplicated - make changes and save');
+  };
     switch (status) {
       case 'paid': return 'bg-success/10 text-success';
       case 'sent': return 'bg-primary/10 text-primary';
@@ -611,6 +627,10 @@ const Invoices = () => {
                           <Edit className="w-4 h-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicateInvoice(invoice)}>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDownload(invoice.id)}>
                           <FileDown className="w-4 h-4 mr-2" />
                           Download PDF
@@ -735,6 +755,10 @@ const Invoices = () => {
                         <DropdownMenuItem onClick={() => handleEdit(invoice)}>
                           <Edit className="w-4 h-4 mr-2" />
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDuplicateInvoice(invoice)}>
+                          <Copy className="w-4 h-4 mr-2" />
+                          Duplicate
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDownload(invoice.id)}>
                           <FileDown className="w-4 h-4 mr-2" />
