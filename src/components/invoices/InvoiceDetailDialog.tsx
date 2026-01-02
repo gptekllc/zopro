@@ -198,19 +198,21 @@ export function InvoiceDetailDialog({
           {invoice.signed_at && invoice.signature_id && (
             <>
               <Separator />
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                  <PenTool className="w-4 h-4 shrink-0" />
-                  <span className="text-xs sm:text-sm font-medium">This invoice has been signed</span>
+              <div className="sm:max-w-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                    <PenTool className="w-4 h-4 shrink-0" />
+                    <span className="text-xs sm:text-sm font-medium">This invoice has been signed</span>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => onViewSignature?.(invoice.signature_id!)}
+                    className="w-full sm:w-auto"
+                  >
+                    View Signature
+                  </Button>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => onViewSignature?.(invoice.signature_id!)}
-                  className="w-full sm:w-auto"
-                >
-                  View Signature
-                </Button>
               </div>
             </>
           )}
