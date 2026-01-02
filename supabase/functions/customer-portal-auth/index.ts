@@ -778,6 +778,132 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === 'get-document-for-signing') {
+      const { documentType, documentId, customerId, token } = body;
+      
+      if (!documentType || !documentId || !customerId || !token) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      let document = null;
+      let items: any[] = [];
+      let company = null;
+
+      if (documentType === 'quote') {
+        const { data: quote, error } = await adminClient
+          .from('quotes')
+          .select('*, companies(*)')
+          .eq('id', documentId)
+          .eq('customer_id', customerId)
+          .single();
+        
+        if (error || !quote) {
+          return new Response(
+            JSON.stringify({ error: 'Quote not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Fetch quote items
+        const { data: quoteItems } = await adminClient
+          .from('quote_items')
+          .select('*')
+          .eq('quote_id', documentId)
+          .order('created_at', { ascending: true });
+        
+        document = quote;
+        items = quoteItems || [];
+        company = quote.companies;
+      } else if (documentType === 'invoice') {
+        const { data: invoice, error } = await adminClient
+          .from('invoices')
+          .select('*, companies(*)')
+          .eq('id', documentId)
+          .eq('customer_id', customerId)
+          .single();
+        
+        if (error || !invoice) {
+          return new Response(
+            JSON.stringify({ error: 'Invoice not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Fetch invoice items
+        const { data: invoiceItems } = await adminClient
+          .from('invoice_items')
+          .select('*')
+          .eq('invoice_id', documentId)
+          .order('created_at', { ascending: true });
+        
+        document = invoice;
+        items = invoiceItems || [];
+        company = invoice.companies;
+      } else if (documentType === 'job') {
+        const { data: job, error } = await adminClient
+          .from('jobs')
+          .select('*, companies(*)')
+          .eq('id', documentId)
+          .eq('customer_id', customerId)
+          .single();
+        
+        if (error || !job) {
+          return new Response(
+            JSON.stringify({ error: 'Job not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Fetch job items
+        const { data: jobItems } = await adminClient
+          .from('job_items')
+          .select('*')
+          .eq('job_id', documentId)
+          .order('created_at', { ascending: true });
+        
+        document = job;
+        items = jobItems || [];
+        company = job.companies;
+      } else {
+        return new Response(
+          JSON.stringify({ error: 'Invalid document type' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch customer details
+      const { data: customer } = await adminClient
+        .from('customers')
+        .select('id, name, email, phone')
+        .eq('id', customerId)
+        .single();
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          document,
+          items,
+          company,
+          customer,
+          documentType,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: 'Invalid action' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
