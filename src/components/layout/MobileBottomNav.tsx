@@ -11,6 +11,7 @@ import {
   Building2,
   Bell,
   Settings,
+  BookTemplate,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -41,6 +42,7 @@ const MobileBottomNav = () => {
 
   const moreNavItems = [
     { icon: Users, label: 'Customers', path: '/customers', showFor: 'all' },
+    { icon: BookTemplate, label: 'Templates', path: '/templates', showFor: 'all' },
     { icon: Bell, label: 'Notifications', path: '/notifications', showFor: 'admin' },
     { icon: UserCog, label: 'Technicians', path: '/technicians', showFor: 'admin' },
     { icon: Building2, label: 'Company', path: '/company', showFor: 'admin' },

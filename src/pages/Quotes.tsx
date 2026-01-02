@@ -23,6 +23,8 @@ import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 import { CreateJobFromQuoteDialog, AddQuoteItemsToJobDialog } from '@/components/quotes/QuoteToJobDialogs';
 import { SaveAsQuoteTemplateDialog } from '@/components/quotes/SaveAsQuoteTemplateDialog';
+import { SelectQuoteTemplateDialog } from '@/components/quotes/SelectQuoteTemplateDialog';
+import { QuoteTemplate } from '@/hooks/useQuoteTemplates';
 
 interface LineItem {
   id: string;
@@ -65,6 +67,9 @@ const Quotes = () => {
   // Save as template dialog
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
   const [selectedQuoteForTemplate, setSelectedQuoteForTemplate] = useState<Quote | null>(null);
+  
+  // Select template dialog
+  const [selectTemplateDialogOpen, setSelectTemplateDialogOpen] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -353,6 +358,23 @@ const Quotes = () => {
     setSaveTemplateDialogOpen(true);
   };
 
+  const handleSelectTemplate = (template: QuoteTemplate) => {
+    setFormData({
+      customerId: '',
+      items: template.items?.map((item) => ({
+        id: Date.now().toString() + Math.random(),
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+      })) || [{ id: '1', description: '', quantity: 1, unitPrice: 0 }],
+      notes: template.notes || '',
+      status: 'draft',
+      validDays: template.valid_days || 30,
+    });
+    setEditingQuote(null);
+    openEditDialog(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -394,17 +416,30 @@ const Quotes = () => {
                 <SelectItem value="rejected">Rejected</SelectItem>
               </SelectContent>
             </Select>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="gap-2 hidden sm:flex">
+                  <Plus className="w-4 h-4" />
+                  Create Quote
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem onClick={() => openEditDialog(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Blank Quote
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSelectTemplateDialogOpen(true)}>
+                  <BookTemplate className="w-4 h-4 mr-2" />
+                  From Template
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
               openEditDialog(open);
               if (!open) resetForm();
             }}>
-              <DialogTrigger asChild>
-                <Button className="gap-2 hidden sm:flex">
-                  <Plus className="w-4 h-4" />
-                  Create Quote
-                </Button>
-              </DialogTrigger>
               <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingQuote ? 'Edit Quote' : 'Create New Quote'}</DialogTitle>
@@ -1011,13 +1046,33 @@ const Quotes = () => {
         quote={selectedQuoteForTemplate}
       />
 
+      {/* Select Template Dialog */}
+      <SelectQuoteTemplateDialog
+        open={selectTemplateDialogOpen}
+        onOpenChange={setSelectTemplateDialogOpen}
+        onSelect={handleSelectTemplate}
+      />
+
       {/* Mobile Floating Action Button */}
-      <Button
-        className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50"
-        onClick={() => openEditDialog(true)}
-      >
-        <Plus className="w-6 h-6" />
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50"
+          >
+            <Plus className="w-6 h-6" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="top" className="bg-popover mb-2">
+          <DropdownMenuItem onClick={() => openEditDialog(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Blank Quote
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setSelectTemplateDialogOpen(true)}>
+            <BookTemplate className="w-4 h-4 mr-2" />
+            From Template
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 };
