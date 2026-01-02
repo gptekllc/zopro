@@ -1345,7 +1345,13 @@ const Quotes = () => {
                     return (
                       <div className="space-y-2">
                         {linkedJob && (
-                          <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                          <div 
+                            className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                            onClick={() => {
+                              openViewingQuote(null);
+                              window.location.href = `/jobs?view=${linkedJob.id}`;
+                            }}
+                          >
                             <div className="flex items-center gap-3">
                               <Briefcase className="w-4 h-4 text-muted-foreground shrink-0" />
                               <div>
@@ -1353,16 +1359,23 @@ const Quotes = () => {
                                 <p className="text-xs text-muted-foreground">{linkedJob.title}</p>
                               </div>
                             </div>
-                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground capitalize">
-                              {String(linkedJob.status).replace('_', ' ')}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground capitalize">
+                                {String(linkedJob.status).replace('_', ' ')}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                            </div>
                           </div>
                         )}
 
                         {linkedInvoices.map((invoice: any) => (
                           <div
                             key={invoice.id}
-                            className="flex items-center justify-between p-3 rounded-lg border bg-muted/50"
+                            className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+                            onClick={() => {
+                              openViewingQuote(null);
+                              window.location.href = `/invoices?view=${invoice.id}`;
+                            }}
                           >
                             <div className="flex items-center gap-3">
                               <Receipt className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -1373,11 +1386,14 @@ const Quotes = () => {
                                 </p>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <p className="font-medium text-sm">${Number(invoice.total).toFixed(2)}</p>
-                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground capitalize">
-                                {invoice.status}
-                              </span>
+                            <div className="flex items-center gap-2">
+                              <div className="text-right">
+                                <p className="font-medium text-sm">${Number(invoice.total).toFixed(2)}</p>
+                                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground capitalize">
+                                  {invoice.status}
+                                </span>
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
                             </div>
                           </div>
                         ))}
