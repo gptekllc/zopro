@@ -152,6 +152,16 @@ const Customers = () => {
             </div>
             
             <div className="flex flex-wrap items-center gap-2">
+              <div className="relative w-32 sm:w-40">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  value={activeSearch}
+                  onChange={(e) => setActiveSearch(e.target.value)}
+                  className="pl-8 h-9"
+                />
+              </div>
+              
               <TabsList>
                 <TabsTrigger value="active">Active</TabsTrigger>
                 {isAdmin && (
@@ -226,15 +236,6 @@ const Customers = () => {
         </div>
 
         <TabsContent value="active" className="mt-4 space-y-4">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search active customers..." 
-              value={activeSearch} 
-              onChange={(e) => setActiveSearch(e.target.value)} 
-              className="pl-9" 
-            />
-          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredActiveCustomers.map((customer) => (
