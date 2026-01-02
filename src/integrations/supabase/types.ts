@@ -236,6 +236,7 @@ export type Database = {
       }
       invoices: {
         Row: {
+          archived_at: string | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -257,6 +258,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -278,6 +280,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -907,6 +910,7 @@ export type Database = {
       }
       quotes: {
         Row: {
+          archived_at: string | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -925,6 +929,7 @@ export type Database = {
           valid_until: string | null
         }
         Insert: {
+          archived_at?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -943,6 +948,7 @@ export type Database = {
           valid_until?: string | null
         }
         Update: {
+          archived_at?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -1199,6 +1205,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      auto_archive_old_records: { Args: never; Returns: undefined }
       create_company_and_set_admin: {
         Args: {
           _address: string
