@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, 
-  DollarSign, FileText, CheckCircle, Send
+  DollarSign, FileText, CheckCircle, Send, UserCog
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
@@ -14,6 +14,7 @@ import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 interface QuoteDetailDialogProps {
   quote: CustomerQuote | null;
   customerName?: string;
+  creatorName?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDownload?: (quoteId: string) => void;
@@ -38,6 +39,7 @@ const statusColors: Record<string, string> = {
 export function QuoteDetailDialog({
   quote,
   customerName,
+  creatorName,
   open,
   onOpenChange,
   onDownload,
@@ -77,6 +79,14 @@ export function QuoteDetailDialog({
               <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
               <p className="font-medium text-sm sm:text-base truncate">{customerName || 'Unknown'}</p>
             </div>
+            {creatorName && (
+              <div>
+                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                  <UserCog className="w-3 h-3" /> Created By
+                </p>
+                <p className="font-medium text-sm sm:text-base truncate">{creatorName}</p>
+              </div>
+            )}
             <div>
               <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
               <p className="font-medium text-sm sm:text-base">{format(new Date(quote.created_at), 'MMM d, yyyy')}</p>

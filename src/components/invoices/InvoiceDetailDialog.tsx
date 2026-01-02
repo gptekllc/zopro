@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   FileDown, Mail, Edit, PenTool, Calendar, 
-  DollarSign, Receipt, CheckCircle, Clock, AlertCircle 
+  DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -12,6 +12,7 @@ import { CustomerInvoice } from '@/hooks/useCustomerHistory';
 interface InvoiceDetailDialogProps {
   invoice: CustomerInvoice | null;
   customerName?: string;
+  creatorName?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDownload?: (invoiceId: string) => void;
@@ -31,6 +32,7 @@ const statusColors: Record<string, string> = {
 export function InvoiceDetailDialog({
   invoice,
   customerName,
+  creatorName,
   open,
   onOpenChange,
   onDownload,
@@ -63,6 +65,14 @@ export function InvoiceDetailDialog({
               <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
               <p className="font-medium text-sm sm:text-base truncate">{customerName || 'Unknown'}</p>
             </div>
+            {creatorName && (
+              <div>
+                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                  <UserCog className="w-3 h-3" /> Created By
+                </p>
+                <p className="font-medium text-sm sm:text-base truncate">{creatorName}</p>
+              </div>
+            )}
             <div>
               <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
               <p className="font-medium text-sm sm:text-base">{format(new Date(invoice.created_at), 'MMM d, yyyy')}</p>
