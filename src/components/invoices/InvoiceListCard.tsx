@@ -87,7 +87,6 @@ export function InvoiceListCard({
 }: Props) {
   const signatureId = (invoice as any).signature_id as string | undefined;
   const archivedAt = (invoice as any).archived_at as string | undefined;
-  const itemCount = (invoice as any).items?.length ?? 0;
 
   const total = typeof invoice.total === "string" ? Number(invoice.total) : invoice.total ?? 0;
   const totalFormatted = `$${total.toFixed(2)}`;
@@ -107,7 +106,6 @@ export function InvoiceListCard({
       status={invoice.status}
       statusColorClass={statusColorClass}
       totalFormatted={hasLateFee ? grandTotal! : totalFormatted}
-      itemCount={itemCount}
       notes={invoice.notes}
       onClick={() => onOpen(invoice)}
       secondaryInfo={
