@@ -1015,24 +1015,9 @@ const Jobs = () => {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                        <div onClick={e => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Badge className={`${getStatusColor(job.status)} text-xs cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
-                                {job.status.replace('_', ' ')}
-                                <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                              </Badge>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="bg-popover z-50">
-                              {JOB_STATUSES.map(status => <DropdownMenuItem key={status} onClick={() => handleStatusChange(job.id, status)} disabled={job.status === status} className={job.status === status ? 'bg-accent' : ''}>
-                                  <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
-                                    {status.replace('_', ' ')}
-                                  </Badge>
-                                  {job.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                                </DropdownMenuItem>)}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
+                          {job.status.replace('_', ' ')}
+                        </span>
                       </div>
                       
                       {/* Action Menu */}
@@ -1197,24 +1182,9 @@ const Jobs = () => {
                               Signed
                             </Badge>
                           )}
-                          <div onClick={e => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Badge className={`${getStatusColor(job.status)} cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
-                                  {job.status.replace('_', ' ')}
-                                  <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                                </Badge>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="bg-popover z-50">
-                                {JOB_STATUSES.map(status => <DropdownMenuItem key={status} onClick={() => handleStatusChange(job.id, status)} disabled={job.status === status} className={job.status === status ? 'bg-accent' : ''}>
-                                    <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
-                                      {status.replace('_', ' ')}
-                                    </Badge>
-                                    {job.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                                  </DropdownMenuItem>)}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
+                            {job.status.replace('_', ' ')}
+                          </span>
                         </div>
                         
                         {/* Action Menu */}
