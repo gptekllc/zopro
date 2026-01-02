@@ -495,6 +495,21 @@ const Invoices = () => {
     });
   };
 
+  const handleSendPaymentReminder = async (invoice: Invoice) => {
+    try {
+      await sendPaymentReminder.mutateAsync(invoice.id);
+      // Update viewing invoice status to 'sent' if it was 'draft'
+      if (viewingInvoice?.id === invoice.id && invoice.status === 'draft') {
+        setViewingInvoice({
+          ...viewingInvoice,
+          status: 'sent',
+        } as any);
+      }
+    } catch (error) {
+      // Error is handled by the mutation's onError
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -1413,7 +1428,7 @@ const Invoices = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => sendPaymentReminder.mutate(viewingInvoice.id)}
+                      onClick={() => handleSendPaymentReminder(viewingInvoice as Invoice)}
                       disabled={sendPaymentReminder.isPending}
                       className="flex-1 sm:flex-none"
                     >
