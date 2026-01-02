@@ -7,13 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { User, Mail, Phone, Building2, DollarSign, Loader2, Save, Camera } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { User, Mail, Phone, Building2, DollarSign, Loader2, Save, Camera, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { compressImageToFile } from '@/lib/imageCompression';
 
 const Profile = () => {
   const { user, profile, roles, isLoading: authLoading, refreshProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
@@ -23,6 +25,7 @@ const Profile = () => {
     hourly_rate: 0,
     avatar_url: '',
   });
+  const [isOnLeave, setIsOnLeave] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -33,6 +36,7 @@ const Profile = () => {
         hourly_rate: profile.hourly_rate || 0,
         avatar_url: profile.avatar_url || '',
       });
+      setIsOnLeave(profile.employment_status === 'on_leave');
     }
   }, [profile]);
 
@@ -98,12 +102,37 @@ const Profile = () => {
 
       if (error) throw error;
 
+      await refreshProfile();
       toast.success('Profile updated successfully');
     } catch (error: any) {
       console.error('Error updating profile:', error);
       toast.error('Failed to update profile: ' + error.message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleOnLeaveToggle = async (checked: boolean) => {
+    if (!user) return;
+
+    setIsUpdatingStatus(true);
+    try {
+      const newStatus = checked ? 'on_leave' : 'active';
+      const { error } = await (supabase as any)
+        .from('profiles')
+        .update({ employment_status: newStatus })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      setIsOnLeave(checked);
+      await refreshProfile();
+      toast.success(checked ? 'You are now marked as on leave' : 'You are now marked as active');
+    } catch (error: any) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status: ' + error.message);
+    } finally {
+      setIsUpdatingStatus(false);
     }
   };
 
@@ -173,6 +202,48 @@ const Profile = () => {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* On Leave Status Card */}
+      <Card className={isOnLeave ? 'border-yellow-500/50 bg-yellow-500/5' : ''}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className={`w-5 h-5 ${isOnLeave ? 'text-yellow-600' : ''}`} />
+            Availability Status
+          </CardTitle>
+          <CardDescription>
+            Set yourself as on leave when you're unavailable for job assignments
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="font-medium">On Leave</p>
+              <p className="text-sm text-muted-foreground">
+                {isOnLeave 
+                  ? "You won't be assigned to new jobs while on leave"
+                  : "Toggle this when you need time off"
+                }
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {isUpdatingStatus && <Loader2 className="w-4 h-4 animate-spin" />}
+              <Switch
+                checked={isOnLeave}
+                onCheckedChange={handleOnLeaveToggle}
+                disabled={isUpdatingStatus}
+              />
+            </div>
+          </div>
+          {isOnLeave && (
+            <div className="mt-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+              <p className="text-sm text-yellow-600 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                You are currently marked as on leave. Team members will see this status.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
