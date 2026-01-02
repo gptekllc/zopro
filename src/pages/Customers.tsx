@@ -268,34 +268,6 @@ const Customers = () => {
                       </div>
                     )}
                   </div>
-                  
-                  {/* Actions */}
-                  <div className="mt-4 pt-4 border-t flex gap-2" onClick={(e) => e.stopPropagation()}>
-                    {customer.email && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => handleSendPortalLink(customer)}
-                        disabled={sendingPortalLink === customer.id}
-                      >
-                        {sendingPortalLink === customer.id ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                        )}
-                        Portal Link
-                      </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/customers/${customer.id}`)}
-                    >
-                      <Eye className="w-4 h-4 mr-1" />
-                      View
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             ))}
