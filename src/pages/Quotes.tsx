@@ -1161,54 +1161,68 @@ const Quotes = () => {
               </ConstrainedPanel>
 
               {/* Actions */}
+              <Separator />
               <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
-                <Button variant="outline" size="sm" onClick={() => handleDownload(viewingQuote.id)} className="flex-1 sm:flex-none">
-                  <FileDown className="w-4 h-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Download</span>
+                <Button variant="outline" size="sm" onClick={() => {
+                  handleEdit(viewingQuote);
+                  openViewingQuote(null);
+                }}>
+                  <Edit className="w-4 h-4 mr-1" />
+                  Edit
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => handleOpenEmailDialog(viewingQuote.id, viewingQuote.customer_id)} className="flex-1 sm:flex-none">
-                  <Mail className="w-4 h-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Email</span>
+                <Button variant="outline" size="sm" onClick={() => {
+                  handleDuplicateQuote(viewingQuote);
+                  openViewingQuote(null);
+                }}>
+                  <Copy className="w-4 h-4 mr-1" />
+                  Duplicate
                 </Button>
-                {viewingQuote.status === 'accepted' && <DropdownMenu>
+                <Button variant="outline" size="sm" onClick={() => handleDownload(viewingQuote.id)}>
+                  <FileDown className="w-4 h-4 mr-1" />
+                  Download
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleOpenEmailDialog(viewingQuote.id, viewingQuote.customer_id)}>
+                  <Mail className="w-4 h-4 mr-1" />
+                  Email
+                </Button>
+                {viewingQuote.status === 'accepted' && (
+                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="flex-1 sm:flex-none gap-1">
-                        <Briefcase className="w-4 h-4" />
-                        <span className="hidden sm:inline">Create Job</span>
+                      <Button variant="outline" size="sm" className="gap-1">
+                        <Briefcase className="w-4 h-4 mr-1" />
+                        Create Job
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-popover z-50">
                       <DropdownMenuItem onClick={() => {
-                  openViewingQuote(null);
-                  handleOpenCreateJobDialog(viewingQuote);
-                }}>
+                        openViewingQuote(null);
+                        handleOpenCreateJobDialog(viewingQuote);
+                      }}>
                         <Plus className="w-4 h-4 mr-2" />
                         Create New Job
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => {
-                  openViewingQuote(null);
-                  handleOpenAddToJobDialog(viewingQuote);
-                }}>
+                        openViewingQuote(null);
+                        handleOpenAddToJobDialog(viewingQuote);
+                      }}>
                         <Briefcase className="w-4 h-4 mr-2" />
                         Add to Existing Job
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => handleConvertToInvoice(viewingQuote.id)}>
-                        <ArrowRight className="w-4 h-4 mr-2" />
-                        Convert to Invoice
-                      </DropdownMenuItem>
                     </DropdownMenuContent>
-                  </DropdownMenu>}
-                {viewingQuote.status !== 'rejected' && viewingQuote.status !== 'accepted' && <Button variant="outline" size="sm" onClick={() => handleConvertToInvoice(viewingQuote.id)} className="flex-1 sm:flex-none">
-                    <ArrowRight className="w-4 h-4 sm:mr-1" />
-                    <span className="hidden sm:inline">Convert to Invoice</span>
-                  </Button>}
-                <Button variant="outline" size="sm" onClick={() => {
-              handleEdit(viewingQuote);
-              openViewingQuote(null);
-            }} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
-                  <Edit className="w-4 h-4 mr-1" /> Edit
-                </Button>
+                  </DropdownMenu>
+                )}
+                {viewingQuote.status !== 'rejected' && (
+                  <Button 
+                    size="sm" 
+                    onClick={() => {
+                      handleConvertToInvoice(viewingQuote.id);
+                      openViewingQuote(null);
+                    }}
+                  >
+                    <ArrowRight className="w-4 h-4 mr-1" />
+                    Convert to Invoice
+                  </Button>
+                )}
               </div>
             </div>
           </DialogContent>
