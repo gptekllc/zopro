@@ -19,7 +19,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send, Bell, UserCog, Wrench } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send, Bell, UserCog, Wrench, ChevronRight, CheckCircle2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { SignatureDialog } from "@/components/signatures/SignatureDialog";
 import { ViewSignatureDialog } from "@/components/signatures/ViewSignatureDialog";
@@ -987,9 +988,32 @@ const Invoices = () => {
                   <Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
                   <span className="truncate">{viewingInvoice.invoice_number}</span>
                 </DialogTitle>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0 ${getStatusColor(viewingInvoice.status)}`}>
-                  {viewingInvoice.status}
-                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0 cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(viewingInvoice.status)}`}>
+                      {viewingInvoice.status}
+                      <ChevronRight className="w-3 h-3 rotate-90" />
+                    </span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="bg-popover z-50">
+                    {["draft", "sent", "paid"].map(status => (
+                      <DropdownMenuItem
+                        key={status}
+                        onClick={() => {
+                          handleStatusChange(viewingInvoice.id, status);
+                          setViewingInvoice(prev => prev ? { ...prev, status: status as Invoice['status'] } : null);
+                        }}
+                        disabled={viewingInvoice.status === status}
+                        className={viewingInvoice.status === status ? "bg-accent" : ""}
+                      >
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(status)}`}>
+                          {status}
+                        </span>
+                        {viewingInvoice.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </DialogHeader>
 
@@ -1176,31 +1200,45 @@ const Invoices = () => {
                 </div>}
 
               {/* Actions */}
+              <Separator />
               <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
-                <Button variant="outline" size="sm" onClick={() => handleDownload(viewingInvoice.id)} className="flex-1 sm:flex-none">
-                  <FileDown className="w-4 h-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Download</span>
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handleOpenEmailDialog(viewingInvoice.id, viewingInvoice.customer_id)} className="flex-1 sm:flex-none">
-                  <Mail className="w-4 h-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Email</span>
-                </Button>
-                {viewingInvoice.status !== "paid" && <>
-                    <Button variant="default" size="sm" onClick={() => handleMarkPaid(viewingInvoice.id)} className="flex-1 sm:flex-none">
-                      <CheckCircle className="w-4 h-4 sm:mr-1" />
-                      <span className="hidden sm:inline">Mark Paid</span>
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleSendPaymentReminder(viewingInvoice as Invoice)} disabled={sendPaymentReminder.isPending} className="flex-1 sm:flex-none">
-                      <Bell className="w-4 h-4 sm:mr-1" />
-                      <span className="hidden sm:inline">{sendPaymentReminder.isPending ? 'Sending...' : 'Send Reminder'}</span>
-                    </Button>
-                  </>}
                 <Button variant="outline" size="sm" onClick={() => {
-              handleEdit(viewingInvoice);
-              openViewingInvoice(null);
-            }} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
-                  <Edit className="w-4 h-4 mr-1" /> Edit
+                  handleEdit(viewingInvoice);
+                  openViewingInvoice(null);
+                }}>
+                  <Edit className="w-4 h-4 mr-1" />
+                  Edit
                 </Button>
+                <Button variant="outline" size="sm" onClick={() => {
+                  handleDuplicateInvoice(viewingInvoice);
+                  openViewingInvoice(null);
+                }}>
+                  <Copy className="w-4 h-4 mr-1" />
+                  Duplicate
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleDownload(viewingInvoice.id)}>
+                  <FileDown className="w-4 h-4 mr-1" />
+                  Download
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => handleOpenEmailDialog(viewingInvoice.id, viewingInvoice.customer_id)}>
+                  <Mail className="w-4 h-4 mr-1" />
+                  Email
+                </Button>
+                {viewingInvoice.status !== "paid" && (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => handleSendPaymentReminder(viewingInvoice as Invoice)} disabled={sendPaymentReminder.isPending}>
+                      <Bell className="w-4 h-4 mr-1" />
+                      {sendPaymentReminder.isPending ? 'Sending...' : 'Send Reminder'}
+                    </Button>
+                    <Button size="sm" onClick={() => {
+                      handleMarkPaid(viewingInvoice.id);
+                      setViewingInvoice(prev => prev ? { ...prev, status: 'paid' as Invoice['status'], paid_at: new Date().toISOString() } : null);
+                    }}>
+                      <CheckCircle className="w-4 h-4 mr-1" />
+                      Mark Paid
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </DialogContent>
