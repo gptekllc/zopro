@@ -11,7 +11,7 @@ import {
 import { 
   FileDown, Mail, Edit, PenTool, Calendar, 
   DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
-  ChevronRight, CheckCircle2, Copy, Briefcase
+  ChevronRight, CheckCircle2, Copy, Briefcase, FileText, Link2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -25,11 +25,26 @@ interface ReminderHistory {
   sent_by_profile?: { full_name: string | null };
 }
 
+interface LinkedQuote {
+  id: string;
+  quote_number: string;
+  status: string;
+}
+
+interface LinkedJob {
+  id: string;
+  job_number: string;
+  title: string;
+  status: string;
+}
+
 interface InvoiceDetailDialogProps {
   invoice: CustomerInvoice | null;
   customerName?: string;
   creatorName?: string;
   linkedJobNumber?: string | null;
+  linkedQuote?: LinkedQuote | null;
+  linkedJob?: LinkedJob | null;
   lateFeePercentage?: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -45,6 +60,8 @@ interface InvoiceDetailDialogProps {
   onSendReminder?: (invoiceId: string) => void;
   isSendingReminder?: boolean;
   reminders?: ReminderHistory[];
+  onViewQuote?: (quoteId: string) => void;
+  onViewJob?: (jobId: string) => void;
 }
 
 const statusColors: Record<string, string> = {
@@ -54,11 +71,31 @@ const statusColors: Record<string, string> = {
   overdue: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
 };
 
+const quoteStatusColors: Record<string, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  accepted: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  expired: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+};
+
+const jobStatusColors: Record<string, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  in_progress: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+  completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  invoiced: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+};
+
 export function InvoiceDetailDialog({
   invoice,
   customerName,
   creatorName,
   linkedJobNumber,
+  linkedQuote,
+  linkedJob,
   lateFeePercentage = 0,
   open,
   onOpenChange,
@@ -74,6 +111,8 @@ export function InvoiceDetailDialog({
   onSendReminder,
   isSendingReminder = false,
   reminders = [],
+  onViewQuote,
+  onViewJob,
 }: InvoiceDetailDialogProps) {
   if (!invoice) return null;
 
@@ -276,6 +315,51 @@ export function InvoiceDetailDialog({
               <span className="font-medium text-xs sm:text-sm">Overdue - was due on {format(new Date(invoice.due_date), 'MMM d, yyyy')}</span>
             </div>
           ) : null}
+
+          {/* Linked Docs */}
+          {(linkedQuote || linkedJob) && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
+                  <Link2 className="w-4 h-4" />
+                  Linked Documents
+                </h4>
+                <div className="space-y-2">
+                  {linkedQuote && (
+                    <div
+                      className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${onViewQuote ? 'cursor-pointer hover:bg-muted transition-colors' : ''}`}
+                      onClick={() => onViewQuote?.(linkedQuote.id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-medium text-sm">{linkedQuote.quote_number}</span>
+                        <span className="text-xs text-muted-foreground">Quote</span>
+                      </div>
+                      <Badge className={quoteStatusColors[linkedQuote.status] || 'bg-muted'}>
+                        {linkedQuote.status}
+                      </Badge>
+                    </div>
+                  )}
+                  {linkedJob && (
+                    <div
+                      className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${onViewJob ? 'cursor-pointer hover:bg-muted transition-colors' : ''}`}
+                      onClick={() => onViewJob?.(linkedJob.id)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="w-4 h-4 text-muted-foreground" />
+                        <span className="font-medium text-sm">{linkedJob.job_number}</span>
+                        <span className="text-xs text-muted-foreground truncate max-w-[150px]">{linkedJob.title}</span>
+                      </div>
+                      <Badge className={jobStatusColors[linkedJob.status] || 'bg-muted'}>
+                        {linkedJob.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Notes */}
           {invoice.notes && (
