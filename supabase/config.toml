@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.stripe-connect-refresh]
 verify_jwt = false
+
+[functions.auto-archive]
+verify_jwt = false
