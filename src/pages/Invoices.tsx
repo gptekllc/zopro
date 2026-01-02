@@ -9,6 +9,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useSignInvoice } from '@/hooks/useSignatures';
+import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye } from 'lucide-react';
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
@@ -52,6 +53,7 @@ const Invoices = () => {
   const emailDocument = useEmailDocument();
   const downloadDocument = useDownloadDocument();
   const signInvoice = useSignInvoice();
+  const sendSignatureRequest = useSendSignatureRequest();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
   
   // Undo-able delete
@@ -380,12 +382,14 @@ const Invoices = () => {
       signerName,
       customerId: signatureInvoice.customer_id,
     });
-    // Update viewing invoice with the new signature if it's open
+    // Update viewing invoice with the new signature and status if it's open
     if (viewingInvoice?.id === signatureInvoice.id) {
       setViewingInvoice({
         ...viewingInvoice,
         signature_id: signature.id,
         signed_at: new Date().toISOString(),
+        status: 'paid',
+        paid_at: new Date().toISOString(),
       } as any);
     }
     setSignatureDialogOpen(false);
@@ -395,6 +399,23 @@ const Invoices = () => {
   const handleViewSignature = (signatureId: string) => {
     setViewSignatureId(signatureId);
     setViewSignatureOpen(true);
+  };
+
+  const handleSendSignatureRequest = (invoice: Invoice) => {
+    const customer = customers.find(c => c.id === invoice.customer_id);
+    if (!customer?.email) {
+      toast.error('Customer does not have an email address');
+      return;
+    }
+    sendSignatureRequest.mutate({
+      documentType: 'invoice',
+      documentId: invoice.id,
+      recipientEmail: customer.email,
+      recipientName: customer.name,
+      companyName: company?.name || 'Company',
+      documentNumber: invoice.invoice_number,
+      customerId: customer.id,
+    });
   };
 
   if (isLoading) {
@@ -745,10 +766,18 @@ const Invoices = () => {
                             View Signature
                           </DropdownMenuItem>
                         ) : invoice.status !== 'paid' && (
-                          <DropdownMenuItem onClick={() => handleOpenSignatureDialog(invoice as Invoice)}>
-                            <PenTool className="w-4 h-4 mr-2" />
-                            Collect Signature
-                          </DropdownMenuItem>
+                          <>
+                            <DropdownMenuItem onClick={() => handleOpenSignatureDialog(invoice as Invoice)}>
+                              <PenTool className="w-4 h-4 mr-2" />
+                              Collect Signature
+                            </DropdownMenuItem>
+                            {getCustomerEmail(invoice.customer_id) && (
+                              <DropdownMenuItem onClick={() => handleSendSignatureRequest(invoice as Invoice)}>
+                                <Send className="w-4 h-4 mr-2" />
+                                Send Signature Request
+                              </DropdownMenuItem>
+                            )}
+                          </>
                         )}
                         <DropdownMenuSeparator />
                         {(invoice as any).archived_at ? (
@@ -904,10 +933,18 @@ const Invoices = () => {
                             View Signature
                           </DropdownMenuItem>
                         ) : invoice.status !== 'paid' && (
-                          <DropdownMenuItem onClick={() => handleOpenSignatureDialog(invoice as Invoice)}>
-                            <PenTool className="w-4 h-4 mr-2" />
-                            Collect Signature
-                          </DropdownMenuItem>
+                          <>
+                            <DropdownMenuItem onClick={() => handleOpenSignatureDialog(invoice as Invoice)}>
+                              <PenTool className="w-4 h-4 mr-2" />
+                              Collect Signature
+                            </DropdownMenuItem>
+                            {getCustomerEmail(invoice.customer_id) && (
+                              <DropdownMenuItem onClick={() => handleSendSignatureRequest(invoice as Invoice)}>
+                                <Send className="w-4 h-4 mr-2" />
+                                Send Signature Request
+                              </DropdownMenuItem>
+                            )}
+                          </>
                         )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => handleDeleteClick(invoice)} className="text-destructive focus:text-destructive">

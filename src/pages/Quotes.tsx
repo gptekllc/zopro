@@ -425,7 +425,7 @@ const Quotes = () => {
       signerName,
       customerId: signatureQuote.customer_id,
     });
-    // Update viewing quote with the new signature if it's open
+    // Update viewing quote with the new signature and status if it's open
     if (viewingQuote?.id === signatureQuote.id) {
       setViewingQuote({
         ...viewingQuote,

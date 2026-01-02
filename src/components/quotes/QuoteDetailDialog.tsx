@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, 
-  DollarSign, FileText, CheckCircle
+  DollarSign, FileText, CheckCircle, Send
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
@@ -20,6 +20,10 @@ interface QuoteDetailDialogProps {
   onConvertToInvoice?: (quoteId: string) => void;
   onEdit?: (quoteId: string) => void;
   onViewSignature?: (signatureId: string) => void;
+  onCollectSignature?: (quoteId: string) => void;
+  onSendSignatureRequest?: (quoteId: string) => void;
+  isCollectingSignature?: boolean;
+  customerEmail?: string;
 }
 
 const statusColors: Record<string, string> = {
@@ -40,8 +44,15 @@ export function QuoteDetailDialog({
   onConvertToInvoice,
   onEdit,
   onViewSignature,
+  onCollectSignature,
+  onSendSignatureRequest,
+  isCollectingSignature = false,
+  customerEmail,
 }: QuoteDetailDialogProps) {
   if (!quote) return null;
+
+  const isApprovedOrAccepted = quote.status === 'approved' || quote.status === 'accepted';
+  const showCollectButton = !isApprovedOrAccepted && quote.status !== 'rejected';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -167,8 +178,24 @@ export function QuoteDetailDialog({
           <SignatureSection 
             signatureId={quote.signature_id}
             title="Customer Signature"
-            showCollectButton={false}
+            onCollectSignature={onCollectSignature ? () => onCollectSignature(quote.id) : undefined}
+            showCollectButton={showCollectButton}
+            collectButtonText="Collect Signature"
+            isCollecting={isCollectingSignature}
           />
+
+          {/* Send Signature Request Button (separate from in-person collection) */}
+          {showCollectButton && !quote.signature_id && customerEmail && onSendSignatureRequest && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => onSendSignatureRequest(quote.id)}
+              className="w-full sm:w-auto"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Send Signature Request via Email
+            </Button>
+          )}
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
