@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt
@@ -267,126 +268,139 @@ export function JobDetailDialog({
             </>
           )}
 
-          {/* Related Quotes Section */}
+          {/* Related Documents Tabs */}
           <Separator />
-          <div>
-            <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
-              <FileText className="w-4 h-4" /> Related Quotes
-            </h4>
-            
-            {loadingQuotes ? (
-              <p className="text-xs sm:text-sm text-muted-foreground">Loading quotes...</p>
-            ) : (
-              <div className="space-y-4">
-                {/* Origin Quote (Parent) */}
-                {relatedQuotes?.originQuote && (
-                  <div>
-                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
-                      <ArrowDown className="w-3 h-3" /> Origin Quote (Created This Job)
-                    </p>
-                    <QuoteCard 
-                      quote={relatedQuotes.originQuote} 
-                      onView={() => onViewQuote?.(relatedQuotes.originQuote)}
-                    />
-                  </div>
+          <Tabs defaultValue="quotes" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="quotes" className="flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                Quotes
+                {((relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0)) > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {(relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0)}
+                  </Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="invoices" className="flex items-center gap-2">
+                <Receipt className="w-4 h-4" />
+                Invoices
+                {jobInvoices.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {jobInvoices.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
 
-                {/* Upsell Quotes (Children) */}
-                <div>
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
-                    <ArrowUp className="w-3 h-3" /> Upsell Quotes (Created During Job)
-                  </p>
-                  
-                  {relatedQuotes?.childQuotes && relatedQuotes.childQuotes.length > 0 ? (
-                    <div className="space-y-2">
-                      {relatedQuotes.childQuotes.map((quote: Quote) => (
-                        <QuoteCard 
-                          key={quote.id} 
-                          quote={quote} 
-                          onView={() => onViewQuote?.(quote)}
-                        />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-muted/50 rounded-lg">
-                      <p className="text-xs sm:text-sm text-muted-foreground">No upsell quotes yet</p>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleCreateUpsellQuote}
-                        disabled={convertJobToQuote.isPending}
-                        className="w-full sm:w-auto"
-                      >
-                        <Plus className="w-3 h-3 mr-1" />
-                        Create Upsell Quote
-                      </Button>
+            <TabsContent value="quotes" className="mt-4">
+              {loadingQuotes ? (
+                <p className="text-xs sm:text-sm text-muted-foreground">Loading quotes...</p>
+              ) : (
+                <div className="space-y-4">
+                  {/* Origin Quote (Parent) */}
+                  {relatedQuotes?.originQuote && (
+                    <div>
+                      <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                        <ArrowDown className="w-3 h-3" /> Origin Quote (Created This Job)
+                      </p>
+                      <QuoteCard 
+                        quote={relatedQuotes.originQuote} 
+                        onView={() => onViewQuote?.(relatedQuotes.originQuote)}
+                      />
                     </div>
                   )}
-                </div>
-              </div>
-            )}
-          </div>
 
-          {/* Related Invoices Section */}
-          <Separator />
-          <div>
-            <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
-              <Receipt className="w-4 h-4" /> Related Invoices
-            </h4>
-            
-            {loadingInvoices ? (
-              <p className="text-xs sm:text-sm text-muted-foreground">Loading invoices...</p>
-            ) : jobInvoices.length > 0 ? (
-              <div className="space-y-2">
-                {jobInvoices.map((invoice: Invoice) => (
-                  <div 
-                    key={invoice.id}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Receipt className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <div>
-                        <p className="font-medium text-sm">{invoice.invoice_number}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(invoice.created_at), 'MMM d, yyyy')}
-                        </p>
+                  {/* Upsell Quotes (Children) */}
+                  <div>
+                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                      <ArrowUp className="w-3 h-3" /> Upsell Quotes (Created During Job)
+                    </p>
+                    
+                    {relatedQuotes?.childQuotes && relatedQuotes.childQuotes.length > 0 ? (
+                      <div className="space-y-2">
+                        {relatedQuotes.childQuotes.map((quote: Quote) => (
+                          <QuoteCard 
+                            key={quote.id} 
+                            quote={quote} 
+                            onView={() => onViewQuote?.(quote)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-muted/50 rounded-lg">
+                        <p className="text-xs sm:text-sm text-muted-foreground">No upsell quotes yet</p>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={handleCreateUpsellQuote}
+                          disabled={convertJobToQuote.isPending}
+                          className="w-full sm:w-auto"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          Create Upsell Quote
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="invoices" className="mt-4">
+              {loadingInvoices ? (
+                <p className="text-xs sm:text-sm text-muted-foreground">Loading invoices...</p>
+              ) : jobInvoices.length > 0 ? (
+                <div className="space-y-2">
+                  {jobInvoices.map((invoice: Invoice) => (
+                    <div 
+                      key={invoice.id}
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Receipt className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <div>
+                          <p className="font-medium text-sm">{invoice.invoice_number}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">
+                          {formatAmount(invoice.total)}
+                        </span>
+                        <Badge className={`text-xs ${
+                          invoice.status === 'paid' 
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : invoice.status === 'sent'
+                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                            : invoice.status === 'overdue'
+                            ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {invoice.status}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">
-                        {formatAmount(invoice.total)}
-                      </span>
-                      <Badge className={`text-xs ${
-                        invoice.status === 'paid' 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : invoice.status === 'sent'
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                          : invoice.status === 'overdue'
-                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                          : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {invoice.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-muted/50 rounded-lg">
-                <p className="text-xs sm:text-sm text-muted-foreground">No invoices created yet</p>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleCreateInvoice}
-                  disabled={convertJobToInvoice.isPending}
-                  className="w-full sm:w-auto"
-                >
-                  <Plus className="w-3 h-3 mr-1" />
-                  Create Invoice
-                </Button>
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs sm:text-sm text-muted-foreground">No invoices created yet</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleCreateInvoice}
+                    disabled={convertJobToInvoice.isPending}
+                    className="w-full sm:w-auto"
+                  >
+                    <Plus className="w-3 h-3 mr-1" />
+                    Create Invoice
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
 
           {/* Photos */}
           {job.photos && job.photos.length > 0 && (
