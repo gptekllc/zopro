@@ -1113,38 +1113,40 @@ const Quotes = () => {
 
               {/* Signature Section */}
               <Separator />
-              <SignatureSection 
-                signatureId={viewingQuote.signature_id}
-                title="Customer Signature"
-                onCollectSignature={() => {
-                  setSignatureQuote(viewingQuote);
-                  setSignatureDialogOpen(true);
-                }}
-                showCollectButton={viewingQuote.status !== 'accepted' && viewingQuote.status !== 'rejected'}
-                collectButtonText="Collect Signature"
-                isCollecting={approveWithSignature.isPending}
-              />
+              <div className="sm:max-w-sm">
+                <SignatureSection 
+                  signatureId={viewingQuote.signature_id}
+                  title="Customer Signature"
+                  onCollectSignature={() => {
+                    setSignatureQuote(viewingQuote);
+                    setSignatureDialogOpen(true);
+                  }}
+                  showCollectButton={viewingQuote.status !== 'accepted' && viewingQuote.status !== 'rejected'}
+                  collectButtonText="Collect Signature"
+                  isCollecting={approveWithSignature.isPending}
+                />
 
-              {/* Send Signature Request Button */}
-              {viewingQuote.status !== 'accepted' && viewingQuote.status !== 'rejected' && !viewingQuote.signature_id && (() => {
-                const customer = customers.find(c => c.id === viewingQuote.customer_id);
-                return customer?.email ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => handleSendSignatureRequest(viewingQuote)}
-                    className="w-full sm:w-auto"
-                    disabled={sendSignatureRequest.isPending}
-                  >
-                    {sendSignatureRequest.isPending ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4 mr-2" />
-                    )}
-                    Send Signature Request via Email
-                  </Button>
-                ) : null;
-              })()}
+                {/* Send Signature Request Button */}
+                {viewingQuote.status !== 'accepted' && viewingQuote.status !== 'rejected' && !viewingQuote.signature_id && (() => {
+                  const customer = customers.find(c => c.id === viewingQuote.customer_id);
+                  return customer?.email ? (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleSendSignatureRequest(viewingQuote)}
+                      className="w-full mt-2"
+                      disabled={sendSignatureRequest.isPending}
+                    >
+                      {sendSignatureRequest.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
+                      Send Signature Request via Email
+                    </Button>
+                  ) : null;
+                })()}
+              </div>
 
               {/* Actions */}
               <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
