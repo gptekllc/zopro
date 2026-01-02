@@ -7,8 +7,9 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { useProfiles } from '@/hooks/useProfiles';
-import { useJobs, useCreateJobFromQuoteItems, useAddQuoteItemsToJob } from '@/hooks/useJobs';
+import { useJobs, useCreateJobFromQuoteItems, useAddQuoteItemsToJob, Job } from '@/hooks/useJobs';
 import { useConvertQuoteToInvoice, useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
+import { useInvoices } from '@/hooks/useInvoices';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useApproveQuoteWithSignature } from '@/hooks/useSignatures';
 import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
@@ -20,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore, PenTool, Eye, UserCog, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore, PenTool, Eye, UserCog, ChevronRight, CheckCircle2, Receipt } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
@@ -67,6 +68,35 @@ const Quotes = () => {
   const {
     data: jobs = []
   } = useJobs(false);
+  const {
+    data: invoices = []
+  } = useInvoices(false);
+  
+  // Safe arrays
+  const safeJobs = useMemo(() => (Array.isArray(jobs) ? jobs : []).filter((j: any) => j && j.id) as Job[], [jobs]);
+  const safeInvoices = useMemo(() => (Array.isArray(invoices) ? invoices : []).filter((i: any) => i && i.id) as any[], [invoices]);
+  
+  // Track jobs created from quotes
+  const jobsPerQuote = useMemo(() => {
+    const counts = new Map<string, number>();
+    safeJobs.forEach((job: any) => {
+      if (job.quote_id) {
+        counts.set(job.quote_id, (counts.get(job.quote_id) || 0) + 1);
+      }
+    });
+    return counts;
+  }, [safeJobs]);
+
+  // Track invoices created from quotes
+  const invoicesPerQuote = useMemo(() => {
+    const counts = new Map<string, number>();
+    safeInvoices.forEach((invoice: any) => {
+      if (invoice.quote_id) {
+        counts.set(invoice.quote_id, (counts.get(invoice.quote_id) || 0) + 1);
+      }
+    });
+    return counts;
+  }, [safeInvoices]);
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
   const deleteQuote = useDeleteQuote();
@@ -121,6 +151,10 @@ const Quotes = () => {
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
   const [viewingQuote, setViewingQuote] = useState<typeof quotes[0] | null>(null);
   const [quoteToDelete, setQuoteToDelete] = useState<typeof quotes[0] | null>(null);
+  
+  // Duplicate prevention confirmation dialogs
+  const [createJobConfirmQuote, setCreateJobConfirmQuote] = useState<Quote | null>(null);
+  const [createInvoiceConfirmQuote, setCreateInvoiceConfirmQuote] = useState<Quote | null>(null);
 
   // Wrapped setters for scroll restoration
   const openViewingQuote = useCallback((quote: typeof quotes[0] | null) => {
@@ -380,12 +414,18 @@ const Quotes = () => {
     setSelectedQuoteForEmail(null);
     setEmailRecipient('');
   };
-  const handleConvertToInvoice = async (quoteId: string) => {
-    if (confirm('Convert this quote to an invoice?')) {
-      await convertToInvoice.mutateAsync({
-        quoteId
-      });
+  const handleConvertToInvoice = async (quote: Quote) => {
+    const existingInvoices = invoicesPerQuote.get(quote.id) || 0;
+    if (existingInvoices > 0) {
+      setCreateInvoiceConfirmQuote(quote);
+    } else {
+      await convertToInvoice.mutateAsync({ quoteId: quote.id });
     }
+  };
+  
+  const handleConvertToInvoiceConfirmed = async (quoteId: string) => {
+    await convertToInvoice.mutateAsync({ quoteId });
+    setCreateInvoiceConfirmQuote(null);
   };
   const handleStatusChange = async (quoteId: string, newStatus: string) => {
     try {
@@ -399,8 +439,21 @@ const Quotes = () => {
     }
   };
   const handleOpenCreateJobDialog = (quote: typeof quotes[0]) => {
-    setSelectedQuoteForJob(quote);
-    setCreateJobDialogOpen(true);
+    const existingJobs = jobsPerQuote.get(quote.id) || 0;
+    if (existingJobs > 0) {
+      setCreateJobConfirmQuote(quote as Quote);
+    } else {
+      setSelectedQuoteForJob(quote);
+      setCreateJobDialogOpen(true);
+    }
+  };
+  
+  const handleOpenCreateJobDialogConfirmed = () => {
+    if (createJobConfirmQuote) {
+      setSelectedQuoteForJob(createJobConfirmQuote as typeof quotes[0]);
+      setCreateJobDialogOpen(true);
+      setCreateJobConfirmQuote(null);
+    }
   };
   const handleOpenAddToJobDialog = (quote: typeof quotes[0]) => {
     setSelectedQuoteForJob(quote);
@@ -796,6 +849,20 @@ const Quotes = () => {
                         <PenTool className="w-3 h-3" />
                         Signed
                       </span>}
+                    {/* Linked Jobs Badge */}
+                    {(jobsPerQuote.get(quote.id) || 0) > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary flex items-center gap-1">
+                        <Briefcase className="w-3 h-3" />
+                        {jobsPerQuote.get(quote.id)} Job{(jobsPerQuote.get(quote.id) || 0) > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {/* Linked Invoices Badge */}
+                    {(invoicesPerQuote.get(quote.id) || 0) > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400 flex items-center gap-1">
+                        <Receipt className="w-3 h-3" />
+                        {invoicesPerQuote.get(quote.id)} Invoice{(invoicesPerQuote.get(quote.id) || 0) > 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
                   
                   {/* Action Menu */}
@@ -910,6 +977,20 @@ const Quotes = () => {
                         <PenTool className="w-3 h-3" />
                         Signed
                       </span>}
+                    {/* Linked Jobs Badge */}
+                    {(jobsPerQuote.get(quote.id) || 0) > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary flex items-center gap-1">
+                        <Briefcase className="w-3 h-3" />
+                        {jobsPerQuote.get(quote.id)} Job{(jobsPerQuote.get(quote.id) || 0) > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {/* Linked Invoices Badge */}
+                    {(invoicesPerQuote.get(quote.id) || 0) > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400 flex items-center gap-1">
+                        <Receipt className="w-3 h-3" />
+                        {invoicesPerQuote.get(quote.id)} Invoice{(invoicesPerQuote.get(quote.id) || 0) > 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
                   
                   {/* Action Menu */}
@@ -959,7 +1040,7 @@ const Quotes = () => {
                               <Briefcase className="w-4 h-4 mr-2" />
                               Add to Existing Job
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleConvertToInvoice(quote.id)}>
+                            <DropdownMenuItem onClick={() => handleConvertToInvoice(quote)}>
                               <ArrowRight className="w-4 h-4 mr-2" />
                               Convert to Invoice
                             </DropdownMenuItem>
@@ -1215,8 +1296,10 @@ const Quotes = () => {
                   <Button 
                     size="sm" 
                     onClick={() => {
-                      handleConvertToInvoice(viewingQuote.id);
-                      openViewingQuote(null);
+                      handleConvertToInvoice(viewingQuote);
+                      if ((invoicesPerQuote.get(viewingQuote.id) || 0) === 0) {
+                        openViewingQuote(null);
+                      }
                     }}
                   >
                     <ArrowRight className="w-4 h-4 mr-1" />
@@ -1267,6 +1350,54 @@ const Quotes = () => {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={() => archiveConfirmQuote && handleArchiveQuote(archiveConfirmQuote)}>
               Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Job Confirmation Dialog */}
+      <AlertDialog open={!!createJobConfirmQuote} onOpenChange={(open) => !open && setCreateJobConfirmQuote(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-primary" />
+              Job Already Exists
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This quote already has {jobsPerQuote.get(createJobConfirmQuote?.id || '') || 0} job(s) created from it. 
+              Are you sure you want to create another job? This may result in duplicate jobs.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleOpenCreateJobDialogConfirmed}>
+              Create Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create Invoice Confirmation Dialog */}
+      <AlertDialog open={!!createInvoiceConfirmQuote} onOpenChange={(open) => !open && setCreateInvoiceConfirmQuote(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <ArrowRight className="w-5 h-5 text-orange-500" />
+              Invoice Already Exists
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This quote already has {invoicesPerQuote.get(createInvoiceConfirmQuote?.id || '') || 0} invoice(s) created from it. 
+              Are you sure you want to create another invoice? This may result in duplicate invoices.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => createInvoiceConfirmQuote && handleConvertToInvoiceConfirmed(createInvoiceConfirmQuote.id)}
+              disabled={convertToInvoice.isPending}
+            >
+              {convertToInvoice.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Create Anyway
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
