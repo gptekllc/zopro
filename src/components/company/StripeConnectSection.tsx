@@ -27,6 +27,7 @@ interface StripeConnectSectionProps {
 const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isLoadingDashboard, setIsLoadingDashboard] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const updateCompany = useUpdateCompany();
 
@@ -50,6 +51,7 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
 
   const handleConnectStripe = async () => {
     setIsConnecting(true);
+    setConnectError(null);
     try {
       const { data, error } = await supabase.functions.invoke('create-stripe-connect-account');
       
@@ -80,6 +82,7 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
       toast.success('Opening Stripe onboarding...');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to start Stripe onboarding';
+      setConnectError(message);
       toast.error(message);
       console.error('Stripe Connect error:', error);
     } finally {
@@ -141,6 +144,28 @@ const StripeConnectSection = ({ company }: StripeConnectSectionProps) => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Error state with retry */}
+          {connectError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <span className="flex-1">{connectError}</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleConnectStripe} 
+                  disabled={isConnecting}
+                  className="shrink-0"
+                >
+                  {isConnecting ? (
+                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                  ) : null}
+                  Try Again
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {!hasStripeAccount && (
             <>
               <Alert>
