@@ -17,7 +17,7 @@ interface DocumentItem {
 }
 
 interface GeneratePDFRequest {
-  type: "quote" | "invoice";
+  type: "quote" | "invoice" | "job";
   documentId: string;
   action: "download" | "email";
   recipientEmail?: string;
@@ -34,18 +34,54 @@ function getPaymentMethodLabel(method: string | null): string {
   }
 }
 
+function getStatusLabel(type: string, status: string): string {
+  if (type === 'job') {
+    switch (status) {
+      case 'draft': return 'Draft';
+      case 'scheduled': return 'Scheduled';
+      case 'in_progress': return 'In Progress';
+      case 'completed': return 'Completed';
+      case 'invoiced': return 'Invoiced';
+      case 'paid': return 'Paid';
+      default: return status;
+    }
+  }
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 function generateHTML(
-  type: "quote" | "invoice",
+  type: "quote" | "invoice" | "job",
   document: any,
   company: any,
   customer: any,
-  items: DocumentItem[]
+  items: DocumentItem[],
+  assignee?: any
 ): string {
-  const documentNumber = type === "quote" ? document.quote_number : document.invoice_number;
-  const title = type === "quote" ? "QUOTE" : "INVOICE";
-  const dateLabel = type === "quote" ? "Quote Date" : "Invoice Date";
-  const validityLabel = type === "quote" ? "Valid Until" : "Due Date";
-  const validityDate = type === "quote" ? document.valid_until : document.due_date;
+  let documentNumber: string;
+  let title: string;
+  let dateLabel: string;
+  let validityLabel: string | null = null;
+  let validityDate: string | null = null;
+
+  if (type === "quote") {
+    documentNumber = document.quote_number;
+    title = "QUOTE";
+    dateLabel = "Quote Date";
+    validityLabel = "Valid Until";
+    validityDate = document.valid_until;
+  } else if (type === "invoice") {
+    documentNumber = document.invoice_number;
+    title = "INVOICE";
+    dateLabel = "Invoice Date";
+    validityLabel = "Due Date";
+    validityDate = document.due_date;
+  } else {
+    documentNumber = document.job_number;
+    title = "JOB SUMMARY";
+    dateLabel = "Created Date";
+    validityLabel = null;
+    validityDate = null;
+  }
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return "N/A";
@@ -53,6 +89,17 @@ function generateHTML(
       year: "numeric",
       month: "long",
       day: "numeric",
+    });
+  };
+
+  const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return "N/A";
+    return new Date(dateStr).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -76,6 +123,50 @@ function generateHTML(
         ${paymentTerms !== null && paymentTerms !== undefined ? `<p><strong>Payment Terms:</strong> ${paymentTerms === 0 ? 'Due on Receipt' : `Net ${paymentTerms} days`}</p>` : ''}
         ${lateFee && lateFee > 0 ? `<p><strong>Late Fee:</strong> ${lateFee}% on overdue balances</p>` : ''}
       </div>
+    </div>
+  ` : '';
+
+  // Job-specific info section
+  const jobInfoSection = type === "job" ? `
+    <div class="job-info">
+      <div class="info-row">
+        <div class="info-item">
+          <span class="info-label">Status</span>
+          <span class="info-value status-badge">${getStatusLabel('job', document.status)}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Priority</span>
+          <span class="info-value priority-${document.priority}">${document.priority?.toUpperCase() || 'MEDIUM'}</span>
+        </div>
+        ${assignee ? `
+          <div class="info-item">
+            <span class="info-label">Assigned To</span>
+            <span class="info-value">${assignee.full_name}</span>
+          </div>
+        ` : ''}
+      </div>
+      ${document.scheduled_start ? `
+        <div class="schedule-info">
+          <h3>Schedule</h3>
+          <p><strong>Scheduled Start:</strong> ${formatDateTime(document.scheduled_start)}</p>
+          ${document.scheduled_end ? `<p><strong>Scheduled End:</strong> ${formatDateTime(document.scheduled_end)}</p>` : ''}
+        </div>
+      ` : ''}
+      ${document.actual_start ? `
+        <div class="actual-info">
+          <h3>Actual Times</h3>
+          <p><strong>Started:</strong> ${formatDateTime(document.actual_start)}</p>
+          ${document.actual_end ? `<p><strong>Completed:</strong> ${formatDateTime(document.actual_end)}</p>` : ''}
+        </div>
+      ` : ''}
+    </div>
+  ` : '';
+
+  // Description section for jobs
+  const descriptionSection = type === "job" && document.description ? `
+    <div class="description-section">
+      <h3>Description</h3>
+      <p>${document.description}</p>
     </div>
   ` : '';
 
@@ -115,6 +206,23 @@ function generateHTML(
     .notes { margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
     .notes h3 { font-size: 14px; color: #888; margin-bottom: 10px; }
     .footer { margin-top: 60px; text-align: center; color: #888; font-size: 12px; }
+    .job-info { margin-bottom: 30px; }
+    .info-row { display: flex; gap: 30px; margin-bottom: 20px; }
+    .info-item { }
+    .info-label { display: block; font-size: 12px; text-transform: uppercase; color: #888; margin-bottom: 4px; }
+    .info-value { font-weight: 600; }
+    .status-badge { padding: 4px 10px; background: #e8f4fc; color: #2563eb; border-radius: 4px; font-size: 14px; }
+    .priority-low { color: #22c55e; }
+    .priority-medium { color: #f59e0b; }
+    .priority-high { color: #f97316; }
+    .priority-urgent { color: #dc2626; font-weight: bold; }
+    .schedule-info, .actual-info { margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+    .schedule-info h3, .actual-info h3 { font-size: 12px; text-transform: uppercase; color: #888; margin-bottom: 10px; }
+    .description-section { margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+    .description-section h3 { font-size: 12px; text-transform: uppercase; color: #888; margin-bottom: 10px; }
+    @media print {
+      .container { padding: 20px; }
+    }
   </style>
 </head>
 <body>
@@ -135,7 +243,7 @@ function generateHTML(
 
     <div class="addresses">
       <div class="address-block">
-        <h3>Bill To</h3>
+        <h3>${type === "job" ? "Customer" : "Bill To"}</h3>
         <p><strong>${customer?.name || "Customer"}</strong></p>
         ${customer?.address ? `<p>${customer.address}</p>` : ""}
         ${customer?.city || customer?.state || customer?.zip ? `<p>${[customer.city, customer.state, customer.zip].filter(Boolean).join(", ")}</p>` : ""}
@@ -144,61 +252,74 @@ function generateHTML(
       </div>
     </div>
 
+    ${jobInfoSection}
+
+    ${descriptionSection}
+
     <div class="dates">
       <p><strong>${dateLabel}:</strong> ${formatDate(document.created_at)}</p>
-      ${validityDate ? `<p><strong>${validityLabel}:</strong> ${formatDate(validityDate)}</p>` : ""}
+      ${validityDate && validityLabel ? `<p><strong>${validityLabel}:</strong> ${formatDate(validityDate)}</p>` : ""}
     </div>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Description</th>
-          <th>Qty</th>
-          <th>Unit Price</th>
-          <th>Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${items.map((item) => `
+    ${items && items.length > 0 ? `
+      <table>
+        <thead>
           <tr>
-            <td>${item.description}</td>
-            <td>${item.quantity}</td>
-            <td>${formatCurrency(Number(item.unit_price))}</td>
-            <td>${formatCurrency(Number(item.total))}</td>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Amount</th>
           </tr>
-        `).join("")}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          ${items.map((item) => `
+            <tr>
+              <td>${item.description}</td>
+              <td>${item.quantity}</td>
+              <td>${formatCurrency(Number(item.unit_price))}</td>
+              <td>${formatCurrency(Number(item.total))}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
 
-    <div class="totals">
-      <div class="totals-row">
-        <span>Subtotal</span>
-        <span>${formatCurrency(Number(document.subtotal))}</span>
-      </div>
-      <div class="totals-row">
-        <span>Tax</span>
-        <span>${formatCurrency(Number(document.tax))}</span>
-      </div>
-      <div class="totals-row" style="border-bottom: 2px solid #eee;">
-        <span>Invoice Total</span>
-        <span>${formatCurrency(Number(document.total))}</span>
-      </div>
-      ${document.late_fee_amount && Number(document.late_fee_amount) > 0 ? `
-        <div class="totals-row" style="color: #dc2626;">
-          <span>Late Fee${lateFee && lateFee > 0 ? ` (${lateFee}%)` : ''}</span>
-          <span>+${formatCurrency(Number(document.late_fee_amount))}</span>
+      <div class="totals">
+        <div class="totals-row">
+          <span>Subtotal</span>
+          <span>${formatCurrency(Number(document.subtotal || 0))}</span>
         </div>
-        <div class="totals-row total" style="color: #dc2626;">
-          <span>Total Due</span>
-          <span>${formatCurrency(Number(document.total) + Number(document.late_fee_amount))}</span>
+        <div class="totals-row">
+          <span>Tax</span>
+          <span>${formatCurrency(Number(document.tax || 0))}</span>
         </div>
-      ` : `
-        <div class="totals-row total">
-          <span>Total</span>
-          <span>${formatCurrency(Number(document.total))}</span>
-        </div>
-      `}
-    </div>
+        ${type === "invoice" ? `
+          <div class="totals-row" style="border-bottom: 2px solid #eee;">
+            <span>Invoice Total</span>
+            <span>${formatCurrency(Number(document.total || 0))}</span>
+          </div>
+          ${document.late_fee_amount && Number(document.late_fee_amount) > 0 ? `
+            <div class="totals-row" style="color: #dc2626;">
+              <span>Late Fee${lateFee && lateFee > 0 ? ` (${lateFee}%)` : ''}</span>
+              <span>+${formatCurrency(Number(document.late_fee_amount))}</span>
+            </div>
+            <div class="totals-row total" style="color: #dc2626;">
+              <span>Total Due</span>
+              <span>${formatCurrency(Number(document.total) + Number(document.late_fee_amount))}</span>
+            </div>
+          ` : `
+            <div class="totals-row total">
+              <span>Total</span>
+              <span>${formatCurrency(Number(document.total || 0))}</span>
+            </div>
+          `}
+        ` : `
+          <div class="totals-row total">
+            <span>Total</span>
+            <span>${formatCurrency(Number(document.total || 0))}</span>
+          </div>
+        `}
+      </div>
+    ` : ''}
 
     ${paymentInfoSection}
 
@@ -233,11 +354,26 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch the document with items
-    const tableName = type === "quote" ? "quotes" : "invoices";
-    const itemsTable = type === "quote" ? "quote_items" : "invoice_items";
-    const itemsFk = type === "quote" ? "quote_id" : "invoice_id";
+    // Determine table and item table names
+    let tableName: string;
+    let itemsTable: string;
+    let itemsFk: string;
 
+    if (type === "quote") {
+      tableName = "quotes";
+      itemsTable = "quote_items";
+      itemsFk = "quote_id";
+    } else if (type === "invoice") {
+      tableName = "invoices";
+      itemsTable = "invoice_items";
+      itemsFk = "invoice_id";
+    } else {
+      tableName = "jobs";
+      itemsTable = "job_items";
+      itemsFk = "job_id";
+    }
+
+    // Fetch the document
     const { data: document, error: docError } = await supabase
       .from(tableName)
       .select("*")
@@ -249,6 +385,8 @@ serve(async (req) => {
       throw new Error(`${type} not found`);
     }
 
+    console.log(`Found ${type}:`, document);
+
     // Fetch items
     const { data: items, error: itemsError } = await supabase
       .from(itemsTable)
@@ -258,6 +396,8 @@ serve(async (req) => {
     if (itemsError) {
       console.error("Items fetch error:", itemsError);
     }
+
+    console.log(`Found ${items?.length || 0} items`);
 
     // Fetch company
     const { data: company, error: companyError } = await supabase
@@ -281,18 +421,45 @@ serve(async (req) => {
       console.error("Customer fetch error:", customerError);
     }
 
+    // Fetch assignee for jobs
+    let assignee = null;
+    if (type === "job" && document.assigned_to) {
+      const { data: assigneeData, error: assigneeError } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", document.assigned_to)
+        .single();
+
+      if (!assigneeError) {
+        assignee = assigneeData;
+      }
+    }
+
     // Generate HTML
-    const html = generateHTML(type, document, company, customer, items || []);
-    const documentNumber = type === "quote" ? document.quote_number : document.invoice_number;
+    const html = generateHTML(type, document, company, customer, items || [], assignee);
+    
+    let documentNumber: string;
+    if (type === "quote") {
+      documentNumber = document.quote_number;
+    } else if (type === "invoice") {
+      documentNumber = document.invoice_number;
+    } else {
+      documentNumber = document.job_number;
+    }
 
     if (action === "email") {
       if (!recipientEmail) {
         throw new Error("Recipient email is required for email action");
       }
 
-      const subject = type === "quote" 
-        ? `Quote ${documentNumber} from ${company?.name || "Our Company"}`
-        : `Invoice ${documentNumber} from ${company?.name || "Our Company"}`;
+      let subject: string;
+      if (type === "quote") {
+        subject = `Quote ${documentNumber} from ${company?.name || "Our Company"}`;
+      } else if (type === "invoice") {
+        subject = `Invoice ${documentNumber} from ${company?.name || "Our Company"}`;
+      } else {
+        subject = `Job Summary ${documentNumber} from ${company?.name || "Our Company"}`;
+      }
 
       // Payment info for email
       const paymentMethodLabel = getPaymentMethodLabel(company?.default_payment_method);
@@ -302,9 +469,9 @@ serve(async (req) => {
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Hello ${customer?.name || ""},</h2>
-          <p>Please find your ${type} attached below.</p>
-          <p><strong>${type === "quote" ? "Quote" : "Invoice"} Number:</strong> ${documentNumber}</p>
-          <p><strong>Total Amount:</strong> $${Number(document.total).toLocaleString()}</p>
+          <p>Please find your ${type === "job" ? "job summary" : type} attached below.</p>
+          <p><strong>${type === "quote" ? "Quote" : type === "invoice" ? "Invoice" : "Job"} Number:</strong> ${documentNumber}</p>
+          ${document.total ? `<p><strong>Total Amount:</strong> $${Number(document.total).toLocaleString()}</p>` : ""}
           ${type === "invoice" && document.due_date ? `<p><strong>Due Date:</strong> ${new Date(document.due_date).toLocaleDateString()}</p>` : ""}
           ${type === "quote" && document.valid_until ? `<p><strong>Valid Until:</strong> ${new Date(document.valid_until).toLocaleDateString()}</p>` : ""}
           ${type === "invoice" ? `
@@ -323,7 +490,9 @@ serve(async (req) => {
         </div>
       `;
 
-      const { error: emailError } = await resend.emails.send({
+      console.log(`Sending email to ${recipientEmail}`);
+
+      const { data: emailData, error: emailError } = await resend.emails.send({
         from: `${company?.name || "Company"} <onboarding@resend.dev>`,
         to: [recipientEmail],
         subject,
@@ -332,11 +501,13 @@ serve(async (req) => {
 
       if (emailError) {
         console.error("Email send error:", emailError);
-        throw new Error("Failed to send email: " + emailError.message);
+        throw new Error("Failed to send email: " + (emailError as any).message);
       }
 
-      // Update document status to 'sent' if it's a draft
-      if (document.status === "draft") {
+      console.log("Email sent successfully:", emailData);
+
+      // Update document status to 'sent' if it's a draft (not for jobs)
+      if (type !== "job" && document.status === "draft") {
         await supabase
           .from(tableName)
           .update({ status: "sent" })
@@ -352,6 +523,7 @@ serve(async (req) => {
     }
 
     // For download action, return HTML content
+    console.log("Returning HTML for download");
     return new Response(
       JSON.stringify({ success: true, html, documentNumber }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -359,9 +531,8 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error("Error in generate-pdf function:", error);
-    // Return sanitized error message to client - don't expose internal details
     return new Response(
-      JSON.stringify({ error: "Failed to generate document. Please try again." }),
+      JSON.stringify({ error: error.message || "Failed to generate document. Please try again." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
