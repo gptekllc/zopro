@@ -25,6 +25,7 @@ import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { Separator } from '@/components/ui/separator';
+import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
@@ -1113,7 +1114,7 @@ const Quotes = () => {
 
               {/* Signature Section */}
               <Separator />
-              <div className="sm:max-w-sm">
+              <ConstrainedPanel>
                 <SignatureSection 
                   signatureId={viewingQuote.signature_id}
                   title="Customer Signature"
@@ -1146,7 +1147,7 @@ const Quotes = () => {
                     </Button>
                   ) : null;
                 })()}
-              </div>
+              </ConstrainedPanel>
 
               {/* Actions */}
               <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">

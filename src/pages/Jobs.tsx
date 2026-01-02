@@ -41,6 +41,7 @@ import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { SaveAsTemplateDialog } from '@/components/jobs/SaveAsTemplateDialog';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
+import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 interface LineItem {
@@ -1396,7 +1397,7 @@ const Jobs = () => {
                   </div>
 
                   {/* Completion Signature Section */}
-                  <div className="sm:max-w-sm">
+                  <ConstrainedPanel>
                     <SignatureSection 
                       signatureId={(viewingJob as any).completion_signature_id}
                       title="Customer Completion Signature"
@@ -1405,7 +1406,7 @@ const Jobs = () => {
                       collectButtonText="Collect Completion Signature"
                       isCollecting={signJobCompletion.isPending}
                     />
-                  </div>
+                  </ConstrainedPanel>
                 </TabsContent>
                 
                 <TabsContent value="photos" className="mt-4">
