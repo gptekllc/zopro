@@ -21,13 +21,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore, PenTool, Eye, UserCog, ChevronRight, CheckCircle2, Receipt } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore, PenTool, Eye, UserCog, ChevronRight, CheckCircle2, Receipt, Link2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { Separator } from '@/components/ui/separator';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
@@ -1137,7 +1138,19 @@ const Quotes = () => {
               </div>
             </DialogHeader>
 
-            <div className="space-y-4 sm:space-y-6">
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="flex-wrap h-auto gap-1 p-1">
+                <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-3">Details</TabsTrigger>
+                <TabsTrigger value="linked" className="text-xs sm:text-sm px-2 sm:px-3">
+                  Linked Documents ({
+                    safeJobs.filter((j: any) => j?.quote_id === viewingQuote.id).length +
+                    safeInvoices.filter((inv: any) => inv?.quote_id === viewingQuote.id).length
+                  })
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details" className="mt-4">
+                <div className="space-y-4 sm:space-y-6">
               {/* Customer & Dates - responsive grid */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div>
@@ -1307,7 +1320,73 @@ const Quotes = () => {
                   </Button>
                 )}
               </div>
-            </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="linked" className="mt-4">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Link2 className="w-4 h-4" />
+                    Linked Documents
+                  </div>
+
+                  {(() => {
+                    const linkedJob = safeJobs.find((j: any) => j?.quote_id === viewingQuote.id) || null;
+                    const linkedInvoices = safeInvoices.filter((inv: any) => inv?.quote_id === viewingQuote.id);
+
+                    if (!linkedJob && linkedInvoices.length === 0) {
+                      return (
+                        <div className="p-3 rounded-lg border bg-muted/50 text-sm text-muted-foreground">
+                          No linked jobs or invoices yet.
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2">
+                        {linkedJob && (
+                          <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
+                            <div className="flex items-center gap-3">
+                              <Briefcase className="w-4 h-4 text-muted-foreground shrink-0" />
+                              <div>
+                                <p className="font-medium text-sm">{linkedJob.job_number}</p>
+                                <p className="text-xs text-muted-foreground">{linkedJob.title}</p>
+                              </div>
+                            </div>
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground capitalize">
+                              {String(linkedJob.status).replace('_', ' ')}
+                            </span>
+                          </div>
+                        )}
+
+                        {linkedInvoices.map((invoice: any) => (
+                          <div
+                            key={invoice.id}
+                            className="flex items-center justify-between p-3 rounded-lg border bg-muted/50"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Receipt className="w-4 h-4 text-muted-foreground shrink-0" />
+                              <div>
+                                <p className="font-medium text-sm">{invoice.invoice_number}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-sm">${Number(invoice.total).toFixed(2)}</p>
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground capitalize">
+                                {invoice.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>}
 
