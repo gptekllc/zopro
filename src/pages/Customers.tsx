@@ -150,7 +150,7 @@ const Customers = () => {
         
         <Dialog open={isDialogOpen} onOpenChange={(open) => { openEditDialog(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="w-4 h-4" />Add Customer</Button>
+            <Button className="gap-2 hidden sm:flex"><Plus className="w-4 h-4" />Add Customer</Button>
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -334,6 +334,14 @@ const Customers = () => {
           </TabsContent>
         )}
       </Tabs>
+
+      {/* Mobile Floating Action Button */}
+      <Button
+        className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50"
+        onClick={() => openEditDialog(true)}
+      >
+        <Plus className="w-6 h-6" />
+      </Button>
     </div>
   );
 };
