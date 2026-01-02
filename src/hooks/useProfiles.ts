@@ -14,6 +14,10 @@ export interface Profile {
   employment_status: 'active' | 'on_leave' | 'terminated' | null;
   hire_date: string | null;
   termination_date: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useProfiles, useUpdateProfile } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -8,32 +8,49 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, UserCog, Mail, Phone, Edit, Shield, Loader2, UserPlus } from 'lucide-react';
+import { Search, UserCog, Mail, Phone, Edit, Shield, Loader2, UserPlus, Camera, AlertTriangle, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { compressImageToFile } from '@/lib/imageCompression';
+import { format } from 'date-fns';
 
-const AVAILABLE_ROLES = ['admin', 'manager', 'technician', 'customer'] as const;
+const AVAILABLE_ROLES = ['admin', 'manager', 'technician'] as const;
 type AppRole = typeof AVAILABLE_ROLES[number];
 
+const EMPLOYMENT_STATUSES = ['active', 'on_leave', 'terminated'] as const;
+type EmploymentStatus = typeof EMPLOYMENT_STATUSES[number];
+
 const Technicians = () => {
-  const { user, profile: currentProfile, isAdmin } = useAuth();
+  const { user, profile: currentProfile, isAdmin, isManager } = useAuth();
+  const canManageTeam = isAdmin || isManager;
   const { data: profiles = [], isLoading } = useProfiles();
   const { data: company } = useCompany();
-  const updateProfile = useUpdateProfile();
   const queryClient = useQueryClient();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
     phone: '',
-    role: 'technician',
+    role: 'technician' as AppRole,
+    employment_status: 'active' as EmploymentStatus,
+    hire_date: '',
+    termination_date: '',
+    hourly_rate: '',
+    address: '',
+    city: '',
+    state: '',
+    zip: '',
+    avatar_url: '',
   });
   
   // Add member form state
@@ -41,13 +58,89 @@ const Technicians = () => {
   const [newMemberName, setNewMemberName] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<AppRole>('technician');
 
-  // Filter to show only technicians and admins
-  const teamMembers = profiles.filter(p => p.role === 'admin' || p.role === 'technician');
+  // Filter to show only technicians, managers, and admins (not customers)
+  const teamMembers = profiles.filter(p => p.role === 'admin' || p.role === 'technician' || p.role === 'manager');
   
   const filteredUsers = teamMembers.filter(p =>
     (p.full_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
     p.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Update team member mutation with full profile data
+  const updateTeamMemberMutation = useMutation({
+    mutationFn: async (data: {
+      userId: string;
+      full_name: string;
+      phone: string | null;
+      role: AppRole;
+      employment_status: EmploymentStatus;
+      hire_date: string | null;
+      termination_date: string | null;
+      hourly_rate: number | null;
+      address: string | null;
+      city: string | null;
+      state: string | null;
+      zip: string | null;
+      avatar_url: string | null;
+    }) => {
+      // Update role in user_roles table
+      const { error: deleteError } = await (supabase as any)
+        .from('user_roles')
+        .delete()
+        .eq('user_id', data.userId);
+      
+      if (deleteError) throw deleteError;
+
+      const { error: insertError } = await (supabase as any)
+        .from('user_roles')
+        .insert({ user_id: data.userId, role: data.role });
+      
+      if (insertError) throw insertError;
+
+      const updates: Record<string, any> = {
+        full_name: data.full_name || null,
+        role: data.role,
+        employment_status: data.employment_status,
+        hire_date: data.hire_date || null,
+        phone: data.phone || null,
+        hourly_rate: data.hourly_rate,
+        address: data.address || null,
+        city: data.city || null,
+        state: data.state || null,
+        zip: data.zip || null,
+        avatar_url: data.avatar_url || null,
+      };
+
+      // If terminating, also set deleted_at
+      if (data.employment_status === 'terminated') {
+        updates.termination_date = data.termination_date || new Date().toISOString().split('T')[0];
+        updates.deleted_at = new Date().toISOString();
+      } else {
+        updates.termination_date = null;
+      }
+
+      const { error } = await (supabase as any)
+        .from('profiles')
+        .update(updates)
+        .eq('id', data.userId);
+      
+      if (error) throw error;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['team_members'] });
+      if (variables.employment_status === 'terminated') {
+        toast.success('Team member terminated');
+      } else {
+        toast.success('Team member updated successfully');
+      }
+      setIsDialogOpen(false);
+      resetForm();
+    },
+    onError: (error: any) => {
+      toast.error('Failed to update member: ' + error.message);
+    },
+  });
 
   // Invite member mutation
   const inviteMemberMutation = useMutation({
@@ -95,7 +188,21 @@ const Technicians = () => {
   };
 
   const resetForm = () => {
-    setFormData({ full_name: '', email: '', phone: '', role: 'technician' });
+    setFormData({ 
+      full_name: '', 
+      email: '', 
+      phone: '', 
+      role: 'technician',
+      employment_status: 'active',
+      hire_date: '',
+      termination_date: '',
+      hourly_rate: '',
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      avatar_url: '',
+    });
     setEditingUser(null);
   };
 
@@ -107,18 +214,49 @@ const Technicians = () => {
       return;
     }
     
+    updateTeamMemberMutation.mutate({
+      userId: editingUser,
+      full_name: formData.full_name,
+      phone: formData.phone || null,
+      role: formData.role,
+      employment_status: formData.employment_status,
+      hire_date: formData.hire_date || null,
+      termination_date: formData.termination_date || null,
+      hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+      address: formData.address || null,
+      city: formData.city || null,
+      state: formData.state || null,
+      zip: formData.zip || null,
+      avatar_url: formData.avatar_url || null,
+    });
+  };
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !editingUser) return;
+
+    setIsUploadingAvatar(true);
     try {
-      await updateProfile.mutateAsync({
-        id: editingUser,
-        full_name: formData.full_name,
-        phone: formData.phone,
-        role: formData.role,
-      });
-      toast.success('Team member updated successfully');
-      setIsDialogOpen(false);
-      resetForm();
-    } catch (error) {
-      toast.error('Failed to update team member');
+      const compressedFile = await compressImageToFile(file, 70, 400);
+      const fileName = `${editingUser}-${Date.now()}.jpg`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(filePath, compressedFile, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('company-logos')
+        .getPublicUrl(filePath);
+
+      setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
+      toast.success('Avatar uploaded');
+    } catch (error: any) {
+      toast.error('Failed to upload avatar: ' + error.message);
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
@@ -127,16 +265,54 @@ const Technicians = () => {
       full_name: profile.full_name || '',
       email: profile.email,
       phone: profile.phone || '',
-      role: profile.role,
+      role: (profile.role as AppRole) || 'technician',
+      employment_status: (profile.employment_status as EmploymentStatus) || 'active',
+      hire_date: profile.hire_date || '',
+      termination_date: profile.termination_date || '',
+      hourly_rate: profile.hourly_rate?.toString() || '',
+      address: profile.address || '',
+      city: profile.city || '',
+      state: profile.state || '',
+      zip: profile.zip || '',
+      avatar_url: profile.avatar_url || '',
     });
     setEditingUser(profile.id);
     setIsDialogOpen(true);
+  };
+
+  // Check if current user can edit a specific team member
+  const canEditMember = (profile: typeof profiles[0]) => {
+    // Can't edit yourself
+    if (profile.id === user?.id) return false;
+    
+    // Admins can edit anyone
+    if (isAdmin) return true;
+    
+    // Managers can only edit technicians, not other managers or admins
+    if (isManager && (profile.role === 'admin' || profile.role === 'manager')) return false;
+    
+    return canManageTeam;
+  };
+
+  const getEmploymentStatusBadge = (status: string | null) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
+      case 'on_leave':
+        return <Badge className="bg-warning/10 text-warning border-warning/20">On Leave</Badge>;
+      case 'terminated':
+        return <Badge variant="destructive">Terminated</Badge>;
+      default:
+        return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
+    }
   };
 
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'admin':
         return 'bg-primary/10 text-primary';
+      case 'manager':
+        return 'bg-secondary/50 text-secondary-foreground';
       case 'technician':
         return 'bg-accent/10 text-accent';
       default:
@@ -174,17 +350,55 @@ const Technicians = () => {
         setIsDialogOpen(open);
         if (!open) resetForm();
       }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Team Member</DialogTitle>
+            <DialogDescription>
+              Update details for {formData.full_name || formData.email}
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 py-4">
+            {/* Avatar Upload */}
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative">
+                <Avatar className="w-20 h-20">
+                  <AvatarImage src={formData.avatar_url} alt={formData.full_name} />
+                  <AvatarFallback className="text-lg">
+                    {formData.full_name ? formData.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={isUploadingAvatar}
+                >
+                  {isUploadingAvatar ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </Button>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleAvatarUpload}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Click the camera to upload a photo</p>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name">Full Name *</Label>
               <Input
                 id="name"
                 value={formData.full_name}
                 onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                placeholder="John Doe"
                 required
               />
             </div>
@@ -198,48 +412,163 @@ const Technicians = () => {
                 disabled
                 className="bg-muted"
               />
-              <p className="text-xs text-muted-foreground">Email cannot be changed here</p>
+              <p className="text-xs text-muted-foreground">Email cannot be changed</p>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select
-                value={formData.role}
-                onValueChange={(value) => setFormData({ ...formData, role: value })}
+              <Label htmlFor="editRole">Role</Label>
+              <Select 
+                value={formData.role} 
+                onValueChange={(v) => setFormData({ ...formData, role: v as AppRole })}
                 disabled={editingUser === user?.id}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="manager">Manager</SelectItem>
-                  <SelectItem value="technician">Technician</SelectItem>
+                  {AVAILABLE_ROLES.filter(role => {
+                    // Managers cannot assign admin role - only admins can
+                    if (role === 'admin' && !isAdmin) return false;
+                    return true;
+                  }).map((role) => (
+                    <SelectItem key={role} value={role}>
+                      <span className="capitalize">{role}</span>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {!isAdmin && (
+                <p className="text-xs text-muted-foreground">Only admins can assign the admin role</p>
+              )}
               {editingUser === user?.id && (
                 <p className="text-xs text-muted-foreground">You cannot change your own role</p>
               )}
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="employmentStatus">Employment Status</Label>
+              <Select 
+                value={formData.employment_status} 
+                onValueChange={(v) => setFormData({ ...formData, employment_status: v as EmploymentStatus })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="on_leave">On Leave</SelectItem>
+                  <SelectItem value="terminated">Terminated</SelectItem>
+                </SelectContent>
+              </Select>
+              {formData.employment_status === 'on_leave' && (
+                <p className="text-xs text-warning flex items-center gap-1 mt-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  Members on leave cannot be assigned to new jobs
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="hireDate">Hire Date</Label>
+              <Input
+                id="hireDate"
+                type="date"
+                value={formData.hire_date}
+                onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
+              />
+            </div>
+
+            {formData.employment_status === 'terminated' && (
+              <div className="space-y-2">
+                <Label htmlFor="terminationDate">Termination Date</Label>
+                <Input
+                  id="terminationDate"
+                  type="date"
+                  value={formData.termination_date}
+                  onChange={(e) => setFormData({ ...formData, termination_date: e.target.value })}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="(555) 123-4567"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="hourlyRate">Hourly Rate ($)</Label>
+              <Input
+                id="hourlyRate"
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.hourly_rate}
+                onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+                placeholder="0.00"
+              />
+            </div>
+
+            {/* Address Section */}
+            <div className="pt-4 border-t space-y-4">
+              <h4 className="text-sm font-medium text-muted-foreground">Address</h4>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editAddress">Street Address</Label>
+                <Input
+                  id="editAddress"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="123 Main St"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="editCity">City</Label>
+                  <Input
+                    id="editCity"
+                    value={formData.city}
+                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                    placeholder="City"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editState">State</Label>
+                  <Input
+                    id="editState"
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                    placeholder="State"
+                  />
+                </div>
+              </div>
+
+              <div className="w-1/2 space-y-2">
+                <Label htmlFor="editZip">ZIP Code</Label>
+                <Input
+                  id="editZip"
+                  value={formData.zip}
+                  onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                  placeholder="12345"
+                />
+              </div>
+            </div>
             
-            <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1" disabled={updateProfile.isPending}>
-                {updateProfile.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Update Member
+              <Button type="submit" disabled={updateTeamMemberMutation.isPending}>
+                {updateTeamMemberMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Save Changes
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
@@ -282,7 +611,7 @@ const Technicians = () => {
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {AVAILABLE_ROLES.filter(r => r !== 'customer').map((role) => (
+                  {AVAILABLE_ROLES.map((role) => (
                     <SelectItem key={role} value={role}>
                       <span className="capitalize">{role}</span>
                     </SelectItem>
