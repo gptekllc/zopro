@@ -291,8 +291,17 @@ export function JobDetailDialog({
           )}
 
           {/* Actions */}
-          <div className="flex gap-2 pt-2 sm:pt-4">
-            <Button variant="outline" size="sm" onClick={() => onEdit?.(job.id)} className="w-full sm:w-auto sm:ml-auto">
+          <div className="flex flex-wrap gap-2 pt-2 sm:pt-4 justify-end">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleCreateUpsellQuote}
+              disabled={convertJobToQuote.isPending}
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Create Quote
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onEdit?.(job.id)}>
               <Edit className="w-4 h-4 mr-1" /> Open in Jobs
             </Button>
           </div>
