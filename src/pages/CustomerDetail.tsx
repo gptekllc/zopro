@@ -229,6 +229,26 @@ const CustomerDetail = () => {
     }
   };
 
+  const handleInvoiceStatusChange = async (invoiceId: string, status: string) => {
+    try {
+      const updateData: { id: string; status: string; paid_at?: string } = {
+        id: invoiceId,
+        status,
+      };
+      if (status === 'paid') {
+        updateData.paid_at = new Date().toISOString();
+      }
+      await updateInvoice.mutateAsync(updateData as any);
+      toast.success(`Invoice marked as ${status}`);
+    } catch {
+      toast.error('Failed to update invoice status');
+    }
+  };
+
+  const handleDuplicateInvoice = (invoiceId: string) => {
+    navigate(`/invoices?duplicate=${invoiceId}`);
+  };
+
   const handleActivityClick = (activity: typeof activities[0]) => {
     setActivityDialogOpen(false);
     if (activity.type === 'job') {
@@ -809,6 +829,8 @@ const CustomerDetail = () => {
         onEmail={handleEmailInvoice}
         onMarkPaid={handleMarkInvoicePaid}
         onEdit={(invoiceId) => navigate(`/invoices?view=${invoiceId}`)}
+        onDuplicate={handleDuplicateInvoice}
+        onStatusChange={handleInvoiceStatusChange}
         onViewSignature={(sigId) => setSelectedSignatureId(sigId)}
       />
 
