@@ -23,6 +23,7 @@ export interface Company {
   stripe_onboarding_complete: boolean | null;
   stripe_charges_enabled: boolean | null;
   stripe_payouts_enabled: boolean | null;
+  stripe_payments_enabled: boolean | null;
   platform_fee_percentage: number | null;
   created_at: string;
   updated_at: string;

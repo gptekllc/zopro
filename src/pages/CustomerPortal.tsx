@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { loadStripe } from '@stripe/stripe-js';
@@ -31,6 +31,14 @@ interface CustomerData {
     id: string;
     name: string;
     logo_url: string | null;
+    address: string | null;
+    city: string | null;
+    state: string | null;
+    zip: string | null;
+    phone: string | null;
+    email: string | null;
+    stripe_payments_enabled: boolean | null;
+    default_payment_method: string | null;
   };
 }
 
@@ -705,10 +713,12 @@ const CustomerPortal = () => {
                 <Badge variant="secondary" className="ml-1">{unpaidInvoices.length}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="payment-methods" className="flex items-center gap-2">
-              <Wallet className="w-4 h-4" />
-              Payment Methods
-            </TabsTrigger>
+            {customerData?.company?.stripe_payments_enabled !== false && (
+              <TabsTrigger value="payment-methods" className="flex items-center gap-2">
+                <Wallet className="w-4 h-4" />
+                Payment Methods
+              </TabsTrigger>
+            )}
             <TabsTrigger value="jobs">Service History</TabsTrigger>
           </TabsList>
 
@@ -801,10 +811,52 @@ const CustomerPortal = () => {
                   Your Invoices
                 </CardTitle>
                 <CardDescription>
-                  View and pay your invoices online
+                  {customerData?.company?.stripe_payments_enabled !== false 
+                    ? 'View and pay your invoices online'
+                    : 'View your invoices and payment instructions'}
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* Show payment instructions when online payments are disabled */}
+                {customerData?.company?.stripe_payments_enabled === false && unpaidInvoices.length > 0 && (
+                  <div className="p-4 bg-muted/50 rounded-lg border">
+                    <div className="flex items-start gap-3">
+                      <Banknote className="w-5 h-5 text-primary mt-0.5" />
+                      <div className="space-y-2">
+                        <h4 className="font-medium">Payment Instructions</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {customerData.company.default_payment_method === 'cash' && 
+                            'Please pay in cash upon service completion or at our office.'}
+                          {customerData.company.default_payment_method === 'check' && 
+                            'Please mail a check to the address below.'}
+                          {customerData.company.default_payment_method === 'bank_transfer' && 
+                            'Please arrange a bank transfer. Contact us for account details.'}
+                          {(!customerData.company.default_payment_method || customerData.company.default_payment_method === 'any') && 
+                            'Please contact us for payment arrangements. We accept cash, check, or bank transfer.'}
+                        </p>
+                        {customerData.company.address && (
+                          <div className="flex items-start gap-2 text-sm text-muted-foreground mt-2">
+                            <MapPin className="w-4 h-4 mt-0.5" />
+                            <span>
+                              {customerData.company.name}<br />
+                              {customerData.company.address}
+                              {customerData.company.city && `, ${customerData.company.city}`}
+                              {customerData.company.state && `, ${customerData.company.state}`}
+                              {customerData.company.zip && ` ${customerData.company.zip}`}
+                            </span>
+                          </div>
+                        )}
+                        {customerData.company.phone && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Phone className="w-4 h-4" />
+                            <span>{customerData.company.phone}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {invoices.length > 0 ? (
                   <Table>
                     <TableHeader>
@@ -843,7 +895,7 @@ const CustomerPortal = () => {
                                   <Download className="w-4 h-4" />
                                 )}
                               </Button>
-                              {invoice.status !== 'paid' && (
+                              {invoice.status !== 'paid' && customerData?.company?.stripe_payments_enabled !== false && (
                                 <Button
                                   size="sm"
                                   onClick={() => handlePayInvoice(invoice)}

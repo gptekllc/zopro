@@ -32,6 +32,7 @@ export type Database = {
           stripe_account_id: string | null
           stripe_charges_enabled: boolean | null
           stripe_onboarding_complete: boolean | null
+          stripe_payments_enabled: boolean | null
           stripe_payouts_enabled: boolean | null
           tax_rate: number | null
           timezone: string | null
@@ -55,6 +56,7 @@ export type Database = {
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean | null
           stripe_onboarding_complete?: boolean | null
+          stripe_payments_enabled?: boolean | null
           stripe_payouts_enabled?: boolean | null
           tax_rate?: number | null
           timezone?: string | null
@@ -78,6 +80,7 @@ export type Database = {
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean | null
           stripe_onboarding_complete?: boolean | null
+          stripe_payments_enabled?: boolean | null
           stripe_payouts_enabled?: boolean | null
           tax_rate?: number | null
           timezone?: string | null
