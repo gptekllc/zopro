@@ -55,7 +55,8 @@ function generateHTML(
   company: any,
   customer: any,
   items: DocumentItem[],
-  assignee?: any
+  assignee?: any,
+  signature?: any
 ): string {
   let documentNumber: string;
   let title: string;
@@ -170,6 +171,26 @@ function generateHTML(
     </div>
   ` : '';
 
+  // Signature section
+  const signatureSection = signature ? `
+    <div class="signature-section">
+      <h3>Signature</h3>
+      <div class="signature-content">
+        <img src="${signature.signature_data}" alt="Signature" class="signature-image" />
+        <div class="signature-details">
+          <p><strong>Signed by:</strong> ${signature.signer_name}</p>
+          <p><strong>Date:</strong> ${new Date(signature.signed_at).toLocaleString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}</p>
+        </div>
+      </div>
+    </div>
+  ` : '';
+
   return `
 <!DOCTYPE html>
 <html>
@@ -220,6 +241,12 @@ function generateHTML(
     .schedule-info h3, .actual-info h3 { font-size: 12px; text-transform: uppercase; color: #888; margin-bottom: 10px; }
     .description-section { margin-bottom: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
     .description-section h3 { font-size: 12px; text-transform: uppercase; color: #888; margin-bottom: 10px; }
+    .signature-section { margin-top: 40px; padding: 20px; border: 1px solid #eee; border-radius: 8px; }
+    .signature-section h3 { font-size: 12px; text-transform: uppercase; color: #888; margin-bottom: 15px; }
+    .signature-content { display: flex; gap: 30px; align-items: flex-end; }
+    .signature-image { max-width: 250px; max-height: 80px; border-bottom: 1px solid #333; }
+    .signature-details { font-size: 13px; color: #666; }
+    .signature-details p { margin: 4px 0; }
     @media print {
       .container { padding: 20px; }
     }
@@ -228,14 +255,7 @@ function generateHTML(
 <body>
   <div class="container">
     <div class="header">
-      <div class="company-info">
-        <h1>${company?.name || "Your Company"}</h1>
-        ${company?.address ? `<p>${company.address}</p>` : ""}
-        ${company?.city || company?.state || company?.zip ? `<p>${[company.city, company.state, company.zip].filter(Boolean).join(", ")}</p>` : ""}
-        ${company?.phone ? `<p>${company.phone}</p>` : ""}
-        ${company?.email ? `<p>${company.email}</p>` : ""}
-      </div>
-      <div class="document-info">
+      <div class="document-info" style="text-align: left;">
         <div class="document-type">${title}</div>
         <div class="document-number">${documentNumber}</div>
       </div>
@@ -249,6 +269,14 @@ function generateHTML(
         ${customer?.city || customer?.state || customer?.zip ? `<p>${[customer.city, customer.state, customer.zip].filter(Boolean).join(", ")}</p>` : ""}
         ${customer?.email ? `<p>${customer.email}</p>` : ""}
         ${customer?.phone ? `<p>${customer.phone}</p>` : ""}
+      </div>
+      <div class="address-block" style="text-align: right;">
+        <h3>From</h3>
+        <p><strong>${company?.name || "Your Company"}</strong></p>
+        ${company?.address ? `<p>${company.address}</p>` : ""}
+        ${company?.city || company?.state || company?.zip ? `<p>${[company.city, company.state, company.zip].filter(Boolean).join(", ")}</p>` : ""}
+        ${company?.phone ? `<p>${company.phone}</p>` : ""}
+        ${company?.email ? `<p>${company.email}</p>` : ""}
       </div>
     </div>
 
@@ -329,6 +357,8 @@ function generateHTML(
         <p>${document.notes}</p>
       </div>
     ` : ""}
+
+    ${signatureSection}
 
     <div class="footer">
       <p>Thank you for your business!</p>
@@ -435,8 +465,24 @@ serve(async (req) => {
       }
     }
 
+    // Fetch signature if exists
+    let signature = null;
+    const signatureId = type === "job" ? document.completion_signature_id : document.signature_id;
+    if (signatureId) {
+      const { data: signatureData, error: signatureError } = await supabase
+        .from("signatures")
+        .select("signature_data, signer_name, signed_at")
+        .eq("id", signatureId)
+        .single();
+
+      if (!signatureError && signatureData) {
+        signature = signatureData;
+        console.log("Found signature for document");
+      }
+    }
+
     // Generate HTML
-    const html = generateHTML(type, document, company, customer, items || [], assignee);
+    const html = generateHTML(type, document, company, customer, items || [], assignee, signature);
     
     let documentNumber: string;
     if (type === "quote") {
