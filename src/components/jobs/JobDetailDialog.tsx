@@ -12,6 +12,9 @@ import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job } from '@/hooks/useJobs';
 import { Quote } from '@/hooks/useQuotes';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
+import { useInvoices, Invoice } from '@/hooks/useInvoices';
+import { useMemo } from 'react';
+import { formatAmount } from '@/lib/formatAmount';
 
 interface JobDetailDialogProps {
   job: CustomerJob | null;
@@ -54,6 +57,26 @@ export function JobDetailDialog({
   );
   const convertJobToQuote = useConvertJobToQuote();
   const convertJobToInvoice = useConvertJobToInvoice();
+  const { data: allInvoices = [], isLoading: loadingInvoices } = useInvoices(false);
+
+  // Filter invoices that are linked to this job (via quote_id that matches job's origin quote or child quotes)
+  const jobInvoices = useMemo(() => {
+    if (!job || !allInvoices.length) return [];
+    
+    // Get all quote IDs related to this job
+    const relatedQuoteIds = new Set<string>();
+    if (relatedQuotes?.originQuote) {
+      relatedQuoteIds.add(relatedQuotes.originQuote.id);
+    }
+    if (relatedQuotes?.childQuotes) {
+      relatedQuotes.childQuotes.forEach((q: Quote) => relatedQuoteIds.add(q.id));
+    }
+    
+    // Filter invoices that have quote_id matching any related quote
+    return allInvoices.filter((invoice: Invoice) => 
+      invoice.quote_id && relatedQuoteIds.has(invoice.quote_id)
+    );
+  }, [job, allInvoices, relatedQuotes]);
 
   if (!job) return null;
 
@@ -290,6 +313,67 @@ export function JobDetailDialog({
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Related Invoices Section */}
+          <Separator />
+          <div>
+            <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
+              <Receipt className="w-4 h-4" /> Related Invoices
+            </h4>
+            
+            {loadingInvoices ? (
+              <p className="text-xs sm:text-sm text-muted-foreground">Loading invoices...</p>
+            ) : jobInvoices.length > 0 ? (
+              <div className="space-y-2">
+                {jobInvoices.map((invoice: Invoice) => (
+                  <div 
+                    key={invoice.id}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Receipt className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <div>
+                        <p className="font-medium text-sm">{invoice.invoice_number}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">
+                        {formatAmount(invoice.total)}
+                      </span>
+                      <Badge className={`text-xs ${
+                        invoice.status === 'paid' 
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          : invoice.status === 'sent'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          : invoice.status === 'overdue'
+                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {invoice.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-muted/50 rounded-lg">
+                <p className="text-xs sm:text-sm text-muted-foreground">No invoices created yet</p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleCreateInvoice}
+                  disabled={convertJobToInvoice.isPending}
+                  className="w-full sm:w-auto"
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Create Invoice
+                </Button>
               </div>
             )}
           </div>
