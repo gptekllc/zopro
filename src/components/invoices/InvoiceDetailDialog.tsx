@@ -13,6 +13,7 @@ interface InvoiceDetailDialogProps {
   invoice: CustomerInvoice | null;
   customerName?: string;
   creatorName?: string;
+  lateFeePercentage?: number;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onDownload?: (invoiceId: string) => void;
@@ -20,6 +21,8 @@ interface InvoiceDetailDialogProps {
   onMarkPaid?: (invoiceId: string) => void;
   onEdit?: (invoiceId: string) => void;
   onViewSignature?: (signatureId: string) => void;
+  onApplyLateFee?: (invoiceId: string) => void;
+  isApplyingLateFee?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -33,6 +36,7 @@ export function InvoiceDetailDialog({
   invoice,
   customerName,
   creatorName,
+  lateFeePercentage = 0,
   open,
   onOpenChange,
   onDownload,
@@ -40,8 +44,14 @@ export function InvoiceDetailDialog({
   onMarkPaid,
   onEdit,
   onViewSignature,
+  onApplyLateFee,
+  isApplyingLateFee = false,
 }: InvoiceDetailDialogProps) {
   if (!invoice) return null;
+
+  const isOverdue = invoice.due_date && new Date(invoice.due_date) < new Date() && invoice.status !== 'paid';
+  const hasLateFee = invoice.late_fee_amount && Number(invoice.late_fee_amount) > 0;
+  const canApplyLateFee = isOverdue && !hasLateFee && lateFeePercentage > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -156,12 +166,12 @@ export function InvoiceDetailDialog({
                 <span>Invoice Total</span>
                 <span>${Number(invoice.total).toLocaleString()}</span>
               </div>
-              {invoice.late_fee_amount && Number(invoice.late_fee_amount) > 0 && (
+              {hasLateFee && (
                 <>
                   <div className="flex justify-between text-sm text-destructive">
                     <span className="flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
-                      Late Fee
+                      Late Fee {lateFeePercentage > 0 && `(${lateFeePercentage}%)`}
                     </span>
                     <span>+${Number(invoice.late_fee_amount).toFixed(2)}</span>
                   </div>
@@ -171,11 +181,23 @@ export function InvoiceDetailDialog({
                   </div>
                 </>
               )}
-              {(!invoice.late_fee_amount || Number(invoice.late_fee_amount) === 0) && (
+              {!hasLateFee && (
                 <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
                   <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
                   <span>${Number(invoice.total).toLocaleString()}</span>
                 </div>
+              )}
+              {canApplyLateFee && onApplyLateFee && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="w-full mt-2"
+                  onClick={() => onApplyLateFee(invoice.id)}
+                  disabled={isApplyingLateFee}
+                >
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  Apply {lateFeePercentage}% Late Fee
+                </Button>
               )}
             </div>
           </div>
