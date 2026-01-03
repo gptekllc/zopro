@@ -8,8 +8,12 @@ import { Label } from '@/components/ui/label';
 import { 
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
-  Download, Mail, Loader2, Send, Bell
+  Download, Mail, Loader2, Send, Bell, Navigation
 } from 'lucide-react';
+import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
+import { useAuth } from '@/hooks/useAuth';
+import { useCompany } from '@/hooks/useCompany';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { CustomerJob } from '@/hooks/useCustomerHistory';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
@@ -26,6 +30,7 @@ import { useJobNotifications } from '@/hooks/useJobNotifications';
 interface JobDetailDialogProps {
   job: CustomerJob | null;
   customerName?: string;
+  customerPhone?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit?: (jobId: string) => void;
@@ -52,12 +57,15 @@ const priorityColors: Record<string, string> = {
 export function JobDetailDialog({
   job,
   customerName,
+  customerPhone,
   open,
   onOpenChange,
   onEdit,
   onViewSignature,
   onViewQuote,
 }: JobDetailDialogProps) {
+  const { profile } = useAuth();
+  const { data: company } = useCompany();
   const { data: relatedQuotes, isLoading: loadingQuotes } = useJobRelatedQuotes(
     job?.id || null, 
     job?.quote_id || null
@@ -164,6 +172,27 @@ export function JobDetailDialog({
       items: [],
     };
     convertJobToInvoice.mutate(jobForConversion);
+  };
+
+  const handleOnMyWay = () => {
+    if (!customerPhone || !profile?.full_name || !company?.name) {
+      // Fallback: copy message to clipboard for manual use
+      const message = createOnMyWayMessage({
+        technicianName: profile?.full_name || 'Your technician',
+        companyName: company?.name || 'our company',
+      });
+      navigator.clipboard.writeText(message);
+      toast.success('Message copied to clipboard');
+      return;
+    }
+
+    const smsLink = createOnMyWaySmsLink({
+      customerPhone,
+      technicianName: profile.full_name,
+      companyName: company.name,
+    });
+    
+    window.location.href = smsLink;
   };
 
   return (
@@ -559,6 +588,19 @@ export function JobDetailDialog({
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4 justify-end">
+            {/* On My Way - only show for scheduled or in_progress jobs */}
+            {['scheduled', 'in_progress'].includes(job.status) && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleOnMyWay}
+                className="gap-1"
+                title={customerPhone ? "Send SMS to customer" : "Copy message (no phone on file)"}
+              >
+                <Navigation className="w-4 h-4" />
+                On My Way
+              </Button>
+            )}
             {/* Send to Customer - only show for jobs with status that makes sense */}
             {['scheduled', 'in_progress', 'completed'].includes(job.status) && (
               <Button
