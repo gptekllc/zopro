@@ -319,6 +319,13 @@ function generateHTML(
         ${company?.phone ? `<p>${company.phone}</p>` : ""}
         ${company?.email ? `<p>${company.email}</p>` : ""}
         ${company?.website ? `<p><a href="${company.website}" style="color: #2563eb; text-decoration: none;">${company.website}</a></p>` : ""}
+        ${(company?.facebook_url || company?.instagram_url || company?.linkedin_url) ? `
+          <p style="margin-top: 8px;">
+            ${company?.facebook_url ? `<a href="${company.facebook_url}" style="color: #2563eb; text-decoration: none; margin-right: 10px;">Facebook</a>` : ''}
+            ${company?.instagram_url ? `<a href="${company.instagram_url}" style="color: #2563eb; text-decoration: none; margin-right: 10px;">Instagram</a>` : ''}
+            ${company?.linkedin_url ? `<a href="${company.linkedin_url}" style="color: #2563eb; text-decoration: none;">LinkedIn</a>` : ''}
+          </p>
+        ` : ''}
       </div>
     </div>
 
@@ -593,6 +600,13 @@ serve(async (req) => {
           <p>If you have any questions, please don't hesitate to contact us.</p>
           <p>Best regards,<br/>${company?.name || "The Team"}</p>
           ${company?.website ? `<p style="margin-top: 15px;"><a href="${company.website}" style="color: #2563eb; text-decoration: none;">${company.website}</a></p>` : ""}
+          ${(company?.facebook_url || company?.instagram_url || company?.linkedin_url) ? `
+            <p style="margin-top: 10px;">
+              ${company?.facebook_url ? `<a href="${company.facebook_url}" style="color: #2563eb; text-decoration: none; margin-right: 15px;">Facebook</a>` : ''}
+              ${company?.instagram_url ? `<a href="${company.instagram_url}" style="color: #2563eb; text-decoration: none; margin-right: 15px;">Instagram</a>` : ''}
+              ${company?.linkedin_url ? `<a href="${company.linkedin_url}" style="color: #2563eb; text-decoration: none;">LinkedIn</a>` : ''}
+            </p>
+          ` : ''}
         </div>
       `;
 

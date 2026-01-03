@@ -14,6 +14,9 @@ export interface Company {
   state: string | null;
   zip: string | null;
   website: string | null;
+  facebook_url: string | null;
+  instagram_url: string | null;
+  linkedin_url: string | null;
   logo_url: string | null;
   tax_rate: number | null;
   payment_terms_days: number | null;
