@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
     
     const body = await req.json();
-    const { jobId, customerId } = body;
+    const { jobId, customerId, skipDuplicateCheck } = body;
     
     console.log('Sending job notification for job:', jobId, 'to customer:', customerId);
 
@@ -129,6 +129,32 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Customer has no email address' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check for duplicate notification (same job + same status) in last hour
+    if (!skipDuplicateCheck) {
+      const oneHourAgo = new Date();
+      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+      
+      const { data: recentNotifications } = await adminClient
+        .from('job_notifications')
+        .select('id')
+        .eq('job_id', jobId)
+        .eq('status_at_send', job.status)
+        .gte('sent_at', oneHourAgo.toISOString())
+        .limit(1);
+      
+      if (recentNotifications && recentNotifications.length > 0) {
+        console.log('Duplicate notification skipped - already sent within last hour');
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            message: 'Notification already sent within the last hour for this status',
+            skipped: true
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Generate magic link token (24 hour expiry)
@@ -308,6 +334,19 @@ Deno.serve(async (req) => {
     if (!resendApiKey) {
       console.log('RESEND_API_KEY not configured. Email would be sent to:', customer.email);
       console.log('Magic link:', magicLink);
+      
+      // Still record the notification even in dev mode
+      await adminClient
+        .from('job_notifications')
+        .insert({
+          job_id: jobId,
+          customer_id: customerId,
+          company_id: company.id,
+          notification_type: 'status_update',
+          status_at_send: job.status,
+          recipient_email: customer.email,
+        });
+      
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -329,6 +368,20 @@ Deno.serve(async (req) => {
       });
       
       console.log('Email sent successfully to:', customer.email);
+      
+      // Record the notification
+      await adminClient
+        .from('job_notifications')
+        .insert({
+          job_id: jobId,
+          customer_id: customerId,
+          company_id: company.id,
+          notification_type: 'status_update',
+          status_at_send: job.status,
+          recipient_email: customer.email,
+        });
+      
+      console.log('Notification recorded in job_notifications table');
       
       return new Response(
         JSON.stringify({ 

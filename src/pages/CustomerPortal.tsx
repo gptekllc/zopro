@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { loadStripe } from '@stripe/stripe-js';
@@ -55,10 +55,17 @@ interface Job {
   id: string;
   job_number: string;
   title: string;
+  description: string | null;
   status: string;
+  priority: string;
   scheduled_start: string | null;
+  scheduled_end: string | null;
+  actual_start: string | null;
+  actual_end: string | null;
+  notes: string | null;
   created_at: string;
   completion_signed_at: string | null;
+  completion_signed_by: string | null;
 }
 
 interface Quote {
@@ -182,6 +189,201 @@ const AddPaymentMethodForm = ({
         </Button>
       </div>
     </form>
+  );
+};
+
+// Job Card Component with expandable details
+const JobCard = ({ 
+  job, 
+  onSign,
+  signingJob 
+}: { 
+  job: Job; 
+  onSign: (job: Job) => void;
+  signingJob: string | null;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  
+  const getJobStatusBadge = (status: string) => {
+    const statusColors: Record<string, string> = {
+      draft: 'bg-muted text-muted-foreground',
+      scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      in_progress: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+      completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      invoiced: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+    };
+    return (
+      <Badge className={statusColors[status] || 'bg-muted'}>
+        {status.replace('_', ' ')}
+      </Badge>
+    );
+  };
+
+  const getPriorityBadge = (priority: string) => {
+    const priorityColors: Record<string, string> = {
+      low: 'bg-muted text-muted-foreground',
+      medium: 'bg-blue-100 text-blue-800',
+      high: 'bg-orange-100 text-orange-800',
+      urgent: 'bg-red-100 text-red-800',
+    };
+    if (priority === 'low' || priority === 'medium') return null;
+    return (
+      <Badge variant="outline" className={priorityColors[priority] || ''}>
+        {priority}
+      </Badge>
+    );
+  };
+
+  const isUpcoming = job.status === 'scheduled' && job.scheduled_start && new Date(job.scheduled_start) > new Date();
+  
+  return (
+    <div className={`border rounded-lg overflow-hidden ${isUpcoming ? 'border-blue-300 bg-blue-50/50 dark:bg-blue-950/20' : ''}`}>
+      {/* Header - Always visible */}
+      <div 
+        className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <span className="font-medium text-sm">{job.job_number}</span>
+              {getJobStatusBadge(job.status)}
+              {getPriorityBadge(job.priority)}
+              {isUpcoming && (
+                <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                  Upcoming
+                </Badge>
+              )}
+            </div>
+            <h3 className="font-semibold truncate">{job.title}</h3>
+            {job.scheduled_start && (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                <Calendar className="w-4 h-4" />
+                <span>{format(new Date(job.scheduled_start), 'EEEE, MMMM d, yyyy')}</span>
+                <span className="mx-1">•</span>
+                <Clock className="w-4 h-4" />
+                <span>{format(new Date(job.scheduled_start), 'h:mm a')}</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {job.completion_signed_at && (
+              <Badge variant="default" className="bg-emerald-500">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Signed
+              </Badge>
+            )}
+            {expanded ? (
+              <ChevronUp className="w-5 h-5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded Details */}
+      {expanded && (
+        <div className="px-4 pb-4 pt-0 border-t bg-muted/30">
+          <div className="grid gap-4 md:grid-cols-2 pt-4">
+            {/* Description */}
+            {job.description && (
+              <div className="md:col-span-2">
+                <p className="text-sm text-muted-foreground mb-1">Description</p>
+                <p className="text-sm whitespace-pre-wrap">{job.description}</p>
+              </div>
+            )}
+
+            {/* Scheduled Time */}
+            {job.scheduled_start && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Scheduled Start</p>
+                <p className="text-sm font-medium">
+                  {format(new Date(job.scheduled_start), 'EEEE, MMMM d, yyyy')}
+                  <br />
+                  {format(new Date(job.scheduled_start), 'h:mm a')}
+                </p>
+              </div>
+            )}
+            
+            {job.scheduled_end && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Scheduled End</p>
+                <p className="text-sm font-medium">
+                  {format(new Date(job.scheduled_end), 'EEEE, MMMM d, yyyy')}
+                  <br />
+                  {format(new Date(job.scheduled_end), 'h:mm a')}
+                </p>
+              </div>
+            )}
+
+            {/* Actual Times */}
+            {job.actual_start && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Work Started</p>
+                <p className="text-sm font-medium">
+                  {format(new Date(job.actual_start), 'MMM d, yyyy h:mm a')}
+                </p>
+              </div>
+            )}
+            
+            {job.actual_end && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Work Completed</p>
+                <p className="text-sm font-medium">
+                  {format(new Date(job.actual_end), 'MMM d, yyyy h:mm a')}
+                </p>
+              </div>
+            )}
+
+            {/* Notes */}
+            {job.notes && (
+              <div className="md:col-span-2">
+                <p className="text-sm text-muted-foreground mb-1">Notes</p>
+                <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
+              </div>
+            )}
+
+            {/* Signature Status */}
+            {job.completion_signed_at && (
+              <div className="md:col-span-2 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle className="w-5 h-5" />
+                  <div>
+                    <p className="font-medium">Job completion confirmed</p>
+                    <p className="text-sm opacity-80">
+                      Signed by {job.completion_signed_by} on {format(new Date(job.completion_signed_at), 'MMMM d, yyyy')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Sign Button */}
+          {job.status === 'completed' && !job.completion_signed_at && (
+            <div className="mt-4 pt-4 border-t">
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSign(job);
+                }}
+                disabled={signingJob === job.id}
+                className="w-full sm:w-auto"
+              >
+                {signingJob === job.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <PenLine className="w-4 h-4 mr-2" />
+                )}
+                Sign Job Completion
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -1399,67 +1601,24 @@ const CustomerPortal = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Briefcase className="w-5 h-5" />
-                  Service History
+                  Service History & Appointments
                 </CardTitle>
+                <CardDescription>
+                  View your upcoming appointments and past service history
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {jobs.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Job #</TableHead>
-                        <TableHead>Title</TableHead>
-                        <TableHead>Scheduled</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {jobs.map((job) => (
-                        <TableRow key={job.id}>
-                          <TableCell className="font-medium">{job.job_number}</TableCell>
-                          <TableCell>{job.title}</TableCell>
-                          <TableCell>
-                            {job.scheduled_start 
-                              ? format(new Date(job.scheduled_start), 'MMM d, yyyy')
-                              : '-'
-                            }
-                          </TableCell>
-                          <TableCell>{getStatusBadge(job.status)}</TableCell>
-                          <TableCell className="text-right">
-                            {job.status === 'completed' && !job.completion_signed_at && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleSignJobCompletion(job)}
-                                disabled={signingJob === job.id}
-                              >
-                                {signingJob === job.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <PenLine className="w-4 h-4 mr-2" />
-                                    Sign Completion
-                                  </>
-                                )}
-                              </Button>
-                            )}
-                            {job.completion_signed_at && (
-                              <div className="flex items-center justify-end gap-2">
-                                <Badge variant="default" className="bg-emerald-500">
-                                  <CheckCircle className="w-3 h-3 mr-1" />
-                                  Signed
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  {format(new Date(job.completion_signed_at), 'MMM d')}
-                                </span>
-                              </div>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                  <div className="space-y-4">
+                    {jobs.map((job) => (
+                      <JobCard 
+                        key={job.id} 
+                        job={job} 
+                        onSign={handleSignJobCompletion}
+                        signingJob={signingJob}
+                      />
+                    ))}
+                  </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-50" />

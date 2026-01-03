@@ -583,6 +583,67 @@ export type Database = {
           },
         ]
       }
+      job_notifications: {
+        Row: {
+          company_id: string
+          created_at: string
+          customer_id: string
+          id: string
+          job_id: string
+          notification_type: string
+          recipient_email: string
+          sent_at: string
+          sent_by: string | null
+          status_at_send: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          job_id: string
+          notification_type?: string
+          recipient_email: string
+          sent_at?: string
+          sent_by?: string | null
+          status_at_send?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          job_id?: string
+          notification_type?: string
+          recipient_email?: string
+          sent_at?: string
+          sent_by?: string | null
+          status_at_send?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_notifications_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_notifications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_photos: {
         Row: {
           caption: string | null
