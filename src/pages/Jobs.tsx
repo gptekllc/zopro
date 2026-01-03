@@ -1114,20 +1114,6 @@ const Jobs = () => {
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
                           {job.status.replace('_', ' ')}
                         </span>
-                        {/* Linked Quotes Badge */}
-                        {(quotesPerJob.get(job.id) || 0) > 0 && (
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 gap-1 text-xs">
-                            <FileText className="w-3 h-3" />
-                            {quotesPerJob.get(job.id)} Quote{(quotesPerJob.get(job.id) || 0) > 1 ? 's' : ''}
-                          </Badge>
-                        )}
-                        {/* Linked Invoices Badge */}
-                        {(invoicesPerJob.get(job.id) || 0) > 0 && (
-                          <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800 gap-1 text-xs">
-                            <Receipt className="w-3 h-3" />
-                            {invoicesPerJob.get(job.id)} Invoice{(invoicesPerJob.get(job.id) || 0) > 1 ? 's' : ''}
-                          </Badge>
-                        )}
                       </div>
                       
                       {/* Action Menu */}
@@ -1291,20 +1277,6 @@ const Jobs = () => {
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
                             {job.status.replace('_', ' ')}
                           </span>
-                          {/* Linked Quotes Badge */}
-                          {(quotesPerJob.get(job.id) || 0) > 0 && (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 gap-1">
-                              <FileText className="w-3 h-3" />
-                              {quotesPerJob.get(job.id)} Quote{(quotesPerJob.get(job.id) || 0) > 1 ? 's' : ''}
-                            </Badge>
-                          )}
-                          {/* Linked Invoices Badge */}
-                          {(invoicesPerJob.get(job.id) || 0) > 0 && (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800 gap-1">
-                              <Receipt className="w-3 h-3" />
-                              {invoicesPerJob.get(job.id)} Invoice{(invoicesPerJob.get(job.id) || 0) > 1 ? 's' : ''}
-                            </Badge>
-                          )}
                         </div>
                         
                         {/* Action Menu */}
