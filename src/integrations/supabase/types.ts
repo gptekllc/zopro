@@ -32,12 +32,9 @@ export type Database = {
           email: string | null
           email_on_new_job: boolean
           email_on_payment_received: boolean
-          facebook_url: string | null
           id: string
-          instagram_url: string | null
           invoice_reminder_days: number
           late_fee_percentage: number | null
-          linkedin_url: string | null
           logo_url: string | null
           name: string
           notify_on_automation_run: boolean
@@ -83,12 +80,9 @@ export type Database = {
           email?: string | null
           email_on_new_job?: boolean
           email_on_payment_received?: boolean
-          facebook_url?: string | null
           id?: string
-          instagram_url?: string | null
           invoice_reminder_days?: number
           late_fee_percentage?: number | null
-          linkedin_url?: string | null
           logo_url?: string | null
           name: string
           notify_on_automation_run?: boolean
@@ -134,12 +128,9 @@ export type Database = {
           email?: string | null
           email_on_new_job?: boolean
           email_on_payment_received?: boolean
-          facebook_url?: string | null
           id?: string
-          instagram_url?: string | null
           invoice_reminder_days?: number
           late_fee_percentage?: number | null
-          linkedin_url?: string | null
           logo_url?: string | null
           name?: string
           notify_on_automation_run?: boolean
