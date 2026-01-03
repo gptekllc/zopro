@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.send-signature-request]
 verify_jwt = true
+
+[functions.scheduled-automations]
+verify_jwt = false
