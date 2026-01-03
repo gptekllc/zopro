@@ -253,10 +253,10 @@ Deno.serve(async (req) => {
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
 
-      // Fetch jobs for this customer
+      // Fetch jobs for this customer with more details
       const { data: jobs } = await adminClient
         .from('jobs')
-        .select('id, job_number, title, status, scheduled_start, created_at')
+        .select('id, job_number, title, description, status, priority, scheduled_start, scheduled_end, actual_start, actual_end, notes, created_at, completion_signed_at, completion_signed_by')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
 
