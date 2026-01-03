@@ -931,7 +931,7 @@ Deno.serve(async (req) => {
       if (documentType === 'quote') {
         const { data: quote, error } = await adminClient
           .from('quotes')
-          .select('id, quote_number, status, total, subtotal, tax, created_at, valid_until, notes, signed_at')
+          .select('id, quote_number, status, total, subtotal, tax, created_at, valid_until, notes, signed_at, signature_id')
           .eq('id', documentId)
           .eq('customer_id', customerId)
           .single();
@@ -949,12 +949,23 @@ Deno.serve(async (req) => {
           .eq('quote_id', documentId)
           .order('created_at', { ascending: true });
         
-        document = quote;
+        // Fetch signature if exists
+        let signature = null;
+        if (quote.signature_id) {
+          const { data: sig } = await adminClient
+            .from('signatures')
+            .select('id, signature_data, signer_name, signed_at, signer_ip')
+            .eq('id', quote.signature_id)
+            .single();
+          signature = sig;
+        }
+        
+        document = { ...quote, signature };
         items = quoteItems || [];
       } else if (documentType === 'invoice') {
         const { data: invoice, error } = await adminClient
           .from('invoices')
-          .select('id, invoice_number, status, total, subtotal, tax, created_at, due_date, notes')
+          .select('id, invoice_number, status, total, subtotal, tax, created_at, due_date, notes, signed_at, signature_id')
           .eq('id', documentId)
           .eq('customer_id', customerId)
           .single();
@@ -972,12 +983,23 @@ Deno.serve(async (req) => {
           .eq('invoice_id', documentId)
           .order('created_at', { ascending: true });
         
-        document = invoice;
+        // Fetch signature if exists
+        let signature = null;
+        if (invoice.signature_id) {
+          const { data: sig } = await adminClient
+            .from('signatures')
+            .select('id, signature_data, signer_name, signed_at, signer_ip')
+            .eq('id', invoice.signature_id)
+            .single();
+          signature = sig;
+        }
+        
+        document = { ...invoice, signature };
         items = invoiceItems || [];
       } else if (documentType === 'job') {
         const { data: job, error } = await adminClient
           .from('jobs')
-          .select('id, job_number, title, description, status, priority, scheduled_start, scheduled_end, actual_start, actual_end, notes, subtotal, tax, total, completion_signed_at, completion_signed_by')
+          .select('id, job_number, title, description, status, priority, scheduled_start, scheduled_end, actual_start, actual_end, notes, subtotal, tax, total, completion_signed_at, completion_signed_by, completion_signature_id')
           .eq('id', documentId)
           .eq('customer_id', customerId)
           .single();
@@ -995,7 +1017,25 @@ Deno.serve(async (req) => {
           .eq('job_id', documentId)
           .order('created_at', { ascending: true });
         
-        document = job;
+        // Fetch job photos
+        const { data: photos } = await adminClient
+          .from('job_photos')
+          .select('id, photo_url, photo_type, caption, created_at')
+          .eq('job_id', documentId)
+          .order('display_order', { ascending: true });
+        
+        // Fetch completion signature if exists
+        let signature = null;
+        if (job.completion_signature_id) {
+          const { data: sig } = await adminClient
+            .from('signatures')
+            .select('id, signature_data, signer_name, signed_at, signer_ip')
+            .eq('id', job.completion_signature_id)
+            .single();
+          signature = sig;
+        }
+        
+        document = { ...job, signature, photos: photos || [] };
         items = jobItems || [];
       } else {
         return new Response(
