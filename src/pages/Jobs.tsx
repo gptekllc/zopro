@@ -29,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter, PenTool, Send, Bell } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter, PenTool, Send, Bell, Navigation, Download, Mail } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
@@ -47,6 +47,7 @@ import { SaveAsTemplateDialog } from '@/components/jobs/SaveAsTemplateDialog';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
+import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 interface LineItem {
@@ -626,7 +627,30 @@ const Jobs = () => {
       companyName: company?.name || 'Company',
       documentNumber: job.job_number,
       customerId: customer.id,
+  });
+  };
+
+  // On My Way handler
+  const etaOptions = [10, 20, 30, 45, 60] as const;
+  const handleOnMyWay = (job: Job, etaMinutes?: number) => {
+    const customerPhone = job.customer?.phone;
+    if (!customerPhone || !profile?.full_name || !company?.name) {
+      const message = createOnMyWayMessage({
+        technicianName: profile?.full_name || 'Your technician',
+        companyName: company?.name || 'our company',
+        etaMinutes,
+      });
+      navigator.clipboard.writeText(message);
+      toast.success('Message copied to clipboard');
+      return;
+    }
+    const smsLink = createOnMyWaySmsLink({
+      customerPhone,
+      technicianName: profile.full_name,
+      companyName: company.name,
+      etaMinutes,
     });
+    window.location.href = smsLink;
   };
 
   // Handle Create Quote with duplicate confirmation
@@ -1147,6 +1171,30 @@ const Jobs = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-popover">
+                              {/* Quick Actions */}
+                              {['scheduled', 'in_progress'].includes(job.status) && (
+                                <>
+                                  <DropdownMenuItem onClick={() => sendJobNotification.mutate({ jobId: job.id, customerId: job.customer_id })}>
+                                    <Send className="w-4 h-4 mr-2" />
+                                    Send to Customer
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleOnMyWay(job, 15)}>
+                                    <Navigation className="w-4 h-4 mr-2" />
+                                    On My Way (~15 min)
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              <DropdownMenuItem onClick={() => downloadDocument.mutate({ type: 'job', documentId: job.id })}>
+                                <Download className="w-4 h-4 mr-2" />
+                                Download PDF
+                              </DropdownMenuItem>
+                              {job.customer?.email && (
+                                <DropdownMenuItem onClick={() => emailDocument.mutate({ type: 'job', documentId: job.id, recipientEmail: job.customer.email! })}>
+                                  <Mail className="w-4 h-4 mr-2" />
+                                  Email PDF
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleEdit(job)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
@@ -1317,6 +1365,30 @@ const Jobs = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-popover">
+                              {/* Quick Actions */}
+                              {['scheduled', 'in_progress'].includes(job.status) && (
+                                <>
+                                  <DropdownMenuItem onClick={() => sendJobNotification.mutate({ jobId: job.id, customerId: job.customer_id })}>
+                                    <Send className="w-4 h-4 mr-2" />
+                                    Send to Customer
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleOnMyWay(job, 15)}>
+                                    <Navigation className="w-4 h-4 mr-2" />
+                                    On My Way (~15 min)
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              <DropdownMenuItem onClick={() => downloadDocument.mutate({ type: 'job', documentId: job.id })}>
+                                <Download className="w-4 h-4 mr-2" />
+                                Download PDF
+                              </DropdownMenuItem>
+                              {job.customer?.email && (
+                                <DropdownMenuItem onClick={() => emailDocument.mutate({ type: 'job', documentId: job.id, recipientEmail: job.customer.email! })}>
+                                  <Mail className="w-4 h-4 mr-2" />
+                                  Email PDF
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleEdit(job)}>
                                 <Edit className="w-4 h-4 mr-2" />
                                 Edit
@@ -1735,6 +1807,52 @@ const Jobs = () => {
               </Tabs>
               
               <DialogFooter className="mt-6 flex-wrap gap-2">
+                {/* Quick Actions for scheduled/in_progress */}
+                {['scheduled', 'in_progress'].includes(viewingJob.status) && (
+                  <>
+                    <Button 
+                      variant="default" 
+                      onClick={() => sendJobNotification.mutate({ jobId: viewingJob.id, customerId: viewingJob.customer_id })}
+                      disabled={sendJobNotification.isPending}
+                    >
+                      {sendJobNotification.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                      Send to Customer
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="secondary">
+                          <Navigation className="w-4 h-4 mr-2" />
+                          On My Way
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        {etaOptions.map((eta) => (
+                          <DropdownMenuItem key={eta} onClick={() => handleOnMyWay(viewingJob, eta)}>
+                            ~{eta} minutes
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={() => downloadDocument.mutate({ type: 'job', documentId: viewingJob.id })}
+                  disabled={downloadDocument.isPending}
+                >
+                  {downloadDocument.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                  Download PDF
+                </Button>
+                {viewingJob.customer?.email && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => emailDocument.mutate({ type: 'job', documentId: viewingJob.id, recipientEmail: viewingJob.customer!.email! })}
+                    disabled={emailDocument.isPending}
+                  >
+                    {emailDocument.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                    Email
+                  </Button>
+                )}
                 <Button variant="outline" onClick={() => handleEdit(viewingJob)}>
                   <Edit className="w-4 h-4 mr-2" />
                   Edit
