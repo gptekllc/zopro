@@ -59,6 +59,11 @@ export type Database = {
           stripe_payments_enabled: boolean | null
           stripe_payouts_enabled: boolean | null
           tax_rate: number | null
+          timeclock_allow_manual_labor_edit: boolean
+          timeclock_auto_start_break_reminder: number | null
+          timeclock_enforce_job_labor: boolean
+          timeclock_max_shift_hours: number | null
+          timeclock_require_job_selection: boolean
           timezone: string | null
           updated_at: string
           website: string | null
@@ -108,6 +113,11 @@ export type Database = {
           stripe_payments_enabled?: boolean | null
           stripe_payouts_enabled?: boolean | null
           tax_rate?: number | null
+          timeclock_allow_manual_labor_edit?: boolean
+          timeclock_auto_start_break_reminder?: number | null
+          timeclock_enforce_job_labor?: boolean
+          timeclock_max_shift_hours?: number | null
+          timeclock_require_job_selection?: boolean
           timezone?: string | null
           updated_at?: string
           website?: string | null
@@ -157,6 +167,11 @@ export type Database = {
           stripe_payments_enabled?: boolean | null
           stripe_payouts_enabled?: boolean | null
           tax_rate?: number | null
+          timeclock_allow_manual_labor_edit?: boolean
+          timeclock_auto_start_break_reminder?: number | null
+          timeclock_enforce_job_labor?: boolean
+          timeclock_max_shift_hours?: number | null
+          timeclock_require_job_selection?: boolean
           timezone?: string | null
           updated_at?: string
           website?: string | null
@@ -541,6 +556,61 @@ export type Database = {
             columns: ["signature_id"]
             isOneToOne: false
             referencedRelation: "signatures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_feedbacks: {
+        Row: {
+          company_id: string
+          created_at: string
+          customer_id: string
+          feedback_text: string | null
+          id: string
+          is_negative: boolean
+          job_id: string
+          rating: number
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          customer_id: string
+          feedback_text?: string | null
+          id?: string
+          is_negative?: boolean
+          job_id: string
+          rating: number
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          feedback_text?: string | null
+          id?: string
+          is_negative?: boolean
+          job_id?: string
+          rating?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_feedbacks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_feedbacks_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_feedbacks_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
