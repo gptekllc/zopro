@@ -145,6 +145,9 @@ const Quotes = () => {
   // Signature dialogs
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
   const [signatureQuote, setSignatureQuote] = useState<Quote | null>(null);
+  
+  // Loading states for convert operations
+  const [convertingQuoteId, setConvertingQuoteId] = useState<string | null>(null);
   const [viewSignatureId, setViewSignatureId] = useState<string | null>(null);
   const [viewSignatureOpen, setViewSignatureOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -445,18 +448,28 @@ const Quotes = () => {
     if (existingInvoices > 0) {
       setCreateInvoiceConfirmQuote(quote);
     } else {
-      const invoice = await convertToInvoice.mutateAsync({ quoteId: quote.id });
-      if (invoice?.id) {
-        window.location.href = `/invoices?edit=${invoice.id}`;
+      setConvertingQuoteId(quote.id);
+      try {
+        const invoice = await convertToInvoice.mutateAsync({ quoteId: quote.id });
+        if (invoice?.id) {
+          window.location.href = `/invoices?edit=${invoice.id}`;
+        }
+      } finally {
+        setConvertingQuoteId(null);
       }
     }
   };
   
   const handleConvertToInvoiceConfirmed = async (quoteId: string) => {
-    const invoice = await convertToInvoice.mutateAsync({ quoteId });
-    setCreateInvoiceConfirmQuote(null);
-    if (invoice?.id) {
-      window.location.href = `/invoices?edit=${invoice.id}`;
+    setConvertingQuoteId(quoteId);
+    try {
+      const invoice = await convertToInvoice.mutateAsync({ quoteId });
+      setCreateInvoiceConfirmQuote(null);
+      if (invoice?.id) {
+        window.location.href = `/invoices?edit=${invoice.id}`;
+      }
+    } finally {
+      setConvertingQuoteId(null);
     }
   };
   const handleStatusChange = async (quoteId: string, newStatus: string) => {
@@ -931,20 +944,23 @@ const Quotes = () => {
                           <Mail className="w-4 h-4 mr-2" />
                           Email Quote
                         </DropdownMenuItem>
+                        {/* Convert to Invoice */}
+                        <DropdownMenuItem 
+                          onClick={() => handleConvertToInvoice(quote)}
+                          disabled={convertingQuoteId === quote.id}
+                        >
+                          {convertingQuoteId === quote.id ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <ArrowRight className="w-4 h-4 mr-2" />
+                          )}
+                          Convert to Invoice
+                        </DropdownMenuItem>
                         {/* Signature Actions */}
-                        {quote.signature_id ? <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
+                        {quote.signature_id && <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
                             <Eye className="w-4 h-4 mr-2" />
                             View Signature
-                          </DropdownMenuItem> : (quote.status === 'sent' || quote.status === 'draft') && <>
-                            <DropdownMenuItem onClick={() => handleOpenSignatureDialog(quote)}>
-                              <PenTool className="w-4 h-4 mr-2" />
-                              Collect Signature
-                            </DropdownMenuItem>
-                            {getCustomerEmail(quote.customer_id) && <DropdownMenuItem onClick={() => handleSendSignatureRequest(quote)} disabled={sendSignatureRequest.isPending}>
-                                <Send className="w-4 h-4 mr-2" />
-                                Send Signature Request
-                              </DropdownMenuItem>}
-                          </>}
+                          </DropdownMenuItem>}
                         <DropdownMenuItem onClick={() => handleDeleteClick(quote)} className="text-destructive focus:text-destructive">
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete
@@ -1059,13 +1075,22 @@ const Quotes = () => {
                           <Mail className="w-4 h-4 mr-2" />
                           Email Quote
                         </DropdownMenuItem>
+                        {/* Convert to Invoice */}
+                        <DropdownMenuItem 
+                          onClick={() => handleConvertToInvoice(quote)}
+                          disabled={convertingQuoteId === quote.id}
+                        >
+                          {convertingQuoteId === quote.id ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <ArrowRight className="w-4 h-4 mr-2" />
+                          )}
+                          Convert to Invoice
+                        </DropdownMenuItem>
                         {/* Signature Actions */}
-                        {quote.signature_id ? <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
+                        {quote.signature_id && <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
                             <Eye className="w-4 h-4 mr-2" />
                             View Signature
-                          </DropdownMenuItem> : (quote.status === 'sent' || quote.status === 'draft') && <DropdownMenuItem onClick={() => handleOpenSignatureDialog(quote)}>
-                            <PenTool className="w-4 h-4 mr-2" />
-                            Collect Signature
                           </DropdownMenuItem>}
                         {quote.status === 'accepted' && <>
                             <DropdownMenuSeparator />
@@ -1076,10 +1101,6 @@ const Quotes = () => {
                             <DropdownMenuItem onClick={() => handleOpenAddToJobDialog(quote)}>
                               <Briefcase className="w-4 h-4 mr-2" />
                               Add to Existing Job
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleConvertToInvoice(quote)}>
-                              <ArrowRight className="w-4 h-4 mr-2" />
-                              Convert to Invoice
                             </DropdownMenuItem>
                           </>}
                         <DropdownMenuSeparator />
