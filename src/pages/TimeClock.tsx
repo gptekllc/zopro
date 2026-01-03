@@ -113,10 +113,11 @@ const TimeClock = () => {
     try {
       await clockIn.mutateAsync({ 
         notes: notes || undefined, 
-        jobId: selectedJobId !== 'none' ? selectedJobId : undefined 
+        jobId: selectedJobId !== 'none' ? selectedJobId : undefined,
+        recordWorkHours: selectedJobId !== 'none' && recordWorkHours,
       });
       setNotes('');
-      setSelectedJobId('none');
+      // Keep selectedJobId and recordWorkHours for clock out
       toast.success('Clocked in successfully!');
     } catch (error) {
       toast.error('Failed to clock in');
@@ -136,8 +137,15 @@ const TimeClock = () => {
     }
     
     try {
-      await clockOut.mutateAsync({ id: activeEntry.id, notes: notes || undefined });
+      await clockOut.mutateAsync({ 
+        id: activeEntry.id, 
+        notes: notes || undefined,
+        jobId: activeEntry.job_id,
+        hourlyRate: profile?.hourly_rate || 0,
+      });
       setNotes('');
+      setSelectedJobId('none');
+      setRecordWorkHours(false);
       toast.success('Clocked out successfully!');
     } catch (error) {
       toast.error('Failed to clock out');
