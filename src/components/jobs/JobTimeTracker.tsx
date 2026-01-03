@@ -1,28 +1,43 @@
 import { useState, useEffect } from 'react';
-import { useJobTimeEntries, useActiveTimeEntry, useClockIn, useClockOut, useStartBreak, useEndBreak, TimeEntry } from '@/hooks/useTimeEntries';
+import {
+  useJobTimeEntries,
+  useActiveTimeEntry,
+  useClockIn,
+  useClockOut,
+  useStartBreak,
+  useEndBreak,
+  TimeEntry,
+} from '@/hooks/useTimeEntries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Clock, Play, Square, Timer, Loader2, Coffee, User } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
+import { formatAmount } from '@/lib/formatAmount';
 
 interface JobTimeTrackerProps {
   jobId: string;
   jobNumber: string;
+  laborHourlyRate?: number | null;
 }
 
-export function JobTimeTracker({ jobId, jobNumber }: JobTimeTrackerProps) {
+export function JobTimeTracker({ jobId, jobNumber, laborHourlyRate }: JobTimeTrackerProps) {
+  const { profile } = useAuth();
   const { data: jobTimeEntries = [], isLoading } = useJobTimeEntries(jobId);
   const { data: activeEntry } = useActiveTimeEntry();
   const clockIn = useClockIn();
   const clockOut = useClockOut();
   const startBreak = useStartBreak();
   const endBreak = useEndBreak();
-  
+
   const [notes, setNotes] = useState('');
+  const [recordWorkHours, setRecordWorkHours] = useState(true);
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
   const [breakTime, setBreakTime] = useState('00:00');
-  
+
   // Check if the active entry is for THIS job
   const isActiveOnThisJob = activeEntry?.job_id === jobId;
   const hasActiveEntry = !!activeEntry;
@@ -82,7 +97,11 @@ export function JobTimeTracker({ jobId, jobNumber }: JobTimeTrackerProps) {
   }, [activeEntry, isActiveOnThisJob]);
 
   const handleClockIn = async () => {
-    await clockIn.mutateAsync({ notes: notes || undefined, jobId });
+    await clockIn.mutateAsync({
+      notes: notes || undefined,
+      jobId,
+      recordWorkHours,
+    });
     setNotes('');
   };
 
@@ -175,59 +194,91 @@ export function JobTimeTracker({ jobId, jobNumber }: JobTimeTrackerProps) {
           </div>
         </div>
         
-        <CardContent className="p-4">
-          <div className="space-y-3">
-            <Textarea
-              placeholder="Add notes (optional)..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-            />
-            
-            {isActiveOnThisJob ? (
-              <div className="flex gap-2">
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              <Textarea
+                placeholder="Add notes (optional)..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
+
+              {/* Record Hours to Job */}
+              {!isActiveOnThisJob && (
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`record-hours-${jobId}`}
+                      checked={recordWorkHours}
+                      disabled={hasActiveEntry}
+                      onCheckedChange={(checked) => setRecordWorkHours(checked === true)}
+                    />
+                    <Label htmlFor={`record-hours-${jobId}`} className="text-sm text-muted-foreground cursor-pointer">
+                      Record Hours to Job
+                    </Label>
+                  </div>
+
+                  {hasActiveEntry ? (
+                    <p className="text-xs text-muted-foreground pl-6">
+                      Stop your active timer to change this option.
+                    </p>
+                  ) : recordWorkHours ? (
+                    <p className="text-xs text-muted-foreground pl-6">
+                      Rate: {formatAmount((laborHourlyRate ?? profile?.hourly_rate ?? 0) as number)}/hr
+                      {laborHourlyRate ? (
+                        <span className="ml-1 text-primary">(job rate)</span>
+                      ) : profile?.hourly_rate ? (
+                        <span className="ml-1">(your default rate)</span>
+                      ) : null}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+              
+              {isActiveOnThisJob ? (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleToggleBreak}
+                    disabled={startBreak.isPending || endBreak.isPending}
+                    variant={activeEntry?.is_on_break ? "default" : "secondary"}
+                    className="flex-1"
+                  >
+                    {startBreak.isPending || endBreak.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Coffee className="w-4 h-4 mr-2" />
+                    )}
+                    {activeEntry?.is_on_break ? 'End Break' : 'Break'}
+                  </Button>
+                  <Button
+                    onClick={handleClockOut}
+                    disabled={clockOut.isPending}
+                    className="flex-1 bg-destructive hover:bg-destructive/90"
+                  >
+                    {clockOut.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Square className="w-4 h-4 mr-2" />
+                    )}
+                    Stop
+                  </Button>
+                </div>
+              ) : (
                 <Button
-                  onClick={handleToggleBreak}
-                  disabled={startBreak.isPending || endBreak.isPending}
-                  variant={activeEntry?.is_on_break ? "default" : "secondary"}
-                  className="flex-1"
+                  onClick={handleClockIn}
+                  disabled={clockIn.isPending || hasActiveEntry}
+                  className="w-full"
                 >
-                  {startBreak.isPending || endBreak.isPending ? (
+                  {clockIn.isPending ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
-                    <Coffee className="w-4 h-4 mr-2" />
+                    <Play className="w-4 h-4 mr-2" />
                   )}
-                  {activeEntry?.is_on_break ? 'End Break' : 'Break'}
+                  {hasActiveEntry ? 'Already Clocked In' : 'Start Timer'}
                 </Button>
-                <Button
-                  onClick={handleClockOut}
-                  disabled={clockOut.isPending}
-                  className="flex-1 bg-destructive hover:bg-destructive/90"
-                >
-                  {clockOut.isPending ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Square className="w-4 h-4 mr-2" />
-                  )}
-                  Stop
-                </Button>
-              </div>
-            ) : (
-              <Button
-                onClick={handleClockIn}
-                disabled={clockIn.isPending || hasActiveEntry}
-                className="w-full"
-              >
-                {clockIn.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Play className="w-4 h-4 mr-2" />
-                )}
-                {hasActiveEntry ? 'Already Clocked In' : 'Start Timer'}
-              </Button>
-            )}
-          </div>
-        </CardContent>
+              )}
+            </div>
+          </CardContent>
       </Card>
 
       {/* Time Entry History */}
