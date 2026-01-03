@@ -21,6 +21,7 @@ export type Database = {
           auto_archive_days: number
           auto_expire_quotes: boolean
           auto_send_invoice_reminders: boolean
+          auto_send_job_scheduled_email: boolean
           brand_primary_color: string
           city: string | null
           created_at: string
@@ -69,6 +70,7 @@ export type Database = {
           auto_archive_days?: number
           auto_expire_quotes?: boolean
           auto_send_invoice_reminders?: boolean
+          auto_send_job_scheduled_email?: boolean
           brand_primary_color?: string
           city?: string | null
           created_at?: string
@@ -117,6 +119,7 @@ export type Database = {
           auto_archive_days?: number
           auto_expire_quotes?: boolean
           auto_send_invoice_reminders?: boolean
+          auto_send_job_scheduled_email?: boolean
           brand_primary_color?: string
           city?: string | null
           created_at?: string

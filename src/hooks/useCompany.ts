@@ -43,6 +43,7 @@ export interface Company {
   default_job_priority: string | null;
   auto_archive_days: number | null;
   notify_on_job_assignment: boolean | null;
+  auto_send_job_scheduled_email: boolean | null;
   // Quote Settings
   default_quote_validity_days: number | null;
   auto_expire_quotes: boolean | null;

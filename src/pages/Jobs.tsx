@@ -15,6 +15,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
 import { useSignJobCompletion } from '@/hooks/useSignatures';
 import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
+import { useSendJobNotification } from '@/hooks/useSendJobNotification';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -156,6 +157,7 @@ const Jobs = () => {
   const unarchiveJob = useUnarchiveJob();
   const signJobCompletion = useSignJobCompletion();
   const sendSignatureRequest = useSendSignatureRequest();
+  const sendJobNotification = useSendJobNotification();
   
   // Undo-able delete
   const { scheduleDelete: scheduleJobDelete, filterPendingDeletes: filterPendingJobDeletes } = useUndoableDelete(
@@ -543,10 +545,13 @@ const Jobs = () => {
     }
   };
   const handleStatusChange = async (jobId: string, newStatus: Job['status']) => {
+    const job = safeJobs.find(j => j.id === jobId);
+    const oldStatus = job?.status;
+    
     const updates: Partial<Job> = {
       status: newStatus
     };
-    if (newStatus === 'in_progress' && !safeJobs.find(j => j.id === jobId)?.actual_start) {
+    if (newStatus === 'in_progress' && !job?.actual_start) {
       updates.actual_start = new Date().toISOString();
     }
     if (newStatus === 'completed') {
@@ -556,6 +561,14 @@ const Jobs = () => {
       id: jobId,
       ...updates
     });
+    
+    // Auto-send notification when status changes to 'scheduled' from 'draft'
+    if (newStatus === 'scheduled' && oldStatus === 'draft' && job?.customer_id) {
+      const autoSendEnabled = (company as any)?.auto_send_job_scheduled_email !== false;
+      if (autoSendEnabled) {
+        sendJobNotification.mutate({ jobId, customerId: job.customer_id });
+      }
+    }
   };
   const handlePriorityChange = async (jobId: string, newPriority: Job['priority']) => {
     await updateJob.mutateAsync({
