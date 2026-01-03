@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -28,12 +28,14 @@ const Company = () => {
     name: '',
     email: '',
     phone: '',
+    website: '',
     address: '',
     city: '',
     state: '',
     zip: '',
     timezone: 'America/New_York',
   });
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [billingData, setBillingData] = useState({
     tax_rate: 8.25,
     payment_terms_days: 30,
@@ -82,6 +84,7 @@ const Company = () => {
       name: company.name || '',
       email: company.email || '',
       phone: company.phone || '',
+      website: company.website || '',
       address: company.address || '',
       city: company.city || '',
       state: company.state || '',
@@ -126,7 +129,33 @@ const Company = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!company) return;
-    await updateCompany.mutateAsync({ id: company.id, ...formData });
+    await updateCompany.mutateAsync({ 
+      id: company.id, 
+      ...formData,
+      website: formData.website || null,
+    });
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!company || !formData.email) {
+      toast.error('Company email is required to send a test email');
+      return;
+    }
+    setSendingTestEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-test-email', {
+        body: { companyId: company.id, recipientEmail: formData.email },
+      });
+      
+      if (error) throw error;
+      
+      toast.success(`Test email sent to ${formData.email}`);
+    } catch (error: any) {
+      console.error('Error sending test email:', error);
+      toast.error('Failed to send test email: ' + error.message);
+    } finally {
+      setSendingTestEmail(false);
+    }
   };
 
   const handleBillingSubmit = async (e: React.FormEvent) => {
@@ -366,14 +395,31 @@ const Company = () => {
                   </p>
                 </div>
 
-                <Button type="submit" className="gap-2" disabled={updateCompany.isPending}>
-                  {updateCompany.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  Save Changes
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Button type="submit" className="gap-2" disabled={updateCompany.isPending}>
+                    {updateCompany.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    Save Changes
+                  </Button>
+                  
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="gap-2" 
+                    onClick={handleSendTestEmail}
+                    disabled={sendingTestEmail || !formData.email}
+                  >
+                    {sendingTestEmail ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                    Send Test Email
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>

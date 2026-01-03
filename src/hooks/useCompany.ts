@@ -13,6 +13,7 @@ export interface Company {
   city: string | null;
   state: string | null;
   zip: string | null;
+  website: string | null;
   logo_url: string | null;
   tax_rate: number | null;
   payment_terms_days: number | null;

@@ -318,6 +318,7 @@ function generateHTML(
         ${company?.city || company?.state || company?.zip ? `<p>${[company.city, company.state, company.zip].filter(Boolean).join(", ")}</p>` : ""}
         ${company?.phone ? `<p>${company.phone}</p>` : ""}
         ${company?.email ? `<p>${company.email}</p>` : ""}
+        ${company?.website ? `<p><a href="${company.website}" style="color: #2563eb; text-decoration: none;">${company.website}</a></p>` : ""}
       </div>
     </div>
 
@@ -591,6 +592,7 @@ serve(async (req) => {
           <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
           <p>If you have any questions, please don't hesitate to contact us.</p>
           <p>Best regards,<br/>${company?.name || "The Team"}</p>
+          ${company?.website ? `<p style="margin-top: 15px;"><a href="${company.website}" style="color: #2563eb; text-decoration: none;">${company.website}</a></p>` : ""}
         </div>
       `;
 

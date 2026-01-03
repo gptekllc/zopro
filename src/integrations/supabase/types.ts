@@ -60,6 +60,7 @@ export type Database = {
           tax_rate: number | null
           timezone: string | null
           updated_at: string
+          website: string | null
           zip: string | null
         }
         Insert: {
@@ -107,6 +108,7 @@ export type Database = {
           tax_rate?: number | null
           timezone?: string | null
           updated_at?: string
+          website?: string | null
           zip?: string | null
         }
         Update: {
@@ -154,6 +156,7 @@ export type Database = {
           tax_rate?: number | null
           timezone?: string | null
           updated_at?: string
+          website?: string | null
           zip?: string | null
         }
         Relationships: []
