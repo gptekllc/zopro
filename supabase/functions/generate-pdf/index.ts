@@ -597,8 +597,9 @@ serve(async (req) => {
       console.log(`Sending email to ${recipientEmail}`);
 
       const { data: emailData, error: emailError } = await resend.emails.send({
-        from: `${company?.name || "Company"} <onboarding@resend.dev>`,
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [recipientEmail],
+        reply_to: company?.email || undefined,
         subject,
         html: emailHtml,
       });

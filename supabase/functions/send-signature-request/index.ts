@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
       const resend = new Resend(resendApiKey);
       
       await resend.emails.send({
-        from: `${companyName || 'Service App'} <onboarding@resend.dev>`,
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [recipientEmail],
         subject: `Signature Required: ${documentLabel} ${documentNumber}`,
         html: `

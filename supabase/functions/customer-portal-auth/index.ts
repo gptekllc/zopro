@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
           const companyName = (customer as any).companies?.name || 'Our Company';
           
           await resend.emails.send({
-            from: `${companyName} <onboarding@resend.dev>`,
+            from: "ZoPro Notifications <noreply@email.zopro.app>",
             to: [email],
             subject: `Your ${companyName} Customer Portal Access`,
             html: `

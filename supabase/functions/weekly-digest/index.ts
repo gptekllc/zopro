@@ -228,7 +228,7 @@ serve(async (req) => {
         
         try {
           const emailResult = await resend.emails.send({
-            from: "Weekly Digest <onboarding@resend.dev>",
+            from: "ZoPro Notifications <noreply@email.zopro.app>",
             to: [admin.email],
             subject: `📊 Weekly Digest: ${weekStart} - ${weekEnd}`,
             html: htmlContent,

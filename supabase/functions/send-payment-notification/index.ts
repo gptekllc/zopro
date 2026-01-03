@@ -42,7 +42,7 @@ serve(async (req) => {
     if (payload.type === "invoice_paid") {
       // Email to company about payment received
       const companyEmailResponse = await resend.emails.send({
-        from: "FieldFlow <onboarding@resend.dev>",
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [payload.companyEmail],
         subject: `Payment Received - Invoice #${payload.invoiceNumber}`,
         html: `
@@ -62,8 +62,9 @@ serve(async (req) => {
 
       // Email to customer confirming payment
       const customerEmailResponse = await resend.emails.send({
-        from: "FieldFlow <onboarding@resend.dev>",
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [payload.customerEmail],
+        reply_to: payload.companyEmail || undefined,
         subject: `Payment Confirmation - Invoice #${payload.invoiceNumber}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -89,7 +90,7 @@ serve(async (req) => {
     if (payload.type === "quote_approved") {
       // Email to company about quote approval
       const companyEmailResponse = await resend.emails.send({
-        from: "FieldFlow <onboarding@resend.dev>",
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [payload.companyEmail],
         subject: `Quote Approved - #${payload.quoteNumber}`,
         html: `
@@ -117,8 +118,9 @@ serve(async (req) => {
     if (payload.type === "payment_failed") {
       // Email to customer about failed payment
       const customerEmailResponse = await resend.emails.send({
-        from: "FieldFlow <onboarding@resend.dev>",
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [payload.customerEmail],
+        reply_to: payload.companyEmail || undefined,
         subject: `Payment Issue - Invoice #${payload.invoiceNumber}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -145,8 +147,9 @@ serve(async (req) => {
     if (payload.type === "late_fee_applied") {
       // Email to customer about late fee
       const customerEmailResponse = await resend.emails.send({
-        from: "FieldFlow <onboarding@resend.dev>",
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [payload.customerEmail],
+        reply_to: payload.companyEmail || undefined,
         subject: `Late Fee Applied - Invoice #${payload.invoiceNumber}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -169,7 +172,7 @@ serve(async (req) => {
 
       // Email to company about late fee applied
       const companyEmailResponse = await resend.emails.send({
-        from: "FieldFlow <onboarding@resend.dev>",
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [payload.companyEmail],
         subject: `Late Fee Applied - Invoice #${payload.invoiceNumber}`,
         html: `
@@ -203,8 +206,9 @@ serve(async (req) => {
         : payload.amount || 0;
       
       const customerEmailResponse = await resend.emails.send({
-        from: "FieldFlow <onboarding@resend.dev>",
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [payload.customerEmail],
+        reply_to: payload.companyEmail || undefined,
         subject: `${isOverdue ? 'Overdue ' : ''}Payment Reminder - Invoice #${payload.invoiceNumber}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
