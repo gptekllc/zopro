@@ -141,7 +141,7 @@ const TimeClock = () => {
         id: activeEntry.id, 
         notes: notes || undefined,
         jobId: activeEntry.job_id,
-        hourlyRate: profile?.hourly_rate || 0,
+        technicianHourlyRate: profile?.hourly_rate || 0,
       });
       setNotes('');
       setSelectedJobId('none');
