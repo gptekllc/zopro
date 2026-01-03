@@ -1351,8 +1351,12 @@ const Quotes = () => {
                 {viewingQuote.status !== 'rejected' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-1">
-                        <Briefcase className="w-4 h-4 mr-1" />
+                      <Button variant="outline" size="sm" className="gap-1" disabled={createJobFromQuote.isPending || addItemsToJob.isPending}>
+                        {(createJobFromQuote.isPending || addItemsToJob.isPending) ? (
+                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                        ) : (
+                          <Briefcase className="w-4 h-4 mr-1" />
+                        )}
                         Create Job
                       </Button>
                     </DropdownMenuTrigger>
@@ -1383,8 +1387,13 @@ const Quotes = () => {
                         openViewingQuote(null);
                       }
                     }}
+                    disabled={convertingQuoteId === viewingQuote.id}
                   >
-                    <ArrowRight className="w-4 h-4 mr-1" />
+                    {convertingQuoteId === viewingQuote.id ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <ArrowRight className="w-4 h-4 mr-1" />
+                    )}
                     Convert to Invoice
                   </Button>
                 )}
