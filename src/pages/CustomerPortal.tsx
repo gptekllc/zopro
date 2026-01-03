@@ -16,7 +16,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { format } from 'date-fns';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { loadStripe } from '@stripe/stripe-js';
@@ -42,13 +45,25 @@ interface CustomerData {
   };
 }
 
+interface InvoiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+}
+
 interface Invoice {
   id: string;
   invoice_number: string;
   status: string;
   total: number;
+  subtotal?: number;
+  tax?: number;
   created_at: string;
   due_date: string | null;
+  notes?: string | null;
+  items?: InvoiceItem[];
 }
 
 interface Job {
@@ -66,6 +81,18 @@ interface Job {
   created_at: string;
   completion_signed_at: string | null;
   completion_signed_by: string | null;
+  subtotal?: number;
+  tax?: number;
+  total?: number;
+  items?: InvoiceItem[];
+}
+
+interface QuoteItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
 }
 
 interface Quote {
@@ -79,6 +106,7 @@ interface Quote {
   valid_until: string | null;
   notes: string | null;
   signed_at: string | null;
+  items?: QuoteItem[];
 }
 
 interface SigningDocument {
@@ -426,6 +454,12 @@ const CustomerPortal = () => {
   } | null>(null);
   const [signingDocument, setSigningDocument] = useState<SigningDocument | null>(null);
   const [isLoadingSigningDocument, setIsLoadingSigningDocument] = useState(false);
+  
+  // Detail view states
+  const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
+  const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
+  const [viewingJob, setViewingJob] = useState<Job | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState<string | null>(null);
 
   // Check for magic link token and payment status in URL
   useEffect(() => {
@@ -584,6 +618,93 @@ const CustomerPortal = () => {
     setJobs([]);
     setQuotes([]);
     setPaymentMethods([]);
+  };
+
+  // Fetch quote details
+  const handleViewQuote = async (quote: Quote) => {
+    if (quote.items && quote.items.length > 0) {
+      setViewingQuote(quote);
+      return;
+    }
+    
+    setIsLoadingDetails(quote.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { 
+          action: 'get-document-details', 
+          documentType: 'quote',
+          documentId: quote.id,
+          customerId: customerData?.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error) throw error;
+      setViewingQuote({ ...quote, items: data?.items || [], notes: data?.document?.notes || quote.notes });
+    } catch (err) {
+      console.error('Failed to fetch quote details:', err);
+      setViewingQuote(quote);
+    } finally {
+      setIsLoadingDetails(null);
+    }
+  };
+
+  // Fetch invoice details
+  const handleViewInvoice = async (invoice: Invoice) => {
+    if (invoice.items && invoice.items.length > 0) {
+      setViewingInvoice(invoice);
+      return;
+    }
+    
+    setIsLoadingDetails(invoice.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { 
+          action: 'get-document-details', 
+          documentType: 'invoice',
+          documentId: invoice.id,
+          customerId: customerData?.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error) throw error;
+      setViewingInvoice({ ...invoice, items: data?.items || [], notes: data?.document?.notes, subtotal: data?.document?.subtotal, tax: data?.document?.tax });
+    } catch (err) {
+      console.error('Failed to fetch invoice details:', err);
+      setViewingInvoice(invoice);
+    } finally {
+      setIsLoadingDetails(null);
+    }
+  };
+
+  // Fetch job details
+  const handleViewJob = async (job: Job) => {
+    if (job.items && job.items.length > 0) {
+      setViewingJob(job);
+      return;
+    }
+    
+    setIsLoadingDetails(job.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { 
+          action: 'get-document-details', 
+          documentType: 'job',
+          documentId: job.id,
+          customerId: customerData?.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error) throw error;
+      setViewingJob({ ...job, items: data?.items || [], subtotal: data?.document?.subtotal, tax: data?.document?.tax, total: data?.document?.total });
+    } catch (err) {
+      console.error('Failed to fetch job details:', err);
+      setViewingJob(job);
+    } finally {
+      setIsLoadingDetails(null);
+    }
   };
 
   // Fetch payment methods
@@ -1269,9 +1390,10 @@ const CustomerPortal = () => {
           </Card>
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="quotes" className="space-y-4">
+        {/* Tabs - Reordered: Service History, Quotes, Invoices, Payment Methods */}
+        <Tabs defaultValue="jobs" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="jobs">Service History</TabsTrigger>
             <TabsTrigger value="quotes" className="flex items-center gap-2">
               Quotes
               {pendingQuotes.length > 0 && (
@@ -1290,8 +1412,81 @@ const CustomerPortal = () => {
                 Payment Methods
               </TabsTrigger>
             )}
-            <TabsTrigger value="jobs">Service History</TabsTrigger>
           </TabsList>
+
+          {/* Jobs/Service History Tab - Now First */}
+          <TabsContent value="jobs">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Briefcase className="w-5 h-5" />
+                  Service History & Appointments
+                </CardTitle>
+                <CardDescription>
+                  View your upcoming appointments and past service history. Click a job to view details.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {jobs.length > 0 ? (
+                  <div className="space-y-3">
+                    {jobs.map((job) => (
+                      <div
+                        key={job.id}
+                        className={`border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                          job.status === 'scheduled' && job.scheduled_start && new Date(job.scheduled_start) > new Date()
+                            ? 'border-blue-300 bg-blue-50/50 dark:bg-blue-950/20'
+                            : ''
+                        }`}
+                        onClick={() => handleViewJob(job)}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-medium text-sm">{job.job_number}</span>
+                              {getStatusBadge(job.status)}
+                              {job.status === 'scheduled' && job.scheduled_start && new Date(job.scheduled_start) > new Date() && (
+                                <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-300">
+                                  Upcoming
+                                </Badge>
+                              )}
+                            </div>
+                            <h3 className="font-semibold truncate">{job.title}</h3>
+                            {job.scheduled_start && (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                                <Calendar className="w-4 h-4" />
+                                <span>{format(new Date(job.scheduled_start), 'EEEE, MMMM d, yyyy')}</span>
+                                <span className="mx-1">•</span>
+                                <Clock className="w-4 h-4" />
+                                <span>{format(new Date(job.scheduled_start), 'h:mm a')}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {job.completion_signed_at && (
+                              <Badge variant="default" className="bg-emerald-500">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Signed
+                              </Badge>
+                            )}
+                            {isLoadingDetails === job.id ? (
+                              <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No service history yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="quotes">
             <Card>
@@ -1301,69 +1496,52 @@ const CustomerPortal = () => {
                   Your Quotes
                 </CardTitle>
                 <CardDescription>
-                  Review and approve quotes to proceed with services
+                  Review and approve quotes to proceed with services. Click a quote to view details.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {quotes.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Quote #</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Valid Until</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {quotes.map((quote) => (
-                        <TableRow key={quote.id}>
-                          <TableCell className="font-medium">{quote.quote_number}</TableCell>
-                          <TableCell>{format(new Date(quote.created_at), 'MMM d, yyyy')}</TableCell>
-                          <TableCell>
-                            {quote.valid_until ? format(new Date(quote.valid_until), 'MMM d, yyyy') : '-'}
-                          </TableCell>
-                          <TableCell>{getStatusBadge(quote.status)}</TableCell>
-                          <TableCell className="text-right font-medium">
-                            ${Number(quote.total).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {(quote.status === 'sent' || quote.status === 'pending' || quote.status === 'draft') && (
-                              <Button
-                                size="sm"
-                                onClick={() => handleApproveQuote(quote)}
-                                disabled={approvingQuote === quote.id}
-                              >
-                                {approvingQuote === quote.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <PenLine className="w-4 h-4 mr-2" />
-                                    Sign & Approve
-                                  </>
-                                )}
-                              </Button>
-                            )}
-                            {quote.status === 'approved' && (
-                              <div className="flex items-center gap-2">
+                  <div className="space-y-3">
+                    {quotes.map((quote) => (
+                      <div
+                        key={quote.id}
+                        className="border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => handleViewQuote(quote)}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-medium">{quote.quote_number}</span>
+                              {getStatusBadge(quote.status)}
+                              {quote.signed_at && (
                                 <Badge variant="default" className="bg-emerald-500">
                                   <CheckCircle className="w-3 h-3 mr-1" />
-                                  Approved
+                                  Signed
                                 </Badge>
-                                {quote.signed_at && (
-                                  <span className="text-xs text-muted-foreground">
-                                    Signed {format(new Date(quote.signed_at), 'MMM d')}
-                                  </span>
-                                )}
-                              </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                              <span>{format(new Date(quote.created_at), 'MMM d, yyyy')}</span>
+                              {quote.valid_until && (
+                                <>
+                                  <span>•</span>
+                                  <span>Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="font-semibold text-lg">${Number(quote.total).toFixed(2)}</span>
+                            {isLoadingDetails === quote.id ? (
+                              <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
                             )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <ClipboardList className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -1383,8 +1561,8 @@ const CustomerPortal = () => {
                 </CardTitle>
                 <CardDescription>
                   {customerData?.company?.stripe_payments_enabled !== false 
-                    ? 'View and pay your invoices online'
-                    : 'View your invoices and payment instructions'}
+                    ? 'View and pay your invoices online. Click an invoice to view details.'
+                    : 'View your invoices and payment instructions. Click an invoice to view details.'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -1429,65 +1607,45 @@ const CustomerPortal = () => {
                 )}
                 
                 {invoices.length > 0 ? (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Invoice #</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {invoices.map((invoice) => (
-                        <TableRow key={invoice.id}>
-                          <TableCell className="font-medium">{invoice.invoice_number}</TableCell>
-                          <TableCell>{format(new Date(invoice.created_at), 'MMM d, yyyy')}</TableCell>
-                          <TableCell>
-                            {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '-'}
-                          </TableCell>
-                          <TableCell>{getStatusBadge(invoice.status)}</TableCell>
-                          <TableCell className="text-right font-medium">
-                            ${Number(invoice.total).toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDownloadInvoice(invoice)}
-                                disabled={downloadingInvoice === invoice.id}
-                              >
-                                {downloadingInvoice === invoice.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Download className="w-4 h-4" />
-                                )}
-                              </Button>
-                              {invoice.status !== 'paid' && customerData?.company?.stripe_payments_enabled !== false && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => handlePayInvoice(invoice)}
-                                  disabled={payingInvoice === invoice.id}
-                                >
-                                  {payingInvoice === invoice.id ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <>
-                                      <PenLine className="w-4 h-4 mr-2" />
-                                      Sign & Pay
-                                    </>
-                                  )}
-                                </Button>
+                  <div className="space-y-3">
+                    {invoices.map((invoice) => (
+                      <div
+                        key={invoice.id}
+                        className={`border rounded-lg p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                          invoice.status === 'overdue' ? 'border-destructive/50 bg-destructive/5' : ''
+                        }`}
+                        onClick={() => handleViewInvoice(invoice)}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-medium">{invoice.invoice_number}</span>
+                              {getStatusBadge(invoice.status)}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                              <span>{format(new Date(invoice.created_at), 'MMM d, yyyy')}</span>
+                              {invoice.due_date && (
+                                <>
+                                  <span>•</span>
+                                  <span>Due {format(new Date(invoice.due_date), 'MMM d, yyyy')}</span>
+                                </>
                               )}
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className={`font-semibold text-lg ${invoice.status === 'overdue' ? 'text-destructive' : ''}`}>
+                              ${Number(invoice.total).toFixed(2)}
+                            </span>
+                            {isLoadingDetails === invoice.id ? (
+                              <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
+                            ) : (
+                              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
@@ -1595,41 +1753,421 @@ const CustomerPortal = () => {
               </CardContent>
             </Card>
           </TabsContent>
-
-          <TabsContent value="jobs">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Briefcase className="w-5 h-5" />
-                  Service History & Appointments
-                </CardTitle>
-                <CardDescription>
-                  View your upcoming appointments and past service history
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {jobs.length > 0 ? (
-                  <div className="space-y-4">
-                    {jobs.map((job) => (
-                      <JobCard 
-                        key={job.id} 
-                        job={job} 
-                        onSign={handleSignJobCompletion}
-                        signingJob={signingJob}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Briefcase className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No service history yet</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </main>
+
+      {/* Quote Detail Sheet */}
+      <Sheet open={!!viewingQuote} onOpenChange={(open) => !open && setViewingQuote(null)}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="flex items-center gap-2">
+                <ClipboardList className="w-5 h-5" />
+                Quote {viewingQuote?.quote_number}
+              </SheetTitle>
+              {viewingQuote && getStatusBadge(viewingQuote.status)}
+            </div>
+            <SheetDescription>
+              Created {viewingQuote && format(new Date(viewingQuote.created_at), 'MMMM d, yyyy')}
+              {viewingQuote?.valid_until && ` • Valid until ${format(new Date(viewingQuote.valid_until), 'MMMM d, yyyy')}`}
+            </SheetDescription>
+          </SheetHeader>
+          
+          {viewingQuote && (
+            <div className="space-y-4">
+              {/* Line Items */}
+              {viewingQuote.items && viewingQuote.items.length > 0 && (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {viewingQuote.items.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="text-sm">{item.description}</TableCell>
+                          <TableCell className="text-right">{item.quantity}</TableCell>
+                          <TableCell className="text-right">${Number(item.unit_price).toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-medium">${Number(item.total).toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Totals */}
+              <div className="flex justify-end pt-2">
+                <div className="w-48 space-y-1">
+                  {viewingQuote.subtotal && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>${Number(viewingQuote.subtotal).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {viewingQuote.tax && Number(viewingQuote.tax) > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Tax</span>
+                      <span>${Number(viewingQuote.tax).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-semibold pt-2 border-t">
+                    <span>Total</span>
+                    <span>${Number(viewingQuote.total).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {viewingQuote.notes && (
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-muted-foreground mb-1">Notes</p>
+                  <p className="text-sm whitespace-pre-wrap">{viewingQuote.notes}</p>
+                </div>
+              )}
+
+              {/* Signed Status */}
+              {viewingQuote.signed_at && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">Approved & Signed on {format(new Date(viewingQuote.signed_at), 'MMMM d, yyyy')}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Button */}
+              {(viewingQuote.status === 'sent' || viewingQuote.status === 'pending' || viewingQuote.status === 'draft') && (
+                <SheetFooter className="pt-4">
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      handleApproveQuote(viewingQuote);
+                      setViewingQuote(null);
+                    }}
+                    disabled={approvingQuote === viewingQuote.id}
+                  >
+                    {approvingQuote === viewingQuote.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <PenLine className="w-4 h-4 mr-2" />
+                    )}
+                    Sign & Approve Quote
+                  </Button>
+                </SheetFooter>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Invoice Detail Sheet */}
+      <Sheet open={!!viewingInvoice} onOpenChange={(open) => !open && setViewingInvoice(null)}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                Invoice {viewingInvoice?.invoice_number}
+              </SheetTitle>
+              {viewingInvoice && getStatusBadge(viewingInvoice.status)}
+            </div>
+            <SheetDescription>
+              Created {viewingInvoice && format(new Date(viewingInvoice.created_at), 'MMMM d, yyyy')}
+              {viewingInvoice?.due_date && ` • Due ${format(new Date(viewingInvoice.due_date), 'MMMM d, yyyy')}`}
+            </SheetDescription>
+          </SheetHeader>
+          
+          {viewingInvoice && (
+            <div className="space-y-4">
+              {/* Line Items */}
+              {viewingInvoice.items && viewingInvoice.items.length > 0 && (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {viewingInvoice.items.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="text-sm">{item.description}</TableCell>
+                          <TableCell className="text-right">{item.quantity}</TableCell>
+                          <TableCell className="text-right">${Number(item.unit_price).toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-medium">${Number(item.total).toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Totals */}
+              <div className="flex justify-end pt-2">
+                <div className="w-48 space-y-1">
+                  {viewingInvoice.subtotal && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span>${Number(viewingInvoice.subtotal).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {viewingInvoice.tax && Number(viewingInvoice.tax) > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Tax</span>
+                      <span>${Number(viewingInvoice.tax).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className={`flex justify-between text-lg font-semibold pt-2 border-t ${viewingInvoice.status === 'overdue' ? 'text-destructive' : ''}`}>
+                    <span>Total</span>
+                    <span>${Number(viewingInvoice.total).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {viewingInvoice.notes && (
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-muted-foreground mb-1">Notes</p>
+                  <p className="text-sm whitespace-pre-wrap">{viewingInvoice.notes}</p>
+                </div>
+              )}
+
+              {/* Paid Status */}
+              {viewingInvoice.status === 'paid' && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">Paid</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              {viewingInvoice.status !== 'paid' && (
+                <SheetFooter className="pt-4 flex-col gap-2">
+                  {customerData?.company?.stripe_payments_enabled !== false ? (
+                    <Button
+                      className="w-full"
+                      onClick={() => {
+                        handlePayInvoice(viewingInvoice);
+                        setViewingInvoice(null);
+                      }}
+                      disabled={payingInvoice === viewingInvoice.id}
+                    >
+                      {payingInvoice === viewingInvoice.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : (
+                        <CreditCard className="w-4 h-4 mr-2" />
+                      )}
+                      Pay Now with Card
+                    </Button>
+                  ) : (
+                    <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                      <p className="font-medium text-foreground mb-1">Payment Instructions</p>
+                      <p>
+                        {customerData?.company?.default_payment_method === 'cash' && 
+                          'Please pay in cash upon service completion or at our office.'}
+                        {customerData?.company?.default_payment_method === 'check' && 
+                          'Please mail a check to our office address.'}
+                        {customerData?.company?.default_payment_method === 'bank_transfer' && 
+                          'Please arrange a bank transfer. Contact us for account details.'}
+                        {(!customerData?.company?.default_payment_method || customerData?.company?.default_payment_method === 'any') && 
+                          'Please contact us for payment arrangements.'}
+                      </p>
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleDownloadInvoice(viewingInvoice)}
+                    disabled={downloadingInvoice === viewingInvoice.id}
+                  >
+                    {downloadingInvoice === viewingInvoice.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <Download className="w-4 h-4 mr-2" />
+                    )}
+                    Download Invoice
+                  </Button>
+                </SheetFooter>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Job Detail Sheet */}
+      <Sheet open={!!viewingJob} onOpenChange={(open) => !open && setViewingJob(null)}>
+        <SheetContent className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <div className="flex items-center justify-between">
+              <SheetTitle className="flex items-center gap-2">
+                <Briefcase className="w-5 h-5" />
+                Job {viewingJob?.job_number}
+              </SheetTitle>
+              {viewingJob && getStatusBadge(viewingJob.status)}
+            </div>
+            <SheetDescription>
+              {viewingJob?.title}
+            </SheetDescription>
+          </SheetHeader>
+          
+          {viewingJob && (
+            <div className="space-y-4">
+              {/* Schedule */}
+              {viewingJob.scheduled_start && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <Calendar className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <div>
+                      <p className="font-medium text-blue-900 dark:text-blue-100">
+                        {format(new Date(viewingJob.scheduled_start), 'EEEE, MMMM d, yyyy')}
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        {format(new Date(viewingJob.scheduled_start), 'h:mm a')}
+                        {viewingJob.scheduled_end && ` - ${format(new Date(viewingJob.scheduled_end), 'h:mm a')}`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {viewingJob.description && (
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Description</p>
+                  <p className="text-sm whitespace-pre-wrap">{viewingJob.description}</p>
+                </div>
+              )}
+
+              {/* Line Items */}
+              {viewingJob.items && viewingJob.items.length > 0 && (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Qty</TableHead>
+                        <TableHead className="text-right">Price</TableHead>
+                        <TableHead className="text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {viewingJob.items.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="text-sm">{item.description}</TableCell>
+                          <TableCell className="text-right">{item.quantity}</TableCell>
+                          <TableCell className="text-right">${Number(item.unit_price).toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-medium">${Number(item.total).toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Totals */}
+              {viewingJob.total && Number(viewingJob.total) > 0 && (
+                <div className="flex justify-end pt-2">
+                  <div className="w-48 space-y-1">
+                    {viewingJob.subtotal && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span>${Number(viewingJob.subtotal).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {viewingJob.tax && Number(viewingJob.tax) > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Tax</span>
+                        <span>${Number(viewingJob.tax).toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-lg font-semibold pt-2 border-t">
+                      <span>Total</span>
+                      <span>${Number(viewingJob.total).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Actual Times */}
+              {(viewingJob.actual_start || viewingJob.actual_end) && (
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                  {viewingJob.actual_start && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Work Started</p>
+                      <p className="text-sm font-medium">
+                        {format(new Date(viewingJob.actual_start), 'MMM d, yyyy h:mm a')}
+                      </p>
+                    </div>
+                  )}
+                  {viewingJob.actual_end && (
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">Work Completed</p>
+                      <p className="text-sm font-medium">
+                        {format(new Date(viewingJob.actual_end), 'MMM d, yyyy h:mm a')}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Notes */}
+              {viewingJob.notes && (
+                <div className="pt-4 border-t">
+                  <p className="text-sm text-muted-foreground mb-1">Notes</p>
+                  <p className="text-sm whitespace-pre-wrap">{viewingJob.notes}</p>
+                </div>
+              )}
+
+              {/* Signature Status */}
+              {viewingJob.completion_signed_at && (
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle className="w-5 h-5" />
+                    <div>
+                      <p className="font-medium">Job Completion Confirmed</p>
+                      <p className="text-sm opacity-80">
+                        Signed by {viewingJob.completion_signed_by} on {format(new Date(viewingJob.completion_signed_at), 'MMMM d, yyyy')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sign Button */}
+              {viewingJob.status === 'completed' && !viewingJob.completion_signed_at && (
+                <SheetFooter className="pt-4">
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      handleSignJobCompletion(viewingJob);
+                      setViewingJob(null);
+                    }}
+                    disabled={signingJob === viewingJob.id}
+                  >
+                    {signingJob === viewingJob.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    ) : (
+                      <PenLine className="w-4 h-4 mr-2" />
+                    )}
+                    Sign Job Completion
+                  </Button>
+                </SheetFooter>
+              )}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       {/* Signature Dialog */}
       <SignatureDialog
