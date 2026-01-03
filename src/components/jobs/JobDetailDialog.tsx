@@ -112,7 +112,7 @@ export function JobDetailDialog({
 
   if (!job) return null;
 
-  const handleCreateUpsellQuote = () => {
+  const handleCreateUpsellQuote = async () => {
     // Convert the CustomerJob to Job format for the mutation
     const jobForConversion: Job = {
       id: job.id,
@@ -141,10 +141,14 @@ export function JobDetailDialog({
       discount_value: null,
       items: [], // Will use job items if available
     };
-    convertJobToQuote.mutate(jobForConversion);
+    const quote = await convertJobToQuote.mutateAsync(jobForConversion);
+    if (quote?.id) {
+      onOpenChange(false);
+      window.location.href = `/quotes?edit=${quote.id}`;
+    }
   };
 
-  const handleCreateInvoice = () => {
+  const handleCreateInvoice = async () => {
     const jobForConversion: Job = {
       id: job.id,
       job_number: job.job_number,
@@ -172,7 +176,11 @@ export function JobDetailDialog({
       discount_value: null,
       items: [],
     };
-    convertJobToInvoice.mutate(jobForConversion);
+    const invoice = await convertJobToInvoice.mutateAsync(jobForConversion);
+    if (invoice?.id) {
+      onOpenChange(false);
+      window.location.href = `/invoices?edit=${invoice.id}`;
+    }
   };
 
   const handleOnMyWay = (etaMinutes?: number) => {
