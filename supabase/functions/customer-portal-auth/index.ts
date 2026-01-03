@@ -477,6 +477,463 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === 'download-quote') {
+      const { quoteId, customerId, token } = body;
+      
+      if (!quoteId || !customerId || !token) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify quote belongs to customer
+      const { data: quote, error: quoteError } = await adminClient
+        .from('quotes')
+        .select('*, companies(*), customers(*)')
+        .eq('id', quoteId)
+        .eq('customer_id', customerId)
+        .single();
+
+      if (quoteError || !quote) {
+        console.error('Quote not found or access denied:', quoteError);
+        return new Response(
+          JSON.stringify({ error: 'Quote not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch quote items
+      const { data: items } = await adminClient
+        .from('quote_items')
+        .select('*')
+        .eq('quote_id', quoteId);
+
+      const company = quote.companies;
+      const customer = quote.customers;
+      
+      const formatDate = (dateStr: string) => {
+        if (!dateStr) return 'N/A';
+        return new Date(dateStr).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      };
+
+      const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(amount);
+      };
+
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Quote ${quote.quote_number}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; line-height: 1.6; }
+    .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
+    .company-info h1 { font-size: 28px; color: #1a1a1a; margin-bottom: 5px; }
+    .company-info p { color: #666; font-size: 14px; }
+    .document-info { text-align: right; }
+    .document-type { font-size: 32px; font-weight: bold; color: #2563eb; margin-bottom: 10px; }
+    .document-number { font-size: 18px; color: #666; }
+    .addresses { display: flex; justify-content: space-between; margin-bottom: 40px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+    .address-block h3 { font-size: 12px; text-transform: uppercase; color: #888; margin-bottom: 10px; }
+    .address-block p { margin: 2px 0; }
+    .dates { margin-bottom: 30px; }
+    .dates p { display: inline-block; margin-right: 40px; }
+    .dates strong { color: #666; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+    thead { background: #1a1a1a; color: white; }
+    th { padding: 12px 15px; text-align: left; font-weight: 500; font-size: 14px; }
+    th:last-child { text-align: right; }
+    td { padding: 15px; border-bottom: 1px solid #eee; }
+    td:last-child { text-align: right; }
+    .totals { margin-left: auto; width: 300px; }
+    .totals-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+    .totals-row.total { border-bottom: none; font-size: 20px; font-weight: bold; color: #2563eb; padding-top: 15px; }
+    .notes { margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+    .notes h3 { font-size: 14px; color: #888; margin-bottom: 10px; }
+    .footer { margin-top: 60px; text-align: center; color: #888; font-size: 12px; }
+    .status { display: inline-block; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 500; text-transform: uppercase; margin-left: 10px; }
+    .status-approved { background: #dcfce7; color: #166534; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-sent { background: #dbeafe; color: #1e40af; }
+    @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="company-info">
+        <h1>${company?.name || 'Company'}</h1>
+        ${company?.address ? `<p>${company.address}</p>` : ''}
+        ${company?.city || company?.state || company?.zip ? `<p>${[company.city, company.state, company.zip].filter(Boolean).join(', ')}</p>` : ''}
+        ${company?.phone ? `<p>${company.phone}</p>` : ''}
+        ${company?.email ? `<p>${company.email}</p>` : ''}
+      </div>
+      <div class="document-info">
+        <div class="document-type">QUOTE</div>
+        <div class="document-number">${quote.quote_number}
+          <span class="status status-${quote.status}">${quote.status}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="addresses">
+      <div class="address-block">
+        <h3>Prepared For</h3>
+        <p><strong>${customer?.name || 'Customer'}</strong></p>
+        ${customer?.address ? `<p>${customer.address}</p>` : ''}
+        ${customer?.city || customer?.state || customer?.zip ? `<p>${[customer.city, customer.state, customer.zip].filter(Boolean).join(', ')}</p>` : ''}
+        ${customer?.email ? `<p>${customer.email}</p>` : ''}
+        ${customer?.phone ? `<p>${customer.phone}</p>` : ''}
+      </div>
+    </div>
+
+    <div class="dates">
+      <p><strong>Quote Date:</strong> ${formatDate(quote.created_at)}</p>
+      ${quote.valid_until ? `<p><strong>Valid Until:</strong> ${formatDate(quote.valid_until)}</p>` : ''}
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Qty</th>
+          <th>Unit Price</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(items || []).map((item: any) => `
+          <tr>
+            <td>${item.description}</td>
+            <td>${item.quantity}</td>
+            <td>${formatCurrency(Number(item.unit_price))}</td>
+            <td>${formatCurrency(Number(item.total))}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      <div class="totals-row">
+        <span>Subtotal</span>
+        <span>${formatCurrency(Number(quote.subtotal))}</span>
+      </div>
+      <div class="totals-row">
+        <span>Tax</span>
+        <span>${formatCurrency(Number(quote.tax))}</span>
+      </div>
+      <div class="totals-row total">
+        <span>Total</span>
+        <span>${formatCurrency(Number(quote.total))}</span>
+      </div>
+    </div>
+
+    ${quote.notes ? `
+      <div class="notes">
+        <h3>Notes</h3>
+        <p>${quote.notes}</p>
+      </div>
+    ` : ''}
+
+    <div class="footer">
+      <p>Thank you for considering our services!</p>
+    </div>
+  </div>
+</body>
+</html>
+      `;
+
+      console.log('Generated quote PDF HTML for:', quote.quote_number);
+
+      return new Response(
+        JSON.stringify({ html, quoteNumber: quote.quote_number }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'download-job') {
+      const { jobId, customerId, token } = body;
+      
+      if (!jobId || !customerId || !token) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify job belongs to customer
+      const { data: job, error: jobError } = await adminClient
+        .from('jobs')
+        .select('*, companies(*), customers(*)')
+        .eq('id', jobId)
+        .eq('customer_id', customerId)
+        .single();
+
+      if (jobError || !job) {
+        console.error('Job not found or access denied:', jobError);
+        return new Response(
+          JSON.stringify({ error: 'Job not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Fetch job items
+      const { data: items } = await adminClient
+        .from('job_items')
+        .select('*')
+        .eq('job_id', jobId);
+
+      const company = job.companies;
+      const customer = job.customers;
+      
+      const formatDate = (dateStr: string) => {
+        if (!dateStr) return 'N/A';
+        return new Date(dateStr).toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        });
+      };
+
+      const formatDateTime = (dateStr: string) => {
+        if (!dateStr) return 'N/A';
+        return new Date(dateStr).toLocaleString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        });
+      };
+
+      const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format(amount);
+      };
+
+      const statusColors: Record<string, string> = {
+        draft: 'background: #f3f4f6; color: #374151;',
+        scheduled: 'background: #dbeafe; color: #1e40af;',
+        in_progress: 'background: #fef3c7; color: #92400e;',
+        completed: 'background: #dcfce7; color: #166534;',
+        invoiced: 'background: #fce7f3; color: #9d174d;',
+        paid: 'background: #d1fae5; color: #065f46;',
+      };
+
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Job ${job.job_number}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; line-height: 1.6; }
+    .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
+    .company-info h1 { font-size: 28px; color: #1a1a1a; margin-bottom: 5px; }
+    .company-info p { color: #666; font-size: 14px; }
+    .document-info { text-align: right; }
+    .document-type { font-size: 32px; font-weight: bold; color: #059669; margin-bottom: 10px; }
+    .document-number { font-size: 18px; color: #666; }
+    .addresses { display: flex; justify-content: space-between; margin-bottom: 40px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+    .address-block h3 { font-size: 12px; text-transform: uppercase; color: #888; margin-bottom: 10px; }
+    .address-block p { margin: 2px 0; }
+    .job-title { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+    .job-description { margin-bottom: 30px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+    .schedule-info { margin-bottom: 30px; }
+    .schedule-info h3 { font-size: 14px; text-transform: uppercase; color: #888; margin-bottom: 15px; }
+    .schedule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .schedule-item { padding: 10px; background: #f0fdf4; border-radius: 8px; }
+    .schedule-item strong { display: block; color: #059669; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+    thead { background: #1a1a1a; color: white; }
+    th { padding: 12px 15px; text-align: left; font-weight: 500; font-size: 14px; }
+    th:last-child { text-align: right; }
+    td { padding: 15px; border-bottom: 1px solid #eee; }
+    td:last-child { text-align: right; }
+    .totals { margin-left: auto; width: 300px; }
+    .totals-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+    .totals-row.total { border-bottom: none; font-size: 20px; font-weight: bold; color: #059669; padding-top: 15px; }
+    .notes { margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
+    .notes h3 { font-size: 14px; color: #888; margin-bottom: 10px; }
+    .footer { margin-top: 60px; text-align: center; color: #888; font-size: 12px; }
+    .status { display: inline-block; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 500; text-transform: uppercase; margin-left: 10px; }
+    .signature-block { margin-top: 30px; padding: 20px; background: #f0fdf4; border-radius: 8px; }
+    .signature-block h3 { color: #059669; margin-bottom: 10px; }
+    @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="company-info">
+        <h1>${company?.name || 'Company'}</h1>
+        ${company?.address ? `<p>${company.address}</p>` : ''}
+        ${company?.city || company?.state || company?.zip ? `<p>${[company.city, company.state, company.zip].filter(Boolean).join(', ')}</p>` : ''}
+        ${company?.phone ? `<p>${company.phone}</p>` : ''}
+        ${company?.email ? `<p>${company.email}</p>` : ''}
+      </div>
+      <div class="document-info">
+        <div class="document-type">JOB DETAILS</div>
+        <div class="document-number">${job.job_number}
+          <span class="status" style="${statusColors[job.status] || ''}">${job.status.replace('_', ' ')}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="addresses">
+      <div class="address-block">
+        <h3>Customer</h3>
+        <p><strong>${customer?.name || 'Customer'}</strong></p>
+        ${customer?.address ? `<p>${customer.address}</p>` : ''}
+        ${customer?.city || customer?.state || customer?.zip ? `<p>${[customer.city, customer.state, customer.zip].filter(Boolean).join(', ')}</p>` : ''}
+        ${customer?.email ? `<p>${customer.email}</p>` : ''}
+        ${customer?.phone ? `<p>${customer.phone}</p>` : ''}
+      </div>
+    </div>
+
+    <h2 class="job-title">${job.title}</h2>
+    
+    ${job.description ? `
+      <div class="job-description">
+        <p>${job.description}</p>
+      </div>
+    ` : ''}
+
+    ${job.scheduled_start || job.actual_start ? `
+      <div class="schedule-info">
+        <h3>Schedule Information</h3>
+        <div class="schedule-grid">
+          ${job.scheduled_start ? `
+            <div class="schedule-item">
+              <strong>Scheduled Start</strong>
+              ${formatDateTime(job.scheduled_start)}
+            </div>
+          ` : ''}
+          ${job.scheduled_end ? `
+            <div class="schedule-item">
+              <strong>Scheduled End</strong>
+              ${formatDateTime(job.scheduled_end)}
+            </div>
+          ` : ''}
+          ${job.actual_start ? `
+            <div class="schedule-item">
+              <strong>Actual Start</strong>
+              ${formatDateTime(job.actual_start)}
+            </div>
+          ` : ''}
+          ${job.actual_end ? `
+            <div class="schedule-item">
+              <strong>Actual End</strong>
+              ${formatDateTime(job.actual_end)}
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    ` : ''}
+
+    ${items && items.length > 0 ? `
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map((item: any) => `
+            <tr>
+              <td>${item.description}</td>
+              <td>${item.quantity}</td>
+              <td>${formatCurrency(Number(item.unit_price))}</td>
+              <td>${formatCurrency(Number(item.total))}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <div class="totals">
+        <div class="totals-row">
+          <span>Subtotal</span>
+          <span>${formatCurrency(Number(job.subtotal || 0))}</span>
+        </div>
+        <div class="totals-row">
+          <span>Tax</span>
+          <span>${formatCurrency(Number(job.tax || 0))}</span>
+        </div>
+        <div class="totals-row total">
+          <span>Total</span>
+          <span>${formatCurrency(Number(job.total || 0))}</span>
+        </div>
+      </div>
+    ` : ''}
+
+    ${job.notes ? `
+      <div class="notes">
+        <h3>Notes</h3>
+        <p>${job.notes}</p>
+      </div>
+    ` : ''}
+
+    ${job.completion_signed_at ? `
+      <div class="signature-block">
+        <h3>✓ Job Completion Confirmed</h3>
+        <p>Signed by ${job.completion_signed_by} on ${formatDate(job.completion_signed_at)}</p>
+      </div>
+    ` : ''}
+
+    <div class="footer">
+      <p>Thank you for your business!</p>
+    </div>
+  </div>
+</body>
+</html>
+      `;
+
+      console.log('Generated job PDF HTML for:', job.job_number);
+
+      return new Response(
+        JSON.stringify({ html, jobNumber: job.job_number }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (action === 'approve-quote') {
       const { quoteId, customerId, token, signatureData, signerName } = body;
       
