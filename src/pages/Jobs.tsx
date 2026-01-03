@@ -256,6 +256,16 @@ const Jobs = () => {
       }
     }
   }, [searchParams, safeJobs, setSearchParams]);
+
+  // Sync viewingJob with latest data when jobs are refetched (e.g., after time tracking updates)
+  useEffect(() => {
+    if (viewingJob && safeJobs.length > 0) {
+      const updatedJob = safeJobs.find(j => j.id === viewingJob.id);
+      if (updatedJob && JSON.stringify(updatedJob) !== JSON.stringify(viewingJob)) {
+        setViewingJob(updatedJob);
+      }
+    }
+  }, [safeJobs, viewingJob?.id]);
   const [formData, setFormData] = useState({
     customer_id: '',
     quote_id: '' as string | null,
