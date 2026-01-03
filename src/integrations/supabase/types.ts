@@ -876,6 +876,7 @@ export type Database = {
           estimated_duration: number | null
           id: string
           job_number: string
+          labor_hourly_rate: number | null
           notes: string | null
           priority: Database["public"]["Enums"]["job_priority"]
           quote_id: string | null
@@ -906,6 +907,7 @@ export type Database = {
           estimated_duration?: number | null
           id?: string
           job_number: string
+          labor_hourly_rate?: number | null
           notes?: string | null
           priority?: Database["public"]["Enums"]["job_priority"]
           quote_id?: string | null
@@ -936,6 +938,7 @@ export type Database = {
           estimated_duration?: number | null
           id?: string
           job_number?: string
+          labor_hourly_rate?: number | null
           notes?: string | null
           priority?: Database["public"]["Enums"]["job_priority"]
           quote_id?: string | null

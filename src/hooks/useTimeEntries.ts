@@ -144,7 +144,7 @@ export function useClockOut() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, notes, jobId, hourlyRate }: { id: string; notes?: string; jobId?: string | null; hourlyRate?: number }) => {
+    mutationFn: async ({ id, notes, jobId, technicianHourlyRate }: { id: string; notes?: string; jobId?: string | null; technicianHourlyRate?: number }) => {
       const clockOutTime = new Date().toISOString();
       
       // First get the time entry to calculate duration
@@ -155,6 +155,21 @@ export function useClockOut() {
         .single();
       
       if (fetchError) throw fetchError;
+      
+      // Get job-specific hourly rate if available
+      let hourlyRate = technicianHourlyRate || 0;
+      if (jobId) {
+        const { data: job } = await (supabase as any)
+          .from('jobs')
+          .select('labor_hourly_rate')
+          .eq('id', jobId)
+          .single();
+        
+        // Use job-specific rate if set, otherwise fall back to technician rate
+        if (job?.labor_hourly_rate !== null && job?.labor_hourly_rate !== undefined) {
+          hourlyRate = job.labor_hourly_rate;
+        }
+      }
       
       // Update the time entry
       const { error } = await (supabase as any)
