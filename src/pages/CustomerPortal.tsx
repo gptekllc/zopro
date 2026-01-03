@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -442,6 +442,8 @@ const CustomerPortal = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSendingLink, setIsSendingLink] = useState(false);
   const [downloadingInvoice, setDownloadingInvoice] = useState<string | null>(null);
+  const [downloadingQuote, setDownloadingQuote] = useState<string | null>(null);
+  const [downloadingJob, setDownloadingJob] = useState<string | null>(null);
   const [payingInvoice, setPayingInvoice] = useState<string | null>(null);
   const [approvingQuote, setApprovingQuote] = useState<string | null>(null);
   const [signingJob, setSigningJob] = useState<string | null>(null);
@@ -944,6 +946,76 @@ const CustomerPortal = () => {
       toast.error('Failed to download invoice');
     } finally {
       setDownloadingInvoice(null);
+    }
+  };
+
+  const handleDownloadQuote = async (quote: Quote) => {
+    setDownloadingQuote(quote.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { 
+          action: 'download-quote', 
+          quoteId: quote.id,
+          customerId: customerData?.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error || !data?.html) {
+        throw new Error(data?.error || 'Failed to generate quote');
+      }
+
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(data.html);
+        printWindow.document.close();
+        printWindow.document.title = `Quote ${quote.quote_number}`;
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      } else {
+        toast.error('Please allow popups to download the quote');
+      }
+    } catch (err: any) {
+      console.error('Download error:', err);
+      toast.error('Failed to download quote');
+    } finally {
+      setDownloadingQuote(null);
+    }
+  };
+
+  const handleDownloadJob = async (job: Job) => {
+    setDownloadingJob(job.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { 
+          action: 'download-job', 
+          jobId: job.id,
+          customerId: customerData?.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error || !data?.html) {
+        throw new Error(data?.error || 'Failed to generate job details');
+      }
+
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(data.html);
+        printWindow.document.close();
+        printWindow.document.title = `Job ${job.job_number}`;
+        setTimeout(() => {
+          printWindow.print();
+        }, 500);
+      } else {
+        toast.error('Please allow popups to download the job details');
+      }
+    } catch (err: any) {
+      console.error('Download error:', err);
+      toast.error('Failed to download job details');
+    } finally {
+      setDownloadingJob(null);
     }
   };
 
@@ -1458,7 +1530,18 @@ const CustomerPortal = () => {
               <p className="text-sm text-muted-foreground">Customer Portal</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Notification Badge */}
+            <div className="relative">
+              <div className="p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
+                <Bell className="w-5 h-5 text-muted-foreground" />
+              </div>
+              {(pendingQuotes.length + unpaidInvoices.length) > 0 && (
+                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {pendingQuotes.length + unpaidInvoices.length > 9 ? '9+' : pendingQuotes.length + unpaidInvoices.length}
+                </span>
+              )}
+            </div>
             <span className="text-sm text-muted-foreground hidden sm:inline">
               {customerData?.name}
             </span>
@@ -2038,9 +2121,9 @@ const CustomerPortal = () => {
                 </div>
               )}
 
-              {/* Action Button */}
-              {(viewingQuote.status === 'sent' || viewingQuote.status === 'pending' || viewingQuote.status === 'draft') && (
-                <SheetFooter className="pt-4">
+              {/* Action Buttons */}
+              <SheetFooter className="pt-4 flex-col gap-2">
+                {(viewingQuote.status === 'sent' || viewingQuote.status === 'pending' || viewingQuote.status === 'draft') && (
                   <Button
                     className="w-full"
                     onClick={() => {
@@ -2056,8 +2139,21 @@ const CustomerPortal = () => {
                     )}
                     Sign & Approve Quote
                   </Button>
-                </SheetFooter>
-              )}
+                )}
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleDownloadQuote(viewingQuote)}
+                  disabled={downloadingQuote === viewingQuote.id}
+                >
+                  {downloadingQuote === viewingQuote.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Printer className="w-4 h-4 mr-2" />
+                  )}
+                  Print / Download Quote
+                </Button>
+              </SheetFooter>
             </div>
           )}
         </SheetContent>
@@ -2409,9 +2505,9 @@ const CustomerPortal = () => {
                 </div>
               )}
 
-              {/* Sign Button */}
-              {viewingJob.status === 'completed' && !viewingJob.completion_signed_at && (
-                <SheetFooter className="pt-4">
+              {/* Action Buttons */}
+              <SheetFooter className="pt-4 flex-col gap-2">
+                {viewingJob.status === 'completed' && !viewingJob.completion_signed_at && (
                   <Button
                     className="w-full"
                     onClick={() => {
@@ -2427,8 +2523,21 @@ const CustomerPortal = () => {
                     )}
                     Sign Job Completion
                   </Button>
-                </SheetFooter>
-              )}
+                )}
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => handleDownloadJob(viewingJob)}
+                  disabled={downloadingJob === viewingJob.id}
+                >
+                  {downloadingJob === viewingJob.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Printer className="w-4 h-4 mr-2" />
+                  )}
+                  Print / Download Job Details
+                </Button>
+              </SheetFooter>
             </div>
           )}
         </SheetContent>
