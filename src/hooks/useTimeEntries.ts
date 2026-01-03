@@ -87,16 +87,46 @@ export function useJobTimeEntries(jobId: string | null) {
   });
 }
 
-// Store recordWorkHours preference per time entry (in-memory for session)
+// Store recordWorkHours preference per time entry.
+// We persist this across route changes/reloads so a user can clock in on one screen
+// and clock out on another (or after a refresh) and still create the labor line item.
 const recordWorkHoursMap = new Map<string, boolean>();
+const RECORD_WORK_HOURS_STORAGE_PREFIX = 'record_work_hours:';
+
+function setRecordWorkHoursFlag(entryId: string, shouldRecord: boolean) {
+  recordWorkHoursMap.set(entryId, shouldRecord);
+  try {
+    if (shouldRecord) {
+      localStorage.setItem(`${RECORD_WORK_HOURS_STORAGE_PREFIX}${entryId}`, '1');
+    } else {
+      localStorage.removeItem(`${RECORD_WORK_HOURS_STORAGE_PREFIX}${entryId}`);
+    }
+  } catch {
+    // ignore storage failures (private mode, etc.)
+  }
+}
+
+function getRecordWorkHoursFlag(entryId: string) {
+  if (recordWorkHoursMap.has(entryId)) return recordWorkHoursMap.get(entryId) === true;
+  try {
+    return localStorage.getItem(`${RECORD_WORK_HOURS_STORAGE_PREFIX}${entryId}`) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function clearRecordWorkHoursFlag(entryId: string) {
+  recordWorkHoursMap.delete(entryId);
+  try {
+    localStorage.removeItem(`${RECORD_WORK_HOURS_STORAGE_PREFIX}${entryId}`);
+  } catch {
+    // ignore
+  }
+}
 
 // Export function to set recordWorkHours flag for an entry
 export function setRecordWorkHoursForEntry(entryId: string, shouldRecord: boolean) {
-  if (shouldRecord) {
-    recordWorkHoursMap.set(entryId, true);
-  } else {
-    recordWorkHoursMap.delete(entryId);
-  }
+  setRecordWorkHoursFlag(entryId, shouldRecord);
 }
 
 export function useClockIn() {
@@ -122,8 +152,8 @@ export function useClockIn() {
       if (error) throw error;
       
       // Store the recordWorkHours preference for this entry
-      if (data?.id && recordWorkHours && jobId) {
-        recordWorkHoursMap.set(data.id, true);
+      if (data?.id && jobId) {
+        setRecordWorkHoursFlag(data.id, recordWorkHours === true);
       }
       
       return data;
@@ -146,31 +176,35 @@ export function useClockOut() {
   return useMutation({
     mutationFn: async ({ id, notes, jobId, technicianHourlyRate }: { id: string; notes?: string; jobId?: string | null; technicianHourlyRate?: number }) => {
       const clockOutTime = new Date().toISOString();
-      
-      // First get the time entry to calculate duration
+
+      // First get the time entry to calculate duration + resolve job_id if needed
       const { data: entry, error: fetchError } = await (supabase as any)
         .from('time_entries')
-        .select('clock_in, break_minutes')
+        .select('clock_in, break_minutes, job_id')
         .eq('id', id)
         .single();
-      
+
       if (fetchError) throw fetchError;
-      
+
+      const resolvedJobId: string | null | undefined = jobId ?? entry?.job_id;
+
       // Get job-specific hourly rate if available
       let hourlyRate = technicianHourlyRate || 0;
-      if (jobId) {
-        const { data: job } = await (supabase as any)
+      if (resolvedJobId) {
+        const { data: job, error: jobRateError } = await (supabase as any)
           .from('jobs')
           .select('labor_hourly_rate')
-          .eq('id', jobId)
+          .eq('id', resolvedJobId)
           .single();
-        
+
+        if (jobRateError) throw jobRateError;
+
         // Use job-specific rate if set, otherwise fall back to technician rate
         if (job?.labor_hourly_rate !== null && job?.labor_hourly_rate !== undefined) {
-          hourlyRate = job.labor_hourly_rate;
+          hourlyRate = Number(job.labor_hourly_rate);
         }
       }
-      
+
       // Update the time entry
       const { error } = await (supabase as any)
         .from('time_entries')
@@ -181,33 +215,36 @@ export function useClockOut() {
           break_start: null,
         })
         .eq('id', id);
-      
+
       if (error) throw error;
-      
+
       // Check if we should record work hours to job
-      const shouldRecordHours = recordWorkHoursMap.get(id);
-      if (shouldRecordHours && jobId && hourlyRate !== undefined) {
+      const shouldRecordHours = getRecordWorkHoursFlag(id);
+      if (shouldRecordHours && resolvedJobId && hourlyRate !== undefined) {
         // Calculate worked hours
         const clockIn = new Date(entry.clock_in);
         const clockOut = new Date(clockOutTime);
         const totalMinutes = differenceInMinutes(clockOut, clockIn) - (entry.break_minutes || 0);
         const workedHours = Math.round((totalMinutes / 60) * 100) / 100; // Round to 2 decimal places
-        
+
         if (workedHours > 0) {
           // Check if there's an existing labor line item for this job
-          const { data: existingItems } = await (supabase as any)
+          const { data: existingItems, error: existingItemsError } = await (supabase as any)
             .from('job_items')
             .select('*')
-            .eq('job_id', jobId)
+            .eq('job_id', resolvedJobId)
             .ilike('description', '%labor%');
-          
+
+          if (existingItemsError) throw existingItemsError;
+
           if (existingItems && existingItems.length > 0) {
             // Update existing labor item - add hours
             const laborItem = existingItems[0];
-            const newQuantity = laborItem.quantity + workedHours;
+            const existingQty = Number(laborItem.quantity || 0);
+            const newQuantity = existingQty + workedHours;
             const newTotal = newQuantity * hourlyRate;
-            
-            await (supabase as any)
+
+            const { error: updateItemError } = await (supabase as any)
               .from('job_items')
               .update({
                 quantity: newQuantity,
@@ -215,63 +252,79 @@ export function useClockOut() {
                 total: newTotal,
               })
               .eq('id', laborItem.id);
+
+            if (updateItemError) throw updateItemError;
           } else {
             // Create new labor line item
             const total = workedHours * hourlyRate;
-            
-            await (supabase as any)
+
+            const { error: insertItemError } = await (supabase as any)
               .from('job_items')
               .insert({
-                job_id: jobId,
+                job_id: resolvedJobId,
                 description: 'Labor',
                 quantity: workedHours,
                 unit_price: hourlyRate,
-                total: total,
+                total,
               });
+
+            if (insertItemError) throw insertItemError;
           }
-          
+
           // Update job totals
-          const { data: allItems } = await (supabase as any)
+          const { data: allItems, error: allItemsError } = await (supabase as any)
             .from('job_items')
             .select('total')
-            .eq('job_id', jobId);
-          
-          const subtotal = (allItems || []).reduce((sum: number, item: { total: number }) => sum + item.total, 0);
-          
+            .eq('job_id', resolvedJobId);
+
+          if (allItemsError) throw allItemsError;
+
+          const subtotal = (allItems || []).reduce(
+            (sum: number, item: { total: any }) => sum + Number(item.total || 0),
+            0
+          );
+
           // Get company tax rate
-          const { data: job } = await (supabase as any)
+          const { data: job, error: jobFetchError } = await (supabase as any)
             .from('jobs')
             .select('company_id, discount_type, discount_value')
-            .eq('id', jobId)
+            .eq('id', resolvedJobId)
             .single();
-          
+
+          if (jobFetchError) throw jobFetchError;
+
           if (job) {
-            const { data: company } = await (supabase as any)
+            const { data: company, error: companyError } = await (supabase as any)
               .from('companies')
               .select('tax_rate')
               .eq('id', job.company_id)
               .single();
-            
-            const taxRate = company?.tax_rate || 0;
-            const discountAmount = job.discount_value 
-              ? (job.discount_type === 'percentage' 
-                  ? subtotal * (job.discount_value / 100) 
-                  : job.discount_value)
+
+            if (companyError) throw companyError;
+
+            const taxRate = Number(company?.tax_rate || 0);
+            const discountAmount = job.discount_value
+              ? job.discount_type === 'percentage'
+                ? subtotal * (Number(job.discount_value) / 100)
+                : Number(job.discount_value)
               : 0;
             const taxableAmount = subtotal - discountAmount;
             const tax = taxableAmount * (taxRate / 100);
             const total = taxableAmount + tax;
-            
-            await (supabase as any)
+
+            const { error: updateJobError } = await (supabase as any)
               .from('jobs')
               .update({ subtotal, tax, total })
-              .eq('id', jobId);
+              .eq('id', resolvedJobId);
+
+            if (updateJobError) throw updateJobError;
           }
         }
-        
-        // Clean up the map
-        recordWorkHoursMap.delete(id);
+
       }
+
+      // Always clean up stored flag after clock out
+      clearRecordWorkHoursFlag(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['time_entries'] });

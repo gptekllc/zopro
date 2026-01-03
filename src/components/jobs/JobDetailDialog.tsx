@@ -30,7 +30,7 @@ import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentAction
 import { useSendJobNotification } from '@/hooks/useSendJobNotification';
 import { useJobNotifications } from '@/hooks/useJobNotifications';
 import { useJobFeedbacks, JobFeedback } from '@/hooks/useJobFeedbacks';
-import { useJobTimeEntries, useActiveTimeEntry, useClockIn, useClockOut, useStartBreak, useEndBreak, setRecordWorkHoursForEntry } from '@/hooks/useTimeEntries';
+import { useJobTimeEntries, useActiveTimeEntry, useClockIn, useClockOut, useStartBreak, useEndBreak } from '@/hooks/useTimeEntries';
 interface JobDetailDialogProps {
   job: CustomerJob | null;
   customerName?: string;
