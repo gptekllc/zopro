@@ -116,7 +116,14 @@ export function JobTimeTracker({ jobId, jobNumber, laborHourlyRate }: JobTimeTra
       });
     }
     
-    await clockOut.mutateAsync({ id: activeEntry.id, notes: notes || undefined });
+    const effectiveRate = laborHourlyRate ?? profile?.hourly_rate ?? 0;
+    
+    await clockOut.mutateAsync({ 
+      id: activeEntry.id, 
+      notes: notes || undefined,
+      jobId,
+      technicianHourlyRate: effectiveRate,
+    });
     setNotes('');
   };
 
