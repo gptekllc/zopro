@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useApplyLateFee, useArchiveInvoice, useUnarchiveInvoice, isInvoiceOverdue, getTotalWithLateFee, Invoice, useSendPaymentReminder, useInvoiceReminders } from "@/hooks/useInvoices";
@@ -182,6 +183,10 @@ const Invoices = () => {
     });
     return filterPendingInvoiceDeletes(filtered);
   }, [invoices, customers, searchQuery, statusFilter, filterPendingInvoiceDeletes]);
+
+  // Infinite scroll for invoice list
+  const { visibleItems: visibleInvoices, hasMore: hasMoreInvoices, loadMoreRef: loadMoreInvoicesRef } = useInfiniteScroll(filteredInvoices, { pageSize: 20 });
+
   const resetForm = () => {
     setFormData({
       customerId: "",
@@ -688,7 +693,7 @@ const Invoices = () => {
       await refetchInvoices();
     }} className="sm:contents">
         <div className="space-y-3 lg:max-w-4xl lg:mx-auto">
-          {filteredInvoices.map(invoice => <Card key={invoice.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingInvoice(invoice)}>
+          {visibleInvoices.map(invoice => <Card key={invoice.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingInvoice(invoice)}>
               <CardContent className="p-4 sm:p-5">
                 {/* Mobile Layout */}
                 <div className="flex flex-col gap-2 sm:hidden">
@@ -1005,6 +1010,12 @@ const Invoices = () => {
           {filteredInvoices.length === 0 && <Card>
               <CardContent className="py-8 text-center text-muted-foreground">No invoices found</CardContent>
             </Card>}
+          {/* Infinite scroll trigger */}
+          {hasMoreInvoices && (
+            <div ref={loadMoreInvoicesRef} className="py-4 text-center">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+            </div>
+          )}
         </div>
       </PullToRefresh>
 
