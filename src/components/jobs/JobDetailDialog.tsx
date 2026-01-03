@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { 
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
-  Download, Mail, Loader2
+  Download, Mail, Loader2, Send
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerJob } from '@/hooks/useCustomerHistory';
@@ -20,6 +20,7 @@ import { useInvoices, Invoice } from '@/hooks/useInvoices';
 import { useMemo, useState } from 'react';
 import { formatAmount } from '@/lib/formatAmount';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
+import { useSendJobNotification } from '@/hooks/useSendJobNotification';
 
 interface JobDetailDialogProps {
   job: CustomerJob | null;
@@ -65,6 +66,7 @@ export function JobDetailDialog({
   const { data: allInvoices = [], isLoading: loadingInvoices } = useInvoices(false);
   const downloadDocument = useDownloadDocument();
   const emailDocument = useEmailDocument();
+  const sendJobNotification = useSendJobNotification();
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
 
@@ -501,6 +503,19 @@ export function JobDetailDialog({
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4 justify-end">
+            {/* Send to Customer - only show for jobs with status that makes sense */}
+            {['scheduled', 'in_progress', 'completed'].includes(job.status) && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => sendJobNotification.mutate({ jobId: job.id, customerId: job.customer_id })}
+                disabled={sendJobNotification.isPending}
+                className="gap-1"
+              >
+                {sendJobNotification.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Send to Customer
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"

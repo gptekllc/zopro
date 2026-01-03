@@ -55,7 +55,7 @@ const Company = () => {
     default_job_duration: 60,
     default_job_priority: 'medium',
     require_job_completion_signature: false,
-    
+    auto_send_job_scheduled_email: true,
     notify_on_job_assignment: true,
     // Quote Settings
     default_quote_validity_days: 30,
@@ -108,7 +108,7 @@ const Company = () => {
       default_job_duration: company.default_job_duration ?? 60,
       default_job_priority: company.default_job_priority ?? 'medium',
       require_job_completion_signature: company.require_job_completion_signature ?? false,
-      
+      auto_send_job_scheduled_email: (company as any).auto_send_job_scheduled_email ?? true,
       notify_on_job_assignment: company.notify_on_job_assignment ?? true,
       default_quote_validity_days: company.default_quote_validity_days ?? 30,
       auto_expire_quotes: company.auto_expire_quotes ?? true,
@@ -700,6 +700,16 @@ const Company = () => {
                         <Switch
                           checked={preferences.notify_on_job_assignment}
                           onCheckedChange={(checked) => setPreferences({ ...preferences, notify_on_job_assignment: checked })}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between space-x-4">
+                        <div className="space-y-0.5">
+                          <Label className="font-medium">Auto-send Email When Job Scheduled</Label>
+                          <p className="text-sm text-muted-foreground">Automatically email customer when job status changes to scheduled</p>
+                        </div>
+                        <Switch
+                          checked={preferences.auto_send_job_scheduled_email}
+                          onCheckedChange={(checked) => setPreferences({ ...preferences, auto_send_job_scheduled_email: checked })}
                         />
                       </div>
                     </AccordionContent>
