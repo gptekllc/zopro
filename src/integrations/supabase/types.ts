@@ -17,21 +17,39 @@ export type Database = {
       companies: {
         Row: {
           address: string | null
+          auto_apply_late_fees: boolean
+          auto_archive_days: number
+          auto_expire_quotes: boolean
+          auto_send_invoice_reminders: boolean
+          brand_primary_color: string
           city: string | null
           created_at: string
+          customer_portal_welcome_message: string | null
+          default_job_duration: number
+          default_job_priority: string
           default_payment_method: string | null
+          default_quote_validity_days: number
           email: string | null
+          email_on_new_job: boolean
+          email_on_payment_received: boolean
           id: string
+          invoice_reminder_days: number
           late_fee_percentage: number | null
           logo_url: string | null
           name: string
+          notify_on_job_assignment: boolean
           payment_terms_days: number | null
+          pdf_footer_text: string | null
+          pdf_show_line_item_details: boolean
+          pdf_show_logo: boolean
           pdf_show_notes: boolean
           pdf_show_signature: boolean
           pdf_terms_conditions: string | null
           phone: string | null
           platform_fee_percentage: number | null
           require_job_completion_signature: boolean
+          require_quote_signature: boolean
+          send_weekly_summary: boolean
           state: string | null
           stripe_account_id: string | null
           stripe_charges_enabled: boolean | null
@@ -45,21 +63,39 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          auto_apply_late_fees?: boolean
+          auto_archive_days?: number
+          auto_expire_quotes?: boolean
+          auto_send_invoice_reminders?: boolean
+          brand_primary_color?: string
           city?: string | null
           created_at?: string
+          customer_portal_welcome_message?: string | null
+          default_job_duration?: number
+          default_job_priority?: string
           default_payment_method?: string | null
+          default_quote_validity_days?: number
           email?: string | null
+          email_on_new_job?: boolean
+          email_on_payment_received?: boolean
           id?: string
+          invoice_reminder_days?: number
           late_fee_percentage?: number | null
           logo_url?: string | null
           name: string
+          notify_on_job_assignment?: boolean
           payment_terms_days?: number | null
+          pdf_footer_text?: string | null
+          pdf_show_line_item_details?: boolean
+          pdf_show_logo?: boolean
           pdf_show_notes?: boolean
           pdf_show_signature?: boolean
           pdf_terms_conditions?: string | null
           phone?: string | null
           platform_fee_percentage?: number | null
           require_job_completion_signature?: boolean
+          require_quote_signature?: boolean
+          send_weekly_summary?: boolean
           state?: string | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean | null
@@ -73,21 +109,39 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          auto_apply_late_fees?: boolean
+          auto_archive_days?: number
+          auto_expire_quotes?: boolean
+          auto_send_invoice_reminders?: boolean
+          brand_primary_color?: string
           city?: string | null
           created_at?: string
+          customer_portal_welcome_message?: string | null
+          default_job_duration?: number
+          default_job_priority?: string
           default_payment_method?: string | null
+          default_quote_validity_days?: number
           email?: string | null
+          email_on_new_job?: boolean
+          email_on_payment_received?: boolean
           id?: string
+          invoice_reminder_days?: number
           late_fee_percentage?: number | null
           logo_url?: string | null
           name?: string
+          notify_on_job_assignment?: boolean
           payment_terms_days?: number | null
+          pdf_footer_text?: string | null
+          pdf_show_line_item_details?: boolean
+          pdf_show_logo?: boolean
           pdf_show_notes?: boolean
           pdf_show_signature?: boolean
           pdf_terms_conditions?: string | null
           phone?: string | null
           platform_fee_percentage?: number | null
           require_job_completion_signature?: boolean
+          require_quote_signature?: boolean
+          send_weekly_summary?: boolean
           state?: string | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean | null

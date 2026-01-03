@@ -57,7 +57,14 @@ function generateHTML(
   items: DocumentItem[],
   assignee?: any,
   signature?: any,
-  pdfPreferences?: { pdf_show_notes: boolean; pdf_show_signature: boolean; pdf_terms_conditions: string | null }
+  pdfPreferences?: { 
+    pdf_show_notes: boolean; 
+    pdf_show_signature: boolean; 
+    pdf_show_logo: boolean;
+    pdf_show_line_item_details: boolean;
+    pdf_terms_conditions: string | null;
+    pdf_footer_text: string | null;
+  }
 ): string {
   let documentNumber: string;
   let title: string;
@@ -292,7 +299,7 @@ function generateHTML(
         <div class="document-type">${title}</div>
         <div class="document-number">${documentNumber}</div>
       </div>
-      ${company?.logo_url ? `<img src="${company.logo_url}" alt="${company.name}" class="company-logo" style="margin-left: auto;" />` : ''}
+      ${(pdfPreferences?.pdf_show_logo !== false) && company?.logo_url ? `<img src="${company.logo_url}" alt="${company.name}" class="company-logo" style="margin-left: auto;" />` : ''}
     </div>
 
     <div class="addresses">
@@ -328,8 +335,8 @@ function generateHTML(
         <thead>
           <tr>
             <th>Description</th>
-            <th>Qty</th>
-            <th>Unit Price</th>
+            ${pdfPreferences?.pdf_show_line_item_details !== false ? `<th>Qty</th>
+            <th>Unit Price</th>` : ''}
             <th>Amount</th>
           </tr>
         </thead>
@@ -337,8 +344,8 @@ function generateHTML(
           ${items.map((item) => `
             <tr>
               <td>${item.description}</td>
-              <td>${item.quantity}</td>
-              <td>${formatCurrency(Number(item.unit_price))}</td>
+              ${pdfPreferences?.pdf_show_line_item_details !== false ? `<td>${item.quantity}</td>
+              <td>${formatCurrency(Number(item.unit_price))}</td>` : ''}
               <td>${formatCurrency(Number(item.total))}</td>
             </tr>
           `).join("")}
@@ -402,7 +409,7 @@ function generateHTML(
     ` : ''}
 
     <div class="footer">
-      <p>Thank you for your business!</p>
+      ${pdfPreferences?.pdf_footer_text ? `<p>${pdfPreferences.pdf_footer_text}</p>` : '<p>Thank you for your business!</p>'}
     </div>
   </div>
 </body>
@@ -526,7 +533,10 @@ serve(async (req) => {
     const pdfPreferences = {
       pdf_show_notes: company?.pdf_show_notes ?? true,
       pdf_show_signature: company?.pdf_show_signature ?? true,
+      pdf_show_logo: company?.pdf_show_logo ?? true,
+      pdf_show_line_item_details: company?.pdf_show_line_item_details ?? true,
       pdf_terms_conditions: company?.pdf_terms_conditions ?? null,
+      pdf_footer_text: company?.pdf_footer_text ?? null,
     };
 
     // Generate HTML
