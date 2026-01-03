@@ -4,10 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Trash2, GripVertical, Upload, Loader2, Save } from 'lucide-react';
+import { Plus, Trash2, Upload, Loader2, Save, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
+import { getDefaultPlatformIcon, getAvailablePlatforms } from '@/lib/platformIcons';
 interface SocialLink {
   id?: string;
   platform_name: string;
@@ -96,6 +96,18 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
 
   const updateLink = (index: number, updates: Partial<SocialLink>) => {
     setLinks(links.map((link, i) => (i === index ? { ...link, ...updates } : link)));
+  };
+
+  const getDisplayIcon = (link: SocialLink): string | null => {
+    // Custom uploaded icon takes priority
+    if (link.icon_url) return link.icon_url;
+    // Otherwise, use default platform icon
+    return getDefaultPlatformIcon(link.platform_name);
+  };
+
+  const clearCustomIcon = (index: number) => {
+    updateLink(index, { icon_url: null });
+    toast.success('Custom icon removed');
   };
 
   const handleIconUpload = async (index: number, file: File) => {
@@ -228,29 +240,44 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
             <Card key={link.id || index} className="overflow-hidden">
               <CardContent className="p-4">
                 <div className="flex gap-3">
-                  {/* Icon Upload */}
+                  {/* Icon Display/Upload */}
                   <div className="flex-shrink-0">
                     <Label className="text-xs text-muted-foreground mb-1 block">Icon</Label>
-                    <label className="cursor-pointer">
-                      <div className="w-12 h-12 border-2 border-dashed rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors overflow-hidden">
-                        {uploadingIndex === index ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : link.icon_url ? (
-                          <img src={link.icon_url} alt={link.platform_name} className="w-8 h-8 object-contain" />
-                        ) : (
-                          <Upload className="w-4 h-4 text-muted-foreground" />
-                        )}
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleIconUpload(index, file);
-                        }}
-                      />
-                    </label>
+                    <div className="relative">
+                      <label className="cursor-pointer">
+                        <div className="w-12 h-12 border-2 border-dashed rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors overflow-hidden">
+                          {uploadingIndex === index ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : getDisplayIcon(link) ? (
+                            <img src={getDisplayIcon(link)!} alt={link.platform_name} className="w-8 h-8 object-contain" />
+                          ) : (
+                            <Upload className="w-4 h-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleIconUpload(index, file);
+                          }}
+                        />
+                      </label>
+                      {/* Clear custom icon button */}
+                      {link.icon_url && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            clearCustomIcon(index);
+                          }}
+                          className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Platform Name & URL */}
@@ -258,10 +285,16 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
                     <div>
                       <Label className="text-xs text-muted-foreground mb-1 block">Platform Name</Label>
                       <Input
+                        list={`platforms-${index}`}
                         placeholder="e.g. Facebook, X, TikTok"
                         value={link.platform_name}
                         onChange={(e) => updateLink(index, { platform_name: e.target.value })}
                       />
+                      <datalist id={`platforms-${index}`}>
+                        {getAvailablePlatforms().map((platform) => (
+                          <option key={platform} value={platform} />
+                        ))}
+                      </datalist>
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground mb-1 block">URL</Label>
