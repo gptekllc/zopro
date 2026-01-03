@@ -231,19 +231,28 @@ const Jobs = () => {
   // Filter out technicians on leave for job assignment
   const availableTechnicians = technicians.filter(p => p.employment_status !== 'on_leave');
 
-  // Handle URL param to auto-open job detail
+  // State for pending edit from URL param
+  const [pendingEditJobId, setPendingEditJobId] = useState<string | null>(null);
+
+  // Handle URL param to auto-open job detail or edit form
   useEffect(() => {
     const viewJobId = searchParams.get('view');
-    if (viewJobId && safeJobs.length > 0) {
+    const editJobId = searchParams.get('edit');
+    
+    if (editJobId && safeJobs.length > 0) {
+      setPendingEditJobId(editJobId);
+      // Clear the URL param
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('edit');
+      setSearchParams(newParams, { replace: true });
+    } else if (viewJobId && safeJobs.length > 0) {
       const job = safeJobs.find(j => j.id === viewJobId);
       if (job) {
         setViewingJob(job);
         // Clear the URL param after opening
         const newParams = new URLSearchParams(searchParams);
         newParams.delete('view');
-        setSearchParams(newParams, {
-          replace: true
-        });
+        setSearchParams(newParams, { replace: true });
       }
     }
   }, [searchParams, safeJobs, setSearchParams]);
@@ -453,6 +462,18 @@ const Jobs = () => {
     setEditingJob(job);
     openEditDialog(true);
   };
+
+  // Handle pending edit from URL param (after handleEdit is defined)
+  useEffect(() => {
+    if (pendingEditJobId && safeJobs.length > 0) {
+      const job = safeJobs.find(j => j.id === pendingEditJobId);
+      if (job) {
+        handleEdit(job);
+        setPendingEditJobId(null);
+      }
+    }
+  }, [pendingEditJobId, safeJobs]);
+
   const handleDelete = (jobId: string) => {
     scheduleJobDelete(jobId);
   };
@@ -653,23 +674,31 @@ const Jobs = () => {
     window.location.href = smsLink;
   };
 
-  // Handle Create Quote with duplicate confirmation
-  const handleCreateQuote = (job: Job) => {
+  // Handle Create Quote with duplicate confirmation - opens edit form after creation
+  const handleCreateQuote = async (job: Job) => {
     const existingQuotes = quotesPerJob.get(job.id) || 0;
     if (existingQuotes > 0) {
       setCreateQuoteConfirmJob(job);
     } else {
-      convertToQuote.mutate(job);
+      const quote = await convertToQuote.mutateAsync(job);
+      if (quote?.id) {
+        // Navigate to quotes page with edit mode
+        window.location.href = `/quotes?edit=${quote.id}`;
+      }
     }
   };
 
-  // Handle Create Invoice with duplicate confirmation
-  const handleCreateInvoice = (job: Job) => {
+  // Handle Create Invoice with duplicate confirmation - opens edit form after creation
+  const handleCreateInvoice = async (job: Job) => {
     const existingInvoices = invoicesPerJob.get(job.id) || 0;
     if (existingInvoices > 0) {
       setCreateInvoiceConfirmJob(job);
     } else {
-      convertToInvoice.mutate(job);
+      const invoice = await convertToInvoice.mutateAsync(job);
+      if (invoice?.id) {
+        // Navigate to invoices page with edit mode
+        window.location.href = `/invoices?edit=${invoice.id}`;
+      }
     }
   };
   const getStatusColor = (status: Job['status']) => {
@@ -1996,11 +2025,14 @@ const Jobs = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={() => {
+              onClick={async () => {
                 if (createQuoteConfirmJob) {
-                  convertToQuote.mutate(createQuoteConfirmJob);
+                  const quote = await convertToQuote.mutateAsync(createQuoteConfirmJob);
                   setCreateQuoteConfirmJob(null);
                   openViewingJob(null);
+                  if (quote?.id) {
+                    window.location.href = `/quotes?edit=${quote.id}`;
+                  }
                 }
               }}
               disabled={convertToQuote.isPending}
@@ -2028,11 +2060,14 @@ const Jobs = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
-              onClick={() => {
+              onClick={async () => {
                 if (createInvoiceConfirmJob) {
-                  convertToInvoice.mutate(createInvoiceConfirmJob);
+                  const invoice = await convertToInvoice.mutateAsync(createInvoiceConfirmJob);
                   setCreateInvoiceConfirmJob(null);
                   openViewingJob(null);
+                  if (invoice?.id) {
+                    window.location.href = `/invoices?edit=${invoice.id}`;
+                  }
                 }
               }}
               disabled={convertToInvoice.isPending}

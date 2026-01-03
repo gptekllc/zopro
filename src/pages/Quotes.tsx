@@ -194,18 +194,26 @@ const Quotes = () => {
     discountValue: 0
   });
 
-  // Handle URL param to auto-open quote detail
+  // State for pending edit from URL param
+  const [pendingEditQuoteId, setPendingEditQuoteId] = useState<string | null>(null);
+
+  // Handle URL param to auto-open quote detail or edit form
   useEffect(() => {
     const viewQuoteId = searchParams.get('view');
-    if (viewQuoteId && quotes.length > 0) {
+    const editQuoteId = searchParams.get('edit');
+    
+    if (editQuoteId && quotes.length > 0) {
+      setPendingEditQuoteId(editQuoteId);
+      // Clear the URL param
+      searchParams.delete('edit');
+      setSearchParams(searchParams, { replace: true });
+    } else if (viewQuoteId && quotes.length > 0) {
       const quote = quotes.find(q => q.id === viewQuoteId);
       if (quote) {
         setViewingQuote(quote);
         // Clear the URL param after opening
         searchParams.delete('view');
-        setSearchParams(searchParams, {
-          replace: true
-        });
+        setSearchParams(searchParams, { replace: true });
       }
     }
   }, [searchParams, quotes, setSearchParams]);
@@ -355,6 +363,18 @@ const Quotes = () => {
     setEditingQuote(quote.id);
     openEditDialog(true);
   };
+
+  // Handle pending edit from URL param (after handleEdit is defined)
+  useEffect(() => {
+    if (pendingEditQuoteId && quotes.length > 0) {
+      const quote = quotes.find(q => q.id === pendingEditQuoteId);
+      if (quote) {
+        handleEdit(quote);
+        setPendingEditQuoteId(null);
+      }
+    }
+  }, [pendingEditQuoteId, quotes]);
+
   const handleDeleteClick = (quote: typeof quotes[0]) => {
     setQuoteToDelete(quote);
   };
@@ -425,13 +445,19 @@ const Quotes = () => {
     if (existingInvoices > 0) {
       setCreateInvoiceConfirmQuote(quote);
     } else {
-      await convertToInvoice.mutateAsync({ quoteId: quote.id });
+      const invoice = await convertToInvoice.mutateAsync({ quoteId: quote.id });
+      if (invoice?.id) {
+        window.location.href = `/invoices?edit=${invoice.id}`;
+      }
     }
   };
   
   const handleConvertToInvoiceConfirmed = async (quoteId: string) => {
-    await convertToInvoice.mutateAsync({ quoteId });
+    const invoice = await convertToInvoice.mutateAsync({ quoteId });
     setCreateInvoiceConfirmQuote(null);
+    if (invoice?.id) {
+      window.location.href = `/invoices?edit=${invoice.id}`;
+    }
   };
   const handleStatusChange = async (quoteId: string, newStatus: string) => {
     try {
@@ -466,10 +492,13 @@ const Quotes = () => {
     setAddToJobDialogOpen(true);
   };
   const handleCreateJobFromQuote = async (quoteId: string, selectedItemIds: string[]) => {
-    await createJobFromQuote.mutateAsync({
+    const job = await createJobFromQuote.mutateAsync({
       quoteId,
       selectedItemIds
     });
+    if (job?.id) {
+      window.location.href = `/jobs?edit=${job.id}`;
+    }
   };
   const handleAddItemsToJob = async (quoteId: string, jobId: string, selectedItemIds: string[]) => {
     await addItemsToJob.mutateAsync({
@@ -477,6 +506,8 @@ const Quotes = () => {
       jobId,
       selectedItemIds
     });
+    // Navigate to view the job
+    window.location.href = `/jobs?view=${jobId}`;
   };
   const handleDuplicateQuote = (quote: Quote) => {
     setFormData({

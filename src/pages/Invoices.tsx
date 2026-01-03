@@ -151,18 +151,26 @@ const Invoices = () => {
     discountValue: 0
   });
 
-  // Handle URL param to auto-open invoice detail
+  // State for pending edit from URL param
+  const [pendingEditInvoiceId, setPendingEditInvoiceId] = useState<string | null>(null);
+
+  // Handle URL param to auto-open invoice detail or edit form
   useEffect(() => {
     const viewInvoiceId = searchParams.get("view");
-    if (viewInvoiceId && invoices.length > 0) {
+    const editInvoiceId = searchParams.get("edit");
+    
+    if (editInvoiceId && invoices.length > 0) {
+      setPendingEditInvoiceId(editInvoiceId);
+      // Clear the URL param
+      searchParams.delete("edit");
+      setSearchParams(searchParams, { replace: true });
+    } else if (viewInvoiceId && invoices.length > 0) {
       const invoice = invoices.find(i => i.id === viewInvoiceId);
       if (invoice) {
         setViewingInvoice(invoice);
         // Clear the URL param after opening
         searchParams.delete("view");
-        setSearchParams(searchParams, {
-          replace: true
-        });
+        setSearchParams(searchParams, { replace: true });
       }
     }
   }, [searchParams, invoices, setSearchParams]);
@@ -308,6 +316,18 @@ const Invoices = () => {
     setEditingInvoice(invoice.id);
     openEditDialog(true);
   };
+
+  // Handle pending edit from URL param (after handleEdit is defined)
+  useEffect(() => {
+    if (pendingEditInvoiceId && invoices.length > 0) {
+      const invoice = invoices.find(i => i.id === pendingEditInvoiceId);
+      if (invoice) {
+        handleEdit(invoice);
+        setPendingEditInvoiceId(null);
+      }
+    }
+  }, [pendingEditInvoiceId, invoices]);
+
   const handleDeleteClick = (invoice: (typeof invoices)[0]) => {
     setInvoiceToDelete(invoice);
   };
