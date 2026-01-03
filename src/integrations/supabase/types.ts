@@ -170,6 +170,59 @@ export type Database = {
         }
         Relationships: []
       }
+      company_social_links: {
+        Row: {
+          company_id: string
+          created_at: string
+          display_order: number
+          icon_url: string | null
+          id: string
+          platform_name: string
+          show_on_email: boolean
+          show_on_invoice: boolean
+          show_on_job: boolean
+          show_on_quote: boolean
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          display_order?: number
+          icon_url?: string | null
+          id?: string
+          platform_name: string
+          show_on_email?: boolean
+          show_on_invoice?: boolean
+          show_on_job?: boolean
+          show_on_quote?: boolean
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          display_order?: number
+          icon_url?: string | null
+          id?: string
+          platform_name?: string
+          show_on_email?: boolean
+          show_on_invoice?: boolean
+          show_on_job?: boolean
+          show_on_quote?: boolean
+          updated_at?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_social_links_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_stripe_accounts: {
         Row: {
           company_id: string
