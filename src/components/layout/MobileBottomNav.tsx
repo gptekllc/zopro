@@ -10,7 +10,6 @@ import {
   UserCog,
   Building2,
   Bell,
-  Settings,
   BookTemplate,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -46,7 +45,6 @@ const MobileBottomNav = () => {
     { icon: Bell, label: 'Notifications', path: '/notifications', showFor: 'admin' },
     { icon: UserCog, label: 'Technicians', path: '/technicians', showFor: 'admin' },
     { icon: Building2, label: 'Company', path: '/company', showFor: 'admin' },
-    { icon: Settings, label: 'Settings', path: '/settings', showFor: 'all' },
   ];
 
   const filteredMoreItems = moreNavItems.filter(item => 
