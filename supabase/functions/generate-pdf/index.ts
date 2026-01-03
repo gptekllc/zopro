@@ -189,7 +189,28 @@ function generateHTML(
         </div>
       </div>
     </div>
-  ` : '';
+  ` : `
+    <div class="signature-section">
+      <h3>Customer Signature</h3>
+      <div class="signature-field">
+        <div class="signature-line"></div>
+        <div class="signature-labels">
+          <div class="signature-label-item">
+            <span class="label-text">Signature</span>
+          </div>
+          <div class="signature-label-item">
+            <span class="label-text">Printed Name</span>
+            <div class="name-line"></div>
+          </div>
+          <div class="signature-label-item">
+            <span class="label-text">Date</span>
+            <div class="date-line"></div>
+          </div>
+        </div>
+      </div>
+      <p class="signature-agreement">By signing above, I acknowledge and accept this ${type === 'quote' ? 'quote' : type === 'invoice' ? 'invoice' : 'job summary'}.</p>
+    </div>
+  `;
 
   return `
 <!DOCTYPE html>
@@ -248,6 +269,13 @@ function generateHTML(
     .signature-image { max-width: 250px; max-height: 80px; border-bottom: 1px solid #333; }
     .signature-details { font-size: 13px; color: #666; }
     .signature-details p { margin: 4px 0; }
+    .signature-field { margin-top: 20px; }
+    .signature-line { width: 100%; max-width: 350px; height: 60px; border-bottom: 2px solid #333; margin-bottom: 8px; }
+    .signature-labels { display: flex; gap: 40px; margin-top: 15px; }
+    .signature-label-item { display: flex; flex-direction: column; gap: 4px; }
+    .signature-label-item .label-text { font-size: 11px; text-transform: uppercase; color: #666; }
+    .signature-label-item .name-line, .signature-label-item .date-line { width: 150px; border-bottom: 1px solid #999; height: 20px; }
+    .signature-agreement { margin-top: 20px; font-size: 12px; color: #666; font-style: italic; }
     @media print {
       .container { padding: 20px; }
     }
