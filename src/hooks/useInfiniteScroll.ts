@@ -24,6 +24,10 @@ export function useInfiniteScroll<T>(
     setVisibleCount(prev => Math.min(prev + pageSize, items.length));
   }, [items.length, pageSize]);
 
+  const loadAll = useCallback(() => {
+    setVisibleCount(items.length);
+  }, [items.length]);
+
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -54,6 +58,7 @@ export function useInfiniteScroll<T>(
     hasMore,
     loadMoreRef,
     loadMore,
+    loadAll,
     totalCount: items.length,
     visibleCount,
   };

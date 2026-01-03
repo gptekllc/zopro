@@ -322,7 +322,7 @@ const Jobs = () => {
   }, [safeJobs, searchQuery, statusFilter, includeArchivedInSearch, filterPendingJobDeletes]);
 
   // Infinite scroll for job list
-  const { visibleItems: visibleJobs, hasMore: hasMoreJobs, loadMoreRef: loadMoreJobsRef } = useInfiniteScroll(filteredJobs, { pageSize: 20 });
+  const { visibleItems: visibleJobs, hasMore: hasMoreJobs, loadMoreRef: loadMoreJobsRef, loadAll: loadAllJobs, totalCount: totalJobsCount } = useInfiniteScroll(filteredJobs, { pageSize: 20 });
 
   const resetForm = () => {
     setFormData({
@@ -1386,8 +1386,14 @@ const Jobs = () => {
               </Card>)}
           {/* Infinite scroll trigger */}
           {hasMoreJobs && (
-            <div ref={loadMoreJobsRef} className="py-4 text-center">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+            <div ref={loadMoreJobsRef} className="py-4 flex flex-col items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Showing {visibleJobs.length} of {totalJobsCount}</span>
+                <Button variant="ghost" size="sm" onClick={loadAllJobs} className="h-7 text-xs">
+                  Load All
+                </Button>
+              </div>
             </div>
           )}
         </div>

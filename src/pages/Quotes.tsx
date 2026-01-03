@@ -228,7 +228,7 @@ const Quotes = () => {
   }, [quotes, customers, searchQuery, statusFilter, filterPendingQuoteDeletes]);
 
   // Infinite scroll for quote list
-  const { visibleItems: visibleQuotes, hasMore: hasMoreQuotes, loadMoreRef: loadMoreQuotesRef } = useInfiniteScroll(filteredQuotes, { pageSize: 20 });
+  const { visibleItems: visibleQuotes, hasMore: hasMoreQuotes, loadMoreRef: loadMoreQuotesRef, loadAll: loadAllQuotes, totalCount: totalQuotesCount } = useInfiniteScroll(filteredQuotes, { pageSize: 20 });
 
   const resetForm = () => {
     setFormData({
@@ -1077,8 +1077,14 @@ const Quotes = () => {
           </Card>}
         {/* Infinite scroll trigger */}
         {hasMoreQuotes && (
-          <div ref={loadMoreQuotesRef} className="py-4 text-center">
-            <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+          <div ref={loadMoreQuotesRef} className="py-4 flex flex-col items-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Showing {visibleQuotes.length} of {totalQuotesCount}</span>
+              <Button variant="ghost" size="sm" onClick={loadAllQuotes} className="h-7 text-xs">
+                Load All
+              </Button>
+            </div>
           </div>
         )}
       </div>

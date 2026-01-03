@@ -185,7 +185,7 @@ const Invoices = () => {
   }, [invoices, customers, searchQuery, statusFilter, filterPendingInvoiceDeletes]);
 
   // Infinite scroll for invoice list
-  const { visibleItems: visibleInvoices, hasMore: hasMoreInvoices, loadMoreRef: loadMoreInvoicesRef } = useInfiniteScroll(filteredInvoices, { pageSize: 20 });
+  const { visibleItems: visibleInvoices, hasMore: hasMoreInvoices, loadMoreRef: loadMoreInvoicesRef, loadAll: loadAllInvoices, totalCount: totalInvoicesCount } = useInfiniteScroll(filteredInvoices, { pageSize: 20 });
 
   const resetForm = () => {
     setFormData({
@@ -1012,8 +1012,14 @@ const Invoices = () => {
             </Card>}
           {/* Infinite scroll trigger */}
           {hasMoreInvoices && (
-            <div ref={loadMoreInvoicesRef} className="py-4 text-center">
-              <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+            <div ref={loadMoreInvoicesRef} className="py-4 flex flex-col items-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Showing {visibleInvoices.length} of {totalInvoicesCount}</span>
+                <Button variant="ghost" size="sm" onClick={loadAllInvoices} className="h-7 text-xs">
+                  Load All
+                </Button>
+              </div>
             </div>
           )}
         </div>
