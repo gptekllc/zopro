@@ -1831,7 +1831,11 @@ const Jobs = () => {
                 </TabsContent>
 
                 <TabsContent value="time" className="mt-4">
-                  <JobTimeTracker jobId={viewingJob.id} jobNumber={viewingJob.job_number} />
+                  <JobTimeTracker
+                    jobId={viewingJob.id}
+                    jobNumber={viewingJob.job_number}
+                    laborHourlyRate={(viewingJob as any).labor_hourly_rate ?? null}
+                  />
                 </TabsContent>
               </Tabs>
               
