@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
         try {
           const resendClient = new Resend(resendApiKey);
           await resendClient.emails.send({
-            from: 'Team <onboarding@resend.dev>',
+            from: "ZoPro Notifications <noreply@email.zopro.app>",
             to: [email],
             subject: `You've been added to ${company?.name || 'a team'}`,
             html: `
@@ -239,7 +239,7 @@ Deno.serve(async (req) => {
       try {
         const resendClient = new Resend(resendApiKey);
         await resendClient.emails.send({
-          from: 'Team <onboarding@resend.dev>',
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
           to: [email],
           subject: `You're invited to join ${company?.name || 'a team'}`,
           html: `

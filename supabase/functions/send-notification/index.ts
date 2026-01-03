@@ -332,7 +332,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const emailResponse = await resend.emails.send({
-      from: "Service App <onboarding@resend.dev>",
+      from: "ZoPro Notifications <noreply@email.zopro.app>",
       to: [recipientEmail],
       subject,
       html: htmlContent,

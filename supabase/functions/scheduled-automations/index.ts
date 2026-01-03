@@ -198,8 +198,9 @@ async function sendInvoiceReminders(supabase: any, company: Company, resendClien
     try {
       // Send reminder email
       const { error: emailError } = await resendClient.emails.send({
-        from: `${company.name} <onboarding@resend.dev>`,
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [customer.email],
+        reply_to: company.email || undefined,
         subject: `Payment Reminder: Invoice ${invoice.invoice_number}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
