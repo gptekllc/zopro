@@ -14,6 +14,31 @@ interface SendTestEmailRequest {
   recipientEmail: string;
 }
 
+interface SocialLink {
+  platform_name: string;
+  url: string;
+  icon_url: string | null;
+  show_on_email: boolean;
+}
+
+function generateSocialIconsHtml(socialLinks: SocialLink[]): string {
+  const visibleLinks = socialLinks.filter(link => link.show_on_email);
+
+  if (visibleLinks.length === 0) return '';
+
+  const iconsHtml = visibleLinks.map(link => {
+    if (link.icon_url) {
+      return `<a href="${link.url}" style="display: inline-block; margin-right: 12px; text-decoration: none;" title="${link.platform_name}">
+        <img src="${link.icon_url}" alt="${link.platform_name}" style="width: 24px; height: 24px; object-fit: contain; vertical-align: middle;" />
+      </a>`;
+    } else {
+      return `<a href="${link.url}" style="color: #2563eb; text-decoration: none; margin-right: 12px;">${link.platform_name}</a>`;
+    }
+  }).join('');
+
+  return `<div style="margin-top: 10px;">${iconsHtml}</div>`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -36,7 +61,7 @@ serve(async (req) => {
     // Fetch company details
     const { data: company, error: companyError } = await supabase
       .from("companies")
-      .select("name, email, phone, address, city, state, zip, logo_url, website, facebook_url, instagram_url, linkedin_url")
+      .select("name, email, phone, address, city, state, zip, logo_url, website")
       .eq("id", companyId)
       .single();
 
@@ -45,7 +70,24 @@ serve(async (req) => {
       throw new Error("Failed to fetch company details");
     }
 
+    // Fetch social links
+    const { data: socialLinks, error: socialLinksError } = await supabase
+      .from("company_social_links")
+      .select("platform_name, url, icon_url, show_on_email")
+      .eq("company_id", companyId)
+      .order("display_order");
+
+    if (socialLinksError) {
+      console.error("Social links fetch error:", socialLinksError);
+    }
+
     console.log("Company details:", company);
+    console.log(`Found ${socialLinks?.length || 0} social links`);
+
+    const socialIconsHtml = generateSocialIconsHtml(socialLinks || []);
+    const socialLinksListHtml = (socialLinks || []).filter(l => l.show_on_email).map(link => 
+      `<span style="margin-right: 15px;">${link.platform_name}: <a href="${link.url}" style="color: #2563eb;">${link.url}</a></span>`
+    ).join('');
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -90,26 +132,13 @@ serve(async (req) => {
               ${company.phone ? `<div class="info-row"><span class="info-label">Phone:</span> ${company.phone}</div>` : ''}
               ${company.website ? `<div class="info-row"><span class="info-label">Website:</span> <a href="${company.website}" style="color: #2563eb;">${company.website}</a></div>` : ''}
               ${company.address ? `<div class="info-row"><span class="info-label">Address:</span> ${company.address}${company.city || company.state || company.zip ? `, ${[company.city, company.state, company.zip].filter(Boolean).join(', ')}` : ''}</div>` : ''}
-              ${(company.facebook_url || company.instagram_url || company.linkedin_url) ? `
-                <div class="info-row" style="margin-top: 10px;">
-                  <span class="info-label">Social Media:</span>
-                  ${company.facebook_url ? `<a href="${company.facebook_url}" style="color: #2563eb; margin-right: 10px;">Facebook</a>` : ''}
-                  ${company.instagram_url ? `<a href="${company.instagram_url}" style="color: #2563eb; margin-right: 10px;">Instagram</a>` : ''}
-                  ${company.linkedin_url ? `<a href="${company.linkedin_url}" style="color: #2563eb;">LinkedIn</a>` : ''}
-                </div>
-              ` : ''}
+              ${socialLinksListHtml ? `<div class="info-row" style="margin-top: 10px;"><span class="info-label">Social Media:</span><br/>${socialLinksListHtml}</div>` : ''}
             </div>
 
             <div class="footer">
               <p>This test email was sent from ZoPro.</p>
               ${company.website ? `<p><a href="${company.website}">${company.website}</a></p>` : ''}
-              ${(company.facebook_url || company.instagram_url || company.linkedin_url) ? `
-                <p style="margin-top: 8px;">
-                  ${company.facebook_url ? `<a href="${company.facebook_url}" style="color: #2563eb; margin-right: 10px;">Facebook</a>` : ''}
-                  ${company.instagram_url ? `<a href="${company.instagram_url}" style="color: #2563eb; margin-right: 10px;">Instagram</a>` : ''}
-                  ${company.linkedin_url ? `<a href="${company.linkedin_url}" style="color: #2563eb;">LinkedIn</a>` : ''}
-                </p>
-              ` : ''}
+              ${socialIconsHtml}
             </div>
           </div>
         </div>

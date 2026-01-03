@@ -16,6 +16,16 @@ interface DocumentItem {
   total: number;
 }
 
+interface SocialLink {
+  platform_name: string;
+  url: string;
+  icon_url: string | null;
+  show_on_invoice: boolean;
+  show_on_quote: boolean;
+  show_on_job: boolean;
+  show_on_email: boolean;
+}
+
 interface GeneratePDFRequest {
   type: "quote" | "invoice" | "job";
   documentId: string;
@@ -49,6 +59,47 @@ function getStatusLabel(type: string, status: string): string {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function generateSocialIconsHtml(socialLinks: SocialLink[], documentType: 'invoice' | 'quote' | 'job'): string {
+  const visibleLinks = socialLinks.filter(link => {
+    if (documentType === 'invoice') return link.show_on_invoice;
+    if (documentType === 'quote') return link.show_on_quote;
+    if (documentType === 'job') return link.show_on_job;
+    return false;
+  });
+
+  if (visibleLinks.length === 0) return '';
+
+  const iconsHtml = visibleLinks.map(link => {
+    if (link.icon_url) {
+      return `<a href="${link.url}" style="display: inline-block; margin-right: 12px; text-decoration: none;" title="${link.platform_name}">
+        <img src="${link.icon_url}" alt="${link.platform_name}" style="width: 24px; height: 24px; object-fit: contain;" />
+      </a>`;
+    } else {
+      return `<a href="${link.url}" style="color: #2563eb; text-decoration: none; margin-right: 12px;">${link.platform_name}</a>`;
+    }
+  }).join('');
+
+  return `<div style="margin-top: 10px;">${iconsHtml}</div>`;
+}
+
+function generateEmailSocialIconsHtml(socialLinks: SocialLink[]): string {
+  const visibleLinks = socialLinks.filter(link => link.show_on_email);
+
+  if (visibleLinks.length === 0) return '';
+
+  const iconsHtml = visibleLinks.map(link => {
+    if (link.icon_url) {
+      return `<a href="${link.url}" style="display: inline-block; margin-right: 12px; text-decoration: none;" title="${link.platform_name}">
+        <img src="${link.icon_url}" alt="${link.platform_name}" style="width: 24px; height: 24px; object-fit: contain; vertical-align: middle;" />
+      </a>`;
+    } else {
+      return `<a href="${link.url}" style="color: #2563eb; text-decoration: none; margin-right: 15px;">${link.platform_name}</a>`;
+    }
+  }).join('');
+
+  return `<div style="margin-top: 10px; text-align: center;">${iconsHtml}</div>`;
+}
+
 function generateHTML(
   type: "quote" | "invoice" | "job",
   document: any,
@@ -64,7 +115,8 @@ function generateHTML(
     pdf_show_line_item_details: boolean;
     pdf_terms_conditions: string | null;
     pdf_footer_text: string | null;
-  }
+  },
+  socialLinks?: SocialLink[]
 ): string {
   let documentNumber: string;
   let title: string;
@@ -220,6 +272,9 @@ function generateHTML(
     </div>
   `;
 
+  // Generate social icons for the document type
+  const socialIconsHtml = socialLinks ? generateSocialIconsHtml(socialLinks, type) : '';
+
   return `
 <!DOCTYPE html>
 <html>
@@ -319,13 +374,7 @@ function generateHTML(
         ${company?.phone ? `<p>${company.phone}</p>` : ""}
         ${company?.email ? `<p>${company.email}</p>` : ""}
         ${company?.website ? `<p><a href="${company.website}" style="color: #2563eb; text-decoration: none;">${company.website}</a></p>` : ""}
-        ${(company?.facebook_url || company?.instagram_url || company?.linkedin_url) ? `
-          <p style="margin-top: 8px;">
-            ${company?.facebook_url ? `<a href="${company.facebook_url}" style="color: #2563eb; text-decoration: none; margin-right: 10px;">Facebook</a>` : ''}
-            ${company?.instagram_url ? `<a href="${company.instagram_url}" style="color: #2563eb; text-decoration: none; margin-right: 10px;">Instagram</a>` : ''}
-            ${company?.linkedin_url ? `<a href="${company.linkedin_url}" style="color: #2563eb; text-decoration: none;">LinkedIn</a>` : ''}
-          </p>
-        ` : ''}
+        ${socialIconsHtml}
       </div>
     </div>
 
@@ -496,6 +545,19 @@ serve(async (req) => {
       console.error("Company fetch error:", companyError);
     }
 
+    // Fetch social links for this company
+    const { data: socialLinks, error: socialLinksError } = await supabase
+      .from("company_social_links")
+      .select("platform_name, url, icon_url, show_on_invoice, show_on_quote, show_on_job, show_on_email")
+      .eq("company_id", document.company_id)
+      .order("display_order");
+
+    if (socialLinksError) {
+      console.error("Social links fetch error:", socialLinksError);
+    }
+
+    console.log(`Found ${socialLinks?.length || 0} social links`);
+
     // Fetch customer
     const { data: customer, error: customerError } = await supabase
       .from("customers")
@@ -548,7 +610,7 @@ serve(async (req) => {
     };
 
     // Generate HTML
-    const html = generateHTML(type, document, company, customer, items || [], assignee, signature, pdfPreferences);
+    const html = generateHTML(type, document, company, customer, items || [], assignee, signature, pdfPreferences, socialLinks || []);
     
     let documentNumber: string;
     if (type === "quote") {
@@ -578,6 +640,9 @@ serve(async (req) => {
       const paymentTerms = company?.payment_terms_days;
       const lateFee = company?.late_fee_percentage;
 
+      // Generate email social icons
+      const emailSocialIconsHtml = generateEmailSocialIconsHtml(socialLinks || []);
+
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Hello ${customer?.name || ""},</h2>
@@ -600,13 +665,7 @@ serve(async (req) => {
           <p>If you have any questions, please don't hesitate to contact us.</p>
           <p>Best regards,<br/>${company?.name || "The Team"}</p>
           ${company?.website ? `<p style="margin-top: 15px;"><a href="${company.website}" style="color: #2563eb; text-decoration: none;">${company.website}</a></p>` : ""}
-          ${(company?.facebook_url || company?.instagram_url || company?.linkedin_url) ? `
-            <p style="margin-top: 10px;">
-              ${company?.facebook_url ? `<a href="${company.facebook_url}" style="color: #2563eb; text-decoration: none; margin-right: 15px;">Facebook</a>` : ''}
-              ${company?.instagram_url ? `<a href="${company.instagram_url}" style="color: #2563eb; text-decoration: none; margin-right: 15px;">Instagram</a>` : ''}
-              ${company?.linkedin_url ? `<a href="${company.linkedin_url}" style="color: #2563eb; text-decoration: none;">LinkedIn</a>` : ''}
-            </p>
-          ` : ''}
+          ${emailSocialIconsHtml}
         </div>
       `;
 
