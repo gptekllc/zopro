@@ -16,6 +16,7 @@ import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentAction
 import { useSignJobCompletion } from '@/hooks/useSignatures';
 import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
 import { useSendJobNotification } from '@/hooks/useSendJobNotification';
+import { useJobNotificationCounts } from '@/hooks/useJobNotifications';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +29,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter, PenTool, Send } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter, PenTool, Send, Bell } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
@@ -158,6 +159,7 @@ const Jobs = () => {
   const signJobCompletion = useSignJobCompletion();
   const sendSignatureRequest = useSendSignatureRequest();
   const sendJobNotification = useSendJobNotification();
+  const { data: notificationCounts = new Map() } = useJobNotificationCounts();
   
   // Undo-able delete
   const { scheduleDelete: scheduleJobDelete, filterPendingDeletes: filterPendingJobDeletes } = useUndoableDelete(
@@ -1127,6 +1129,13 @@ const Jobs = () => {
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
                           {job.status.replace('_', ' ')}
                         </span>
+                        {/* Notification sent indicator */}
+                        {(notificationCounts.get(job.id) || 0) > 0 && (
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1 text-xs">
+                            <Bell className="w-3 h-3" />
+                            Notified
+                          </Badge>
+                        )}
                       </div>
                       
                       {/* Action Menu */}
@@ -1290,6 +1299,13 @@ const Jobs = () => {
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
                             {job.status.replace('_', ' ')}
                           </span>
+                          {/* Notification sent indicator */}
+                          {(notificationCounts.get(job.id) || 0) > 0 && (
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1">
+                              <Bell className="w-3 h-3" />
+                              Notified
+                            </Badge>
+                          )}
                         </div>
                         
                         {/* Action Menu */}
