@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams } from 'react-router-dom';
 import { useQuotes, useCreateQuote, useUpdateQuote, useDeleteQuote, useArchiveQuote, useUnarchiveQuote, Quote } from '@/hooks/useQuotes';
@@ -225,6 +226,10 @@ const Quotes = () => {
     });
     return filterPendingQuoteDeletes(filtered);
   }, [quotes, customers, searchQuery, statusFilter, filterPendingQuoteDeletes]);
+
+  // Infinite scroll for quote list
+  const { visibleItems: visibleQuotes, hasMore: hasMoreQuotes, loadMoreRef: loadMoreQuotesRef } = useInfiniteScroll(filteredQuotes, { pageSize: 20 });
+
   const resetForm = () => {
     setFormData({
       customerId: '',
@@ -789,7 +794,7 @@ const Quotes = () => {
       await refetchQuotes();
     }} className="sm:contents">
       <div className="space-y-3 lg:max-w-4xl lg:mx-auto">
-        {filteredQuotes.map(quote => <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingQuote(quote)}>
+        {visibleQuotes.map(quote => <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingQuote(quote)}>
             <CardContent className="p-4 sm:p-5">
               {/* Mobile Layout */}
               <div className="flex flex-col gap-2 sm:hidden">
@@ -1070,6 +1075,12 @@ const Quotes = () => {
               No quotes found
             </CardContent>
           </Card>}
+        {/* Infinite scroll trigger */}
+        {hasMoreQuotes && (
+          <div ref={loadMoreQuotesRef} className="py-4 text-center">
+            <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+          </div>
+        )}
       </div>
       </PullToRefresh>
 

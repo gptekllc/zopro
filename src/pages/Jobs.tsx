@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, useJobRelatedQuotes, Job, JobItem } from '@/hooks/useJobs';
@@ -319,6 +320,10 @@ const Jobs = () => {
     });
     return filterPendingJobDeletes(filtered);
   }, [safeJobs, searchQuery, statusFilter, includeArchivedInSearch, filterPendingJobDeletes]);
+
+  // Infinite scroll for job list
+  const { visibleItems: visibleJobs, hasMore: hasMoreJobs, loadMoreRef: loadMoreJobsRef } = useInfiniteScroll(filteredJobs, { pageSize: 20 });
+
   const resetForm = () => {
     setFormData({
       customer_id: '',
@@ -1043,7 +1048,7 @@ const Jobs = () => {
               <CardContent className="py-8 text-center text-muted-foreground">
                 No jobs found
               </CardContent>
-            </Card> : filteredJobs.map(job => <Card key={job.id} className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${job.archived_at ? 'opacity-60 border-dashed' : ''}`} onClick={() => openViewingJob(job)}>
+            </Card> : visibleJobs.map(job => <Card key={job.id} className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${job.archived_at ? 'opacity-60 border-dashed' : ''}`} onClick={() => openViewingJob(job)}>
                 <CardContent className="p-4 sm:p-5">
                   {/* Mobile Layout */}
                   <div className="flex flex-col gap-2 sm:hidden">
@@ -1379,6 +1384,12 @@ const Jobs = () => {
                   </div>
                 </CardContent>
               </Card>)}
+          {/* Infinite scroll trigger */}
+          {hasMoreJobs && (
+            <div ref={loadMoreJobsRef} className="py-4 text-center">
+              <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
+            </div>
+          )}
         </div>
         </PullToRefresh>}
 

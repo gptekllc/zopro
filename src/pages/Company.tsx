@@ -52,7 +52,7 @@ const Company = () => {
     default_job_duration: 60,
     default_job_priority: 'medium',
     require_job_completion_signature: false,
-    auto_archive_days: 365,
+    
     notify_on_job_assignment: true,
     // Quote Settings
     default_quote_validity_days: 30,
@@ -104,7 +104,7 @@ const Company = () => {
       default_job_duration: company.default_job_duration ?? 60,
       default_job_priority: company.default_job_priority ?? 'medium',
       require_job_completion_signature: company.require_job_completion_signature ?? false,
-      auto_archive_days: company.auto_archive_days ?? 365,
+      
       notify_on_job_assignment: company.notify_on_job_assignment ?? true,
       default_quote_validity_days: company.default_quote_validity_days ?? 30,
       auto_expire_quotes: company.auto_expire_quotes ?? true,
@@ -628,17 +628,6 @@ const Company = () => {
                           checked={preferences.notify_on_job_assignment}
                           onCheckedChange={(checked) => setPreferences({ ...preferences, notify_on_job_assignment: checked })}
                         />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Auto-archive After (days)</Label>
-                        <Input
-                          type="number"
-                          min="30"
-                          max="1825"
-                          value={preferences.auto_archive_days}
-                          onChange={(e) => setPreferences({ ...preferences, auto_archive_days: parseInt(e.target.value) || 365 })}
-                        />
-                        <p className="text-sm text-muted-foreground">Completed jobs will be archived after this many days</p>
                       </div>
                     </AccordionContent>
                   </AccordionItem>
