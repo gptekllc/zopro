@@ -9,7 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { 
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
-  Download, Mail, Loader2, Send, Bell, Navigation
+  Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star
 } from 'lucide-react';
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { useAuth } from '@/hooks/useAuth';
@@ -27,6 +27,7 @@ import { formatAmount } from '@/lib/formatAmount';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
 import { useSendJobNotification } from '@/hooks/useSendJobNotification';
 import { useJobNotifications } from '@/hooks/useJobNotifications';
+import { useJobFeedbacks, JobFeedback } from '@/hooks/useJobFeedbacks';
 
 interface JobDetailDialogProps {
   job: CustomerJob | null;
@@ -78,6 +79,7 @@ export function JobDetailDialog({
   const emailDocument = useEmailDocument();
   const sendJobNotification = useSendJobNotification();
   const { data: notifications = [], isLoading: loadingNotifications } = useJobNotifications(job?.id || null);
+  const { data: feedbacks = [], isLoading: loadingFeedbacks } = useJobFeedbacks(job?.id || null);
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
 
@@ -325,35 +327,41 @@ export function JobDetailDialog({
           {/* Linked Docs + Photos Tabs */}
           <Separator />
           <Tabs defaultValue="linked" className="w-full">
-            <TabsList className={`grid w-full ${job.photos && job.photos.length > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-              <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm">
+            <TabsList className={`grid w-full grid-cols-4`}>
+              <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Linked</span> Docs
+                <span className="hidden sm:inline">Docs</span>
                 {((relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0) + jobInvoices.length) > 0 && (
-                  <Badge variant="secondary" className="ml-1 text-xs">
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
                     {(relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0) + jobInvoices.length}
                   </Badge>
                 )}
               </TabsTrigger>
 
-              <TabsTrigger value="notifications" className="flex items-center gap-1 text-xs sm:text-sm">
-                <Bell className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Notification</span> History
-                {notifications.length > 0 && (
-                  <Badge variant="secondary" className="ml-1 text-xs">
-                    {notifications.length}
+              <TabsTrigger value="timeclock" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Time Clock</span>
+              </TabsTrigger>
+
+              <TabsTrigger value="feedback" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Comments</span>
+                {feedbacks.length > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs">
+                    {feedbacks.length}
                   </Badge>
                 )}
               </TabsTrigger>
 
-              {job.photos && job.photos.length > 0 && (
-                <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm">
-                  <span>Photos</span>
-                  <Badge variant="secondary" className="ml-1 text-xs">
-                    {job.photos.length}
+              <TabsTrigger value="notifications" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <Bell className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">History</span>
+                {notifications.length > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {notifications.length}
                   </Badge>
-                </TabsTrigger>
-              )}
+                )}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="linked" className="mt-4">
@@ -491,6 +499,95 @@ export function JobDetailDialog({
               )}
             </TabsContent>
 
+            {/* Time Clock Tab - placeholder for now */}
+            <TabsContent value="timeclock" className="mt-4">
+              <div className="p-4 bg-muted/50 rounded-lg text-center">
+                <Clock className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-xs sm:text-sm text-muted-foreground">Time tracking details</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  View time entries and labor hours in the Jobs page
+                </p>
+              </div>
+            </TabsContent>
+
+            {/* Customer Feedback Tab */}
+            <TabsContent value="feedback" className="mt-4">
+              {loadingFeedbacks ? (
+                <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p>
+              ) : feedbacks.length > 0 ? (
+                <div className="space-y-3">
+                  {feedbacks.map((feedback: JobFeedback) => (
+                    <div 
+                      key={feedback.id}
+                      className={`p-3 rounded-lg border ${
+                        feedback.is_negative 
+                          ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' 
+                          : 'bg-muted/50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-0.5">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Star
+                                  key={star}
+                                  className={`w-4 h-4 ${
+                                    star <= feedback.rating
+                                      ? 'fill-yellow-400 text-yellow-400'
+                                      : 'text-muted-foreground/30'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                            <span className="text-sm font-medium">
+                              {feedback.rating}/5
+                            </span>
+                            {feedback.is_negative && (
+                              <Badge variant="destructive" className="text-xs">
+                                Needs Attention
+                              </Badge>
+                            )}
+                          </div>
+                          {feedback.feedback_text && (
+                            <p className="text-sm text-muted-foreground">
+                              "{feedback.feedback_text}"
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                            <span>{feedback.customer?.name || 'Customer'}</span>
+                            <span>•</span>
+                            <span>{format(new Date(feedback.created_at), 'MMM d, yyyy')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 bg-muted/50 rounded-lg text-center">
+                  <MessageSquare className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+                  <p className="text-xs sm:text-sm text-muted-foreground">No customer feedback yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Feedback will appear here after the customer rates the job
+                  </p>
+                </div>
+              )}
+
+              {/* Photos section within feedback tab */}
+              {job.photos && job.photos.length > 0 && (
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <span>Job Photos</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {job.photos.length}
+                    </Badge>
+                  </p>
+                  <PhotoGallery photos={job.photos} />
+                </div>
+              )}
+            </TabsContent>
+
             {/* Notification History Tab */}
             <TabsContent value="notifications" className="mt-4">
               {loadingNotifications ? (
@@ -534,12 +631,6 @@ export function JobDetailDialog({
                 </div>
               )}
             </TabsContent>
-
-            {job.photos && job.photos.length > 0 && (
-              <TabsContent value="photos" className="mt-4">
-                <PhotoGallery photos={job.photos} />
-              </TabsContent>
-            )}
           </Tabs>
 
           {/* Completion Signature */}

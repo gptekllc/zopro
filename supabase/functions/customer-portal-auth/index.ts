@@ -1230,7 +1230,149 @@ Deno.serve(async (req) => {
       console.log('Job completion signed:', job.job_number);
 
       return new Response(
-        JSON.stringify({ success: true, message: 'Job completion confirmed' }),
+        JSON.stringify({ success: true, message: 'Job completion confirmed', promptFeedback: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle customer feedback submission
+    if (action === 'submit-feedback') {
+      const { jobId, customerId, token, rating, feedbackText } = body;
+      
+      if (!jobId || !customerId || !token || !rating) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify job belongs to customer
+      const { data: job, error: jobError } = await adminClient
+        .from('jobs')
+        .select('id, job_number, company_id, companies(email, name)')
+        .eq('id', jobId)
+        .eq('customer_id', customerId)
+        .single();
+
+      if (jobError || !job) {
+        console.error('Job not found or access denied:', jobError);
+        return new Response(
+          JSON.stringify({ error: 'Job not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Check if feedback already exists
+      const { data: existingFeedback } = await adminClient
+        .from('job_feedbacks')
+        .select('id')
+        .eq('job_id', jobId)
+        .single();
+
+      if (existingFeedback) {
+        return new Response(
+          JSON.stringify({ error: 'Feedback already submitted for this job' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Determine if feedback is negative (rating <= 3)
+      const isNegative = rating <= 3;
+
+      // Save feedback
+      const { error: feedbackError } = await adminClient
+        .from('job_feedbacks')
+        .insert({
+          job_id: jobId,
+          customer_id: customerId,
+          company_id: job.company_id,
+          rating: rating,
+          feedback_text: feedbackText || null,
+          is_negative: isNegative,
+        });
+
+      if (feedbackError) {
+        console.error('Error saving feedback:', feedbackError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to save feedback' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Feedback saved for job:', job.job_number, 'Rating:', rating);
+
+      // If negative feedback, notify managers/admins
+      if (isNegative) {
+        // Fetch customer info
+        const { data: customer } = await adminClient
+          .from('customers')
+          .select('name, email')
+          .eq('id', customerId)
+          .single();
+
+        // Get managers and admins
+        const { data: managers } = await adminClient
+          .from('profiles')
+          .select('id')
+          .eq('company_id', job.company_id)
+          .in('role', ['admin', 'manager']);
+
+        if (managers && managers.length > 0) {
+          const notifications = managers.map((manager: { id: string }) => ({
+            user_id: manager.id,
+            type: 'negative_feedback',
+            title: 'Customer Feedback Requires Attention',
+            message: `${customer?.name || 'A customer'} left a ${rating}-star rating for Job ${job.job_number}. "${feedbackText || 'No comment'}"`,
+            data: { jobId, jobNumber: job.job_number, rating, feedbackText, customerName: customer?.name },
+          }));
+          
+          await adminClient.from('notifications').insert(notifications);
+          console.log('Manager notifications created for negative feedback');
+        }
+
+        // Also send email to company if very negative (1-2 stars)
+        const resendApiKey = Deno.env.get('RESEND_API_KEY');
+        if (rating <= 2 && resendApiKey && (job as any).companies?.email) {
+          try {
+            const resend = new Resend(resendApiKey);
+            
+            await resend.emails.send({
+              from: `Feedback Alert <noreply@email.zopro.app>`,
+              to: [(job as any).companies.email],
+              subject: `⚠️ Low Customer Rating for Job ${job.job_number}`,
+              html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h1 style="color: #dc2626;">Customer Feedback Alert</h1>
+                  <p>A customer has left a low rating that requires your attention.</p>
+                  <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p><strong>Job:</strong> ${job.job_number}</p>
+                    <p><strong>Customer:</strong> ${customer?.name || 'Unknown'}</p>
+                    <p><strong>Rating:</strong> ${'⭐'.repeat(rating)}${'☆'.repeat(5-rating)} (${rating}/5)</p>
+                    ${feedbackText ? `<p><strong>Comment:</strong> "${feedbackText}"</p>` : ''}
+                  </div>
+                  <p>Please review this feedback and take appropriate action.</p>
+                </div>
+              `,
+            });
+            console.log('Negative feedback email sent to company');
+          } catch (emailError) {
+            console.error('Failed to send feedback email:', emailError);
+          }
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Feedback submitted successfully' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

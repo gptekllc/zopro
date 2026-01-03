@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Clock, Play, Square, Timer, Calendar, Loader2, Eye, Pencil, Coffee, FileText, Briefcase } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { format, differenceInMinutes } from 'date-fns';
 import { toast } from 'sonner';
 import { TimeEntryDialog } from '@/components/timeclock/TimeEntryDialog';
@@ -32,7 +33,7 @@ const TimeClock = () => {
   const [breakTime, setBreakTime] = useState('00:00');
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-
+  const [recordWorkHours, setRecordWorkHours] = useState(false);
   // Filter jobs that can be worked on (scheduled or in_progress)
   const availableJobs = jobs.filter(j => 
     j.status === 'scheduled' || j.status === 'in_progress' || j.status === 'draft'
@@ -252,21 +253,45 @@ const TimeClock = () => {
           <div className="space-y-4">
             {/* Job Selector - only show when not clocked in */}
             {!activeEntry && availableJobs.length > 0 && (
-              <div className="space-y-2">
-                <Label>Link to Job (optional)</Label>
-                <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a job" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No job</SelectItem>
-                    {availableJobs.map((job) => (
-                      <SelectItem key={job.id} value={job.id}>
-                        {job.job_number} - {job.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Link to Job (optional)</Label>
+                  <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a job" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No job</SelectItem>
+                      {availableJobs.map((job) => (
+                        <SelectItem key={job.id} value={job.id}>
+                          {job.job_number} - {job.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Record Work Hours Checkbox */}
+                {selectedJobId !== 'none' && (
+                  <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg border">
+                    <Checkbox
+                      id="record-work-hours"
+                      checked={recordWorkHours}
+                      onCheckedChange={(checked) => setRecordWorkHours(checked === true)}
+                    />
+                    <div className="flex-1">
+                      <label
+                        htmlFor="record-work-hours"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        Add/Record Work Hours to Job
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        When stopped, your time will be recorded as labor hours on this job
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             

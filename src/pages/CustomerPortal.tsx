@@ -16,7 +16,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer, Star, MessageSquare } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -98,6 +99,7 @@ interface Job {
   notes: string | null;
   created_at: string;
   completion_signed_at: string | null;
+  has_feedback?: boolean;
   completion_signed_by: string | null;
   subtotal?: number;
   tax?: number;
@@ -483,6 +485,13 @@ const CustomerPortal = () => {
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [viewingJob, setViewingJob] = useState<Job | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState<string | null>(null);
+
+  // Feedback form states
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [feedbackJob, setFeedbackJob] = useState<Job | null>(null);
+  const [feedbackRating, setFeedbackRating] = useState(5);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   // Check for magic link token and payment status in URL
   useEffect(() => {
@@ -1105,10 +1114,19 @@ const CustomerPortal = () => {
         toast.success('Job completion confirmed and signed!');
         
         // Update local state
+        const signedJob = jobs.find(j => j.id === signatureAction.id);
         setJobs(jobs.map(j => 
           j.id === signatureAction.id ? { ...j, completion_signed_at: new Date().toISOString() } : j
         ));
         setSigningJob(null);
+        
+        // Prompt for feedback after successful signing
+        if (data?.promptFeedback && signedJob && !signedJob.has_feedback) {
+          setTimeout(() => {
+            setFeedbackJob({ ...signedJob, completion_signed_at: new Date().toISOString() });
+            setShowFeedbackDialog(true);
+          }, 500);
+        }
       }
       
       setSignatureDialogOpen(false);
@@ -1121,6 +1139,43 @@ const CustomerPortal = () => {
       setSigningJob(null);
     } finally {
       setIsSubmittingSignature(false);
+    }
+  };
+
+  // Handle feedback submission
+  const handleSubmitFeedback = async () => {
+    if (!feedbackJob || !customerData?.id) return;
+    
+    setIsSubmittingFeedback(true);
+    try {
+      const { error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: {
+          action: 'submit-feedback',
+          jobId: feedbackJob.id,
+          customerId: customerData.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+          rating: feedbackRating,
+          feedbackText: feedbackText,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success('Thank you for your feedback!');
+      
+      // Update job to show feedback was given
+      setJobs(jobs.map(j => 
+        j.id === feedbackJob.id ? { ...j, has_feedback: true } : j
+      ));
+      
+      setShowFeedbackDialog(false);
+      setFeedbackJob(null);
+      setFeedbackRating(5);
+      setFeedbackText('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to submit feedback');
+    } finally {
+      setIsSubmittingFeedback(false);
     }
   };
 
@@ -2566,6 +2621,96 @@ const CustomerPortal = () => {
         onSignatureComplete={handleSignatureComplete}
         isSubmitting={isSubmittingSignature}
       />
+
+      {/* Feedback Dialog */}
+      <Dialog open={showFeedbackDialog} onOpenChange={setShowFeedbackDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5" />
+              How was your experience?
+            </DialogTitle>
+            <DialogDescription>
+              Your feedback helps us improve our service. 
+              {feedbackRating <= 3 && (
+                <span className="block mt-2 text-amber-600 dark:text-amber-400">
+                  Note: Any concerns will be sent directly to management for review. 
+                  The technician will not see this feedback.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Star Rating */}
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-3">Rate your experience with Job {feedbackJob?.job_number}</p>
+              <div className="flex justify-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setFeedbackRating(star)}
+                    className="p-1 transition-transform hover:scale-110 focus:outline-none"
+                  >
+                    <Star
+                      className={`w-8 h-8 ${
+                        star <= feedbackRating
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'text-muted-foreground/30'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <p className="text-sm mt-2 font-medium">
+                {feedbackRating === 1 && 'Very Poor'}
+                {feedbackRating === 2 && 'Poor'}
+                {feedbackRating === 3 && 'Average'}
+                {feedbackRating === 4 && 'Good'}
+                {feedbackRating === 5 && 'Excellent'}
+              </p>
+            </div>
+
+            {/* Feedback Text */}
+            <div className="space-y-2">
+              <Label htmlFor="feedback-text">Comments (optional)</Label>
+              <Textarea
+                id="feedback-text"
+                placeholder="Tell us about your experience..."
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowFeedbackDialog(false);
+                setFeedbackJob(null);
+                setFeedbackRating(5);
+                setFeedbackText('');
+              }}
+            >
+              Skip
+            </Button>
+            <Button
+              onClick={handleSubmitFeedback}
+              disabled={isSubmittingFeedback}
+            >
+              {isSubmittingFeedback ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Star className="w-4 h-4 mr-2" />
+              )}
+              Submit Feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

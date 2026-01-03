@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link, Clock } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -73,6 +73,12 @@ const Company = () => {
     // Branding
     brand_primary_color: '#0066CC',
     customer_portal_welcome_message: '',
+    // Time Clock Preferences
+    timeclock_enforce_job_labor: false,
+    timeclock_allow_manual_labor_edit: true,
+    timeclock_require_job_selection: false,
+    timeclock_auto_start_break_reminder: 240,
+    timeclock_max_shift_hours: 12,
   });
   const [runningAutomations, setRunningAutomations] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -122,6 +128,11 @@ const Company = () => {
       notify_on_automation_run: company.notify_on_automation_run ?? true,
       brand_primary_color: company.brand_primary_color ?? '#0066CC',
       customer_portal_welcome_message: company.customer_portal_welcome_message ?? '',
+      timeclock_enforce_job_labor: (company as any).timeclock_enforce_job_labor ?? false,
+      timeclock_allow_manual_labor_edit: (company as any).timeclock_allow_manual_labor_edit ?? true,
+      timeclock_require_job_selection: (company as any).timeclock_require_job_selection ?? false,
+      timeclock_auto_start_break_reminder: (company as any).timeclock_auto_start_break_reminder ?? 240,
+      timeclock_max_shift_hours: (company as any).timeclock_max_shift_hours ?? 12,
     });
     setLogoUrl(company.logo_url || null);
     setFormInitialized(true);
@@ -892,6 +903,91 @@ const Company = () => {
                       </div>
                     </AccordionContent>
                   </AccordionItem>
+
+                  {/* Time Clock Preferences */}
+                  <AccordionItem value="timeclock">
+                    <AccordionTrigger className="text-base font-medium">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        Time Clock
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-4">
+                      <div className="flex items-center justify-between space-x-4">
+                        <div className="space-y-0.5">
+                          <Label className="font-medium">Require Job Selection</Label>
+                          <p className="text-sm text-muted-foreground">Technicians must select a job when clocking in</p>
+                        </div>
+                        <Switch
+                          checked={preferences.timeclock_require_job_selection}
+                          onCheckedChange={(checked) => setPreferences({ ...preferences, timeclock_require_job_selection: checked })}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between space-x-4">
+                        <div className="space-y-0.5">
+                          <Label className="font-medium">Enforce Time Entries on Job Labor</Label>
+                          <p className="text-sm text-muted-foreground">Automatically sync time clock hours to job labor line items</p>
+                        </div>
+                        <Switch
+                          checked={preferences.timeclock_enforce_job_labor}
+                          onCheckedChange={(checked) => setPreferences({ ...preferences, timeclock_enforce_job_labor: checked })}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between space-x-4">
+                        <div className="space-y-0.5">
+                          <Label className="font-medium">Allow Manual Labor Hour Editing</Label>
+                          <p className="text-sm text-muted-foreground">Allow editing labor hours on jobs (if disabled, only time clock entries count)</p>
+                        </div>
+                        <Switch
+                          checked={preferences.timeclock_allow_manual_labor_edit}
+                          onCheckedChange={(checked) => setPreferences({ ...preferences, timeclock_allow_manual_labor_edit: checked })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Break Reminder (minutes)</Label>
+                          <Select
+                            value={String(preferences.timeclock_auto_start_break_reminder)}
+                            onValueChange={(value) => setPreferences({ ...preferences, timeclock_auto_start_break_reminder: parseInt(value) })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="0">Disabled</SelectItem>
+                              <SelectItem value="120">After 2 hours</SelectItem>
+                              <SelectItem value="180">After 3 hours</SelectItem>
+                              <SelectItem value="240">After 4 hours</SelectItem>
+                              <SelectItem value="300">After 5 hours</SelectItem>
+                              <SelectItem value="360">After 6 hours</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-sm text-muted-foreground">Remind technicians to take a break</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Max Shift Length (hours)</Label>
+                          <Select
+                            value={String(preferences.timeclock_max_shift_hours)}
+                            onValueChange={(value) => setPreferences({ ...preferences, timeclock_max_shift_hours: parseInt(value) })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="8">8 hours</SelectItem>
+                              <SelectItem value="10">10 hours</SelectItem>
+                              <SelectItem value="12">12 hours</SelectItem>
+                              <SelectItem value="14">14 hours</SelectItem>
+                              <SelectItem value="16">16 hours</SelectItem>
+                              <SelectItem value="24">24 hours</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-sm text-muted-foreground">Auto clock-out after this duration</p>
+                        </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
                   {/* Automations */}
                   <AccordionItem value="automations">
                     <AccordionTrigger className="text-base font-medium">
