@@ -569,17 +569,29 @@ export function JobDetailDialog({
                   )}
                 </div>
 
-                {/* Record Hours Checkbox */}
+                {/* Record Hours Checkbox and Rate Display */}
                 {!isActiveForThisJob && !hasActiveEntry && (
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="record-hours"
-                      checked={recordWorkHours}
-                      onCheckedChange={(checked) => setRecordWorkHours(checked === true)}
-                    />
-                    <Label htmlFor="record-hours" className="text-sm text-muted-foreground cursor-pointer">
-                      Record hours to job labor
-                    </Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="record-hours"
+                        checked={recordWorkHours}
+                        onCheckedChange={(checked) => setRecordWorkHours(checked === true)}
+                      />
+                      <Label htmlFor="record-hours" className="text-sm text-muted-foreground cursor-pointer">
+                        Record hours to job labor
+                      </Label>
+                    </div>
+                    {recordWorkHours && (
+                      <p className="text-xs text-muted-foreground pl-6">
+                        Rate: {formatAmount((job as any).labor_hourly_rate ?? profile?.hourly_rate ?? 0)}/hr
+                        {(job as any).labor_hourly_rate ? (
+                          <span className="ml-1 text-primary">(job rate)</span>
+                        ) : profile?.hourly_rate ? (
+                          <span className="ml-1">(your default rate)</span>
+                        ) : null}
+                      </p>
+                    )}
                   </div>
                 )}
 
