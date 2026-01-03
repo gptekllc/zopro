@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -64,6 +64,24 @@ interface Invoice {
   due_date: string | null;
   notes?: string | null;
   items?: InvoiceItem[];
+  signed_at?: string | null;
+  signature?: SignatureData;
+}
+
+interface JobPhoto {
+  id: string;
+  photo_url: string;
+  photo_type: string;
+  caption: string | null;
+  created_at: string;
+}
+
+interface SignatureData {
+  id: string;
+  signature_data: string;
+  signer_name: string;
+  signed_at: string;
+  signer_ip: string | null;
 }
 
 interface Job {
@@ -85,6 +103,8 @@ interface Job {
   tax?: number;
   total?: number;
   items?: InvoiceItem[];
+  photos?: JobPhoto[];
+  signature?: SignatureData;
 }
 
 interface QuoteItem {
@@ -107,6 +127,7 @@ interface Quote {
   notes: string | null;
   signed_at: string | null;
   items?: QuoteItem[];
+  signature?: SignatureData;
 }
 
 interface SigningDocument {
@@ -497,6 +518,28 @@ const CustomerPortal = () => {
     }
   }, [searchParams]);
 
+  // Play notification sound
+  const playNotificationSound = () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = 800;
+      oscillator.type = 'sine';
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (e) {
+      console.log('Could not play notification sound');
+    }
+  };
+
   // Real-time subscription for new quotes and invoices
   useEffect(() => {
     if (!isAuthenticated || !customerData?.id) return;
@@ -517,6 +560,7 @@ const CustomerPortal = () => {
         (payload) => {
           const newQuote = payload.new as Quote;
           setQuotes(prev => [newQuote, ...prev]);
+          playNotificationSound();
           toast.info('📋 New quote received!', {
             description: `Quote ${newQuote.quote_number} for $${Number(newQuote.total).toFixed(2)}`,
             duration: 5000
@@ -539,6 +583,7 @@ const CustomerPortal = () => {
         (payload) => {
           const newInvoice = payload.new as Invoice;
           setInvoices(prev => [newInvoice, ...prev]);
+          playNotificationSound();
           toast.info('📄 New invoice received!', {
             description: `Invoice ${newInvoice.invoice_number} for $${Number(newInvoice.total).toFixed(2)}`,
             duration: 5000
@@ -701,7 +746,7 @@ const CustomerPortal = () => {
 
   // Fetch quote details
   const handleViewQuote = async (quote: Quote) => {
-    if (quote.items && quote.items.length > 0) {
+    if (quote.items && quote.items.length > 0 && quote.signature !== undefined) {
       setViewingQuote(quote);
       return;
     }
@@ -719,7 +764,12 @@ const CustomerPortal = () => {
       });
 
       if (error) throw error;
-      setViewingQuote({ ...quote, items: data?.items || [], notes: data?.document?.notes || quote.notes });
+      setViewingQuote({ 
+        ...quote, 
+        items: data?.items || [], 
+        notes: data?.document?.notes || quote.notes,
+        signature: data?.document?.signature || null,
+      });
     } catch (err) {
       console.error('Failed to fetch quote details:', err);
       setViewingQuote(quote);
@@ -730,7 +780,7 @@ const CustomerPortal = () => {
 
   // Fetch invoice details
   const handleViewInvoice = async (invoice: Invoice) => {
-    if (invoice.items && invoice.items.length > 0) {
+    if (invoice.items && invoice.items.length > 0 && invoice.signature !== undefined) {
       setViewingInvoice(invoice);
       return;
     }
@@ -748,7 +798,15 @@ const CustomerPortal = () => {
       });
 
       if (error) throw error;
-      setViewingInvoice({ ...invoice, items: data?.items || [], notes: data?.document?.notes, subtotal: data?.document?.subtotal, tax: data?.document?.tax });
+      setViewingInvoice({ 
+        ...invoice, 
+        items: data?.items || [], 
+        notes: data?.document?.notes, 
+        subtotal: data?.document?.subtotal, 
+        tax: data?.document?.tax,
+        signed_at: data?.document?.signed_at,
+        signature: data?.document?.signature || null,
+      });
     } catch (err) {
       console.error('Failed to fetch invoice details:', err);
       setViewingInvoice(invoice);
@@ -759,7 +817,7 @@ const CustomerPortal = () => {
 
   // Fetch job details
   const handleViewJob = async (job: Job) => {
-    if (job.items && job.items.length > 0) {
+    if (job.items && job.items.length > 0 && job.photos !== undefined) {
       setViewingJob(job);
       return;
     }
@@ -777,7 +835,15 @@ const CustomerPortal = () => {
       });
 
       if (error) throw error;
-      setViewingJob({ ...job, items: data?.items || [], subtotal: data?.document?.subtotal, tax: data?.document?.tax, total: data?.document?.total });
+      setViewingJob({ 
+        ...job, 
+        items: data?.items || [], 
+        subtotal: data?.document?.subtotal, 
+        tax: data?.document?.tax, 
+        total: data?.document?.total,
+        photos: data?.document?.photos || [],
+        signature: data?.document?.signature || null,
+      });
     } catch (err) {
       console.error('Failed to fetch job details:', err);
       setViewingJob(job);
@@ -1413,57 +1479,94 @@ const CustomerPortal = () => {
 
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4 mb-8">
-          <Card>
+          <Card 
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => {
+              const tabsElement = document.querySelector('[data-state="active"][value="quotes"]');
+              const tabTrigger = document.querySelector('[role="tab"][value="quotes"]') as HTMLElement;
+              tabTrigger?.click();
+            }}
+          >
             <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <ClipboardList className="w-6 h-6 text-primary" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <ClipboardList className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{pendingQuotes.length}</p>
+                    <p className="text-sm text-muted-foreground">Pending Quotes</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{pendingQuotes.length}</p>
-                  <p className="text-sm text-muted-foreground">Pending Quotes</p>
-                </div>
+                <span className="text-xs text-primary hover:underline">View All →</span>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => {
+              const tabTrigger = document.querySelector('[role="tab"][value="invoices"]') as HTMLElement;
+              tabTrigger?.click();
+            }}
+          >
             <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <FileText className="w-6 h-6 text-primary" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <FileText className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{invoices.length}</p>
+                    <p className="text-sm text-muted-foreground">Total Invoices</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{invoices.length}</p>
-                  <p className="text-sm text-muted-foreground">Total Invoices</p>
-                </div>
+                <span className="text-xs text-primary hover:underline">View All →</span>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => {
+              const tabTrigger = document.querySelector('[role="tab"][value="invoices"]') as HTMLElement;
+              tabTrigger?.click();
+            }}
+          >
             <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-amber-500/10 rounded-lg">
-                  <CreditCard className="w-6 h-6 text-amber-500" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-500/10 rounded-lg">
+                    <CreditCard className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">
+                      ${unpaidInvoices.reduce((sum, i) => sum + Number(i.total), 0).toFixed(2)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Outstanding</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">
-                    ${unpaidInvoices.reduce((sum, i) => sum + Number(i.total), 0).toFixed(2)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Outstanding</p>
-                </div>
+                <span className="text-xs text-amber-600 hover:underline">Pay Now →</span>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card 
+            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => {
+              const tabTrigger = document.querySelector('[role="tab"][value="jobs"]') as HTMLElement;
+              tabTrigger?.click();
+            }}
+          >
             <CardContent className="pt-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-emerald-500/10 rounded-lg">
-                  <Briefcase className="w-6 h-6 text-emerald-500" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-emerald-500/10 rounded-lg">
+                    <Briefcase className="w-6 h-6 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{jobs.length}</p>
+                    <p className="text-sm text-muted-foreground">Service Jobs</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-2xl font-bold">{jobs.length}</p>
-                  <p className="text-sm text-muted-foreground">Service Jobs</p>
-                </div>
+                <span className="text-xs text-emerald-600 hover:underline">View All →</span>
               </div>
             </CardContent>
           </Card>
@@ -1910,13 +2013,28 @@ const CustomerPortal = () => {
                 </div>
               )}
 
-              {/* Signed Status */}
+              {/* Signed Status with Signature Image */}
               {viewingQuote.signed_at && (
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                    <CheckCircle className="w-5 h-5" />
-                    <span className="font-medium">Approved & Signed on {format(new Date(viewingQuote.signed_at), 'MMMM d, yyyy')}</span>
+                <div className="pt-4 border-t space-y-3">
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="font-medium">Approved & Signed on {format(new Date(viewingQuote.signed_at), 'MMMM d, yyyy')}</span>
+                    </div>
                   </div>
+                  {viewingQuote.signature?.signature_data && (
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground mb-2">Signature</p>
+                      <img 
+                        src={viewingQuote.signature.signature_data} 
+                        alt="Customer Signature" 
+                        className="max-h-24 object-contain bg-white rounded border p-2"
+                      />
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Signed by {viewingQuote.signature.signer_name}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2020,13 +2138,28 @@ const CustomerPortal = () => {
                 </div>
               )}
 
-              {/* Paid Status */}
+              {/* Signed/Paid Status with Signature */}
               {viewingInvoice.status === 'paid' && (
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                    <CheckCircle className="w-5 h-5" />
-                    <span className="font-medium">Paid</span>
+                <div className="pt-4 border-t space-y-3">
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="font-medium">Paid</span>
+                    </div>
                   </div>
+                  {viewingInvoice.signature?.signature_data && (
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground mb-2">Signature</p>
+                      <img 
+                        src={viewingInvoice.signature.signature_data} 
+                        alt="Customer Signature" 
+                        className="max-h-24 object-contain bg-white rounded border p-2"
+                      />
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Signed by {viewingInvoice.signature.signer_name} on {format(new Date(viewingInvoice.signature.signed_at), 'MMMM d, yyyy')}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -2045,9 +2178,9 @@ const CustomerPortal = () => {
                       {payingInvoice === viewingInvoice.id ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       ) : (
-                        <CreditCard className="w-4 h-4 mr-2" />
+                        <PenLine className="w-4 h-4 mr-2" />
                       )}
-                      Pay Now with Card
+                      Sign and Pay Now
                     </Button>
                   ) : (
                     <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
@@ -2208,18 +2341,71 @@ const CustomerPortal = () => {
                 </div>
               )}
 
-              {/* Signature Status */}
+              {/* Photos Section */}
+              {viewingJob.photos && viewingJob.photos.length > 0 && (
+                <div className="pt-4 border-t">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Camera className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Job Photos ({viewingJob.photos.length})</p>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {viewingJob.photos.map((photo) => (
+                      <a 
+                        key={photo.id} 
+                        href={photo.photo_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="group relative aspect-square rounded-lg overflow-hidden border hover:border-primary transition-colors"
+                      >
+                        <img 
+                          src={photo.photo_url} 
+                          alt={photo.caption || 'Job photo'} 
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <ExternalLink className="w-5 h-5 text-white" />
+                        </div>
+                        {photo.caption && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1">
+                            <p className="text-xs text-white truncate">{photo.caption}</p>
+                          </div>
+                        )}
+                        <Badge 
+                          variant="secondary" 
+                          className="absolute top-1 right-1 text-xs capitalize"
+                        >
+                          {photo.photo_type.replace('_', ' ')}
+                        </Badge>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Signature Status with Signature Image */}
               {viewingJob.completion_signed_at && (
-                <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                    <CheckCircle className="w-5 h-5" />
-                    <div>
-                      <p className="font-medium">Job Completion Confirmed</p>
-                      <p className="text-sm opacity-80">
-                        Signed by {viewingJob.completion_signed_by} on {format(new Date(viewingJob.completion_signed_at), 'MMMM d, yyyy')}
-                      </p>
+                <div className="pt-4 border-t space-y-3">
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle className="w-5 h-5" />
+                      <div>
+                        <p className="font-medium">Job Completion Confirmed</p>
+                        <p className="text-sm opacity-80">
+                          Signed by {viewingJob.completion_signed_by} on {format(new Date(viewingJob.completion_signed_at), 'MMMM d, yyyy')}
+                        </p>
+                      </div>
                     </div>
                   </div>
+                  {viewingJob.signature?.signature_data && (
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground mb-2">Customer Signature</p>
+                      <img 
+                        src={viewingJob.signature.signature_data} 
+                        alt="Customer Signature" 
+                        className="max-h-24 object-contain bg-white rounded border p-2"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
