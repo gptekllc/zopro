@@ -794,6 +794,7 @@ const CustomerDetail = () => {
       <JobDetailDialog
         job={selectedJob}
         customerName={customer.name}
+        customerPhone={customer.phone}
         open={!!selectedJob}
         onOpenChange={(open) => !open && openSelectedJob(null)}
         onEdit={(jobId) => navigate(`/jobs?view=${jobId}`)}
