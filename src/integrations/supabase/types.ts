@@ -26,6 +26,9 @@ export type Database = {
           logo_url: string | null
           name: string
           payment_terms_days: number | null
+          pdf_show_notes: boolean
+          pdf_show_signature: boolean
+          pdf_terms_conditions: string | null
           phone: string | null
           platform_fee_percentage: number | null
           require_job_completion_signature: boolean
@@ -51,6 +54,9 @@ export type Database = {
           logo_url?: string | null
           name: string
           payment_terms_days?: number | null
+          pdf_show_notes?: boolean
+          pdf_show_signature?: boolean
+          pdf_terms_conditions?: string | null
           phone?: string | null
           platform_fee_percentage?: number | null
           require_job_completion_signature?: boolean
@@ -76,6 +82,9 @@ export type Database = {
           logo_url?: string | null
           name?: string
           payment_terms_days?: number | null
+          pdf_show_notes?: boolean
+          pdf_show_signature?: boolean
+          pdf_terms_conditions?: string | null
           phone?: string | null
           platform_fee_percentage?: number | null
           require_job_completion_signature?: boolean

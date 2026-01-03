@@ -56,7 +56,8 @@ function generateHTML(
   customer: any,
   items: DocumentItem[],
   assignee?: any,
-  signature?: any
+  signature?: any,
+  pdfPreferences?: { pdf_show_notes: boolean; pdf_show_signature: boolean; pdf_terms_conditions: string | null }
 ): string {
   let documentNumber: string;
   let title: string;
@@ -276,6 +277,9 @@ function generateHTML(
     .signature-label-item .label-text { font-size: 11px; text-transform: uppercase; color: #666; }
     .signature-label-item .name-line, .signature-label-item .date-line { width: 150px; border-bottom: 1px solid #999; height: 20px; }
     .signature-agreement { margin-top: 20px; font-size: 12px; color: #666; font-style: italic; }
+    .terms-section { margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; border-top: 2px solid #eee; }
+    .terms-section h3 { font-size: 12px; text-transform: uppercase; color: #888; margin-bottom: 10px; }
+    .terms-section p { font-size: 12px; color: #666; white-space: pre-wrap; line-height: 1.5; }
     @media print {
       .container { padding: 20px; }
     }
@@ -381,14 +385,21 @@ function generateHTML(
 
     ${paymentInfoSection}
 
-    ${document.notes ? `
+    ${(pdfPreferences?.pdf_show_notes !== false) && document.notes ? `
       <div class="notes">
         <h3>Notes</h3>
         <p>${document.notes}</p>
       </div>
     ` : ""}
 
-    ${signatureSection}
+    ${pdfPreferences?.pdf_show_signature !== false ? signatureSection : ''}
+
+    ${pdfPreferences?.pdf_terms_conditions ? `
+      <div class="terms-section">
+        <h3>Terms & Conditions</h3>
+        <p>${pdfPreferences.pdf_terms_conditions}</p>
+      </div>
+    ` : ''}
 
     <div class="footer">
       <p>Thank you for your business!</p>
@@ -511,8 +522,15 @@ serve(async (req) => {
       }
     }
 
+    // Extract PDF preferences from company
+    const pdfPreferences = {
+      pdf_show_notes: company?.pdf_show_notes ?? true,
+      pdf_show_signature: company?.pdf_show_signature ?? true,
+      pdf_terms_conditions: company?.pdf_terms_conditions ?? null,
+    };
+
     // Generate HTML
-    const html = generateHTML(type, document, company, customer, items || [], assignee, signature);
+    const html = generateHTML(type, document, company, customer, items || [], assignee, signature, pdfPreferences);
     
     let documentNumber: string;
     if (type === "quote") {
