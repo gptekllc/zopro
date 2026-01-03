@@ -27,6 +27,33 @@ export interface Company {
   platform_fee_percentage: number | null;
   // Signature settings
   require_job_completion_signature: boolean | null;
+  // PDF Preferences
+  pdf_show_notes: boolean | null;
+  pdf_show_signature: boolean | null;
+  pdf_terms_conditions: string | null;
+  pdf_show_logo: boolean | null;
+  pdf_show_line_item_details: boolean | null;
+  pdf_footer_text: string | null;
+  // Job Settings
+  default_job_duration: number | null;
+  default_job_priority: string | null;
+  auto_archive_days: number | null;
+  notify_on_job_assignment: boolean | null;
+  // Quote Settings
+  default_quote_validity_days: number | null;
+  auto_expire_quotes: boolean | null;
+  require_quote_signature: boolean | null;
+  // Invoice Settings
+  auto_send_invoice_reminders: boolean | null;
+  invoice_reminder_days: number | null;
+  auto_apply_late_fees: boolean | null;
+  // Notification Preferences
+  email_on_new_job: boolean | null;
+  email_on_payment_received: boolean | null;
+  send_weekly_summary: boolean | null;
+  // Branding
+  brand_primary_color: string | null;
+  customer_portal_welcome_message: string | null;
   created_at: string;
   updated_at: string;
 }
