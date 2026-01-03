@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { 
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
-  Download, Mail, Loader2, Send
+  Download, Mail, Loader2, Send, Bell
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerJob } from '@/hooks/useCustomerHistory';
@@ -21,6 +21,7 @@ import { useMemo, useState } from 'react';
 import { formatAmount } from '@/lib/formatAmount';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
 import { useSendJobNotification } from '@/hooks/useSendJobNotification';
+import { useJobNotifications } from '@/hooks/useJobNotifications';
 
 interface JobDetailDialogProps {
   job: CustomerJob | null;
@@ -67,6 +68,7 @@ export function JobDetailDialog({
   const downloadDocument = useDownloadDocument();
   const emailDocument = useEmailDocument();
   const sendJobNotification = useSendJobNotification();
+  const { data: notifications = [], isLoading: loadingNotifications } = useJobNotifications(job?.id || null);
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
 
@@ -281,10 +283,10 @@ export function JobDetailDialog({
           {/* Linked Docs + Photos Tabs */}
           <Separator />
           <Tabs defaultValue="linked" className="w-full">
-            <TabsList className={`grid w-full ${job.photos && job.photos.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-              <TabsTrigger value="linked" className="flex items-center gap-2">
-                <FileText className="w-4 h-4" />
-                Linked Docs
+            <TabsList className={`grid w-full ${job.photos && job.photos.length > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+              <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm">
+                <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Linked</span> Docs
                 {((relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0) + jobInvoices.length) > 0 && (
                   <Badge variant="secondary" className="ml-1 text-xs">
                     {(relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0) + jobInvoices.length}
@@ -292,8 +294,18 @@ export function JobDetailDialog({
                 )}
               </TabsTrigger>
 
+              <TabsTrigger value="notifications" className="flex items-center gap-1 text-xs sm:text-sm">
+                <Bell className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Notification</span> History
+                {notifications.length > 0 && (
+                  <Badge variant="secondary" className="ml-1 text-xs">
+                    {notifications.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+
               {job.photos && job.photos.length > 0 && (
-                <TabsTrigger value="photos" className="flex items-center gap-2">
+                <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm">
                   <span>Photos</span>
                   <Badge variant="secondary" className="ml-1 text-xs">
                     {job.photos.length}
@@ -433,6 +445,50 @@ export function JobDetailDialog({
                       </Button>
                     </div>
                   )}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Notification History Tab */}
+            <TabsContent value="notifications" className="mt-4">
+              {loadingNotifications ? (
+                <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p>
+              ) : notifications.length > 0 ? (
+                <div className="space-y-2">
+                  {notifications.map((notification) => (
+                    <div 
+                      key={notification.id}
+                      className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border"
+                    >
+                      <div className="p-2 bg-primary/10 rounded-full shrink-0">
+                        <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">Email sent</span>
+                          {notification.status_at_send && (
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {notification.status_at_send.replace('_', ' ')}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          To: {notification.recipient_email}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(notification.sent_at), 'MMM d, yyyy h:mm a')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 bg-muted/50 rounded-lg text-center">
+                  <Bell className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+                  <p className="text-xs sm:text-sm text-muted-foreground">No notifications sent yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Use "Send to Customer" to notify them about this job
+                  </p>
                 </div>
               )}
             </TabsContent>
