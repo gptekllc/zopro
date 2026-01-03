@@ -990,50 +990,71 @@ const Jobs = () => {
                 </div>
 
                 {lineItems.length > 0 ? <div className="space-y-3">
-                    {lineItems.map((item, index) => <div key={item.id} className="space-y-2 sm:space-y-0">
-                        {/* Mobile layout */}
-                        <div className="sm:hidden space-y-2 p-3 bg-muted/50 rounded-lg">
-                          <Input placeholder="Description" value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} />
-                          <div className="flex gap-2">
-                            <div className="w-20">
-                              <Label className="text-xs text-muted-foreground">Qty</Label>
-                              <Input type="number" min="1" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', parseInt(e.target.value) || 1)} />
+                    {lineItems.map((item, index) => {
+                      const isAutoLabor = item.description.toLowerCase() === 'labor';
+                      return (
+                        <div key={item.id} className="space-y-2 sm:space-y-0">
+                          {/* Mobile layout */}
+                          <div className={`sm:hidden space-y-2 p-3 rounded-lg ${isAutoLabor ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : 'bg-muted/50'}`}>
+                            <div className="flex items-center gap-2">
+                              <Input placeholder="Description" value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} className="flex-1" />
+                              {isAutoLabor && (
+                                <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700 whitespace-nowrap">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  Auto
+                                </Badge>
+                              )}
                             </div>
-                            <div className="flex-1">
-                              <Label className="text-xs text-muted-foreground">Unit Price</Label>
+                            <div className="flex gap-2">
+                              <div className="w-20">
+                                <Label className="text-xs text-muted-foreground">Qty (hrs)</Label>
+                                <Input type="number" min="0.01" step="0.01" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', parseFloat(e.target.value) || 1)} />
+                              </div>
+                              <div className="flex-1">
+                                <Label className="text-xs text-muted-foreground">Unit Price</Label>
+                                <Input type="number" min="0" step="0.01" placeholder="0" value={item.unitPrice === 0 ? '' : item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} />
+                              </div>
+                              <div className="flex items-end">
+                                <Button type="button" variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="text-destructive">
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="flex justify-end text-sm font-medium">
+                              Total: ${(item.quantity * item.unitPrice).toLocaleString()}
+                            </div>
+                          </div>
+                          {/* Desktop layout */}
+                          <div className={`hidden sm:grid grid-cols-12 gap-2 items-start ${isAutoLabor ? 'p-2 -mx-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''}`}>
+                            <div className={isAutoLabor ? 'col-span-4' : 'col-span-5'}>
+                              <Input placeholder="Description" value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} />
+                            </div>
+                            {isAutoLabor && (
+                              <div className="col-span-1 flex items-center justify-center pt-2">
+                                <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  Auto
+                                </Badge>
+                              </div>
+                            )}
+                            <div className="col-span-2">
+                              <Input type="number" min="0.01" step="0.01" placeholder="Qty" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', parseFloat(e.target.value) || 1)} />
+                            </div>
+                            <div className="col-span-3">
                               <Input type="number" min="0" step="0.01" placeholder="0" value={item.unitPrice === 0 ? '' : item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} />
                             </div>
-                            <div className="flex items-end">
+                            <div className="col-span-1 text-right pt-2 text-sm font-medium">
+                              ${(item.quantity * item.unitPrice).toLocaleString()}
+                            </div>
+                            <div className="col-span-1">
                               <Button type="button" variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="text-destructive">
                                 <X className="w-4 h-4" />
                               </Button>
                             </div>
                           </div>
-                          <div className="flex justify-end text-sm font-medium">
-                            Total: ${(item.quantity * item.unitPrice).toLocaleString()}
-                          </div>
                         </div>
-                        {/* Desktop layout */}
-                        <div className="hidden sm:grid grid-cols-12 gap-2 items-start">
-                          <div className="col-span-5">
-                            <Input placeholder="Description" value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} />
-                          </div>
-                          <div className="col-span-2">
-                            <Input type="number" min="1" placeholder="Qty" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', parseInt(e.target.value) || 1)} />
-                          </div>
-                          <div className="col-span-3">
-                            <Input type="number" min="0" step="0.01" placeholder="0" value={item.unitPrice === 0 ? '' : item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} />
-                          </div>
-                          <div className="col-span-1 text-right pt-2 text-sm font-medium">
-                            ${(item.quantity * item.unitPrice).toLocaleString()}
-                          </div>
-                          <div className="col-span-1">
-                            <Button type="button" variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="text-destructive">
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>)}
+                      );
+                    })}
 
                     {/* Totals */}
                     {/* Discount and Totals */}
