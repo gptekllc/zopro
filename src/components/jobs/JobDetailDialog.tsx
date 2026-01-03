@@ -11,7 +11,7 @@ import {
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
   Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star,
-  Play, Square, Coffee
+  Play, Square, Coffee, List
 } from 'lucide-react';
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { useAuth } from '@/hooks/useAuth';
@@ -380,8 +380,18 @@ export function JobDetailDialog({
 
           {/* Linked Docs + Photos Tabs */}
           <Separator />
-          <Tabs defaultValue="linked" className="w-full">
-            <TabsList className={`grid w-full grid-cols-4`}>
+          <Tabs defaultValue="items" className="w-full">
+            <TabsList className={`grid w-full grid-cols-5`}>
+              <TabsTrigger value="items" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <List className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Items</span>
+                {(job.items?.length || 0) > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {job.items?.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+
               <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Docs</span>
@@ -395,7 +405,7 @@ export function JobDetailDialog({
               <TabsTrigger value="timeclock" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="sm:hidden">Time</span>
-                <span className="hidden sm:inline">Time Clock</span>
+                <span className="hidden sm:inline">Time</span>
               </TabsTrigger>
 
               <TabsTrigger value="feedback" className="flex items-center gap-1 text-xs sm:text-sm px-1">
@@ -418,6 +428,134 @@ export function JobDetailDialog({
                 )}
               </TabsTrigger>
             </TabsList>
+
+            {/* Items Tab */}
+            <TabsContent value="items" className="mt-4">
+              {job.items && job.items.length > 0 ? (
+                <div className="space-y-3">
+                  {/* Items List */}
+                  <div className="space-y-2">
+                    {job.items.map((item) => {
+                      const isLaborItem = item.description.toLowerCase().includes('labor');
+                      
+                      // Get time entry breakdown for labor items
+                      const laborBreakdown = isLaborItem ? jobTimeEntries
+                        .filter(entry => entry.clock_out)
+                        .reduce((acc, entry) => {
+                          const userName = entry.user?.full_name || 'Unknown';
+                          const minutes = differenceInMinutes(
+                            new Date(entry.clock_out!), 
+                            new Date(entry.clock_in)
+                          ) - (entry.break_minutes || 0);
+                          acc[userName] = (acc[userName] || 0) + minutes;
+                          return acc;
+                        }, {} as Record<string, number>) : null;
+                      
+                      return (
+                        <div 
+                          key={item.id}
+                          className={`p-3 rounded-lg border ${
+                            isLaborItem 
+                              ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/50' 
+                              : 'bg-muted/50'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium">{item.description}</span>
+                                {isLaborItem && (
+                                  <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    Auto
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {item.quantity.toFixed(2)} × {formatAmount(item.unit_price)}
+                              </p>
+                              
+                              {/* Labor breakdown showing time contributions per technician */}
+                              {isLaborItem && laborBreakdown && Object.keys(laborBreakdown).length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-blue-200/50 dark:border-blue-700/50">
+                                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                    <User className="w-3 h-3" />
+                                    Time breakdown:
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {Object.entries(laborBreakdown).map(([name, minutes]) => {
+                                      const hours = Math.floor(minutes / 60);
+                                      const mins = Math.round(minutes % 60);
+                                      return (
+                                        <span 
+                                          key={name} 
+                                          className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full"
+                                        >
+                                          {name}: {hours > 0 ? `${hours}h ` : ''}{mins}m
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <span className="font-medium text-sm whitespace-nowrap">
+                              {formatAmount(item.total)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Totals */}
+                  {(job.subtotal !== null || job.total !== null) && (
+                    <div className="pt-2 border-t space-y-1">
+                      {job.subtotal !== null && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span>{formatAmount(job.subtotal)}</span>
+                        </div>
+                      )}
+                      {job.tax !== null && job.tax > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Tax</span>
+                          <span>{formatAmount(job.tax)}</span>
+                        </div>
+                      )}
+                      {job.total !== null && (
+                        <div className="flex justify-between text-sm font-medium">
+                          <span>Total</span>
+                          <span>{formatAmount(job.total)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 bg-muted/50 rounded-lg text-center">
+                  <List className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+                  <p className="text-xs sm:text-sm text-muted-foreground">No items added yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Items will appear here when added via Edit Job or from time tracking
+                  </p>
+                  {onEdit && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="mt-3"
+                      onClick={() => {
+                        onOpenChange(false);
+                        onEdit(job.id);
+                      }}
+                    >
+                      <Edit className="w-3 h-3 mr-1" />
+                      Edit Job
+                    </Button>
+                  )}
+                </div>
+              )}
+            </TabsContent>
 
             <TabsContent value="linked" className="mt-4">
               {loadingQuotes || loadingInvoices ? (

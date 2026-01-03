@@ -9,6 +9,14 @@ export interface JobPhoto {
   created_at: string;
 }
 
+export interface JobItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  total: number;
+}
+
 export interface CustomerJob {
   id: string;
   job_number: string;
@@ -26,10 +34,15 @@ export interface CustomerJob {
   archived_at: string | null;
   customer_id: string;
   quote_id: string | null;
+  subtotal: number | null;
+  tax: number | null;
+  total: number | null;
+  labor_hourly_rate: number | null;
   assignee?: { full_name: string | null } | null;
   completion_signed_at?: string | null;
   completion_signed_by?: string | null;
   photos?: JobPhoto[];
+  items?: JobItem[];
 }
 
 export interface CustomerQuote {
@@ -128,10 +141,15 @@ export function useCustomerJobs(customerId: string | undefined) {
           notes,
           customer_id,
           quote_id,
+          subtotal,
+          tax,
+          total,
+          labor_hourly_rate,
           completion_signed_at,
           completion_signed_by,
           assignee:profiles!jobs_assigned_to_fkey(full_name),
-          photos:job_photos(id, photo_url, photo_type, caption, created_at)
+          photos:job_photos(id, photo_url, photo_type, caption, created_at),
+          items:job_items(id, description, quantity, unit_price, total)
         `)
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
