@@ -394,6 +394,7 @@ export function JobDetailDialog({
 
               <TabsTrigger value="timeclock" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="sm:hidden">Time</span>
                 <span className="hidden sm:inline">Time Clock</span>
               </TabsTrigger>
 
