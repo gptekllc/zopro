@@ -47,3 +47,6 @@ verify_jwt = true
 
 [functions.scheduled-automations]
 verify_jwt = false
+
+[functions.send-test-email]
+verify_jwt = false
