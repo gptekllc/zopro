@@ -279,6 +279,8 @@ export function useClockOut() {
       queryClient.invalidateQueries({ queryKey: ['job_time_entries'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['job'] });
+      queryClient.invalidateQueries({ queryKey: ['customer-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['job_items'] });
       toast.success('Clocked out successfully');
     },
     onError: (error: any) => {
