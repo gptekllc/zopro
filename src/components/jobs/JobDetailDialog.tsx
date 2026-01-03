@@ -5,6 +5,7 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { 
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
@@ -174,12 +175,13 @@ export function JobDetailDialog({
     convertJobToInvoice.mutate(jobForConversion);
   };
 
-  const handleOnMyWay = () => {
+  const handleOnMyWay = (etaMinutes?: number) => {
     if (!customerPhone || !profile?.full_name || !company?.name) {
       // Fallback: copy message to clipboard for manual use
       const message = createOnMyWayMessage({
         technicianName: profile?.full_name || 'Your technician',
         companyName: company?.name || 'our company',
+        etaMinutes,
       });
       navigator.clipboard.writeText(message);
       toast.success('Message copied to clipboard');
@@ -190,10 +192,13 @@ export function JobDetailDialog({
       customerPhone,
       technicianName: profile.full_name,
       companyName: company.name,
+      etaMinutes,
     });
     
     window.location.href = smsLink;
   };
+
+  const etaOptions = [10, 20, 30, 45, 60] as const;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -588,18 +593,28 @@ export function JobDetailDialog({
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4 justify-end">
-            {/* On My Way - only show for scheduled or in_progress jobs */}
+            {/* On My Way with ETA dropdown */}
             {['scheduled', 'in_progress'].includes(job.status) && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleOnMyWay}
-                className="gap-1"
-                title={customerPhone ? "Send SMS to customer" : "Copy message (no phone on file)"}
-              >
-                <Navigation className="w-4 h-4" />
-                On My Way
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="gap-1"
+                    title={customerPhone ? "Send SMS to customer" : "Copy message (no phone on file)"}
+                  >
+                    <Navigation className="w-4 h-4" />
+                    On My Way
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {etaOptions.map((eta) => (
+                    <DropdownMenuItem key={eta} onClick={() => handleOnMyWay(eta)}>
+                      ~{eta} minutes
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
             {/* Send to Customer - only show for jobs with status that makes sense */}
             {['scheduled', 'in_progress', 'completed'].includes(job.status) && (
