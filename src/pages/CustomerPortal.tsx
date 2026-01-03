@@ -497,6 +497,85 @@ const CustomerPortal = () => {
     }
   }, [searchParams]);
 
+  // Real-time subscription for new quotes and invoices
+  useEffect(() => {
+    if (!isAuthenticated || !customerData?.id) return;
+
+    const customerId = customerData.id;
+
+    // Subscribe to new quotes for this customer
+    const quotesChannel = supabase
+      .channel('customer-portal-quotes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'quotes',
+          filter: `customer_id=eq.${customerId}`
+        },
+        (payload) => {
+          const newQuote = payload.new as Quote;
+          setQuotes(prev => [newQuote, ...prev]);
+          toast.info('📋 New quote received!', {
+            description: `Quote ${newQuote.quote_number} for $${Number(newQuote.total).toFixed(2)}`,
+            duration: 5000
+          });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to new invoices for this customer
+    const invoicesChannel = supabase
+      .channel('customer-portal-invoices')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'invoices',
+          filter: `customer_id=eq.${customerId}`
+        },
+        (payload) => {
+          const newInvoice = payload.new as Invoice;
+          setInvoices(prev => [newInvoice, ...prev]);
+          toast.info('📄 New invoice received!', {
+            description: `Invoice ${newInvoice.invoice_number} for $${Number(newInvoice.total).toFixed(2)}`,
+            duration: 5000
+          });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to new jobs for this customer
+    const jobsChannel = supabase
+      .channel('customer-portal-jobs')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'jobs',
+          filter: `customer_id=eq.${customerId}`
+        },
+        (payload) => {
+          const newJob = payload.new as Job;
+          setJobs(prev => [newJob, ...prev]);
+          toast.info('🔧 New job scheduled!', {
+            description: `${newJob.title}`,
+            duration: 5000
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(quotesChannel);
+      supabase.removeChannel(invoicesChannel);
+      supabase.removeChannel(jobsChannel);
+    };
+  }, [isAuthenticated, customerData?.id]);
+
   const verifyToken = async (
     token: string, 
     customerId: string, 
@@ -1390,10 +1469,10 @@ const CustomerPortal = () => {
           </Card>
         </div>
 
-        {/* Tabs - Reordered: Service History, Quotes, Invoices, Payment Methods */}
+        {/* Tabs - Reordered: Jobs, Quotes, Invoices, Payment Methods */}
         <Tabs defaultValue="jobs" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="jobs">Service History</TabsTrigger>
+            <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="quotes" className="flex items-center gap-2">
               Quotes
               {pendingQuotes.length > 0 && (
@@ -1414,16 +1493,16 @@ const CustomerPortal = () => {
             )}
           </TabsList>
 
-          {/* Jobs/Service History Tab - Now First */}
+          {/* Jobs Tab - Now First */}
           <TabsContent value="jobs">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Briefcase className="w-5 h-5" />
-                  Service History & Appointments
+                  Your Jobs
                 </CardTitle>
                 <CardDescription>
-                  View your upcoming appointments and past service history. Click a job to view details.
+                  View your upcoming appointments and completed jobs. Click a job to view details.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -1758,7 +1837,7 @@ const CustomerPortal = () => {
 
       {/* Quote Detail Sheet */}
       <Sheet open={!!viewingQuote} onOpenChange={(open) => !open && setViewingQuote(null)}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto" side="right">
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
@@ -1868,7 +1947,7 @@ const CustomerPortal = () => {
 
       {/* Invoice Detail Sheet */}
       <Sheet open={!!viewingInvoice} onOpenChange={(open) => !open && setViewingInvoice(null)}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto" side="right">
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
@@ -2007,7 +2086,7 @@ const CustomerPortal = () => {
 
       {/* Job Detail Sheet */}
       <Sheet open={!!viewingJob} onOpenChange={(open) => !open && setViewingJob(null)}>
-        <SheetContent className="sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto" side="right">
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
