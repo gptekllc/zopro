@@ -36,7 +36,7 @@ serve(async (req) => {
     // Fetch company details
     const { data: company, error: companyError } = await supabase
       .from("companies")
-      .select("name, email, phone, address, city, state, zip, logo_url, website")
+      .select("name, email, phone, address, city, state, zip, logo_url, website, facebook_url, instagram_url, linkedin_url")
       .eq("id", companyId)
       .single();
 
@@ -90,11 +90,26 @@ serve(async (req) => {
               ${company.phone ? `<div class="info-row"><span class="info-label">Phone:</span> ${company.phone}</div>` : ''}
               ${company.website ? `<div class="info-row"><span class="info-label">Website:</span> <a href="${company.website}" style="color: #2563eb;">${company.website}</a></div>` : ''}
               ${company.address ? `<div class="info-row"><span class="info-label">Address:</span> ${company.address}${company.city || company.state || company.zip ? `, ${[company.city, company.state, company.zip].filter(Boolean).join(', ')}` : ''}</div>` : ''}
+              ${(company.facebook_url || company.instagram_url || company.linkedin_url) ? `
+                <div class="info-row" style="margin-top: 10px;">
+                  <span class="info-label">Social Media:</span>
+                  ${company.facebook_url ? `<a href="${company.facebook_url}" style="color: #2563eb; margin-right: 10px;">Facebook</a>` : ''}
+                  ${company.instagram_url ? `<a href="${company.instagram_url}" style="color: #2563eb; margin-right: 10px;">Instagram</a>` : ''}
+                  ${company.linkedin_url ? `<a href="${company.linkedin_url}" style="color: #2563eb;">LinkedIn</a>` : ''}
+                </div>
+              ` : ''}
             </div>
 
             <div class="footer">
               <p>This test email was sent from ZoPro.</p>
               ${company.website ? `<p><a href="${company.website}">${company.website}</a></p>` : ''}
+              ${(company.facebook_url || company.instagram_url || company.linkedin_url) ? `
+                <p style="margin-top: 8px;">
+                  ${company.facebook_url ? `<a href="${company.facebook_url}" style="color: #2563eb; margin-right: 10px;">Facebook</a>` : ''}
+                  ${company.instagram_url ? `<a href="${company.instagram_url}" style="color: #2563eb; margin-right: 10px;">Instagram</a>` : ''}
+                  ${company.linkedin_url ? `<a href="${company.linkedin_url}" style="color: #2563eb;">LinkedIn</a>` : ''}
+                </p>
+              ` : ''}
             </div>
           </div>
         </div>

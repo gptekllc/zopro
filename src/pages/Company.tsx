@@ -29,6 +29,9 @@ const Company = () => {
     email: '',
     phone: '',
     website: '',
+    facebook_url: '',
+    instagram_url: '',
+    linkedin_url: '',
     address: '',
     city: '',
     state: '',
@@ -84,7 +87,10 @@ const Company = () => {
       name: company.name || '',
       email: company.email || '',
       phone: company.phone || '',
-      website: company.website || '',
+      website: (company as any).website || '',
+      facebook_url: (company as any).facebook_url || '',
+      instagram_url: (company as any).instagram_url || '',
+      linkedin_url: (company as any).linkedin_url || '',
       address: company.address || '',
       city: company.city || '',
       state: company.state || '',
@@ -133,7 +139,10 @@ const Company = () => {
       id: company.id, 
       ...formData,
       website: formData.website || null,
-    });
+      facebook_url: formData.facebook_url || null,
+      instagram_url: formData.instagram_url || null,
+      linkedin_url: formData.linkedin_url || null,
+    } as any);
   };
 
   const handleSendTestEmail = async () => {
@@ -367,6 +376,59 @@ const Company = () => {
                       onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
                     />
                   </div>
+                </div>
+
+                {/* Website & Social Media */}
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Link className="w-4 h-4" />
+                    Website & Social Media
+                  </h3>
+                  <div className="space-y-2">
+                    <Label htmlFor="website">Website</Label>
+                    <Input
+                      id="website"
+                      type="url"
+                      placeholder="https://www.example.com"
+                      value={formData.website}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="facebook_url">Facebook</Label>
+                      <Input
+                        id="facebook_url"
+                        type="url"
+                        placeholder="https://facebook.com/yourpage"
+                        value={formData.facebook_url}
+                        onChange={(e) => setFormData({ ...formData, facebook_url: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="instagram_url">Instagram</Label>
+                      <Input
+                        id="instagram_url"
+                        type="url"
+                        placeholder="https://instagram.com/yourpage"
+                        value={formData.instagram_url}
+                        onChange={(e) => setFormData({ ...formData, instagram_url: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="linkedin_url">LinkedIn</Label>
+                      <Input
+                        id="linkedin_url"
+                        type="url"
+                        placeholder="https://linkedin.com/company/yourpage"
+                        value={formData.linkedin_url}
+                        onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    These links will be displayed on invoices, quotes, and customer emails
+                  </p>
                 </div>
 
                 {/* Timezone Selection */}
