@@ -4,10 +4,36 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Trash2, Upload, Loader2, Save, X } from 'lucide-react';
+import { Plus, Trash2, Upload, Loader2, Save, X, GripVertical, Image } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { getDefaultPlatformIcon, getAvailablePlatforms } from '@/lib/platformIcons';
+import { getDefaultPlatformIcon, getAvailablePlatforms, PLATFORM_ICONS } from '@/lib/platformIcons';
+import { compressImage } from '@/lib/imageCompression';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
 interface SocialLink {
   id?: string;
   platform_name: string;
@@ -25,12 +51,255 @@ interface SocialLinksManagerProps {
 }
 
 const MAX_LINKS = 7;
+const ICON_TARGET_SIZE_KB = 20;
+const ICON_MAX_DIMENSION = 128;
+
+// Sortable Card Component
+const SortableLinkCard = ({
+  link,
+  index,
+  uploadingIndex,
+  onUpdate,
+  onRemove,
+  onIconUpload,
+  onClearIcon,
+  onOpenIconPicker,
+  getDisplayIcon,
+}: {
+  link: SocialLink;
+  index: number;
+  uploadingIndex: number | null;
+  onUpdate: (index: number, updates: Partial<SocialLink>) => void;
+  onRemove: (index: number) => void;
+  onIconUpload: (index: number, file: File) => void;
+  onClearIcon: (index: number) => void;
+  onOpenIconPicker: (index: number) => void;
+  getDisplayIcon: (link: SocialLink) => string | null;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: link.id || `new-${index}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <Card ref={setNodeRef} style={style} className="overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex gap-3">
+          {/* Drag Handle */}
+          <div
+            {...attributes}
+            {...listeners}
+            className="flex-shrink-0 flex items-center cursor-grab active:cursor-grabbing"
+          >
+            <GripVertical className="w-5 h-5 text-muted-foreground" />
+          </div>
+
+          {/* Icon Display/Upload */}
+          <div className="flex-shrink-0">
+            <Label className="text-xs text-muted-foreground mb-1 block">Icon</Label>
+            <div className="relative flex gap-1">
+              {/* Icon display */}
+              <div className="w-12 h-12 border-2 border-dashed rounded-lg flex items-center justify-center overflow-hidden bg-muted/30">
+                {uploadingIndex === index ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : getDisplayIcon(link) ? (
+                  <img src={getDisplayIcon(link)!} alt={link.platform_name} className="w-8 h-8 object-contain" />
+                ) : (
+                  <Image className="w-4 h-4 text-muted-foreground" />
+                )}
+              </div>
+              
+              {/* Icon actions */}
+              <div className="flex flex-col gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-5 w-5"
+                  onClick={() => onOpenIconPicker(index)}
+                  title="Pick default icon"
+                >
+                  <Image className="w-3 h-3" />
+                </Button>
+                <label className="cursor-pointer">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-5 w-5 pointer-events-none"
+                    title="Upload custom icon"
+                  >
+                    <Upload className="w-3 h-3" />
+                  </Button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) onIconUpload(index, file);
+                    }}
+                  />
+                </label>
+              </div>
+              
+              {/* Clear custom icon button */}
+              {link.icon_url && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onClearIcon(index);
+                  }}
+                  className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Platform Name & URL */}
+          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">Platform Name</Label>
+              <Input
+                list={`platforms-${index}`}
+                placeholder="e.g. Facebook, X, TikTok"
+                value={link.platform_name}
+                onChange={(e) => onUpdate(index, { platform_name: e.target.value })}
+              />
+              <datalist id={`platforms-${index}`}>
+                {getAvailablePlatforms().map((platform) => (
+                  <option key={platform} value={platform} />
+                ))}
+              </datalist>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">URL</Label>
+              <Input
+                type="url"
+                placeholder="https://..."
+                value={link.url}
+                onChange={(e) => onUpdate(index, { url: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* Delete Button */}
+          <div className="flex-shrink-0 flex items-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              onClick={() => onRemove(index)}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Visibility Toggles */}
+        <div className="mt-4 flex flex-wrap gap-4">
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={link.show_on_invoice}
+              onCheckedChange={(checked) => onUpdate(index, { show_on_invoice: checked })}
+            />
+            <Label className="text-sm cursor-pointer">Invoice</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={link.show_on_quote}
+              onCheckedChange={(checked) => onUpdate(index, { show_on_quote: checked })}
+            />
+            <Label className="text-sm cursor-pointer">Quote</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={link.show_on_job}
+              onCheckedChange={(checked) => onUpdate(index, { show_on_job: checked })}
+            />
+            <Label className="text-sm cursor-pointer">Job</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={link.show_on_email}
+              onCheckedChange={(checked) => onUpdate(index, { show_on_email: checked })}
+            />
+            <Label className="text-sm cursor-pointer">Email</Label>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+// Icon Picker Dialog
+const IconPickerDialog = ({
+  open,
+  onClose,
+  onSelect,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (platformName: string, iconUrl: string) => void;
+}) => {
+  const platforms = Object.entries(PLATFORM_ICONS);
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Choose Platform Icon</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="h-[400px] pr-4">
+          <div className="grid grid-cols-4 gap-3">
+            {platforms.map(([name, iconUrl]) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => onSelect(name, iconUrl)}
+                className="flex flex-col items-center gap-1 p-2 rounded-lg border hover:bg-muted/50 transition-colors"
+              >
+                <img src={iconUrl} alt={name} className="w-8 h-8 object-contain" />
+                <span className="text-xs text-muted-foreground capitalize truncate w-full text-center">
+                  {name}
+                </span>
+              </button>
+            ))}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
   const [links, setLinks] = useState<SocialLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const [iconPickerIndex, setIconPickerIndex] = useState<number | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     fetchLinks();
@@ -110,6 +379,23 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
     toast.success('Custom icon removed');
   };
 
+  const openIconPicker = (index: number) => {
+    setIconPickerIndex(index);
+    setIconPickerOpen(true);
+  };
+
+  const handleIconSelect = (platformName: string, iconUrl: string) => {
+    if (iconPickerIndex !== null) {
+      // Set platform name and clear custom icon (will use default)
+      updateLink(iconPickerIndex, { 
+        platform_name: platformName.charAt(0).toUpperCase() + platformName.slice(1),
+        icon_url: null 
+      });
+    }
+    setIconPickerOpen(false);
+    setIconPickerIndex(null);
+  };
+
   const handleIconUpload = async (index: number, file: File) => {
     if (!file) return;
 
@@ -119,19 +405,26 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
       return;
     }
 
-    if (file.size > 500 * 1024) {
-      toast.error('Icon must be less than 500KB');
-      return;
-    }
-
     setUploadingIndex(index);
     try {
-      const fileExt = file.name.split('.').pop();
+      let fileToUpload: File | Blob = file;
+      let fileExt = file.name.split('.').pop() || 'jpg';
+
+      // Compress non-SVG images to 20KB
+      if (file.type !== 'image/svg+xml') {
+        const compressedBlob = await compressImage(file, ICON_TARGET_SIZE_KB, ICON_MAX_DIMENSION);
+        fileToUpload = compressedBlob;
+        fileExt = 'jpg';
+      }
+
       const fileName = `${companyId}/${Date.now()}-${index}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('social-icons')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, fileToUpload, { 
+          upsert: true,
+          contentType: file.type === 'image/svg+xml' ? 'image/svg+xml' : 'image/jpeg'
+        });
 
       if (uploadError) throw uploadError;
 
@@ -140,12 +433,24 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
         .getPublicUrl(fileName);
 
       updateLink(index, { icon_url: publicUrl });
-      toast.success('Icon uploaded');
+      toast.success('Icon uploaded and compressed');
     } catch (error) {
       console.error('Error uploading icon:', error);
       toast.error('Failed to upload icon');
     } finally {
       setUploadingIndex(null);
+    }
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setLinks((items) => {
+        const oldIndex = items.findIndex((item) => (item.id || `new-${items.indexOf(item)}`) === active.id);
+        const newIndex = items.findIndex((item) => (item.id || `new-${items.indexOf(item)}`) === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
     }
   };
 
@@ -211,7 +516,7 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
         <div>
           <h3 className="font-medium">Social Media Links</h3>
           <p className="text-sm text-muted-foreground">
-            Add up to {MAX_LINKS} social links with custom icons. Toggle visibility for each document type.
+            Add up to {MAX_LINKS} social links. Drag to reorder. Pick from defaults or upload custom icons.
           </p>
         </div>
         <Button
@@ -235,127 +540,33 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {links.map((link, index) => (
-            <Card key={link.id || index} className="overflow-hidden">
-              <CardContent className="p-4">
-                <div className="flex gap-3">
-                  {/* Icon Display/Upload */}
-                  <div className="flex-shrink-0">
-                    <Label className="text-xs text-muted-foreground mb-1 block">Icon</Label>
-                    <div className="relative">
-                      <label className="cursor-pointer">
-                        <div className="w-12 h-12 border-2 border-dashed rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors overflow-hidden">
-                          {uploadingIndex === index ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : getDisplayIcon(link) ? (
-                            <img src={getDisplayIcon(link)!} alt={link.platform_name} className="w-8 h-8 object-contain" />
-                          ) : (
-                            <Upload className="w-4 h-4 text-muted-foreground" />
-                          )}
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleIconUpload(index, file);
-                          }}
-                        />
-                      </label>
-                      {/* Clear custom icon button */}
-                      {link.icon_url && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            clearCustomIcon(index);
-                          }}
-                          className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Platform Name & URL */}
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs text-muted-foreground mb-1 block">Platform Name</Label>
-                      <Input
-                        list={`platforms-${index}`}
-                        placeholder="e.g. Facebook, X, TikTok"
-                        value={link.platform_name}
-                        onChange={(e) => updateLink(index, { platform_name: e.target.value })}
-                      />
-                      <datalist id={`platforms-${index}`}>
-                        {getAvailablePlatforms().map((platform) => (
-                          <option key={platform} value={platform} />
-                        ))}
-                      </datalist>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground mb-1 block">URL</Label>
-                      <Input
-                        type="url"
-                        placeholder="https://..."
-                        value={link.url}
-                        onChange={(e) => updateLink(index, { url: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Delete Button */}
-                  <div className="flex-shrink-0 flex items-end">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => removeLink(index)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Visibility Toggles */}
-                <div className="mt-4 flex flex-wrap gap-4">
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={link.show_on_invoice}
-                      onCheckedChange={(checked) => updateLink(index, { show_on_invoice: checked })}
-                    />
-                    <Label className="text-sm cursor-pointer">Invoice</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={link.show_on_quote}
-                      onCheckedChange={(checked) => updateLink(index, { show_on_quote: checked })}
-                    />
-                    <Label className="text-sm cursor-pointer">Quote</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={link.show_on_job}
-                      onCheckedChange={(checked) => updateLink(index, { show_on_job: checked })}
-                    />
-                    <Label className="text-sm cursor-pointer">Job</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={link.show_on_email}
-                      onCheckedChange={(checked) => updateLink(index, { show_on_email: checked })}
-                    />
-                    <Label className="text-sm cursor-pointer">Email</Label>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={links.map((link, index) => link.id || `new-${index}`)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-3">
+              {links.map((link, index) => (
+                <SortableLinkCard
+                  key={link.id || `new-${index}`}
+                  link={link}
+                  index={index}
+                  uploadingIndex={uploadingIndex}
+                  onUpdate={updateLink}
+                  onRemove={removeLink}
+                  onIconUpload={handleIconUpload}
+                  onClearIcon={clearCustomIcon}
+                  onOpenIconPicker={openIconPicker}
+                  getDisplayIcon={getDisplayIcon}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       {links.length > 0 && (
@@ -368,6 +579,15 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
           Save Social Links
         </Button>
       )}
+
+      <IconPickerDialog
+        open={iconPickerOpen}
+        onClose={() => {
+          setIconPickerOpen(false);
+          setIconPickerIndex(null);
+        }}
+        onSelect={handleIconSelect}
+      />
     </div>
   );
 };
