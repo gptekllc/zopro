@@ -18,6 +18,7 @@ interface Company {
   invoice_reminder_days: number;
   auto_apply_late_fees: boolean;
   late_fee_percentage: number;
+  notify_on_automation_run: boolean;
 }
 
 serve(async (req) => {
@@ -30,6 +31,15 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Check if a specific company was requested (for manual runs)
+    let requestedCompanyId: string | null = null;
+    try {
+      const body = await req.json();
+      requestedCompanyId = body?.companyId || null;
+    } catch {
+      // No body or invalid JSON, run for all companies
+    }
+
     const results = {
       expiredQuotes: 0,
       remindersSent: 0,
@@ -37,12 +47,18 @@ serve(async (req) => {
       errors: [] as string[],
     };
 
-    console.log("Starting scheduled automations...");
+    console.log("Starting scheduled automations...", requestedCompanyId ? `for company ${requestedCompanyId}` : 'for all companies');
 
-    // Fetch all companies with their automation preferences
-    const { data: companies, error: companiesError } = await supabase
+    // Fetch companies with their automation preferences
+    let companiesQuery = supabase
       .from("companies")
-      .select("id, name, email, auto_expire_quotes, auto_send_invoice_reminders, invoice_reminder_days, auto_apply_late_fees, late_fee_percentage");
+      .select("id, name, email, auto_expire_quotes, auto_send_invoice_reminders, invoice_reminder_days, auto_apply_late_fees, late_fee_percentage, notify_on_automation_run");
+    
+    if (requestedCompanyId) {
+      companiesQuery = companiesQuery.eq("id", requestedCompanyId);
+    }
+
+    const { data: companies, error: companiesError } = await companiesQuery;
 
     if (companiesError) {
       console.error("Error fetching companies:", companiesError);
@@ -52,10 +68,17 @@ serve(async (req) => {
     console.log(`Processing ${companies?.length || 0} companies`);
 
     for (const company of (companies || []) as Company[]) {
+      const companyResults = {
+        expiredQuotes: 0,
+        remindersSent: 0,
+        lateFeesApplied: 0,
+      };
+
       try {
         // 1. Auto-expire quotes
         if (company.auto_expire_quotes) {
           const expiredCount = await autoExpireQuotes(supabase, company.id);
+          companyResults.expiredQuotes = expiredCount;
           results.expiredQuotes += expiredCount;
           console.log(`Company ${company.id}: Expired ${expiredCount} quotes`);
         }
@@ -63,6 +86,7 @@ serve(async (req) => {
         // 2. Auto-send invoice reminders
         if (company.auto_send_invoice_reminders) {
           const reminderCount = await sendInvoiceReminders(supabase, company, resend);
+          companyResults.remindersSent = reminderCount;
           results.remindersSent += reminderCount;
           console.log(`Company ${company.id}: Sent ${reminderCount} reminders`);
         }
@@ -70,8 +94,15 @@ serve(async (req) => {
         // 3. Auto-apply late fees
         if (company.auto_apply_late_fees && company.late_fee_percentage > 0) {
           const lateFeesCount = await applyLateFees(supabase, company);
+          companyResults.lateFeesApplied = lateFeesCount;
           results.lateFeesApplied += lateFeesCount;
           console.log(`Company ${company.id}: Applied late fees to ${lateFeesCount} invoices`);
+        }
+
+        // 4. Send admin notification if enabled and there were any actions
+        if (company.notify_on_automation_run && 
+            (companyResults.expiredQuotes > 0 || companyResults.remindersSent > 0 || companyResults.lateFeesApplied > 0)) {
+          await sendAdminNotification(supabase, company, companyResults);
         }
       } catch (error: any) {
         console.error(`Error processing company ${company.id}:`, error);
@@ -118,9 +149,8 @@ async function sendInvoiceReminders(supabase: any, company: Company, resendClien
   const reminderDays = company.invoice_reminder_days || 7;
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - reminderDays);
-  const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
 
-  // Find overdue unpaid invoices that haven't been reminded in the last 7 days
+  // Find overdue unpaid invoices
   const { data: invoices, error } = await supabase
     .from("invoices")
     .select(`
@@ -128,6 +158,7 @@ async function sendInvoiceReminders(supabase: any, company: Company, resendClien
       invoice_number,
       total,
       due_date,
+      status,
       customer_id,
       customers (
         id,
@@ -258,4 +289,53 @@ async function applyLateFees(supabase: any, company: Company): Promise<number> {
   }
 
   return feesApplied;
+}
+
+async function sendAdminNotification(
+  supabase: any, 
+  company: Company, 
+  results: { expiredQuotes: number; remindersSent: number; lateFeesApplied: number }
+): Promise<void> {
+  // Find admin users for this company
+  const { data: admins, error: adminsError } = await supabase
+    .from("profiles")
+    .select("id, full_name")
+    .eq("company_id", company.id)
+    .eq("role", "admin")
+    .is("deleted_at", null);
+
+  if (adminsError || !admins || admins.length === 0) {
+    console.log(`No admins found for company ${company.id}`);
+    return;
+  }
+
+  // Build notification message
+  const actions = [];
+  if (results.expiredQuotes > 0) {
+    actions.push(`${results.expiredQuotes} quote${results.expiredQuotes > 1 ? 's' : ''} expired`);
+  }
+  if (results.remindersSent > 0) {
+    actions.push(`${results.remindersSent} payment reminder${results.remindersSent > 1 ? 's' : ''} sent`);
+  }
+  if (results.lateFeesApplied > 0) {
+    actions.push(`Late fees applied to ${results.lateFeesApplied} invoice${results.lateFeesApplied > 1 ? 's' : ''}`);
+  }
+
+  const message = actions.join('. ') + '.';
+
+  // Create notifications for each admin
+  for (const admin of admins) {
+    try {
+      await supabase.from("notifications").insert({
+        user_id: admin.id,
+        type: "automation",
+        title: "Automations Completed",
+        message: message,
+        data: { results },
+      });
+      console.log(`Sent automation notification to admin ${admin.id}`);
+    } catch (err) {
+      console.error(`Failed to create notification for admin ${admin.id}:`, err);
+    }
+  }
 }

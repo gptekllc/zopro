@@ -10,11 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
 import { TIMEZONES } from '@/lib/timezones';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const Company = () => {
   const { isAdmin } = useAuth();
@@ -64,10 +66,12 @@ const Company = () => {
     email_on_new_job: true,
     email_on_payment_received: true,
     send_weekly_summary: false,
+    notify_on_automation_run: true,
     // Branding
     brand_primary_color: '#0066CC',
     customer_portal_welcome_message: '',
   });
+  const [runningAutomations, setRunningAutomations] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formInitialized, setFormInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
@@ -111,6 +115,7 @@ const Company = () => {
       email_on_new_job: company.email_on_new_job ?? true,
       email_on_payment_received: company.email_on_payment_received ?? true,
       send_weekly_summary: company.send_weekly_summary ?? false,
+      notify_on_automation_run: company.notify_on_automation_run ?? true,
       brand_primary_color: company.brand_primary_color ?? '#0066CC',
       customer_portal_welcome_message: company.customer_portal_welcome_message ?? '',
     });
@@ -148,6 +153,38 @@ const Company = () => {
     } as any);
   };
 
+  const handleRunAutomations = async () => {
+    if (!company) return;
+    setRunningAutomations(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('scheduled-automations', {
+        body: { companyId: company.id },
+      });
+      
+      if (error) throw error;
+      
+      const results = data?.results;
+      if (results) {
+        const messages = [];
+        if (results.expiredQuotes > 0) messages.push(`${results.expiredQuotes} quotes expired`);
+        if (results.remindersSent > 0) messages.push(`${results.remindersSent} reminders sent`);
+        if (results.lateFeesApplied > 0) messages.push(`${results.lateFeesApplied} late fees applied`);
+        
+        if (messages.length > 0) {
+          toast.success(`Automations completed: ${messages.join(', ')}`);
+        } else {
+          toast.info('No automations needed at this time');
+        }
+      } else {
+        toast.success('Automations completed');
+      }
+    } catch (error: any) {
+      console.error('Error running automations:', error);
+      toast.error('Failed to run automations: ' + error.message);
+    } finally {
+      setRunningAutomations(false);
+    }
+  };
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -732,6 +769,16 @@ const Company = () => {
                           onCheckedChange={(checked) => setPreferences({ ...preferences, send_weekly_summary: checked })}
                         />
                       </div>
+                      <div className="flex items-center justify-between space-x-4">
+                        <div className="space-y-0.5">
+                          <Label className="font-medium">Notify on Automation Run</Label>
+                          <p className="text-sm text-muted-foreground">Get notified when automated tasks complete (expired quotes, reminders, late fees)</p>
+                        </div>
+                        <Switch
+                          checked={preferences.notify_on_automation_run}
+                          onCheckedChange={(checked) => setPreferences({ ...preferences, notify_on_automation_run: checked })}
+                        />
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -770,6 +817,41 @@ const Company = () => {
                           onChange={(e) => setPreferences({ ...preferences, customer_portal_welcome_message: e.target.value })}
                           rows={3}
                         />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                  {/* Automations */}
+                  <AccordionItem value="automations">
+                    <AccordionTrigger className="text-base font-medium">
+                      <div className="flex items-center gap-2">
+                        <Zap className="w-4 h-4" />
+                        Automations
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-4">
+                      <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Automations run daily at 6 AM UTC and handle:
+                        </p>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                          <li>Auto-expire quotes past their validity date</li>
+                          <li>Send payment reminders for overdue invoices</li>
+                          <li>Apply late fees to overdue invoices</li>
+                        </ul>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          className="gap-2 mt-2"
+                          onClick={handleRunAutomations}
+                          disabled={runningAutomations}
+                        >
+                          {runningAutomations ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Play className="w-4 h-4" />
+                          )}
+                          Run Automations Now
+                        </Button>
                       </div>
                     </AccordionContent>
                   </AccordionItem>

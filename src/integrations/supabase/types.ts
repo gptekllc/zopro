@@ -37,6 +37,7 @@ export type Database = {
           late_fee_percentage: number | null
           logo_url: string | null
           name: string
+          notify_on_automation_run: boolean
           notify_on_job_assignment: boolean
           payment_terms_days: number | null
           pdf_footer_text: string | null
@@ -83,6 +84,7 @@ export type Database = {
           late_fee_percentage?: number | null
           logo_url?: string | null
           name: string
+          notify_on_automation_run?: boolean
           notify_on_job_assignment?: boolean
           payment_terms_days?: number | null
           pdf_footer_text?: string | null
@@ -129,6 +131,7 @@ export type Database = {
           late_fee_percentage?: number | null
           logo_url?: string | null
           name?: string
+          notify_on_automation_run?: boolean
           notify_on_job_assignment?: boolean
           payment_terms_days?: number | null
           pdf_footer_text?: string | null
