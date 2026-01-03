@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Users, PenTool } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Users, PenTool, FileText } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
 import TeamMembersManager from '@/components/team/TeamMembersManager';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -40,6 +41,11 @@ const Company = () => {
   const [signatureSettings, setSignatureSettings] = useState({
     require_job_completion_signature: false,
   });
+  const [pdfPreferences, setPdfPreferences] = useState({
+    pdf_show_notes: true,
+    pdf_show_signature: true,
+    pdf_terms_conditions: '',
+  });
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formInitialized, setFormInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
@@ -64,6 +70,11 @@ const Company = () => {
     });
     setSignatureSettings({
       require_job_completion_signature: company.require_job_completion_signature ?? false,
+    });
+    setPdfPreferences({
+      pdf_show_notes: (company as any).pdf_show_notes ?? true,
+      pdf_show_signature: (company as any).pdf_show_signature ?? true,
+      pdf_terms_conditions: (company as any).pdf_terms_conditions ?? '',
     });
     setLogoUrl(company.logo_url || null);
     setFormInitialized(true);
@@ -96,6 +107,17 @@ const Company = () => {
     });
   };
 
+  const handlePdfPreferencesSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!company) return;
+    await updateCompany.mutateAsync({ 
+      id: company.id, 
+      pdf_show_notes: pdfPreferences.pdf_show_notes,
+      pdf_show_signature: pdfPreferences.pdf_show_signature,
+      pdf_terms_conditions: pdfPreferences.pdf_terms_conditions || null,
+    } as any);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -121,7 +143,7 @@ const Company = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         {/* Mobile: Icon-only tabs */}
-        <TabsList className="sm:hidden w-full grid grid-cols-4">
+        <TabsList className="sm:hidden w-full grid grid-cols-5">
           <TabsTrigger value="details" className="flex-col gap-1 py-2">
             <Building2 className="w-5 h-5" />
             <span className="text-xs">Details</span>
@@ -129,6 +151,10 @@ const Company = () => {
           <TabsTrigger value="billing" className="flex-col gap-1 py-2">
             <Receipt className="w-5 h-5" />
             <span className="text-xs">Billing</span>
+          </TabsTrigger>
+          <TabsTrigger value="preferences" className="flex-col gap-1 py-2">
+            <FileText className="w-5 h-5" />
+            <span className="text-xs">PDF</span>
           </TabsTrigger>
           {isAdmin ? (
             <TabsTrigger value="payments" className="flex-col gap-1 py-2">
@@ -157,6 +183,10 @@ const Company = () => {
           <TabsTrigger value="billing" className="gap-2">
             <Receipt className="w-4 h-4" />
             Billing & Tax
+          </TabsTrigger>
+          <TabsTrigger value="preferences" className="gap-2">
+            <FileText className="w-4 h-4" />
+            PDF Preferences
           </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="payments" className="gap-2">
@@ -439,6 +469,75 @@ const Company = () => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="preferences">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                PDF Preferences
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handlePdfPreferencesSubmit} className="space-y-6 max-w-xl">
+                <div className="flex items-center justify-between space-x-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="pdf_show_notes" className="font-medium">
+                      Show Notes in PDF
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Display notes section in quotes, invoices, and job PDFs
+                    </p>
+                  </div>
+                  <Switch
+                    id="pdf_show_notes"
+                    checked={pdfPreferences.pdf_show_notes}
+                    onCheckedChange={(checked) => setPdfPreferences({ ...pdfPreferences, pdf_show_notes: checked })}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between space-x-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="pdf_show_signature" className="font-medium">
+                      Show Signature Section in PDF
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Display signature or signature field in PDFs
+                    </p>
+                  </div>
+                  <Switch
+                    id="pdf_show_signature"
+                    checked={pdfPreferences.pdf_show_signature}
+                    onCheckedChange={(checked) => setPdfPreferences({ ...pdfPreferences, pdf_show_signature: checked })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pdf_terms">Terms & Conditions</Label>
+                  <Textarea
+                    id="pdf_terms"
+                    placeholder="Enter your terms and conditions to display on PDFs..."
+                    value={pdfPreferences.pdf_terms_conditions}
+                    onChange={(e) => setPdfPreferences({ ...pdfPreferences, pdf_terms_conditions: e.target.value })}
+                    rows={6}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    These terms will appear at the bottom of all PDF documents
+                  </p>
+                </div>
+
+                <Button type="submit" className="gap-2" disabled={updateCompany.isPending}>
+                  {updateCompany.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  Save PDF Preferences
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {isAdmin && (
