@@ -904,6 +904,117 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Get document details (for viewing in detail sheets)
+    if (action === 'get-document-details') {
+      const { documentType, documentId, customerId, token } = body;
+      
+      if (!documentType || !documentId || !customerId || !token) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      let document = null;
+      let items: any[] = [];
+
+      if (documentType === 'quote') {
+        const { data: quote, error } = await adminClient
+          .from('quotes')
+          .select('id, quote_number, status, total, subtotal, tax, created_at, valid_until, notes, signed_at')
+          .eq('id', documentId)
+          .eq('customer_id', customerId)
+          .single();
+        
+        if (error || !quote) {
+          return new Response(
+            JSON.stringify({ error: 'Quote not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        const { data: quoteItems } = await adminClient
+          .from('quote_items')
+          .select('id, description, quantity, unit_price, total')
+          .eq('quote_id', documentId)
+          .order('created_at', { ascending: true });
+        
+        document = quote;
+        items = quoteItems || [];
+      } else if (documentType === 'invoice') {
+        const { data: invoice, error } = await adminClient
+          .from('invoices')
+          .select('id, invoice_number, status, total, subtotal, tax, created_at, due_date, notes')
+          .eq('id', documentId)
+          .eq('customer_id', customerId)
+          .single();
+        
+        if (error || !invoice) {
+          return new Response(
+            JSON.stringify({ error: 'Invoice not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        const { data: invoiceItems } = await adminClient
+          .from('invoice_items')
+          .select('id, description, quantity, unit_price, total')
+          .eq('invoice_id', documentId)
+          .order('created_at', { ascending: true });
+        
+        document = invoice;
+        items = invoiceItems || [];
+      } else if (documentType === 'job') {
+        const { data: job, error } = await adminClient
+          .from('jobs')
+          .select('id, job_number, title, description, status, priority, scheduled_start, scheduled_end, actual_start, actual_end, notes, subtotal, tax, total, completion_signed_at, completion_signed_by')
+          .eq('id', documentId)
+          .eq('customer_id', customerId)
+          .single();
+        
+        if (error || !job) {
+          return new Response(
+            JSON.stringify({ error: 'Job not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        const { data: jobItems } = await adminClient
+          .from('job_items')
+          .select('id, description, quantity, unit_price, total')
+          .eq('job_id', documentId)
+          .order('created_at', { ascending: true });
+        
+        document = job;
+        items = jobItems || [];
+      } else {
+        return new Response(
+          JSON.stringify({ error: 'Invalid document type' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          document,
+          items,
+          documentType,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: 'Invalid action' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
