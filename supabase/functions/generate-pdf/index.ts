@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -137,6 +138,444 @@ function generateEmailSocialIconsHtml(socialLinks: SocialLink[]): string {
   }).join('');
 
   return `<div style="margin-top: 10px; text-align: center;">${iconsHtml}</div>`;
+}
+
+// Generate PDF using pdf-lib
+async function generatePDFDocument(
+  type: "quote" | "invoice" | "job",
+  document: any,
+  company: any,
+  customer: any,
+  items: DocumentItem[],
+  assignee?: any,
+  signature?: any
+): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
+  const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+
+  // Add a page
+  const page = pdfDoc.addPage([612, 792]); // Letter size
+  const { width, height } = page.getSize();
+  
+  let y = height - 50;
+  const margin = 50;
+  const contentWidth = width - margin * 2;
+  
+  // Colors
+  const primaryColor = rgb(0, 0.4, 0.8);
+  const blackColor = rgb(0, 0, 0);
+  const grayColor = rgb(0.4, 0.4, 0.4);
+  const lightGrayColor = rgb(0.6, 0.6, 0.6);
+
+  // Title
+  let title: string;
+  let documentNumber: string;
+  if (type === "quote") {
+    title = "QUOTE";
+    documentNumber = document.quote_number;
+  } else if (type === "invoice") {
+    title = "INVOICE";
+    documentNumber = document.invoice_number;
+  } else {
+    title = "JOB SUMMARY";
+    documentNumber = document.job_number;
+  }
+
+  // Company name at top
+  if (company?.name) {
+    page.drawText(company.name, {
+      x: margin,
+      y,
+      size: 20,
+      font: helveticaBold,
+      color: primaryColor,
+    });
+    y -= 25;
+  }
+
+  // Document title and number
+  page.drawText(`${title}: ${documentNumber}`, {
+    x: margin,
+    y,
+    size: 16,
+    font: helveticaBold,
+    color: blackColor,
+  });
+  y -= 30;
+
+  // Company address
+  if (company?.address || company?.city || company?.state) {
+    const companyAddr = [company.address, [company.city, company.state, company.zip].filter(Boolean).join(', ')].filter(Boolean).join(', ');
+    if (companyAddr) {
+      page.drawText(companyAddr, {
+        x: margin,
+        y,
+        size: 10,
+        font: helvetica,
+        color: grayColor,
+      });
+      y -= 15;
+    }
+  }
+
+  if (company?.phone) {
+    page.drawText(`Phone: ${company.phone}`, {
+      x: margin,
+      y,
+      size: 10,
+      font: helvetica,
+      color: grayColor,
+    });
+    y -= 15;
+  }
+
+  if (company?.email) {
+    page.drawText(`Email: ${company.email}`, {
+      x: margin,
+      y,
+      size: 10,
+      font: helvetica,
+      color: grayColor,
+    });
+    y -= 15;
+  }
+
+  y -= 20;
+
+  // Divider line
+  page.drawLine({
+    start: { x: margin, y },
+    end: { x: width - margin, y },
+    thickness: 1,
+    color: lightGrayColor,
+  });
+  y -= 25;
+
+  // Bill To section
+  page.drawText("Bill To:", {
+    x: margin,
+    y,
+    size: 12,
+    font: helveticaBold,
+    color: blackColor,
+  });
+  y -= 18;
+
+  if (customer?.name) {
+    page.drawText(customer.name, {
+      x: margin,
+      y,
+      size: 11,
+      font: helvetica,
+      color: blackColor,
+    });
+    y -= 15;
+  }
+
+  if (customer?.address) {
+    page.drawText(customer.address, {
+      x: margin,
+      y,
+      size: 10,
+      font: helvetica,
+      color: grayColor,
+    });
+    y -= 14;
+  }
+
+  const customerCityLine = [customer?.city, customer?.state, customer?.zip].filter(Boolean).join(', ');
+  if (customerCityLine) {
+    page.drawText(customerCityLine, {
+      x: margin,
+      y,
+      size: 10,
+      font: helvetica,
+      color: grayColor,
+    });
+    y -= 14;
+  }
+
+  if (customer?.email) {
+    page.drawText(customer.email, {
+      x: margin,
+      y,
+      size: 10,
+      font: helvetica,
+      color: grayColor,
+    });
+    y -= 14;
+  }
+
+  y -= 20;
+
+  // Document info (dates, status)
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return "N/A";
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  // Date info on the right side
+  const rightX = width - margin - 150;
+  let infoY = height - 50;
+  
+  page.drawText(`Date: ${formatDate(document.created_at)}`, {
+    x: rightX,
+    y: infoY,
+    size: 10,
+    font: helvetica,
+    color: grayColor,
+  });
+  infoY -= 15;
+
+  if (type === "quote" && document.valid_until) {
+    page.drawText(`Valid Until: ${formatDate(document.valid_until)}`, {
+      x: rightX,
+      y: infoY,
+      size: 10,
+      font: helvetica,
+      color: grayColor,
+    });
+    infoY -= 15;
+  }
+
+  if (type === "invoice" && document.due_date) {
+    page.drawText(`Due Date: ${formatDate(document.due_date)}`, {
+      x: rightX,
+      y: infoY,
+      size: 10,
+      font: helvetica,
+      color: grayColor,
+    });
+    infoY -= 15;
+  }
+
+  page.drawText(`Status: ${document.status?.charAt(0).toUpperCase() + document.status?.slice(1) || 'N/A'}`, {
+    x: rightX,
+    y: infoY,
+    size: 10,
+    font: helvetica,
+    color: grayColor,
+  });
+
+  // Items table header
+  page.drawText("Description", {
+    x: margin,
+    y,
+    size: 10,
+    font: helveticaBold,
+    color: blackColor,
+  });
+  page.drawText("Qty", {
+    x: width - margin - 180,
+    y,
+    size: 10,
+    font: helveticaBold,
+    color: blackColor,
+  });
+  page.drawText("Unit Price", {
+    x: width - margin - 120,
+    y,
+    size: 10,
+    font: helveticaBold,
+    color: blackColor,
+  });
+  page.drawText("Total", {
+    x: width - margin - 50,
+    y,
+    size: 10,
+    font: helveticaBold,
+    color: blackColor,
+  });
+  y -= 5;
+
+  // Table header line
+  page.drawLine({
+    start: { x: margin, y },
+    end: { x: width - margin, y },
+    thickness: 0.5,
+    color: lightGrayColor,
+  });
+  y -= 18;
+
+  // Items
+  for (const item of items) {
+    if (y < 150) {
+      // Add new page if running out of space
+      y = height - 50;
+    }
+
+    // Truncate description if too long
+    const maxDescLength = 40;
+    const desc = item.description.length > maxDescLength 
+      ? item.description.substring(0, maxDescLength) + '...' 
+      : item.description;
+
+    page.drawText(desc, {
+      x: margin,
+      y,
+      size: 10,
+      font: helvetica,
+      color: blackColor,
+    });
+    page.drawText(String(item.quantity), {
+      x: width - margin - 180,
+      y,
+      size: 10,
+      font: helvetica,
+      color: blackColor,
+    });
+    page.drawText(`$${Number(item.unit_price).toLocaleString()}`, {
+      x: width - margin - 120,
+      y,
+      size: 10,
+      font: helvetica,
+      color: blackColor,
+    });
+    page.drawText(`$${Number(item.total).toLocaleString()}`, {
+      x: width - margin - 50,
+      y,
+      size: 10,
+      font: helvetica,
+      color: blackColor,
+    });
+    y -= 18;
+  }
+
+  y -= 10;
+
+  // Divider line before totals
+  page.drawLine({
+    start: { x: width - margin - 200, y },
+    end: { x: width - margin, y },
+    thickness: 0.5,
+    color: lightGrayColor,
+  });
+  y -= 20;
+
+  // Totals section
+  const totalsX = width - margin - 150;
+
+  if (document.subtotal !== undefined) {
+    page.drawText("Subtotal:", {
+      x: totalsX,
+      y,
+      size: 10,
+      font: helvetica,
+      color: grayColor,
+    });
+    page.drawText(`$${Number(document.subtotal).toLocaleString()}`, {
+      x: width - margin - 50,
+      y,
+      size: 10,
+      font: helvetica,
+      color: blackColor,
+    });
+    y -= 18;
+  }
+
+  if (document.tax !== undefined && document.tax > 0) {
+    page.drawText("Tax:", {
+      x: totalsX,
+      y,
+      size: 10,
+      font: helvetica,
+      color: grayColor,
+    });
+    page.drawText(`$${Number(document.tax).toLocaleString()}`, {
+      x: width - margin - 50,
+      y,
+      size: 10,
+      font: helvetica,
+      color: blackColor,
+    });
+    y -= 18;
+  }
+
+  // Total
+  page.drawText("Total:", {
+    x: totalsX,
+    y,
+    size: 12,
+    font: helveticaBold,
+    color: blackColor,
+  });
+  page.drawText(`$${Number(document.total || 0).toLocaleString()}`, {
+    x: width - margin - 50,
+    y,
+    size: 12,
+    font: helveticaBold,
+    color: primaryColor,
+  });
+  y -= 30;
+
+  // Notes section
+  if (document.notes) {
+    page.drawText("Notes:", {
+      x: margin,
+      y,
+      size: 10,
+      font: helveticaBold,
+      color: blackColor,
+    });
+    y -= 15;
+    
+    // Wrap notes text
+    const maxLineLength = 80;
+    const words = document.notes.split(' ');
+    let line = '';
+    for (const word of words) {
+      if ((line + word).length > maxLineLength) {
+        page.drawText(line.trim(), {
+          x: margin,
+          y,
+          size: 9,
+          font: helvetica,
+          color: grayColor,
+        });
+        y -= 12;
+        line = word + ' ';
+      } else {
+        line += word + ' ';
+      }
+    }
+    if (line.trim()) {
+      page.drawText(line.trim(), {
+        x: margin,
+        y,
+        size: 9,
+        font: helvetica,
+        color: grayColor,
+      });
+      y -= 12;
+    }
+  }
+
+  // Footer with company info
+  const footerY = 40;
+  if (company?.website) {
+    page.drawText(company.website, {
+      x: margin,
+      y: footerY,
+      size: 8,
+      font: helvetica,
+      color: lightGrayColor,
+    });
+  }
+
+  page.drawText(`Generated on ${new Date().toLocaleDateString()}`, {
+    x: width - margin - 120,
+    y: footerY,
+    size: 8,
+    font: helvetica,
+    color: lightGrayColor,
+  });
+
+  return await pdfDoc.save();
 }
 
 function generateHTML(
@@ -686,22 +1125,13 @@ serve(async (req) => {
       // Generate email social icons
       const emailSocialIconsHtml = generateEmailSocialIconsHtml(socialLinks || []);
 
-      // Create PDF content as base64
-      const pdfHtmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body { font-family: Arial, sans-serif; }
-    @page { margin: 20mm; }
-  </style>
-</head>
-<body>
-  ${html}
-</body>
-</html>`;
-      const pdfBase64 = btoa(unescape(encodeURIComponent(pdfHtmlContent)));
+      // Generate actual PDF document
+      console.log("Generating PDF document...");
+      const pdfBytes = await generatePDFDocument(type, document, company, customer, items || [], assignee, signature);
+      
+      // Convert PDF bytes to base64
+      const pdfBase64 = btoa(String.fromCharCode(...pdfBytes));
+      console.log(`PDF generated, size: ${pdfBytes.length} bytes`);
 
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -720,7 +1150,7 @@ serve(async (req) => {
             </div>
           ` : ""}
           <p style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
-            📎 <strong>Attached:</strong> ${type === "quote" ? "Quote" : type === "invoice" ? "Invoice" : "Job Summary"} ${documentNumber} (HTML document)
+            📎 <strong>Attached:</strong> ${type === "quote" ? "Quote" : type === "invoice" ? "Invoice" : "Job Summary"} ${documentNumber} (PDF)
           </p>
           <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
           <p>If you have any questions, please don't hesitate to contact us.</p>
@@ -730,7 +1160,7 @@ serve(async (req) => {
         </div>
       `;
 
-      console.log(`Sending email to ${recipientEmail} with attachment`);
+      console.log(`Sending email to ${recipientEmail} with PDF attachment`);
 
       const { data: emailData, error: emailError } = await resend.emails.send({
         from: "ZoPro Notifications <noreply@email.zopro.app>",
@@ -740,8 +1170,8 @@ serve(async (req) => {
         html: emailHtml,
         attachments: [
           {
-            filename: `${documentNumber}.html`,
-            content: pdfHtmlContent,
+            filename: `${documentNumber}.pdf`,
+            content: pdfBase64,
           }
         ],
       });
@@ -751,7 +1181,7 @@ serve(async (req) => {
         throw new Error("Failed to send email: " + (emailError as any).message);
       }
 
-      console.log("Email sent successfully with attachment:", emailData);
+      console.log("Email sent successfully with PDF attachment:", emailData);
 
       // Update document status to 'sent' if it's a draft (not for jobs)
       if (type !== "job" && document.status === "draft") {
@@ -764,7 +1194,7 @@ serve(async (req) => {
       console.log(`Email sent successfully to ${recipientEmail}`);
 
       return new Response(
-        JSON.stringify({ success: true, message: "Email sent successfully with attachment" }),
+        JSON.stringify({ success: true, message: "Email sent successfully with PDF attachment" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
