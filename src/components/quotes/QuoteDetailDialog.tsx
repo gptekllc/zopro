@@ -346,14 +346,26 @@ export function QuoteDetailDialog({
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
+            {customerEmail && (
+              <Button 
+                size="sm" 
+                onClick={() => onEmail?.(quote.id)} 
+                className="flex-1 sm:flex-none"
+              >
+                <Send className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Send to Customer</span>
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => onDownload?.(quote.id)} className="flex-1 sm:flex-none">
               <FileDown className="w-4 h-4 sm:mr-1" />
               <span className="hidden sm:inline">Download</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onEmail?.(quote.id)} className="flex-1 sm:flex-none">
-              <Mail className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Email</span>
-            </Button>
+            {!customerEmail && (
+              <Button variant="outline" size="sm" onClick={() => onEmail?.(quote.id)} className="flex-1 sm:flex-none">
+                <Mail className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Email</span>
+              </Button>
+            )}
             {quote.status !== 'rejected' && (
               <Button variant="outline" size="sm" onClick={() => onConvertToInvoice?.(quote.id)} className="flex-1 sm:flex-none">
                 <ArrowRight className="w-4 h-4 sm:mr-1" />
