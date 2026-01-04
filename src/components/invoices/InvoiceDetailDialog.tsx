@@ -11,10 +11,12 @@ import {
 import { 
   FileDown, Mail, Edit, PenTool, Calendar, 
   DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
-  ChevronRight, CheckCircle2, Copy, Briefcase, FileText, Link2, Send
+  ChevronRight, CheckCircle2, Copy, Briefcase, FileText, Link2, Send, Loader2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
+import { SignatureSection } from '@/components/signatures/SignatureSection';
+import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 
 const INVOICE_STATUSES = ['draft', 'sent', 'paid'] as const;
 
@@ -57,10 +59,14 @@ interface InvoiceDetailDialogProps {
   onDuplicate?: (invoiceId: string) => void;
   onStatusChange?: (invoiceId: string, status: string) => void;
   onViewSignature?: (signatureId: string) => void;
+  onCollectSignature?: (invoiceId: string) => void;
+  onSendSignatureRequest?: (invoiceId: string) => void;
+  isCollectingSignature?: boolean;
   onApplyLateFee?: (invoiceId: string) => void;
   isApplyingLateFee?: boolean;
   onSendReminder?: (invoiceId: string) => void;
   isSendingReminder?: boolean;
+  isSendingEmail?: boolean;
   reminders?: ReminderHistory[];
   onViewQuote?: (quoteId: string) => void;
   onViewJob?: (jobId: string) => void;
@@ -110,10 +116,14 @@ export function InvoiceDetailDialog({
   onDuplicate,
   onStatusChange,
   onViewSignature,
+  onCollectSignature,
+  onSendSignatureRequest,
+  isCollectingSignature = false,
   onApplyLateFee,
   isApplyingLateFee = false,
   onSendReminder,
   isSendingReminder = false,
+  isSendingEmail = false,
   reminders = [],
   onViewQuote,
   onViewJob,
@@ -428,17 +438,46 @@ export function InvoiceDetailDialog({
             </>
           )}
 
+          {/* Signature Section */}
+          <ConstrainedPanel>
+            <SignatureSection
+              signatureId={(invoice as any).signature_id}
+              title="Customer Signature"
+              onCollectSignature={onCollectSignature ? () => onCollectSignature(invoice.id) : undefined}
+              showCollectButton={invoice.status !== 'paid' && !!onCollectSignature}
+              collectButtonText="Collect Signature"
+              isCollecting={isCollectingSignature}
+            />
+          </ConstrainedPanel>
+
+          {/* Send Signature Request Button */}
+          {invoice.status !== 'paid' && !(invoice as any).signature_id && customerEmail && onSendSignatureRequest && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => onSendSignatureRequest(invoice.id)}
+              className="w-full sm:w-auto"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Send Signature Request via Email
+            </Button>
+          )}
+
           {/* Actions */}
           <Separator />
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
             <Button 
               size="sm" 
               onClick={() => onEmail?.(invoice.id)} 
-              disabled={!customerEmail}
+              disabled={!customerEmail || isSendingEmail}
               title={!customerEmail ? 'Customer has no email address' : undefined}
             >
-              <Send className="w-4 h-4 mr-1" />
-              Send to Customer
+              {isSendingEmail ? (
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 mr-1" />
+              )}
+              {isSendingEmail ? 'Sending...' : 'Send to Customer'}
             </Button>
             {onDuplicate && (
               <Button variant="outline" size="sm" onClick={() => onDuplicate(invoice.id)}>
