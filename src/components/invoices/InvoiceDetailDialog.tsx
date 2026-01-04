@@ -19,6 +19,8 @@ import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
+import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
+import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto } from '@/hooks/useInvoicePhotos';
 
 const INVOICE_STATUSES = ['draft', 'sent', 'paid'] as const;
 
@@ -130,12 +132,32 @@ export function InvoiceDetailDialog({
   onViewQuote,
   onViewJob,
 }: InvoiceDetailDialogProps) {
+  const { data: invoicePhotos = [], isLoading: loadingPhotos } = useInvoicePhotos(invoice?.id || null);
+  const uploadPhoto = useUploadInvoicePhoto();
+  const deletePhoto = useDeleteInvoicePhoto();
+
   if (!invoice) return null;
 
   const isOverdue = invoice.due_date && new Date(invoice.due_date) < new Date() && invoice.status !== 'paid';
   const hasLateFee = invoice.late_fee_amount && Number(invoice.late_fee_amount) > 0;
   const canApplyLateFee = isOverdue && !hasLateFee && lateFeePercentage > 0;
   const linkedDocsCount = (linkedQuote ? 1 : 0) + (linkedJob ? 1 : 0);
+
+  const handleUploadPhoto = async (file: File, photoType: 'before' | 'after' | 'other') => {
+    await uploadPhoto.mutateAsync({
+      invoiceId: invoice.id,
+      file,
+      photoType,
+    });
+  };
+
+  const handleDeletePhoto = async (photoId: string, photoUrl: string) => {
+    await deletePhoto.mutateAsync({
+      photoId,
+      photoUrl,
+      invoiceId: invoice.id,
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -252,6 +274,11 @@ export function InvoiceDetailDialog({
               <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <Image className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Photos</span>
+                {invoicePhotos.length > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {invoicePhotos.length}
+                  </Badge>
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -501,11 +528,22 @@ export function InvoiceDetailDialog({
 
             {/* Photos Tab */}
             <TabsContent value="photos" className="mt-4">
-              <div className="text-center py-8 text-muted-foreground">
-                <Image className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">Photos are not available for invoices.</p>
-                <p className="text-xs mt-1">Photos can be added to jobs.</p>
-              </div>
+              <DocumentPhotoGallery
+                photos={invoicePhotos.map(p => ({
+                  id: p.id,
+                  photo_url: p.photo_url,
+                  photo_type: p.photo_type,
+                  caption: p.caption,
+                  created_at: p.created_at,
+                  display_order: p.display_order ?? 0,
+                }))}
+                bucketName="invoice-photos"
+                documentId={invoice.id}
+                onUpload={handleUploadPhoto}
+                onDelete={handleDeletePhoto}
+                isUploading={uploadPhoto.isPending}
+                editable={true}
+              />
             </TabsContent>
           </Tabs>
 
