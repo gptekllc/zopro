@@ -10,7 +10,7 @@ import {
 } from '@/hooks/useCustomerHistory';
 import { useDownloadDocument, useEmailDocument, useConvertQuoteToInvoice } from '@/hooks/useDocumentActions';
 import { useUpdateInvoice } from '@/hooks/useInvoices';
-import { useSignInvoice } from '@/hooks/useSignatures';
+import { useSignInvoice, useApproveQuoteWithSignature } from '@/hooks/useSignatures';
 import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
 import { useCompany } from '@/hooks/useCompany';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,6 +72,7 @@ const CustomerDetail = () => {
   // Signature dialogs
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
   const [signatureInvoice, setSignatureInvoice] = useState<CustomerInvoice | null>(null);
+  const [signatureQuote, setSignatureQuote] = useState<CustomerQuote | null>(null);
 
   // Wrapped setters for scroll restoration
   const openSelectedJob = useCallback((job: CustomerJob | null) => {
@@ -137,6 +138,7 @@ const CustomerDetail = () => {
   const convertToInvoice = useConvertQuoteToInvoice();
   const updateInvoice = useUpdateInvoice();
   const signInvoice = useSignInvoice();
+  const signQuote = useApproveQuoteWithSignature();
   const sendSignatureRequest = useSendSignatureRequest();
   const { data: company } = useCompany();
 
@@ -330,6 +332,57 @@ const CustomerDetail = () => {
       recipientName: customer.name,
       companyName: company?.name || 'Company',
       documentNumber: invoice.invoice_number,
+      customerId: customer.id,
+    });
+  };
+
+  // Signature handlers for quotes
+  const handleOpenQuoteSignatureDialog = (quote: CustomerQuote) => {
+    setSignatureQuote(quote);
+    setSignatureDialogOpen(true);
+  };
+
+  const handleQuoteSignatureComplete = async (signatureData: string, signerName: string) => {
+    if (!signatureQuote || !customer) return;
+    try {
+      const signature = await signQuote.mutateAsync({
+        quoteId: signatureQuote.id,
+        signatureData,
+        signerName,
+        customerId: customer.id,
+      });
+      // Update selected quote with the new signature
+      if (selectedQuote?.id === signatureQuote.id) {
+        setSelectedQuote({
+          ...selectedQuote,
+          signature_id: signature.id,
+          signed_at: new Date().toISOString(),
+          status: 'accepted',
+        } as any);
+      }
+      setSignatureDialogOpen(false);
+      setSignatureQuote(null);
+      toast.success('Quote approved with signature');
+    } catch {
+      toast.error('Failed to collect signature');
+    }
+  };
+
+  const handleSendQuoteSignatureRequest = (quoteId: string) => {
+    if (!customer?.email) {
+      toast.error('Customer does not have an email address');
+      return;
+    }
+    const quote = quotes.find(q => q.id === quoteId);
+    if (!quote) return;
+    
+    sendSignatureRequest.mutate({
+      documentType: 'quote',
+      documentId: quoteId,
+      recipientEmail: customer.email,
+      recipientName: customer.name,
+      companyName: company?.name || 'Company',
+      documentNumber: quote.quote_number,
       customerId: customer.id,
     });
   };
@@ -907,6 +960,12 @@ const CustomerDetail = () => {
         onCreateJob={(quoteId) => navigate(`/jobs?fromQuote=${quoteId}`)}
         onEdit={(quoteId) => navigate(`/quotes?edit=${quoteId}`)}
         onViewSignature={(sigId) => setSelectedSignatureId(sigId)}
+        onCollectSignature={(quoteId) => {
+          const quote = quotes.find(q => q.id === quoteId);
+          if (quote) handleOpenQuoteSignatureDialog(quote);
+        }}
+        onSendSignatureRequest={handleSendQuoteSignatureRequest}
+        isCollectingSignature={signQuote.isPending}
       />
 
       <InvoiceDetailDialog
@@ -941,11 +1000,21 @@ const CustomerDetail = () => {
 
       <SignatureDialog
         open={signatureDialogOpen}
-        onOpenChange={setSignatureDialogOpen}
-        onSignatureComplete={handleSignatureComplete}
-        title={`Sign Invoice ${signatureInvoice?.invoice_number || ''}`}
-        description="Please sign below to confirm receipt and payment"
-        isSubmitting={signInvoice.isPending}
+        onOpenChange={(open) => {
+          setSignatureDialogOpen(open);
+          if (!open) {
+            setSignatureInvoice(null);
+            setSignatureQuote(null);
+          }
+        }}
+        onSignatureComplete={signatureQuote ? handleQuoteSignatureComplete : handleSignatureComplete}
+        title={signatureQuote 
+          ? `Approve Quote ${signatureQuote.quote_number}` 
+          : `Sign Invoice ${signatureInvoice?.invoice_number || ''}`}
+        description={signatureQuote 
+          ? "Please sign below to approve this quote" 
+          : "Please sign below to confirm receipt and payment"}
+        isSubmitting={signatureQuote ? signQuote.isPending : signInvoice.isPending}
       />
     </div>
   );
