@@ -572,15 +572,15 @@ async function generatePDFDocument(
       color: blackColor,
     });
 
-    y -= 16;
-
-    // Row separator line
+    // Row separator line - draw below the text with proper spacing
     page.drawLine({
-      start: { x: tableLeft, y: y + 4 },
-      end: { x: tableRight, y: y + 4 },
+      start: { x: tableLeft, y: y - 5 },
+      end: { x: tableRight, y: y - 5 },
       thickness: 0.5,
       color: rgb(0.9, 0.9, 0.9),
     });
+
+    y -= 18;
   }
 
   y -= 20;
