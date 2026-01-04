@@ -812,6 +812,7 @@ const CustomerDetail = () => {
       <QuoteDetailDialog
         quote={selectedQuote}
         customerName={customer.name}
+        customerEmail={customer.email || undefined}
         open={!!selectedQuote}
         onOpenChange={(open) => !open && openSelectedQuote(null)}
         onDownload={handleDownloadQuote}
