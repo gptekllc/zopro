@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +12,7 @@ import {
 import { 
   FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, 
   DollarSign, FileText, CheckCircle, Send, UserCog, ChevronRight, CheckCircle2,
-  Briefcase, Receipt, Link2
+  Briefcase, Receipt, Link2, List, Image
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
@@ -52,6 +53,22 @@ const statusColors: Record<string, string> = {
   rejected: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
 };
 
+const jobStatusColors: Record<string, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  in_progress: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  completed: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  invoiced: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+  paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+};
+
+const invoiceStatusColors: Record<string, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  overdue: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+};
+
 export function QuoteDetailDialog({
   quote,
   customerName,
@@ -90,6 +107,7 @@ export function QuoteDetailDialog({
 
   const isApprovedOrAccepted = quote.status === 'approved' || quote.status === 'accepted';
   const showCollectButton = !isApprovedOrAccepted && quote.status !== 'rejected';
+  const linkedDocsCount = (linkedJob ? 1 : 0) + linkedInvoices.length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -174,177 +192,202 @@ export function QuoteDetailDialog({
 
           <Separator />
 
-          {/* Line Items */}
-          <div>
-            <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
-            <div className="space-y-2">
-              {quote.items && quote.items.length > 0 ? (
-                <>
-                  {/* Desktop header - hidden on mobile */}
-                  <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
-                    <div className="col-span-6">Description</div>
-                    <div className="col-span-2 text-right">Qty</div>
-                    <div className="col-span-2 text-right">Price</div>
-                    <div className="col-span-2 text-right">Total</div>
+          {/* Tabs for Details, Linked Docs, Photos */}
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="details" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <List className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Details</span>
+                {(quote.items?.length || 0) > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {quote.items?.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Linked Docs</span>
+                {linkedDocsCount > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {linkedDocsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <Image className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Photos</span>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Details Tab */}
+            <TabsContent value="details" className="mt-4 space-y-4">
+              {/* Line Items */}
+              <div>
+                <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
+                <div className="space-y-2">
+                  {quote.items && quote.items.length > 0 ? (
+                    <>
+                      {/* Desktop header - hidden on mobile */}
+                      <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
+                        <div className="col-span-6">Description</div>
+                        <div className="col-span-2 text-right">Qty</div>
+                        <div className="col-span-2 text-right">Price</div>
+                        <div className="col-span-2 text-right">Total</div>
+                      </div>
+                      {quote.items.map((item) => (
+                        <div key={item.id} className="py-2 px-2 sm:px-3 bg-muted/50 rounded text-sm">
+                          {/* Mobile layout */}
+                          <div className="sm:hidden space-y-1">
+                            <p className="font-medium">{item.description}</p>
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>{item.quantity} × ${Number(item.unit_price).toLocaleString()}</span>
+                              <span className="font-medium text-foreground">${Number(item.total).toLocaleString()}</span>
+                            </div>
+                          </div>
+                          {/* Desktop layout */}
+                          <div className="hidden sm:grid grid-cols-12">
+                            <div className="col-span-6">{item.description}</div>
+                            <div className="col-span-2 text-right">{item.quantity}</div>
+                            <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
+                            <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No line items</p>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Totals */}
+              <div className="flex justify-end">
+                <div className="w-full sm:w-48 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>${Number(quote.subtotal).toLocaleString()}</span>
                   </div>
-                  {quote.items.map((item) => (
-                    <div key={item.id} className="py-2 px-2 sm:px-3 bg-muted/50 rounded text-sm">
-                      {/* Mobile layout */}
-                      <div className="sm:hidden space-y-1">
-                        <p className="font-medium">{item.description}</p>
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>{item.quantity} × ${Number(item.unit_price).toLocaleString()}</span>
-                          <span className="font-medium text-foreground">${Number(item.total).toLocaleString()}</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Tax</span>
+                    <span>${Number(quote.tax).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
+                    <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
+                    <span>${Number(quote.total).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {quote.notes && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{quote.notes}</p>
+                  </div>
+                </>
+              )}
+
+              {/* Signature Section */}
+              <Separator />
+              <ConstrainedPanel>
+                <SignatureSection 
+                  signatureId={quote.signature_id}
+                  title="Customer Signature"
+                  onCollectSignature={onCollectSignature ? () => onCollectSignature(quote.id) : undefined}
+                  showCollectButton={showCollectButton}
+                  collectButtonText="Collect Signature"
+                  isCollecting={isCollectingSignature}
+                />
+              </ConstrainedPanel>
+
+              {/* Send Signature Request Button (separate from in-person collection) */}
+              {showCollectButton && !quote.signature_id && customerEmail && onSendSignatureRequest && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => onSendSignatureRequest(quote.id)}
+                  className="w-full sm:w-auto"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Signature Request via Email
+                </Button>
+              )}
+            </TabsContent>
+
+            {/* Linked Docs Tab */}
+            <TabsContent value="linked" className="mt-4">
+              <div>
+                <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
+                  <Link2 className="w-4 h-4" /> Linked Documents
+                </h4>
+                
+                {(loadingJobs || loadingInvoices) ? (
+                  <p className="text-xs sm:text-sm text-muted-foreground">Loading linked documents...</p>
+                ) : (linkedJob || linkedInvoices.length > 0) ? (
+                  <div className="space-y-3">
+                    {/* Linked Job */}
+                    {linkedJob && (
+                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                        <div className="flex items-center gap-3">
+                          <Briefcase className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <div>
+                            <p className="font-medium text-sm">{linkedJob.job_number}</p>
+                            <p className="text-xs text-muted-foreground">{linkedJob.title}</p>
+                          </div>
+                        </div>
+                        <Badge className={`text-xs ${jobStatusColors[linkedJob.status] || 'bg-muted'}`}>
+                          {linkedJob.status.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                    )}
+
+                    {/* Linked Invoices */}
+                    {linkedInvoices.length > 0 && linkedInvoices.map((invoice: Invoice) => (
+                      <div 
+                        key={invoice.id}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Receipt className="w-4 h-4 text-muted-foreground shrink-0" />
+                          <div>
+                            <p className="font-medium text-sm">{invoice.invoice_number}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">
+                            {formatAmount(invoice.total)}
+                          </span>
+                          <Badge className={`text-xs ${invoiceStatusColors[invoice.status] || 'bg-muted'}`}>
+                            {invoice.status}
+                          </Badge>
                         </div>
                       </div>
-                      {/* Desktop layout */}
-                      <div className="hidden sm:grid grid-cols-12">
-                        <div className="col-span-6">{item.description}</div>
-                        <div className="col-span-2 text-right">{item.quantity}</div>
-                        <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
-                        <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">No line items</p>
-              )}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Totals */}
-          <div className="flex justify-end">
-            <div className="w-full sm:w-48 space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>${Number(quote.subtotal).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax</span>
-                <span>${Number(quote.tax).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
-                <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
-                <span>${Number(quote.total).toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Notes */}
-          {quote.notes && (
-            <>
-              <Separator />
-              <div>
-                <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
-                <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{quote.notes}</p>
-              </div>
-            </>
-          )}
-
-          {/* Linked Documents Section */}
-          <Separator />
-          <div>
-            <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
-              <Link2 className="w-4 h-4" /> Linked Documents
-            </h4>
-            
-            {(loadingJobs || loadingInvoices) ? (
-              <p className="text-xs sm:text-sm text-muted-foreground">Loading linked documents...</p>
-            ) : (linkedJob || linkedInvoices.length > 0) ? (
-              <div className="space-y-3">
-                {/* Linked Job */}
-                {linkedJob && (
-                  <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      <Briefcase className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <div>
-                        <p className="font-medium text-sm">{linkedJob.job_number}</p>
-                        <p className="text-xs text-muted-foreground">{linkedJob.title}</p>
-                      </div>
-                    </div>
-                    <Badge className={`text-xs ${
-                      linkedJob.status === 'completed' || linkedJob.status === 'paid'
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        : linkedJob.status === 'in_progress'
-                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                        : linkedJob.status === 'scheduled'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                        : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {linkedJob.status.replace('_', ' ')}
-                    </Badge>
+                    ))}
                   </div>
+                ) : (
+                  <p className="text-xs sm:text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                    No linked jobs or invoices yet
+                  </p>
                 )}
-
-                {/* Linked Invoices */}
-                {linkedInvoices.length > 0 && linkedInvoices.map((invoice: Invoice) => (
-                  <div 
-                    key={invoice.id}
-                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Receipt className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <div>
-                        <p className="font-medium text-sm">{invoice.invoice_number}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(invoice.created_at), 'MMM d, yyyy')}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">
-                        {formatAmount(invoice.total)}
-                      </span>
-                      <Badge className={`text-xs ${
-                        invoice.status === 'paid' 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                          : invoice.status === 'sent'
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                          : invoice.status === 'overdue'
-                          ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                          : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {invoice.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
               </div>
-            ) : (
-              <p className="text-xs sm:text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
-                No linked jobs or invoices yet
-              </p>
-            )}
-          </div>
+            </TabsContent>
 
-          {/* Signature Section */}
-          <Separator />
-          <ConstrainedPanel>
-            <SignatureSection 
-              signatureId={quote.signature_id}
-              title="Customer Signature"
-              onCollectSignature={onCollectSignature ? () => onCollectSignature(quote.id) : undefined}
-              showCollectButton={showCollectButton}
-              collectButtonText="Collect Signature"
-              isCollecting={isCollectingSignature}
-            />
-          </ConstrainedPanel>
-
-          {/* Send Signature Request Button (separate from in-person collection) */}
-          {showCollectButton && !quote.signature_id && customerEmail && onSendSignatureRequest && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => onSendSignatureRequest(quote.id)}
-              className="w-full sm:w-auto"
-            >
-              <Send className="w-4 h-4 mr-2" />
-              Send Signature Request via Email
-            </Button>
-          )}
+            {/* Photos Tab */}
+            <TabsContent value="photos" className="mt-4">
+              <div className="text-center py-8 text-muted-foreground">
+                <Image className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">Photos are not available for quotes.</p>
+                <p className="text-xs mt-1">Photos can be added to jobs.</p>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">

@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +12,8 @@ import {
 import { 
   FileDown, Mail, Edit, PenTool, Calendar, 
   DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
-  ChevronRight, CheckCircle2, Copy, Briefcase, FileText, Link2, Send, Loader2
+  ChevronRight, CheckCircle2, Copy, Briefcase, FileText, Link2, Send, Loader2,
+  List, Image
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -133,6 +135,7 @@ export function InvoiceDetailDialog({
   const isOverdue = invoice.due_date && new Date(invoice.due_date) < new Date() && invoice.status !== 'paid';
   const hasLateFee = invoice.late_fee_amount && Number(invoice.late_fee_amount) > 0;
   const canApplyLateFee = isOverdue && !hasLateFee && lateFeePercentage > 0;
+  const linkedDocsCount = (linkedQuote ? 1 : 0) + (linkedJob ? 1 : 0);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -225,243 +228,286 @@ export function InvoiceDetailDialog({
 
           <Separator />
 
-          {/* Line Items */}
-          <div>
-            <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
-            <div className="space-y-2">
-              {invoice.items && invoice.items.length > 0 ? (
-                <>
-                  {/* Desktop header - hidden on mobile */}
-                  <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
-                    <div className="col-span-6">Description</div>
-                    <div className="col-span-2 text-right">Qty</div>
-                    <div className="col-span-2 text-right">Price</div>
-                    <div className="col-span-2 text-right">Total</div>
-                  </div>
-                  {invoice.items.map((item) => (
-                    <div key={item.id} className="py-2 px-2 sm:px-3 bg-muted/50 rounded text-sm">
-                      {/* Mobile layout */}
-                      <div className="sm:hidden space-y-1">
-                        <p className="font-medium">{item.description}</p>
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>{item.quantity} × ${Number(item.unit_price).toLocaleString()}</span>
-                          <span className="font-medium text-foreground">${Number(item.total).toLocaleString()}</span>
+          {/* Tabs for Details, Linked Docs, Photos */}
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="details" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <List className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Details</span>
+                {(invoice.items?.length || 0) > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {invoice.items?.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Linked Docs</span>
+                {linkedDocsCount > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {linkedDocsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <Image className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Photos</span>
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Details Tab */}
+            <TabsContent value="details" className="mt-4 space-y-4">
+              {/* Line Items */}
+              <div>
+                <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
+                <div className="space-y-2">
+                  {invoice.items && invoice.items.length > 0 ? (
+                    <>
+                      {/* Desktop header - hidden on mobile */}
+                      <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
+                        <div className="col-span-6">Description</div>
+                        <div className="col-span-2 text-right">Qty</div>
+                        <div className="col-span-2 text-right">Price</div>
+                        <div className="col-span-2 text-right">Total</div>
+                      </div>
+                      {invoice.items.map((item) => (
+                        <div key={item.id} className="py-2 px-2 sm:px-3 bg-muted/50 rounded text-sm">
+                          {/* Mobile layout */}
+                          <div className="sm:hidden space-y-1">
+                            <p className="font-medium">{item.description}</p>
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>{item.quantity} × ${Number(item.unit_price).toLocaleString()}</span>
+                              <span className="font-medium text-foreground">${Number(item.total).toLocaleString()}</span>
+                            </div>
+                          </div>
+                          {/* Desktop layout */}
+                          <div className="hidden sm:grid grid-cols-12">
+                            <div className="col-span-6">{item.description}</div>
+                            <div className="col-span-2 text-right">{item.quantity}</div>
+                            <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
+                            <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
+                          </div>
                         </div>
-                      </div>
-                      {/* Desktop layout */}
-                      <div className="hidden sm:grid grid-cols-12">
-                        <div className="col-span-6">{item.description}</div>
-                        <div className="col-span-2 text-right">{item.quantity}</div>
-                        <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
-                        <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">No line items</p>
-              )}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Totals */}
-          <div className="flex justify-end">
-            <div className="w-full sm:w-56 space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>${Number(invoice.subtotal).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax</span>
-                <span>${Number(invoice.tax).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between font-semibold pt-2 border-t">
-                <span>Invoice Total</span>
-                <span>${Number(invoice.total).toLocaleString()}</span>
-              </div>
-              {hasLateFee && (
-                <>
-                  <div className="flex justify-between text-sm text-destructive">
-                    <span className="flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      Late Fee {lateFeePercentage > 0 && `(${lateFeePercentage}%)`}
-                    </span>
-                    <span>+${Number(invoice.late_fee_amount).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-base sm:text-lg pt-2 border-t border-destructive/30">
-                    <span className="flex items-center gap-1 text-destructive"><DollarSign className="w-4 h-4" />Total Due</span>
-                    <span className="text-destructive">${(Number(invoice.total) + Number(invoice.late_fee_amount)).toLocaleString()}</span>
-                  </div>
-                </>
-              )}
-              {!hasLateFee && (
-                <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
-                  <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
-                  <span>${Number(invoice.total).toLocaleString()}</span>
+                      ))}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No line items</p>
+                  )}
                 </div>
+              </div>
+
+              <Separator />
+
+              {/* Totals */}
+              <div className="flex justify-end">
+                <div className="w-full sm:w-56 space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>${Number(invoice.subtotal).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Tax</span>
+                    <span>${Number(invoice.tax).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold pt-2 border-t">
+                    <span>Invoice Total</span>
+                    <span>${Number(invoice.total).toLocaleString()}</span>
+                  </div>
+                  {hasLateFee && (
+                    <>
+                      <div className="flex justify-between text-sm text-destructive">
+                        <span className="flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          Late Fee {lateFeePercentage > 0 && `(${lateFeePercentage}%)`}
+                        </span>
+                        <span>+${Number(invoice.late_fee_amount).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-base sm:text-lg pt-2 border-t border-destructive/30">
+                        <span className="flex items-center gap-1 text-destructive"><DollarSign className="w-4 h-4" />Total Due</span>
+                        <span className="text-destructive">${(Number(invoice.total) + Number(invoice.late_fee_amount)).toLocaleString()}</span>
+                      </div>
+                    </>
+                  )}
+                  {!hasLateFee && (
+                    <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
+                      <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
+                      <span>${Number(invoice.total).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {canApplyLateFee && onApplyLateFee && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="w-full mt-2"
+                      onClick={() => onApplyLateFee(invoice.id)}
+                      disabled={isApplyingLateFee}
+                    >
+                      <AlertCircle className="w-4 h-4 mr-2" />
+                      Apply {lateFeePercentage}% Late Fee
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Status Banner */}
+              {invoice.status === 'paid' ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-700 dark:text-green-400">
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="font-medium text-xs sm:text-sm">Payment received on {format(new Date(invoice.paid_at!), 'MMM d, yyyy')}</span>
+                </div>
+              ) : invoice.due_date && new Date(invoice.due_date) < new Date() ? (
+                <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-700 dark:text-red-400">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="font-medium text-xs sm:text-sm">Overdue - was due on {format(new Date(invoice.due_date), 'MMM d, yyyy')}</span>
+                </div>
+              ) : null}
+
+              {/* Notes */}
+              {invoice.notes && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{invoice.notes}</p>
+                  </div>
+                </>
               )}
-              {canApplyLateFee && onApplyLateFee && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="w-full mt-2"
-                  onClick={() => onApplyLateFee(invoice.id)}
-                  disabled={isApplyingLateFee}
+
+              {/* Signature */}
+              {invoice.signed_at && invoice.signature_id && (
+                <>
+                  <Separator />
+                  <div className="sm:max-w-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                        <PenTool className="w-4 h-4 shrink-0" />
+                        <span className="text-xs sm:text-sm font-medium">This invoice has been signed</span>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => onViewSignature?.(invoice.signature_id!)}
+                        className="w-full sm:w-auto"
+                      >
+                        View Signature
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Reminder History */}
+              {reminders.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
+                      <Bell className="w-4 h-4" />
+                      Payment Reminders Sent ({reminders.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {reminders.map((reminder) => (
+                        <div key={reminder.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 px-3 bg-muted/50 rounded text-sm">
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
+                            <span className="text-muted-foreground">{reminder.recipient_email}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {reminder.sent_by_profile?.full_name && (
+                              <span>by {reminder.sent_by_profile.full_name}</span>
+                            )}
+                            <span>{format(new Date(reminder.sent_at), 'MMM d, yyyy h:mm a')}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Signature Section */}
+              <ConstrainedPanel>
+                <SignatureSection
+                  signatureId={(invoice as any).signature_id}
+                  title="Customer Signature"
+                  onCollectSignature={onCollectSignature ? () => onCollectSignature(invoice.id) : undefined}
+                  showCollectButton={invoice.status !== 'paid' && !!onCollectSignature}
+                  collectButtonText="Collect Signature"
+                  isCollecting={isCollectingSignature}
+                />
+              </ConstrainedPanel>
+
+              {/* Send Signature Request Button */}
+              {invoice.status !== 'paid' && !(invoice as any).signature_id && customerEmail && onSendSignatureRequest && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => onSendSignatureRequest(invoice.id)}
+                  className="w-full sm:w-auto"
                 >
-                  <AlertCircle className="w-4 h-4 mr-2" />
-                  Apply {lateFeePercentage}% Late Fee
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Signature Request via Email
                 </Button>
               )}
-            </div>
-          </div>
+            </TabsContent>
 
-          {/* Payment Status Banner */}
-          {invoice.status === 'paid' ? (
-            <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-700 dark:text-green-400">
-              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span className="font-medium text-xs sm:text-sm">Payment received on {format(new Date(invoice.paid_at!), 'MMM d, yyyy')}</span>
-            </div>
-          ) : invoice.due_date && new Date(invoice.due_date) < new Date() ? (
-            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-700 dark:text-red-400">
-              <Clock className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-              <span className="font-medium text-xs sm:text-sm">Overdue - was due on {format(new Date(invoice.due_date), 'MMM d, yyyy')}</span>
-            </div>
-          ) : null}
-
-          {/* Linked Docs */}
-          {(linkedQuote || linkedJob) && (
-            <>
-              <Separator />
+            {/* Linked Docs Tab */}
+            <TabsContent value="linked" className="mt-4">
               <div>
                 <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
                   <Link2 className="w-4 h-4" />
                   Linked Documents
                 </h4>
-                <div className="space-y-2">
-                  {linkedQuote && (
-                    <div
-                      className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${onViewQuote ? 'cursor-pointer hover:bg-muted transition-colors' : ''}`}
-                      onClick={() => onViewQuote?.(linkedQuote.id)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-medium text-sm">{linkedQuote.quote_number}</span>
-                        <span className="text-xs text-muted-foreground">Quote</span>
+                {(linkedQuote || linkedJob) ? (
+                  <div className="space-y-2">
+                    {linkedQuote && (
+                      <div
+                        className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${onViewQuote ? 'cursor-pointer hover:bg-muted transition-colors' : ''}`}
+                        onClick={() => onViewQuote?.(linkedQuote.id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium text-sm">{linkedQuote.quote_number}</span>
+                          <span className="text-xs text-muted-foreground">Quote</span>
+                        </div>
+                        <Badge className={quoteStatusColors[linkedQuote.status] || 'bg-muted'}>
+                          {linkedQuote.status}
+                        </Badge>
                       </div>
-                      <Badge className={quoteStatusColors[linkedQuote.status] || 'bg-muted'}>
-                        {linkedQuote.status}
-                      </Badge>
-                    </div>
-                  )}
-                  {linkedJob && (
-                    <div
-                      className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${onViewJob ? 'cursor-pointer hover:bg-muted transition-colors' : ''}`}
-                      onClick={() => onViewJob?.(linkedJob.id)}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="w-4 h-4 text-muted-foreground" />
-                        <span className="font-medium text-sm">{linkedJob.job_number}</span>
-                        <span className="text-xs text-muted-foreground truncate max-w-[150px]">{linkedJob.title}</span>
+                    )}
+                    {linkedJob && (
+                      <div
+                        className={`flex items-center justify-between p-3 bg-muted/50 rounded-lg ${onViewJob ? 'cursor-pointer hover:bg-muted transition-colors' : ''}`}
+                        onClick={() => onViewJob?.(linkedJob.id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-medium text-sm">{linkedJob.job_number}</span>
+                          <span className="text-xs text-muted-foreground truncate max-w-[150px]">{linkedJob.title}</span>
+                        </div>
+                        <Badge className={jobStatusColors[linkedJob.status] || 'bg-muted'}>
+                          {linkedJob.status.replace('_', ' ')}
+                        </Badge>
                       </div>
-                      <Badge className={jobStatusColors[linkedJob.status] || 'bg-muted'}>
-                        {linkedJob.status.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Notes */}
-          {invoice.notes && (
-            <>
-              <Separator />
-              <div>
-                <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
-                <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{invoice.notes}</p>
-              </div>
-            </>
-          )}
-
-          {/* Signature */}
-          {invoice.signed_at && invoice.signature_id && (
-            <>
-              <Separator />
-              <div className="sm:max-w-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                    <PenTool className="w-4 h-4 shrink-0" />
-                    <span className="text-xs sm:text-sm font-medium">This invoice has been signed</span>
+                    )}
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => onViewSignature?.(invoice.signature_id!)}
-                    className="w-full sm:w-auto"
-                  >
-                    View Signature
-                  </Button>
-                </div>
+                ) : (
+                  <p className="text-xs sm:text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                    No linked quotes or jobs
+                  </p>
+                )}
               </div>
-            </>
-          )}
+            </TabsContent>
 
-          {/* Reminder History */}
-          {reminders.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
-                  <Bell className="w-4 h-4" />
-                  Payment Reminders Sent ({reminders.length})
-                </h4>
-                <div className="space-y-2">
-                  {reminders.map((reminder) => (
-                    <div key={reminder.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 px-3 bg-muted/50 rounded text-sm">
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
-                        <span className="text-muted-foreground">{reminder.recipient_email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        {reminder.sent_by_profile?.full_name && (
-                          <span>by {reminder.sent_by_profile.full_name}</span>
-                        )}
-                        <span>{format(new Date(reminder.sent_at), 'MMM d, yyyy h:mm a')}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {/* Photos Tab */}
+            <TabsContent value="photos" className="mt-4">
+              <div className="text-center py-8 text-muted-foreground">
+                <Image className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">Photos are not available for invoices.</p>
+                <p className="text-xs mt-1">Photos can be added to jobs.</p>
               </div>
-            </>
-          )}
-
-          {/* Signature Section */}
-          <ConstrainedPanel>
-            <SignatureSection
-              signatureId={(invoice as any).signature_id}
-              title="Customer Signature"
-              onCollectSignature={onCollectSignature ? () => onCollectSignature(invoice.id) : undefined}
-              showCollectButton={invoice.status !== 'paid' && !!onCollectSignature}
-              collectButtonText="Collect Signature"
-              isCollecting={isCollectingSignature}
-            />
-          </ConstrainedPanel>
-
-          {/* Send Signature Request Button */}
-          {invoice.status !== 'paid' && !(invoice as any).signature_id && customerEmail && onSendSignatureRequest && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => onSendSignatureRequest(invoice.id)}
-              className="w-full sm:w-auto"
-            >
-              <Send className="w-4 h-4 mr-2" />
-              Send Signature Request via Email
-            </Button>
-          )}
+            </TabsContent>
+          </Tabs>
 
           {/* Actions */}
           <Separator />
