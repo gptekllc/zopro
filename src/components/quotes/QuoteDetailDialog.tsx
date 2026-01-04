@@ -32,6 +32,7 @@ interface QuoteDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onDownload?: (quoteId: string) => void;
   onEmail?: (quoteId: string) => void;
+  onEmailCustom?: (quoteId: string) => void;
   onConvertToInvoice?: (quoteId: string) => void;
   onCreateJob?: (quoteId: string) => void;
   onEdit?: (quoteId: string) => void;
@@ -59,6 +60,7 @@ export function QuoteDetailDialog({
   onOpenChange,
   onDownload,
   onEmail,
+  onEmailCustom,
   onConvertToInvoice,
   onCreateJob,
   onEdit,
@@ -359,6 +361,10 @@ export function QuoteDetailDialog({
             <Button variant="outline" size="sm" onClick={() => onDownload?.(quote.id)} className="flex-1 sm:flex-none">
               <FileDown className="w-4 h-4 sm:mr-1" />
               <span className="hidden sm:inline">Download</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => onEmailCustom?.(quote.id)} className="flex-1 sm:flex-none">
+              <Mail className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Email</span>
             </Button>
             {quote.status !== 'rejected' && (
               <Button variant="outline" size="sm" onClick={() => onConvertToInvoice?.(quote.id)} className="flex-1 sm:flex-none">

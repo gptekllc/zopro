@@ -817,6 +817,7 @@ const CustomerDetail = () => {
         onOpenChange={(open) => !open && openSelectedQuote(null)}
         onDownload={handleDownloadQuote}
         onEmail={handleEmailQuote}
+        onEmailCustom={(quoteId) => navigate(`/quotes?view=${quoteId}&email=true`)}
         onConvertToInvoice={handleConvertQuoteToInvoice}
         onCreateJob={(quoteId) => navigate(`/jobs?fromQuote=${quoteId}`)}
         onEdit={(quoteId) => navigate(`/quotes?view=${quoteId}`)}
