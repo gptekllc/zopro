@@ -1549,8 +1549,7 @@ const Jobs = () => {
                    <TabsTrigger value="linked" className="text-xs sm:text-sm px-2 sm:px-3">
                      Linked Docs ({(quotesPerJob.get(viewingJob.id) || 0) + viewingJobInvoices.length + (viewingJob.quote_id ? 1 : 0)})
                    </TabsTrigger>
-                   <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
-                   <TabsTrigger value="time" className="text-xs sm:text-sm px-2 sm:px-3">Time</TabsTrigger>
+                    <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
                  </TabsList>
                 
                 <TabsContent value="details" className="space-y-6 mt-4">
@@ -1861,13 +1860,6 @@ const Jobs = () => {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="time" className="mt-4">
-                  <JobTimeTracker
-                    jobId={viewingJob.id}
-                    jobNumber={viewingJob.job_number}
-                    laborHourlyRate={(viewingJob as any).labor_hourly_rate ?? null}
-                  />
-                </TabsContent>
               </Tabs>
               
               <DialogFooter className="mt-6 flex-wrap gap-2">
