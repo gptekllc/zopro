@@ -39,6 +39,7 @@ export interface CustomerJob {
   total: number | null;
   labor_hourly_rate: number | null;
   assignee?: { full_name: string | null } | null;
+  completion_signature_id?: string | null;
   completion_signed_at?: string | null;
   completion_signed_by?: string | null;
   photos?: JobPhoto[];
@@ -145,6 +146,7 @@ export function useCustomerJobs(customerId: string | undefined) {
           tax,
           total,
           labor_hourly_rate,
+          completion_signature_id,
           completion_signed_at,
           completion_signed_by,
           assignee:profiles!jobs_assigned_to_fkey(full_name),
