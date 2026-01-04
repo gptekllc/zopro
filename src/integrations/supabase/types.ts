@@ -45,10 +45,12 @@ export type Database = {
           notify_on_job_assignment: boolean
           payment_terms_days: number | null
           pdf_footer_text: string | null
+          pdf_show_invoice_photos: boolean
+          pdf_show_job_photos: boolean
           pdf_show_line_item_details: boolean
           pdf_show_logo: boolean
           pdf_show_notes: boolean
-          pdf_show_photos: boolean
+          pdf_show_quote_photos: boolean
           pdf_show_signature: boolean
           pdf_terms_conditions: string | null
           phone: string | null
@@ -103,10 +105,12 @@ export type Database = {
           notify_on_job_assignment?: boolean
           payment_terms_days?: number | null
           pdf_footer_text?: string | null
+          pdf_show_invoice_photos?: boolean
+          pdf_show_job_photos?: boolean
           pdf_show_line_item_details?: boolean
           pdf_show_logo?: boolean
           pdf_show_notes?: boolean
-          pdf_show_photos?: boolean
+          pdf_show_quote_photos?: boolean
           pdf_show_signature?: boolean
           pdf_terms_conditions?: string | null
           phone?: string | null
@@ -161,10 +165,12 @@ export type Database = {
           notify_on_job_assignment?: boolean
           payment_terms_days?: number | null
           pdf_footer_text?: string | null
+          pdf_show_invoice_photos?: boolean
+          pdf_show_job_photos?: boolean
           pdf_show_line_item_details?: boolean
           pdf_show_logo?: boolean
           pdf_show_notes?: boolean
-          pdf_show_photos?: boolean
+          pdf_show_quote_photos?: boolean
           pdf_show_signature?: boolean
           pdf_terms_conditions?: string | null
           phone?: string | null
