@@ -1576,10 +1576,14 @@ serve(async (req) => {
       );
     }
 
-    // For download action, return HTML content
-    console.log("Returning HTML for download");
+    // For download action, generate actual PDF and return as base64
+    console.log("Generating PDF for download...");
+    const pdfBytes = await generatePDFDocument(type, document, company, customer, items || [], assignee, signature, jobPhotos, pdfPreferences);
+    const pdfBase64 = btoa(String.fromCharCode(...pdfBytes));
+    console.log(`PDF generated for download, size: ${pdfBytes.length} bytes`);
+
     return new Response(
-      JSON.stringify({ success: true, html, documentNumber }),
+      JSON.stringify({ success: true, pdfBase64, documentNumber }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 

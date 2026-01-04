@@ -142,15 +142,23 @@ export function useDownloadDocument() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Open HTML in new window for printing/saving as PDF
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(data.html);
-        printWindow.document.close();
-        printWindow.onload = () => {
-          printWindow.print();
-        };
+      // Convert base64 PDF to blob and trigger download
+      const binaryString = atob(data.pdfBase64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      
+      // Create a link and trigger download
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${data.documentNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
 
       return data;
     },
