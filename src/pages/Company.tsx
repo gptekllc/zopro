@@ -49,7 +49,9 @@ const Company = () => {
     pdf_show_notes: true,
     pdf_show_signature: true,
     pdf_show_line_item_details: true,
-    pdf_show_photos: true,
+    pdf_show_job_photos: true,
+    pdf_show_quote_photos: false,
+    pdf_show_invoice_photos: false,
     pdf_terms_conditions: '',
     pdf_footer_text: '',
     // Email Templates
@@ -114,7 +116,9 @@ const Company = () => {
       pdf_show_notes: company.pdf_show_notes ?? true,
       pdf_show_signature: company.pdf_show_signature ?? true,
       pdf_show_line_item_details: company.pdf_show_line_item_details ?? true,
-      pdf_show_photos: (company as any).pdf_show_photos ?? true,
+      pdf_show_job_photos: (company as any).pdf_show_job_photos ?? true,
+      pdf_show_quote_photos: (company as any).pdf_show_quote_photos ?? false,
+      pdf_show_invoice_photos: (company as any).pdf_show_invoice_photos ?? false,
       pdf_terms_conditions: company.pdf_terms_conditions ?? '',
       pdf_footer_text: company.pdf_footer_text ?? '',
       email_job_body: (company as any).email_job_body ?? 'Please find your job summary attached. We appreciate your business and look forward to serving you.',
@@ -637,16 +641,42 @@ const Company = () => {
                           onCheckedChange={(checked) => setPreferences({ ...preferences, pdf_show_line_item_details: checked })}
                         />
                       </div>
-                      <div className="flex items-center justify-between space-x-4">
-                        <div className="space-y-0.5">
-                          <Label className="font-medium">Show Job Photos in PDF</Label>
-                          <p className="text-sm text-muted-foreground">Include uploaded job photos in job summary PDFs</p>
+                      
+                      {/* Photo Settings */}
+                      <div className="space-y-3 pt-3 border-t">
+                        <Label className="text-sm font-medium text-muted-foreground">Photo Settings</Label>
+                        <div className="flex items-center justify-between space-x-4">
+                          <div className="space-y-0.5">
+                            <Label className="font-medium">Include Photos in Job PDFs</Label>
+                            <p className="text-sm text-muted-foreground">Show before/after photos in job summary PDFs</p>
+                          </div>
+                          <Switch
+                            checked={preferences.pdf_show_job_photos}
+                            onCheckedChange={(checked) => setPreferences({ ...preferences, pdf_show_job_photos: checked })}
+                          />
                         </div>
-                        <Switch
-                          checked={preferences.pdf_show_photos}
-                          onCheckedChange={(checked) => setPreferences({ ...preferences, pdf_show_photos: checked })}
-                        />
+                        <div className="flex items-center justify-between space-x-4">
+                          <div className="space-y-0.5">
+                            <Label className="font-medium">Include Photos in Quote PDFs</Label>
+                            <p className="text-sm text-muted-foreground">Show job photos in quote PDFs (when linked to a job)</p>
+                          </div>
+                          <Switch
+                            checked={preferences.pdf_show_quote_photos}
+                            onCheckedChange={(checked) => setPreferences({ ...preferences, pdf_show_quote_photos: checked })}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between space-x-4">
+                          <div className="space-y-0.5">
+                            <Label className="font-medium">Include Photos in Invoice PDFs</Label>
+                            <p className="text-sm text-muted-foreground">Show job photos in invoice PDFs (when linked to a job)</p>
+                          </div>
+                          <Switch
+                            checked={preferences.pdf_show_invoice_photos}
+                            onCheckedChange={(checked) => setPreferences({ ...preferences, pdf_show_invoice_photos: checked })}
+                          />
+                        </div>
                       </div>
+
                       <div className="space-y-2">
                         <Label>Terms & Conditions</Label>
                         <Textarea

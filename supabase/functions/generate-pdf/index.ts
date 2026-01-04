@@ -207,7 +207,9 @@ async function generatePDFDocument(
   pdfPreferences?: {
     pdf_show_notes: boolean;
     pdf_show_signature: boolean;
-    pdf_show_photos: boolean;
+    pdf_show_job_photos: boolean;
+    pdf_show_quote_photos: boolean;
+    pdf_show_invoice_photos: boolean;
     pdf_terms_conditions: string | null;
   }
 ): Promise<Uint8Array> {
@@ -763,87 +765,112 @@ async function generatePDFDocument(
     }
   }
 
-  // Job Photos section (for jobs only)
-  if (type === "job" && pdfPreferences?.pdf_show_photos !== false && jobPhotos && jobPhotos.length > 0 && y > 150) {
-    page.drawText("Job Photos:", {
-      x: margin,
-      y,
-      size: 10,
-      font: helveticaBold,
-      color: blackColor,
-    });
-    y -= 20;
+  // Photos section - check per-document-type preference
+  const shouldShowPhotos = 
+    (type === "job" && pdfPreferences?.pdf_show_job_photos !== false) ||
+    (type === "quote" && pdfPreferences?.pdf_show_quote_photos === true) ||
+    (type === "invoice" && pdfPreferences?.pdf_show_invoice_photos === true);
 
-    const photoWidth = 120;
-    const photoHeight = 90;
-    const photosPerRow = 4;
-    const photoSpacing = 10;
-    let photoX = margin;
-    let photoCount = 0;
+  if (shouldShowPhotos && jobPhotos && jobPhotos.length > 0 && y > 150) {
+    // Group photos by type
+    const beforePhotos = jobPhotos.filter(p => p.photo_type === 'before');
+    const afterPhotos = jobPhotos.filter(p => p.photo_type === 'after');
+    const otherPhotos = jobPhotos.filter(p => p.photo_type !== 'before' && p.photo_type !== 'after');
 
-    for (const photo of jobPhotos) {
-      if (y < 120) {
-        // Add new page for more photos
+    const photoGroups = [
+      { label: "Before Photos", photos: beforePhotos },
+      { label: "After Photos", photos: afterPhotos },
+      { label: "Other Photos", photos: otherPhotos },
+    ].filter(group => group.photos.length > 0);
+
+    for (const group of photoGroups) {
+      if (y < 150) {
         const newPage = pdfDoc.addPage([612, 792]);
         y = 792 - 50;
-        photoX = margin;
-        photoCount = 0;
       }
 
-      try {
-        const photoImage = await embedImageFromUrl(pdfDoc, photo.photo_url);
-        if (photoImage) {
-          const aspect = photoImage.width / photoImage.height;
-          let drawWidth = photoWidth;
-          let drawHeight = drawWidth / aspect;
-          
-          if (drawHeight > photoHeight) {
-            drawHeight = photoHeight;
-            drawWidth = drawHeight * aspect;
-          }
+      // Draw group label
+      const pages = pdfDoc.getPages();
+      let currentPage = pages[pages.length - 1];
+      
+      currentPage.drawText(group.label + ":", {
+        x: margin,
+        y,
+        size: 10,
+        font: helveticaBold,
+        color: blackColor,
+      });
+      y -= 18;
 
-          // Get the current page (could be original or newly added)
-          const pages = pdfDoc.getPages();
-          const currentPage = pages[pages.length - 1];
-          
-          currentPage.drawImage(photoImage, {
-            x: photoX,
-            y: y - drawHeight,
-            width: drawWidth,
-            height: drawHeight,
-          });
+      const photoWidth = 120;
+      const photoHeight = 90;
+      const photosPerRow = 4;
+      const photoSpacing = 10;
+      let photoX = margin;
+      let photoCount = 0;
 
-          // Draw caption if exists
-          if (photo.caption) {
-            const captionMaxLen = 18;
-            const captionText = photo.caption.length > captionMaxLen 
-              ? photo.caption.substring(0, captionMaxLen) + '...' 
-              : photo.caption;
-            currentPage.drawText(captionText, {
-              x: photoX,
-              y: y - drawHeight - 10,
-              size: 7,
-              font: helvetica,
-              color: grayColor,
-            });
-          }
-
-          photoCount++;
-          photoX += photoWidth + photoSpacing;
-
-          if (photoCount >= photosPerRow) {
-            photoX = margin;
-            y -= photoHeight + 25;
-            photoCount = 0;
-          }
+      for (const photo of group.photos) {
+        if (y < 120) {
+          const newPage = pdfDoc.addPage([612, 792]);
+          y = 792 - 50;
+          photoX = margin;
+          photoCount = 0;
         }
-      } catch (error) {
-        console.error("Error embedding job photo:", error);
-      }
-    }
 
-    if (photoCount > 0) {
-      y -= photoHeight + 25;
+        try {
+          const photoImage = await embedImageFromUrl(pdfDoc, photo.photo_url);
+          if (photoImage) {
+            const aspect = photoImage.width / photoImage.height;
+            let drawWidth = photoWidth;
+            let drawHeight = drawWidth / aspect;
+            
+            if (drawHeight > photoHeight) {
+              drawHeight = photoHeight;
+              drawWidth = drawHeight * aspect;
+            }
+
+            const pages = pdfDoc.getPages();
+            currentPage = pages[pages.length - 1];
+            
+            currentPage.drawImage(photoImage, {
+              x: photoX,
+              y: y - drawHeight,
+              width: drawWidth,
+              height: drawHeight,
+            });
+
+            // Draw caption if exists
+            if (photo.caption) {
+              const captionMaxLen = 18;
+              const captionText = photo.caption.length > captionMaxLen 
+                ? photo.caption.substring(0, captionMaxLen) + '...' 
+                : photo.caption;
+              currentPage.drawText(captionText, {
+                x: photoX,
+                y: y - drawHeight - 10,
+                size: 7,
+                font: helvetica,
+                color: grayColor,
+              });
+            }
+
+            photoCount++;
+            photoX += photoWidth + photoSpacing;
+
+            if (photoCount >= photosPerRow) {
+              photoX = margin;
+              y -= photoHeight + 25;
+              photoCount = 0;
+            }
+          }
+        } catch (error) {
+          console.error("Error embedding photo:", error);
+        }
+      }
+
+      if (photoCount > 0) {
+        y -= photoHeight + 25;
+      }
     }
   }
 
@@ -1408,13 +1435,14 @@ serve(async (req) => {
       }
     }
 
-    // Fetch job photos if this is a job
+    // Fetch job photos (can be used for jobs, quotes with job_id, or invoices with job_id)
     let jobPhotos: { id: string; photo_url: string; caption: string | null; photo_type: string }[] = [];
-    if (type === "job") {
+    const jobIdForPhotos = type === "job" ? documentId : document.job_id;
+    if (jobIdForPhotos) {
       const { data: photosData, error: photosError } = await supabase
         .from("job_photos")
         .select("id, photo_url, caption, photo_type")
-        .eq("job_id", documentId)
+        .eq("job_id", jobIdForPhotos)
         .order("display_order");
 
       if (!photosError && photosData) {
@@ -1429,7 +1457,9 @@ serve(async (req) => {
       pdf_show_signature: company?.pdf_show_signature ?? true,
       pdf_show_logo: company?.pdf_show_logo ?? true,
       pdf_show_line_item_details: company?.pdf_show_line_item_details ?? true,
-      pdf_show_photos: company?.pdf_show_photos ?? true,
+      pdf_show_job_photos: company?.pdf_show_job_photos ?? true,
+      pdf_show_quote_photos: company?.pdf_show_quote_photos ?? false,
+      pdf_show_invoice_photos: company?.pdf_show_invoice_photos ?? false,
       pdf_terms_conditions: company?.pdf_terms_conditions ?? null,
       pdf_footer_text: company?.pdf_footer_text ?? null,
     };
