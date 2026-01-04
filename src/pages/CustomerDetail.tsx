@@ -57,6 +57,7 @@ const CustomerDetail = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [showArchivedJobs, setShowArchivedJobs] = useState(false);
+  const [sendingInvoiceEmail, setSendingInvoiceEmail] = useState(false);
   
   // Detail dialogs
   const [selectedJob, setSelectedJob] = useState<CustomerJob | null>(null);
@@ -207,11 +208,32 @@ const CustomerDetail = () => {
     downloadDocument.mutate({ type: 'invoice', documentId: invoiceId });
   };
 
-  const handleEmailInvoice = (invoiceId: string) => {
-    if (customer?.email) {
-      emailDocument.mutate({ type: 'invoice', documentId: invoiceId, recipientEmail: customer.email });
-    } else {
+  const handleEmailInvoice = async (invoiceId: string) => {
+    if (!customer?.email) {
       toast.error('Customer has no email');
+      return;
+    }
+    setSendingInvoiceEmail(true);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        emailDocument.mutate(
+          { type: 'invoice', documentId: invoiceId, recipientEmail: customer.email! },
+          {
+            onSuccess: () => resolve(),
+            onError: (err) => reject(err),
+          }
+        );
+      });
+      // Auto-update status to 'sent' if currently draft
+      const invoice = invoices.find((i) => i.id === invoiceId);
+      if (invoice && invoice.status === 'draft') {
+        await updateInvoice.mutateAsync({ id: invoiceId, status: 'sent' });
+      }
+      toast.success('Invoice sent to customer');
+    } catch {
+      toast.error('Failed to send invoice');
+    } finally {
+      setSendingInvoiceEmail(false);
     }
   };
 
@@ -839,6 +861,7 @@ const CustomerDetail = () => {
         onDuplicate={handleDuplicateInvoice}
         onStatusChange={handleInvoiceStatusChange}
         onViewSignature={(sigId) => setSelectedSignatureId(sigId)}
+        isSendingEmail={sendingInvoiceEmail}
       />
 
       <ViewSignatureDialog
