@@ -140,13 +140,26 @@ function generateEmailSocialIconsHtml(socialLinks: SocialLink[]): string {
   return `<div style="margin-top: 10px; text-align: center;">${iconsHtml}</div>`;
 }
 
+// Helper function to construct full storage URL from a path
+function getStorageUrl(path: string): string {
+  // If it's already a full URL, return as-is
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  // Otherwise, construct the Supabase storage URL
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  return `${supabaseUrl}/storage/v1/object/public/job-photos/${path}`;
+}
+
 // Helper function to fetch and embed an image
 async function embedImageFromUrl(pdfDoc: any, imageUrl: string): Promise<any | null> {
   try {
-    console.log("Fetching image from:", imageUrl);
-    const response = await fetch(imageUrl);
+    // Ensure we have a full URL
+    const fullUrl = getStorageUrl(imageUrl);
+    console.log("Fetching image from:", fullUrl);
+    const response = await fetch(fullUrl);
     if (!response.ok) {
-      console.error("Failed to fetch image:", response.status);
+      console.error("Failed to fetch image:", response.status, response.statusText);
       return null;
     }
     
@@ -154,7 +167,7 @@ async function embedImageFromUrl(pdfDoc: any, imageUrl: string): Promise<any | n
     const imageBytes = new Uint8Array(imageBuffer);
     
     // Try to determine image type from URL or content
-    const isPng = imageUrl.toLowerCase().includes('.png') || 
+    const isPng = fullUrl.toLowerCase().includes('.png') || 
                   (imageBytes[0] === 0x89 && imageBytes[1] === 0x50);
     
     if (isPng) {
