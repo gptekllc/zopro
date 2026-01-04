@@ -378,8 +378,8 @@ export function QuoteDetailDialog({
                 <span className="hidden sm:inline">Create Job</span>
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => onEdit?.(quote.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
-              <Edit className="w-4 h-4 mr-1" /> Open in Quotes
+            <Button size="sm" onClick={() => onEdit?.(quote.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
+              <Edit className="w-4 h-4 mr-1" /> Edit
             </Button>
           </div>
         </div>

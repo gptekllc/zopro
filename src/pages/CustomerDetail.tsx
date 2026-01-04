@@ -820,7 +820,7 @@ const CustomerDetail = () => {
         onEmailCustom={(quoteId) => navigate(`/quotes?view=${quoteId}&email=true`)}
         onConvertToInvoice={handleConvertQuoteToInvoice}
         onCreateJob={(quoteId) => navigate(`/jobs?fromQuote=${quoteId}`)}
-        onEdit={(quoteId) => navigate(`/quotes?view=${quoteId}`)}
+        onEdit={(quoteId) => navigate(`/quotes?edit=${quoteId}`)}
         onViewSignature={(sigId) => setSelectedSignatureId(sigId)}
       />
 
