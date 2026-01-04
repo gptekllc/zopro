@@ -91,8 +91,27 @@ export function JobDetailDialog({
   const { data: notifications = [], isLoading: loadingNotifications } = useJobNotifications(job?.id || null);
   const { data: feedbacks = [], isLoading: loadingFeedbacks } = useJobFeedbacks(job?.id || null);
   const { data: jobTimeEntries = [] } = useJobTimeEntries(job?.id || null);
-  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
+
+  const handleOpenEmailModal = () => {
+    setEmailAddress(customerEmail || '');
+    setShowEmailModal(true);
+  };
+
+  const handleCloseEmailModal = () => {
+    setShowEmailModal(false);
+    setEmailAddress('');
+  };
+
+  const handleSendEmail = () => {
+    if (emailAddress) {
+      emailDocument.mutate(
+        { type: 'job', documentId: job.id, recipientEmail: emailAddress },
+        { onSuccess: handleCloseEmailModal }
+      );
+    }
+  };
 
   // Filter invoices that are linked to this job (via quote_id that matches job's origin quote or child quotes)
   const jobInvoices = useMemo(() => {
@@ -827,42 +846,41 @@ export function JobDetailDialog({
             )}
           </div>
 
-          {/* Email Input */}
-          {showEmailInput && (
-            <>
-              <Separator />
-              <div className="space-y-2">
-                <Label htmlFor="email-address">Send Job Summary To</Label>
-                <div className="flex gap-2">
+          {/* Email Modal */}
+          <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-primary" />
+                  Send Job Summary
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email-address">Email Address</Label>
                   <Input
                     id="email-address"
                     type="email"
                     placeholder="customer@example.com"
                     value={emailAddress}
                     onChange={(e) => setEmailAddress(e.target.value)}
-                    className="flex-1"
                   />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={handleCloseEmailModal}>
+                    Cancel
+                  </Button>
                   <Button
-                    size="sm"
-                    onClick={() => {
-                      if (emailAddress) {
-                        emailDocument.mutate(
-                          { type: 'job', documentId: job.id, recipientEmail: emailAddress },
-                          { onSuccess: () => { setShowEmailInput(false); setEmailAddress(''); } }
-                        );
-                      }
-                    }}
+                    onClick={handleSendEmail}
                     disabled={!emailAddress || emailDocument.isPending}
                   >
-                    {emailDocument.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Send'}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setShowEmailInput(false)}>
-                    Cancel
+                    {emailDocument.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
+                    Send
                   </Button>
                 </div>
               </div>
-            </>
-          )}
+            </DialogContent>
+          </Dialog>
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
@@ -891,8 +909,7 @@ export function JobDetailDialog({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowEmailInput(true)}
-              disabled={showEmailInput}
+              onClick={handleOpenEmailModal}
               className="flex-1 sm:flex-none"
             >
               <Mail className="w-4 h-4 sm:mr-1" />
