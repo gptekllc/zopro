@@ -1911,7 +1911,7 @@ const Jobs = () => {
               
               {/* Actions */}
               <Separator className="mt-4" />
-              <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
+              <div className="flex flex-wrap justify-center gap-2 pt-2 sm:pt-4">
                 {/* Quick Actions for scheduled/in_progress */}
                 {['scheduled', 'in_progress'].includes(viewingJob.status) && (
                   <>
