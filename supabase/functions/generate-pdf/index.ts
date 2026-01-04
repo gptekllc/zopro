@@ -3,6 +3,17 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument, rgb, StandardFonts } from "https://esm.sh/pdf-lib@1.17.1";
 
+// Safe base64 encoder that handles large Uint8Array without stack overflow
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const CHUNK_SIZE = 0x8000; // 32KB chunks to avoid stack overflow
+  const chunks: string[] = [];
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+    chunks.push(String.fromCharCode.apply(null, chunk as unknown as number[]));
+  }
+  return btoa(chunks.join(''));
+}
+
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
@@ -1555,8 +1566,8 @@ serve(async (req) => {
       console.log("Generating PDF document...");
       const pdfBytes = await generatePDFDocument(type, document, company, customer, items || [], assignee, signature, jobPhotos, pdfPreferences);
       
-      // Convert PDF bytes to base64
-      const pdfBase64 = btoa(String.fromCharCode(...pdfBytes));
+      // Convert PDF bytes to base64 safely (avoid stack overflow with large files)
+      const pdfBase64 = uint8ArrayToBase64(pdfBytes);
       console.log(`PDF generated, size: ${pdfBytes.length} bytes`);
 
       const emailHtml = `
@@ -1628,7 +1639,7 @@ serve(async (req) => {
     // For download action, generate actual PDF and return as base64
     console.log("Generating PDF for download...");
     const pdfBytes = await generatePDFDocument(type, document, company, customer, items || [], assignee, signature, jobPhotos, pdfPreferences);
-    const pdfBase64 = btoa(String.fromCharCode(...pdfBytes));
+    const pdfBase64 = uint8ArrayToBase64(pdfBytes);
     console.log(`PDF generated for download, size: ${pdfBytes.length} bytes`);
 
     return new Response(
