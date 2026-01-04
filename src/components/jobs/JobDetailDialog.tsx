@@ -34,12 +34,16 @@ import { useJobTimeEntries } from '@/hooks/useTimeEntries';
 interface JobDetailDialogProps {
   job: CustomerJob | null;
   customerName?: string;
+  customerEmail?: string | null;
   customerPhone?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onEdit?: (jobId: string) => void;
   onViewSignature?: (signatureId: string) => void;
   onViewQuote?: (quote: Quote) => void;
+  onCollectSignature?: () => void;
+  onSendSignatureRequest?: () => void;
+  isCollectingSignature?: boolean;
 }
 
 const statusColors: Record<string, string> = {
@@ -61,12 +65,16 @@ const priorityColors: Record<string, string> = {
 export function JobDetailDialog({
   job,
   customerName,
+  customerEmail,
   customerPhone,
   open,
   onOpenChange,
   onEdit,
   onViewSignature,
   onViewQuote,
+  onCollectSignature,
+  onSendSignatureRequest,
+  isCollectingSignature,
 }: JobDetailDialogProps) {
   const { profile } = useAuth();
   const { data: company } = useCompany();
@@ -215,7 +223,7 @@ export function JobDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between gap-2 pr-8">
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -760,9 +768,12 @@ export function JobDetailDialog({
           </Tabs>
 
           {/* Completion Signature */}
-          {job.completion_signed_at && (
-            <>
-              <Separator />
+          <Separator />
+          <div>
+            <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
+              <PenTool className="w-4 h-4" /> Customer Signature
+            </h4>
+            {job.completion_signed_at ? (
               <div className="sm:max-w-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                   <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
@@ -774,10 +785,47 @@ export function JobDetailDialog({
                       )}
                     </div>
                   </div>
+                  {job.completion_signature_id && onViewSignature && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onViewSignature(job.completion_signature_id!)}
+                    >
+                      View
+                    </Button>
+                  )}
                 </div>
               </div>
-            </>
-          )}
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-2 sm:max-w-md">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCollectSignature}
+                  disabled={isCollectingSignature}
+                  className="gap-1"
+                >
+                  {isCollectingSignature ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <PenTool className="w-4 h-4" />
+                  )}
+                  Collect Signature
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onSendSignatureRequest}
+                  disabled={!customerEmail}
+                  className="gap-1"
+                  title={customerEmail ? "Send signature request via email" : "No email on file"}
+                >
+                  <Mail className="w-4 h-4" />
+                  Send Signature Request via Email
+                </Button>
+              </div>
+            )}
+          </div>
 
           {/* Email Input */}
           {showEmailInput && (
@@ -890,8 +938,8 @@ export function JobDetailDialog({
               <Receipt className="w-4 h-4 mr-1" />
               Create Invoice
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onEdit?.(job.id)}>
-              <Edit className="w-4 h-4 mr-1" /> Open in Jobs
+            <Button variant="default" size="sm" onClick={() => onEdit?.(job.id)}>
+              <Edit className="w-4 h-4 mr-1" /> Edit
             </Button>
           </div>
         </div>
