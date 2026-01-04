@@ -817,6 +817,7 @@ const CustomerDetail = () => {
         onDownload={handleDownloadQuote}
         onEmail={handleEmailQuote}
         onConvertToInvoice={handleConvertQuoteToInvoice}
+        onCreateJob={(quoteId) => navigate(`/jobs?fromQuote=${quoteId}`)}
         onEdit={(quoteId) => navigate(`/quotes?view=${quoteId}`)}
         onViewSignature={(sigId) => setSelectedSignatureId(sigId)}
       />
