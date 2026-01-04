@@ -48,6 +48,7 @@ export type Database = {
           pdf_show_line_item_details: boolean
           pdf_show_logo: boolean
           pdf_show_notes: boolean
+          pdf_show_photos: boolean
           pdf_show_signature: boolean
           pdf_terms_conditions: string | null
           phone: string | null
@@ -105,6 +106,7 @@ export type Database = {
           pdf_show_line_item_details?: boolean
           pdf_show_logo?: boolean
           pdf_show_notes?: boolean
+          pdf_show_photos?: boolean
           pdf_show_signature?: boolean
           pdf_terms_conditions?: string | null
           phone?: string | null
@@ -162,6 +164,7 @@ export type Database = {
           pdf_show_line_item_details?: boolean
           pdf_show_logo?: boolean
           pdf_show_notes?: boolean
+          pdf_show_photos?: boolean
           pdf_show_signature?: boolean
           pdf_terms_conditions?: string | null
           phone?: string | null
