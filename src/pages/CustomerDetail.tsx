@@ -827,13 +827,15 @@ const CustomerDetail = () => {
       <InvoiceDetailDialog
         invoice={selectedInvoice}
         customerName={customer.name}
+        customerEmail={customer.email || undefined}
         linkedJobNumber={(selectedInvoice as any)?.job?.job_number || (selectedInvoice as any)?.quote?.job?.job_number || null}
         open={!!selectedInvoice}
         onOpenChange={(open) => !open && openSelectedInvoice(null)}
         onDownload={handleDownloadInvoice}
         onEmail={handleEmailInvoice}
+        onEmailCustom={(invoiceId) => navigate(`/invoices?view=${invoiceId}&email=true`)}
         onMarkPaid={handleMarkInvoicePaid}
-        onEdit={(invoiceId) => navigate(`/invoices?view=${invoiceId}`)}
+        onEdit={(invoiceId) => navigate(`/invoices?edit=${invoiceId}`)}
         onDuplicate={handleDuplicateInvoice}
         onStatusChange={handleInvoiceStatusChange}
         onViewSignature={(sigId) => setSelectedSignatureId(sigId)}
