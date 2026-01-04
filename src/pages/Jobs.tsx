@@ -1980,32 +1980,21 @@ const Jobs = () => {
               <div className="flex flex-wrap justify-center gap-2 pt-2 sm:pt-4">
                 {/* Quick Actions for scheduled/in_progress */}
                 {['scheduled', 'in_progress'].includes(viewingJob.status) && (
-                  <>
-                    <Button 
-                      size="sm"
-                      variant="default" 
-                      onClick={() => sendJobNotification.mutate({ jobId: viewingJob.id, customerId: viewingJob.customer_id })}
-                      disabled={sendJobNotification.isPending}
-                    >
-                      {sendJobNotification.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Send className="w-4 h-4 mr-1" />}
-                      Send to Customer
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="sm" variant="secondary">
-                          <Navigation className="w-4 h-4 mr-1" />
-                          On My Way
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        {etaOptions.map((eta) => (
-                          <DropdownMenuItem key={eta} onClick={() => handleOnMyWay(viewingJob, eta)}>
-                            ~{eta} minutes
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="sm" variant="secondary">
+                        <Navigation className="w-4 h-4 mr-1" />
+                        On My Way
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {etaOptions.map((eta) => (
+                        <DropdownMenuItem key={eta} onClick={() => handleOnMyWay(viewingJob, eta)}>
+                          ~{eta} minutes
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
                 <Button 
                   size="sm"
