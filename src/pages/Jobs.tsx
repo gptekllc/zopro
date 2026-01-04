@@ -1909,22 +1909,25 @@ const Jobs = () => {
 
               </Tabs>
               
-              <DialogFooter className="mt-6 flex-wrap gap-2">
+              {/* Actions */}
+              <Separator className="mt-4" />
+              <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
                 {/* Quick Actions for scheduled/in_progress */}
                 {['scheduled', 'in_progress'].includes(viewingJob.status) && (
                   <>
                     <Button 
+                      size="sm"
                       variant="default" 
                       onClick={() => sendJobNotification.mutate({ jobId: viewingJob.id, customerId: viewingJob.customer_id })}
                       disabled={sendJobNotification.isPending}
                     >
-                      {sendJobNotification.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                      {sendJobNotification.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Send className="w-4 h-4 mr-1" />}
                       Send to Customer
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="secondary">
-                          <Navigation className="w-4 h-4 mr-2" />
+                        <Button size="sm" variant="secondary">
+                          <Navigation className="w-4 h-4 mr-1" />
                           On My Way
                         </Button>
                       </DropdownMenuTrigger>
@@ -1939,53 +1942,72 @@ const Jobs = () => {
                   </>
                 )}
                 <Button 
+                  size="sm"
+                  variant="outline" 
+                  onClick={() => handleEdit(viewingJob)}
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  Edit
+                </Button>
+                <Button 
+                  size="sm"
+                  variant="outline" 
+                  onClick={() => {
+                    handleDuplicate(viewingJob);
+                    openViewingJob(null);
+                  }}
+                >
+                  <Copy className="w-4 h-4 mr-1" />
+                  Duplicate
+                </Button>
+                <Button 
+                  size="sm"
                   variant="outline" 
                   onClick={() => downloadDocument.mutate({ type: 'job', documentId: viewingJob.id })}
                   disabled={downloadDocument.isPending}
                 >
-                  {downloadDocument.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
-                  Download PDF
+                  {downloadDocument.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
+                  Download
                 </Button>
                 {viewingJob.customer?.email && (
                   <Button 
+                    size="sm"
                     variant="outline" 
                     onClick={() => emailDocument.mutate({ type: 'job', documentId: viewingJob.id, recipientEmail: viewingJob.customer!.email! })}
                     disabled={emailDocument.isPending}
                   >
-                    {emailDocument.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                    {emailDocument.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Mail className="w-4 h-4 mr-1" />}
                     Email
                   </Button>
                 )}
-                <Button variant="outline" onClick={() => handleEdit(viewingJob)}>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-                <Button variant="outline" onClick={() => {
-                  handleDuplicate(viewingJob);
-                  openViewingJob(null);
-                }}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Duplicate
-                </Button>
-                <Button variant="outline" onClick={() => {
-                  handleCreateQuote(viewingJob);
-                  if ((quotesPerJob.get(viewingJob.id) || 0) === 0) {
-                    openViewingJob(null);
-                  }
-                }} disabled={convertToQuote.isPending}>
-                  <FileText className="w-4 h-4 mr-2" />
+                <Button 
+                  size="sm"
+                  variant="outline" 
+                  onClick={() => {
+                    handleCreateQuote(viewingJob);
+                    if ((quotesPerJob.get(viewingJob.id) || 0) === 0) {
+                      openViewingJob(null);
+                    }
+                  }} 
+                  disabled={convertToQuote.isPending}
+                >
+                  <FileText className="w-4 h-4 mr-1" />
                   Create Quote
                 </Button>
-                <Button onClick={() => {
-                  handleCreateInvoice(viewingJob);
-                  if ((invoicesPerJob.get(viewingJob.id) || 0) === 0) {
-                    openViewingJob(null);
-                  }
-                }} disabled={convertToInvoice.isPending}>
-                  <Receipt className="w-4 h-4 mr-2" />
+                <Button 
+                  size="sm"
+                  onClick={() => {
+                    handleCreateInvoice(viewingJob);
+                    if ((invoicesPerJob.get(viewingJob.id) || 0) === 0) {
+                      openViewingJob(null);
+                    }
+                  }} 
+                  disabled={convertToInvoice.isPending}
+                >
+                  <Receipt className="w-4 h-4 mr-1" />
                   Create Invoice
                 </Button>
-              </DialogFooter>
+              </div>
             </>}
         </DialogContent>
       </Dialog>
