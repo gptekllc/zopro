@@ -18,8 +18,10 @@ import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
+import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useJobs, Job } from '@/hooks/useJobs';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
+import { useQuotePhotos, useUploadQuotePhoto, useDeleteQuotePhoto } from '@/hooks/useQuotePhotos';
 import { useMemo } from 'react';
 import { formatAmount } from '@/lib/formatAmount';
 
@@ -90,6 +92,9 @@ export function QuoteDetailDialog({
 }: QuoteDetailDialogProps) {
   const { data: allJobs = [], isLoading: loadingJobs } = useJobs(false);
   const { data: allInvoices = [], isLoading: loadingInvoices } = useInvoices(false);
+  const { data: quotePhotos = [], isLoading: loadingPhotos } = useQuotePhotos(quote?.id || null);
+  const uploadPhoto = useUploadQuotePhoto();
+  const deletePhoto = useDeleteQuotePhoto();
 
   // Find job linked to this quote
   const linkedJob = useMemo(() => {
@@ -108,6 +113,22 @@ export function QuoteDetailDialog({
   const isApprovedOrAccepted = quote.status === 'approved' || quote.status === 'accepted';
   const showCollectButton = !isApprovedOrAccepted && quote.status !== 'rejected';
   const linkedDocsCount = (linkedJob ? 1 : 0) + linkedInvoices.length;
+
+  const handleUploadPhoto = async (file: File, photoType: 'before' | 'after' | 'other') => {
+    await uploadPhoto.mutateAsync({
+      quoteId: quote.id,
+      file,
+      photoType,
+    });
+  };
+
+  const handleDeletePhoto = async (photoId: string, photoUrl: string) => {
+    await deletePhoto.mutateAsync({
+      photoId,
+      photoUrl,
+      quoteId: quote.id,
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -216,6 +237,11 @@ export function QuoteDetailDialog({
               <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <Image className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Photos</span>
+                {quotePhotos.length > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {quotePhotos.length}
+                  </Badge>
+                )}
               </TabsTrigger>
             </TabsList>
 
@@ -381,11 +407,22 @@ export function QuoteDetailDialog({
 
             {/* Photos Tab */}
             <TabsContent value="photos" className="mt-4">
-              <div className="text-center py-8 text-muted-foreground">
-                <Image className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">Photos are not available for quotes.</p>
-                <p className="text-xs mt-1">Photos can be added to jobs.</p>
-              </div>
+              <DocumentPhotoGallery
+                photos={quotePhotos.map(p => ({
+                  id: p.id,
+                  photo_url: p.photo_url,
+                  photo_type: p.photo_type,
+                  caption: p.caption,
+                  created_at: p.created_at,
+                  display_order: p.display_order ?? 0,
+                }))}
+                bucketName="quote-photos"
+                documentId={quote.id}
+                onUpload={handleUploadPhoto}
+                onDelete={handleDeletePhoto}
+                isUploading={uploadPhoto.isPending}
+                editable={true}
+              />
             </TabsContent>
           </Tabs>
 
