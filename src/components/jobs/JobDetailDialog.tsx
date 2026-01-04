@@ -865,19 +865,71 @@ export function JobDetailDialog({
           )}
 
           {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-2 sm:pt-4 justify-end">
+          <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
+            {/* Send to Customer - only show for jobs with status that makes sense */}
+            {['scheduled', 'in_progress', 'completed'].includes(job.status) && (
+              <Button
+                size="sm"
+                onClick={() => sendJobNotification.mutate({ jobId: job.id, customerId: job.customer_id })}
+                disabled={sendJobNotification.isPending}
+                className="flex-1 sm:flex-none"
+              >
+                {sendJobNotification.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4 sm:mr-1" />}
+                <span className="hidden sm:inline">Send to Customer</span>
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadDocument.mutate({ type: 'job', documentId: job.id })}
+              disabled={downloadDocument.isPending}
+              className="flex-1 sm:flex-none"
+            >
+              {downloadDocument.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 sm:mr-1" />}
+              <span className="hidden sm:inline">Download</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowEmailInput(true)}
+              disabled={showEmailInput}
+              className="flex-1 sm:flex-none"
+            >
+              <Mail className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Email</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleCreateUpsellQuote}
+              disabled={convertJobToQuote.isPending}
+              className="flex-1 sm:flex-none"
+            >
+              <FileText className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Create Quote</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleCreateInvoice}
+              disabled={convertJobToInvoice.isPending}
+              className="flex-1 sm:flex-none"
+            >
+              <Receipt className="w-4 h-4 sm:mr-1" />
+              <span className="hidden sm:inline">Create Invoice</span>
+            </Button>
             {/* On My Way with ETA dropdown */}
             {['scheduled', 'in_progress'].includes(job.status) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="secondary"
+                    variant="outline"
                     size="sm"
-                    className="gap-1"
+                    className="flex-1 sm:flex-none"
                     title={customerPhone ? "Send SMS to customer" : "Copy message (no phone on file)"}
                   >
-                    <Navigation className="w-4 h-4" />
-                    On My Way
+                    <Navigation className="w-4 h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">On My Way</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
@@ -889,56 +941,7 @@ export function JobDetailDialog({
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            {/* Send to Customer - only show for jobs with status that makes sense */}
-            {['scheduled', 'in_progress', 'completed'].includes(job.status) && (
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => sendJobNotification.mutate({ jobId: job.id, customerId: job.customer_id })}
-                disabled={sendJobNotification.isPending}
-                className="gap-1"
-              >
-                {sendJobNotification.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Send to Customer
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => downloadDocument.mutate({ type: 'job', documentId: job.id })}
-              disabled={downloadDocument.isPending}
-            >
-              {downloadDocument.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
-              Download PDF
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowEmailInput(true)}
-              disabled={showEmailInput}
-            >
-              <Mail className="w-4 h-4 mr-1" />
-              Email
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleCreateUpsellQuote}
-              disabled={convertJobToQuote.isPending}
-            >
-              <FileText className="w-4 h-4 mr-1" />
-              Create Quote
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleCreateInvoice}
-              disabled={convertJobToInvoice.isPending}
-            >
-              <Receipt className="w-4 h-4 mr-1" />
-              Create Invoice
-            </Button>
-            <Button variant="default" size="sm" onClick={() => onEdit?.(job.id)}>
+            <Button size="sm" onClick={() => onEdit?.(job.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
               <Edit className="w-4 h-4 mr-1" /> Edit
             </Button>
           </div>
