@@ -5,13 +5,12 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { 
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
   Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star,
-  Play, Square, Coffee, List
+  List
 } from 'lucide-react';
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { useAuth } from '@/hooks/useAuth';
@@ -30,7 +29,8 @@ import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentAction
 import { useSendJobNotification } from '@/hooks/useSendJobNotification';
 import { useJobNotifications } from '@/hooks/useJobNotifications';
 import { useJobFeedbacks, JobFeedback } from '@/hooks/useJobFeedbacks';
-import { useJobTimeEntries, useActiveTimeEntry, useClockIn, useClockOut, useStartBreak, useEndBreak } from '@/hooks/useTimeEntries';
+import { useJobTimeEntries } from '@/hooks/useTimeEntries';
+
 interface JobDetailDialogProps {
   job: CustomerJob | null;
   customerName?: string;
@@ -82,60 +82,9 @@ export function JobDetailDialog({
   const sendJobNotification = useSendJobNotification();
   const { data: notifications = [], isLoading: loadingNotifications } = useJobNotifications(job?.id || null);
   const { data: feedbacks = [], isLoading: loadingFeedbacks } = useJobFeedbacks(job?.id || null);
-  const { data: jobTimeEntries = [], isLoading: loadingTimeEntries } = useJobTimeEntries(job?.id || null);
-  const { data: activeEntry } = useActiveTimeEntry();
-  const clockIn = useClockIn();
-  const clockOut = useClockOut();
-  const startBreak = useStartBreak();
-  const endBreak = useEndBreak();
+  const { data: jobTimeEntries = [] } = useJobTimeEntries(job?.id || null);
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
-  const [recordWorkHours, setRecordWorkHours] = useState(true);
-
-  // Check if active entry is for this job
-  const isActiveForThisJob = activeEntry && activeEntry.job_id === job?.id;
-  const hasActiveEntry = !!activeEntry;
-
-  const handleClockIn = async () => {
-    if (!job) return;
-    await clockIn.mutateAsync({
-      jobId: job.id,
-      recordWorkHours,
-    });
-  };
-
-  const handleClockOut = async () => {
-    if (!activeEntry) return;
-    await clockOut.mutateAsync({
-      id: activeEntry.id,
-      jobId: activeEntry.job_id,
-      technicianHourlyRate: profile?.hourly_rate || 0,
-    });
-    setRecordWorkHours(true);
-  };
-
-  const handleStartBreak = async () => {
-    if (!activeEntry) return;
-    await startBreak.mutateAsync(activeEntry.id);
-  };
-
-  const handleEndBreak = async () => {
-    if (!activeEntry || !activeEntry.break_start) return;
-    await endBreak.mutateAsync({
-      entryId: activeEntry.id,
-      breakStart: activeEntry.break_start,
-      currentBreakMinutes: activeEntry.break_minutes || 0,
-    });
-  };
-
-  // Calculate total labor hours for this job
-  const totalLaborHours = useMemo(() => {
-    return jobTimeEntries.reduce((total, entry) => {
-      if (!entry.clock_out) return total;
-      const minutes = differenceInMinutes(new Date(entry.clock_out), new Date(entry.clock_in)) - (entry.break_minutes || 0);
-      return total + (minutes / 60);
-    }, 0);
-  }, [jobTimeEntries]);
 
   // Filter invoices that are linked to this job (via quote_id that matches job's origin quote or child quotes)
   const jobInvoices = useMemo(() => {
@@ -381,7 +330,7 @@ export function JobDetailDialog({
           {/* Linked Docs + Photos Tabs */}
           <Separator />
           <Tabs defaultValue="items" className="w-full">
-            <TabsList className={`grid w-full grid-cols-5`}>
+            <TabsList className={`grid w-full grid-cols-4`}>
               <TabsTrigger value="items" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <List className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Items</span>
@@ -400,12 +349,6 @@ export function JobDetailDialog({
                     {(relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0) + jobInvoices.length}
                   </Badge>
                 )}
-              </TabsTrigger>
-
-              <TabsTrigger value="timeclock" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="sm:hidden">Time</span>
-                <span className="hidden sm:inline">Time</span>
               </TabsTrigger>
 
               <TabsTrigger value="feedback" className="flex items-center gap-1 text-xs sm:text-sm px-1">
@@ -692,175 +635,6 @@ export function JobDetailDialog({
               )}
             </TabsContent>
 
-            {/* Time Clock Tab */}
-            <TabsContent value="timeclock" className="mt-4 space-y-4">
-              {/* Clock In/Out Controls */}
-              <div className="p-4 bg-muted/50 rounded-lg border space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium text-sm flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Time Tracker
-                  </h4>
-                  {totalLaborHours > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {totalLaborHours.toFixed(2)} hrs logged
-                    </Badge>
-                  )}
-                </div>
-
-                {/* Record Hours Checkbox and Rate Display */}
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="record-hours"
-                      checked={recordWorkHours}
-                      disabled={hasActiveEntry}
-                      onCheckedChange={(checked) => setRecordWorkHours(checked === true)}
-                    />
-                    <Label htmlFor="record-hours" className="text-sm text-muted-foreground cursor-pointer">
-                      Record Hours to Job
-                    </Label>
-                  </div>
-
-                  {hasActiveEntry ? (
-                    <p className="text-xs text-muted-foreground pl-6">
-                      Stop your active timer to change this option.
-                    </p>
-                  ) : recordWorkHours ? (
-                    <p className="text-xs text-muted-foreground pl-6">
-                      Rate: {formatAmount((job as any).labor_hourly_rate ?? profile?.hourly_rate ?? 0)}/hr
-                      {(job as any).labor_hourly_rate ? (
-                        <span className="ml-1 text-primary">(job rate)</span>
-                      ) : profile?.hourly_rate ? (
-                        <span className="ml-1">(your default rate)</span>
-                      ) : null}
-                    </p>
-                  ) : null}
-                </div>
-
-                {/* Timer Controls */}
-                <div className="flex flex-wrap gap-2">
-                  {!hasActiveEntry ? (
-                    <Button
-                      onClick={handleClockIn}
-                      disabled={clockIn.isPending}
-                      className="flex-1 sm:flex-none"
-                    >
-                      {clockIn.isPending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Play className="w-4 h-4 mr-2" />
-                      )}
-                      Start Timer
-                    </Button>
-                  ) : isActiveForThisJob ? (
-                    <>
-                      {activeEntry?.is_on_break ? (
-                        <Button
-                          onClick={handleEndBreak}
-                          variant="outline"
-                          disabled={endBreak.isPending}
-                          className="flex-1 sm:flex-none"
-                        >
-                          {endBreak.isPending ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <Coffee className="w-4 h-4 mr-2" />
-                          )}
-                          End Break
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={handleStartBreak}
-                          variant="outline"
-                          disabled={startBreak.isPending}
-                          className="flex-1 sm:flex-none"
-                        >
-                          {startBreak.isPending ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <Coffee className="w-4 h-4 mr-2" />
-                          )}
-                          Break
-                        </Button>
-                      )}
-                      <Button
-                        onClick={handleClockOut}
-                        variant="destructive"
-                        disabled={clockOut.isPending}
-                        className="flex-1 sm:flex-none"
-                      >
-                        {clockOut.isPending ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Square className="w-4 h-4 mr-2" />
-                        )}
-                        Stop Timer
-                      </Button>
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      You have an active timer on another job. Stop it first to start here.
-                    </p>
-                  )}
-                </div>
-
-                {isActiveForThisJob && activeEntry && (
-                  <p className="text-xs text-muted-foreground">
-                    Started at {format(new Date(activeEntry.clock_in), 'h:mm a')}
-                    {activeEntry.is_on_break && ' • On break'}
-                  </p>
-                )}
-              </div>
-
-              {/* Time Entries List */}
-              {loadingTimeEntries ? (
-                <p className="text-xs sm:text-sm text-muted-foreground">Loading time entries...</p>
-              ) : jobTimeEntries.length > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Time Entries ({jobTimeEntries.length})
-                  </p>
-                  {jobTimeEntries.map((entry) => {
-                    const duration = entry.clock_out
-                      ? differenceInMinutes(new Date(entry.clock_out), new Date(entry.clock_in)) - (entry.break_minutes || 0)
-                      : null;
-                    const hours = duration ? Math.floor(duration / 60) : 0;
-                    const mins = duration ? duration % 60 : 0;
-                    
-                    return (
-                      <div 
-                        key={entry.id}
-                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border"
-                      >
-                        <div>
-                          <p className="text-sm font-medium">{entry.user?.full_name || 'Unknown'}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(entry.clock_in), 'MMM d, h:mm a')}
-                            {entry.clock_out && ` - ${format(new Date(entry.clock_out), 'h:mm a')}`}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          {entry.clock_out ? (
-                            <Badge variant="secondary" className="text-xs">
-                              {hours}h {mins}m
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-xs animate-pulse">
-                              In progress
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-xs sm:text-sm text-muted-foreground text-center py-4">
-                  No time entries recorded for this job yet.
-                </p>
-              )}
-            </TabsContent>
 
             {/* Customer Feedback Tab */}
             <TabsContent value="feedback" className="mt-4">
