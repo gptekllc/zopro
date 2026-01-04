@@ -33,6 +33,7 @@ interface QuoteDetailDialogProps {
   onDownload?: (quoteId: string) => void;
   onEmail?: (quoteId: string) => void;
   onConvertToInvoice?: (quoteId: string) => void;
+  onCreateJob?: (quoteId: string) => void;
   onEdit?: (quoteId: string) => void;
   onViewSignature?: (signatureId: string) => void;
   onCollectSignature?: (quoteId: string) => void;
@@ -59,6 +60,7 @@ export function QuoteDetailDialog({
   onDownload,
   onEmail,
   onConvertToInvoice,
+  onCreateJob,
   onEdit,
   onViewSignature,
   onCollectSignature,
@@ -356,6 +358,12 @@ export function QuoteDetailDialog({
               <Button variant="outline" size="sm" onClick={() => onConvertToInvoice?.(quote.id)} className="flex-1 sm:flex-none">
                 <ArrowRight className="w-4 h-4 sm:mr-1" />
                 <span className="hidden sm:inline">Convert to Invoice</span>
+              </Button>
+            )}
+            {quote.status !== 'rejected' && !linkedJob && (
+              <Button variant="outline" size="sm" onClick={() => onCreateJob?.(quote.id)} className="flex-1 sm:flex-none">
+                <Briefcase className="w-4 h-4 sm:mr-1" />
+                <span className="hidden sm:inline">Create Job</span>
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => onEdit?.(quote.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
