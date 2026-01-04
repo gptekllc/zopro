@@ -1369,7 +1369,7 @@ const Invoices = () => {
 
               {/* Actions */}
               <Separator />
-              <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
+              <div className="flex flex-wrap justify-center gap-2 pt-2 sm:pt-4">
                 <Button variant="outline" size="sm" onClick={() => {
                   handleEdit(viewingInvoice);
                   openViewingInvoice(null);
