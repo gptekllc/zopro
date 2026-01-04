@@ -171,6 +171,11 @@ const Jobs = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [viewingJob, setViewingJob] = useState<Job | null>(null);
+  
+  // Email modal state for Job Detail dialog
+  const [showJobEmailModal, setShowJobEmailModal] = useState(false);
+  const [jobEmailAddress, setJobEmailAddress] = useState('');
+
   const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const [photoType, setPhotoType] = useState<'before' | 'after' | 'other'>('before');
   const [photoCaption, setPhotoCaption] = useState('');
@@ -1909,6 +1914,67 @@ const Jobs = () => {
 
               </Tabs>
               
+              {/* Job Email Modal */}
+              <AlertDialog open={showJobEmailModal} onOpenChange={setShowJobEmailModal}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <Mail className="w-5 h-5 text-primary" />
+                      Email Job PDF
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Send the job summary PDF to your customer.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="job-email-address">Email Address</Label>
+                    <Input
+                      id="job-email-address"
+                      type="email"
+                      value={jobEmailAddress}
+                      onChange={(e) => setJobEmailAddress(e.target.value)}
+                      placeholder="customer@example.com"
+                    />
+                  </div>
+
+                  <AlertDialogFooter>
+                    <AlertDialogCancel
+                      onClick={() => {
+                        setShowJobEmailModal(false);
+                        setJobEmailAddress('');
+                      }}
+                    >
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        if (!viewingJob) return;
+                        if (!jobEmailAddress) return;
+
+                        emailDocument.mutate(
+                          { type: 'job', documentId: viewingJob.id, recipientEmail: jobEmailAddress },
+                          {
+                            onSuccess: () => {
+                              setShowJobEmailModal(false);
+                              setJobEmailAddress('');
+                            },
+                          }
+                        );
+                      }}
+                      disabled={!jobEmailAddress || emailDocument.isPending}
+                    >
+                      {emailDocument.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4 mr-2" />
+                      )}
+                      Send
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
               {/* Actions */}
               <Separator className="mt-4" />
               <div className="flex flex-wrap justify-center gap-2 pt-2 sm:pt-4">
@@ -1973,7 +2039,10 @@ const Jobs = () => {
                   <Button 
                     size="sm"
                     variant="outline" 
-                    onClick={() => emailDocument.mutate({ type: 'job', documentId: viewingJob.id, recipientEmail: viewingJob.customer!.email! })}
+                    onClick={() => {
+                      setJobEmailAddress(viewingJob.customer?.email ?? '');
+                      setShowJobEmailModal(true);
+                    }}
                     disabled={emailDocument.isPending}
                   >
                     {emailDocument.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Mail className="w-4 h-4 mr-1" />}
