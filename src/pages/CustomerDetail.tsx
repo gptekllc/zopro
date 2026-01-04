@@ -10,6 +10,9 @@ import {
 } from '@/hooks/useCustomerHistory';
 import { useDownloadDocument, useEmailDocument, useConvertQuoteToInvoice } from '@/hooks/useDocumentActions';
 import { useUpdateInvoice } from '@/hooks/useInvoices';
+import { useSignInvoice } from '@/hooks/useSignatures';
+import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
+import { useCompany } from '@/hooks/useCompany';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,6 +34,7 @@ import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { QuoteDetailDialog } from '@/components/quotes/QuoteDetailDialog';
 import { InvoiceDetailDialog } from '@/components/invoices/InvoiceDetailDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
+import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -64,6 +68,10 @@ const CustomerDetail = () => {
   const [selectedQuote, setSelectedQuote] = useState<CustomerQuote | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<CustomerInvoice | null>(null);
   const [selectedSignatureId, setSelectedSignatureId] = useState<string | null>(null);
+  
+  // Signature dialogs
+  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
+  const [signatureInvoice, setSignatureInvoice] = useState<CustomerInvoice | null>(null);
 
   // Wrapped setters for scroll restoration
   const openSelectedJob = useCallback((job: CustomerJob | null) => {
@@ -128,6 +136,9 @@ const CustomerDetail = () => {
   const emailDocument = useEmailDocument();
   const convertToInvoice = useConvertQuoteToInvoice();
   const updateInvoice = useUpdateInvoice();
+  const signInvoice = useSignInvoice();
+  const sendSignatureRequest = useSendSignatureRequest();
+  const { data: company } = useCompany();
 
   const handleSendPortalLink = async () => {
     if (!customer?.email) {
@@ -269,6 +280,58 @@ const CustomerDetail = () => {
 
   const handleDuplicateInvoice = (invoiceId: string) => {
     navigate(`/invoices?duplicate=${invoiceId}`);
+  };
+
+  // Signature handlers for invoices
+  const handleOpenSignatureDialog = (invoice: CustomerInvoice) => {
+    setSignatureInvoice(invoice);
+    setSignatureDialogOpen(true);
+  };
+
+  const handleSignatureComplete = async (signatureData: string, signerName: string) => {
+    if (!signatureInvoice || !customer) return;
+    try {
+      const signature = await signInvoice.mutateAsync({
+        invoiceId: signatureInvoice.id,
+        signatureData,
+        signerName,
+        customerId: customer.id,
+      });
+      // Update selected invoice with the new signature
+      if (selectedInvoice?.id === signatureInvoice.id) {
+        setSelectedInvoice({
+          ...selectedInvoice,
+          signature_id: signature.id,
+          signed_at: new Date().toISOString(),
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+        } as any);
+      }
+      setSignatureDialogOpen(false);
+      setSignatureInvoice(null);
+      toast.success('Signature collected and invoice marked as paid');
+    } catch {
+      toast.error('Failed to collect signature');
+    }
+  };
+
+  const handleSendInvoiceSignatureRequest = (invoiceId: string) => {
+    if (!customer?.email) {
+      toast.error('Customer does not have an email address');
+      return;
+    }
+    const invoice = invoices.find(i => i.id === invoiceId);
+    if (!invoice) return;
+    
+    sendSignatureRequest.mutate({
+      documentType: 'invoice',
+      documentId: invoiceId,
+      recipientEmail: customer.email,
+      recipientName: customer.name,
+      companyName: company?.name || 'Company',
+      documentNumber: invoice.invoice_number,
+      customerId: customer.id,
+    });
   };
 
   const handleActivityClick = (activity: typeof activities[0]) => {
@@ -861,6 +924,12 @@ const CustomerDetail = () => {
         onDuplicate={handleDuplicateInvoice}
         onStatusChange={handleInvoiceStatusChange}
         onViewSignature={(sigId) => setSelectedSignatureId(sigId)}
+        onCollectSignature={(invoiceId) => {
+          const invoice = invoices.find(i => i.id === invoiceId);
+          if (invoice) handleOpenSignatureDialog(invoice);
+        }}
+        onSendSignatureRequest={handleSendInvoiceSignatureRequest}
+        isCollectingSignature={signInvoice.isPending}
         isSendingEmail={sendingInvoiceEmail}
       />
 
@@ -868,6 +937,15 @@ const CustomerDetail = () => {
         signatureId={selectedSignatureId}
         open={!!selectedSignatureId}
         onOpenChange={(open) => !open && setSelectedSignatureId(null)}
+      />
+
+      <SignatureDialog
+        open={signatureDialogOpen}
+        onOpenChange={setSignatureDialogOpen}
+        onSignatureComplete={handleSignatureComplete}
+        title={`Sign Invoice ${signatureInvoice?.invoice_number || ''}`}
+        description="Please sign below to confirm receipt and payment"
+        isSubmitting={signInvoice.isPending}
       />
     </div>
   );
