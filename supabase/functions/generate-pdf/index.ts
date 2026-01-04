@@ -1473,8 +1473,11 @@ serve(async (req) => {
       }
     }
 
+    // Define photo type
+    type PhotoData = { id: string; photo_url: string; caption: string | null; photo_type: string };
+    
     // Fetch job photos (can be used for jobs, quotes with job_id, or invoices with job_id)
-    let jobPhotos: { id: string; photo_url: string; caption: string | null; photo_type: string }[] = [];
+    let jobPhotos: PhotoData[] = [];
     const jobIdForPhotos = type === "job" ? documentId : document.job_id;
     if (jobIdForPhotos) {
       const { data: photosData, error: photosError } = await supabase
@@ -1509,6 +1512,88 @@ serve(async (req) => {
 
         jobPhotos = signed;
       }
+    }
+
+    // Fetch quote photos (for quotes)
+    let quotePhotos: PhotoData[] = [];
+    if (type === "quote") {
+      const { data: photosData, error: photosError } = await supabase
+        .from("quote_photos")
+        .select("id, photo_url, caption, photo_type")
+        .eq("quote_id", documentId)
+        .order("display_order");
+
+      if (!photosError && photosData) {
+        quotePhotos = photosData;
+        console.log(`Found ${quotePhotos.length} quote photos`);
+
+        // Generate signed URLs for quote photos
+        const signed = await Promise.all(
+          quotePhotos.map(async (p) => {
+            if (isAbsoluteUrl(p.photo_url)) return p;
+
+            const { data: signedData, error: signedErr } = await supabase
+              .storage
+              .from('quote-photos')
+              .createSignedUrl(p.photo_url, 60 * 10); // 10 minutes
+
+            if (signedErr || !signedData?.signedUrl) {
+              console.error('Failed to create signed URL for quote photo', { photoId: p.id, path: p.photo_url, signedErr });
+              return p;
+            }
+
+            return { ...p, photo_url: signedData.signedUrl };
+          })
+        );
+
+        quotePhotos = signed;
+      }
+    }
+
+    // Fetch invoice photos (for invoices)
+    let invoicePhotos: PhotoData[] = [];
+    if (type === "invoice") {
+      const { data: photosData, error: photosError } = await supabase
+        .from("invoice_photos")
+        .select("id, photo_url, caption, photo_type")
+        .eq("invoice_id", documentId)
+        .order("display_order");
+
+      if (!photosError && photosData) {
+        invoicePhotos = photosData;
+        console.log(`Found ${invoicePhotos.length} invoice photos`);
+
+        // Generate signed URLs for invoice photos
+        const signed = await Promise.all(
+          invoicePhotos.map(async (p) => {
+            if (isAbsoluteUrl(p.photo_url)) return p;
+
+            const { data: signedData, error: signedErr } = await supabase
+              .storage
+              .from('invoice-photos')
+              .createSignedUrl(p.photo_url, 60 * 10); // 10 minutes
+
+            if (signedErr || !signedData?.signedUrl) {
+              console.error('Failed to create signed URL for invoice photo', { photoId: p.id, path: p.photo_url, signedErr });
+              return p;
+            }
+
+            return { ...p, photo_url: signedData.signedUrl };
+          })
+        );
+
+        invoicePhotos = signed;
+      }
+    }
+
+    // Combine all photos for the document based on type and preferences
+    let documentPhotos: PhotoData[] = [];
+    if (type === "job" && company?.pdf_show_job_photos) {
+      documentPhotos = jobPhotos;
+    } else if (type === "quote" && company?.pdf_show_quote_photos) {
+      documentPhotos = quotePhotos;
+    } else if (type === "invoice" && company?.pdf_show_invoice_photos) {
+      documentPhotos = invoicePhotos;
     }
 
     // Extract PDF preferences from company
@@ -1564,7 +1649,7 @@ serve(async (req) => {
 
       // Generate actual PDF document
       console.log("Generating PDF document...");
-      const pdfBytes = await generatePDFDocument(type, document, company, customer, items || [], assignee, signature, jobPhotos, pdfPreferences);
+      const pdfBytes = await generatePDFDocument(type, document, company, customer, items || [], assignee, signature, documentPhotos, pdfPreferences);
       
       // Convert PDF bytes to base64 safely (avoid stack overflow with large files)
       const pdfBase64 = uint8ArrayToBase64(pdfBytes);
@@ -1638,7 +1723,7 @@ serve(async (req) => {
 
     // For download action, generate actual PDF and return as base64
     console.log("Generating PDF for download...");
-    const pdfBytes = await generatePDFDocument(type, document, company, customer, items || [], assignee, signature, jobPhotos, pdfPreferences);
+    const pdfBytes = await generatePDFDocument(type, document, company, customer, items || [], assignee, signature, documentPhotos, pdfPreferences);
     const pdfBase64 = uint8ArrayToBase64(pdfBytes);
     console.log(`PDF generated for download, size: ${pdfBytes.length} bytes`);
 
