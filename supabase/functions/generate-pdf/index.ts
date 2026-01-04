@@ -666,12 +666,16 @@ serve(async (req) => {
       }
 
       let subject: string;
+      let customEmailBody: string;
       if (type === "quote") {
         subject = `Quote ${documentNumber} from ${company?.name || "Our Company"}`;
+        customEmailBody = company?.email_quote_body || "Please find your quote attached. We appreciate the opportunity to serve you. This quote is valid for the period indicated.";
       } else if (type === "invoice") {
         subject = `Invoice ${documentNumber} from ${company?.name || "Our Company"}`;
+        customEmailBody = company?.email_invoice_body || "Please find your invoice attached. We appreciate your business. Payment is due by the date indicated on the invoice.";
       } else {
-        subject = `Job Summary ${documentNumber} from ${company?.name || "Our Company"}`;
+        subject = `Job Summary ${documentNumber} from ${company?.name || "The Team"}`;
+        customEmailBody = company?.email_job_body || "Please find your job summary attached. We appreciate your business and look forward to serving you.";
       }
 
       // Payment info for email
@@ -682,10 +686,27 @@ serve(async (req) => {
       // Generate email social icons
       const emailSocialIconsHtml = generateEmailSocialIconsHtml(socialLinks || []);
 
+      // Create PDF content as base64
+      const pdfHtmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; }
+    @page { margin: 20mm; }
+  </style>
+</head>
+<body>
+  ${html}
+</body>
+</html>`;
+      const pdfBase64 = btoa(unescape(encodeURIComponent(pdfHtmlContent)));
+
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Hello ${customer?.name || ""},</h2>
-          <p>Please find your ${type === "job" ? "job summary" : type} attached below.</p>
+          <p style="white-space: pre-wrap;">${customEmailBody}</p>
           <p><strong>${type === "quote" ? "Quote" : type === "invoice" ? "Invoice" : "Job"} Number:</strong> ${documentNumber}</p>
           ${document.total ? `<p><strong>Total Amount:</strong> $${Number(document.total).toLocaleString()}</p>` : ""}
           ${type === "invoice" && document.due_date ? `<p><strong>Due Date:</strong> ${new Date(document.due_date).toLocaleDateString()}</p>` : ""}
@@ -698,8 +719,9 @@ serve(async (req) => {
               ${lateFee && lateFee > 0 ? `<p style="margin: 5px 0;"><strong>Late Fee:</strong> ${lateFee}% on overdue balances</p>` : ''}
             </div>
           ` : ""}
-          <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
-          ${html}
+          <p style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
+            📎 <strong>Attached:</strong> ${type === "quote" ? "Quote" : type === "invoice" ? "Invoice" : "Job Summary"} ${documentNumber} (HTML document)
+          </p>
           <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
           <p>If you have any questions, please don't hesitate to contact us.</p>
           <p>Best regards,<br/>${company?.name || "The Team"}</p>
@@ -708,7 +730,7 @@ serve(async (req) => {
         </div>
       `;
 
-      console.log(`Sending email to ${recipientEmail}`);
+      console.log(`Sending email to ${recipientEmail} with attachment`);
 
       const { data: emailData, error: emailError } = await resend.emails.send({
         from: "ZoPro Notifications <noreply@email.zopro.app>",
@@ -716,6 +738,12 @@ serve(async (req) => {
         reply_to: company?.email || undefined,
         subject,
         html: emailHtml,
+        attachments: [
+          {
+            filename: `${documentNumber}.html`,
+            content: pdfHtmlContent,
+          }
+        ],
       });
 
       if (emailError) {
@@ -723,7 +751,7 @@ serve(async (req) => {
         throw new Error("Failed to send email: " + (emailError as any).message);
       }
 
-      console.log("Email sent successfully:", emailData);
+      console.log("Email sent successfully with attachment:", emailData);
 
       // Update document status to 'sent' if it's a draft (not for jobs)
       if (type !== "job" && document.status === "draft") {
@@ -736,7 +764,7 @@ serve(async (req) => {
       console.log(`Email sent successfully to ${recipientEmail}`);
 
       return new Response(
-        JSON.stringify({ success: true, message: "Email sent successfully" }),
+        JSON.stringify({ success: true, message: "Email sent successfully with attachment" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

@@ -51,6 +51,10 @@ const Company = () => {
     pdf_show_line_item_details: true,
     pdf_terms_conditions: '',
     pdf_footer_text: '',
+    // Email Templates
+    email_job_body: 'Please find your job summary attached. We appreciate your business and look forward to serving you.',
+    email_quote_body: 'Please find your quote attached. We appreciate the opportunity to serve you. This quote is valid for the period indicated.',
+    email_invoice_body: 'Please find your invoice attached. We appreciate your business. Payment is due by the date indicated on the invoice.',
     // Job Settings
     default_job_duration: 60,
     default_job_priority: 'medium',
@@ -111,6 +115,9 @@ const Company = () => {
       pdf_show_line_item_details: company.pdf_show_line_item_details ?? true,
       pdf_terms_conditions: company.pdf_terms_conditions ?? '',
       pdf_footer_text: company.pdf_footer_text ?? '',
+      email_job_body: (company as any).email_job_body ?? 'Please find your job summary attached. We appreciate your business and look forward to serving you.',
+      email_quote_body: (company as any).email_quote_body ?? 'Please find your quote attached. We appreciate the opportunity to serve you. This quote is valid for the period indicated.',
+      email_invoice_body: (company as any).email_invoice_body ?? 'Please find your invoice attached. We appreciate your business. Payment is due by the date indicated on the invoice.',
       default_job_duration: company.default_job_duration ?? 60,
       default_job_priority: company.default_job_priority ?? 'medium',
       require_job_completion_signature: company.require_job_completion_signature ?? false,
@@ -191,6 +198,9 @@ const Company = () => {
       pdf_terms_conditions: preferences.pdf_terms_conditions || null,
       pdf_footer_text: preferences.pdf_footer_text || null,
       customer_portal_welcome_message: preferences.customer_portal_welcome_message || null,
+      email_job_body: preferences.email_job_body || null,
+      email_quote_body: preferences.email_quote_body || null,
+      email_invoice_body: preferences.email_invoice_body || null,
     } as any);
   };
 
@@ -641,6 +651,51 @@ const Company = () => {
                           value={preferences.pdf_footer_text}
                           onChange={(e) => setPreferences({ ...preferences, pdf_footer_text: e.target.value })}
                         />
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Email Templates */}
+                  <AccordionItem value="email-templates">
+                    <AccordionTrigger className="text-base font-medium">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4" />
+                        Email Templates
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-4">
+                      <p className="text-sm text-muted-foreground">
+                        Customize the email body text that is sent when you email jobs, quotes, or invoices to customers. The document will be attached to the email.
+                      </p>
+                      <div className="space-y-2">
+                        <Label>Job Email Body</Label>
+                        <Textarea
+                          placeholder="Enter the email body for job emails..."
+                          value={preferences.email_job_body}
+                          onChange={(e) => setPreferences({ ...preferences, email_job_body: e.target.value })}
+                          rows={3}
+                        />
+                        <p className="text-xs text-muted-foreground">This text will appear when you send job summaries to customers.</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Quote Email Body</Label>
+                        <Textarea
+                          placeholder="Enter the email body for quote emails..."
+                          value={preferences.email_quote_body}
+                          onChange={(e) => setPreferences({ ...preferences, email_quote_body: e.target.value })}
+                          rows={3}
+                        />
+                        <p className="text-xs text-muted-foreground">This text will appear when you send quotes to customers.</p>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Invoice Email Body</Label>
+                        <Textarea
+                          placeholder="Enter the email body for invoice emails..."
+                          value={preferences.email_invoice_body}
+                          onChange={(e) => setPreferences({ ...preferences, email_invoice_body: e.target.value })}
+                          rows={3}
+                        />
+                        <p className="text-xs text-muted-foreground">This text will appear when you send invoices to customers.</p>
                       </div>
                     </AccordionContent>
                   </AccordionItem>

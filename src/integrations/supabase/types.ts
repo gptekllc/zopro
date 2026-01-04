@@ -31,8 +31,11 @@ export type Database = {
           default_payment_method: string | null
           default_quote_validity_days: number
           email: string | null
+          email_invoice_body: string | null
+          email_job_body: string | null
           email_on_new_job: boolean
           email_on_payment_received: boolean
+          email_quote_body: string | null
           id: string
           invoice_reminder_days: number
           late_fee_percentage: number | null
@@ -85,8 +88,11 @@ export type Database = {
           default_payment_method?: string | null
           default_quote_validity_days?: number
           email?: string | null
+          email_invoice_body?: string | null
+          email_job_body?: string | null
           email_on_new_job?: boolean
           email_on_payment_received?: boolean
+          email_quote_body?: string | null
           id?: string
           invoice_reminder_days?: number
           late_fee_percentage?: number | null
@@ -139,8 +145,11 @@ export type Database = {
           default_payment_method?: string | null
           default_quote_validity_days?: number
           email?: string | null
+          email_invoice_body?: string | null
+          email_job_body?: string | null
           email_on_new_job?: boolean
           email_on_payment_received?: boolean
+          email_quote_body?: string | null
           id?: string
           invoice_reminder_days?: number
           late_fee_percentage?: number | null
