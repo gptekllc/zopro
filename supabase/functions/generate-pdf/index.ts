@@ -140,41 +140,55 @@ function generateEmailSocialIconsHtml(socialLinks: SocialLink[]): string {
   return `<div style="margin-top: 10px; text-align: center;">${iconsHtml}</div>`;
 }
 
-// Helper function to construct full storage URL from a path
-function getStorageUrl(path: string): string {
-  // If it's already a full URL, return as-is
-  if (path.startsWith('http://') || path.startsWith('https://')) {
-    return path;
-  }
-  // Otherwise, construct the Supabase storage URL
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  return `${supabaseUrl}/storage/v1/object/public/job-photos/${path}`;
+// Helper: check for absolute URL
+function isAbsoluteUrl(value: string): boolean {
+  return value.startsWith('http://') || value.startsWith('https://');
 }
 
-// Helper function to fetch and embed an image
-async function embedImageFromUrl(pdfDoc: any, imageUrl: string): Promise<any | null> {
+// Helper: for public buckets, build a public URL from a storage path
+function getPublicStorageUrl(bucket: string, path: string): string {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+}
+
+// Helper function to fetch and embed an image.
+// Supports:
+// - Absolute URLs (http/https)
+// - Public storage paths from known public buckets (company-logos, social-icons)
+async function embedImageFromUrl(pdfDoc: any, imageUrlOrPath: string): Promise<any | null> {
   try {
-    // Ensure we have a full URL
-    const fullUrl = getStorageUrl(imageUrl);
-    console.log("Fetching image from:", fullUrl);
-    const response = await fetch(fullUrl);
-    if (!response.ok) {
-      console.error("Failed to fetch image:", response.status, response.statusText);
-      return null;
+    const candidates = isAbsoluteUrl(imageUrlOrPath)
+      ? [imageUrlOrPath]
+      : [
+          // Try common public buckets used by this app
+          getPublicStorageUrl('company-logos', imageUrlOrPath),
+          getPublicStorageUrl('social-icons', imageUrlOrPath),
+        ];
+
+    let lastError: unknown = null;
+
+    for (const url of candidates) {
+      try {
+        console.log("Fetching image from:", url);
+        const response = await fetch(url);
+        if (!response.ok) {
+          lastError = new Error(`HTTP ${response.status} ${response.statusText}`);
+          continue;
+        }
+
+        const imageBuffer = await response.arrayBuffer();
+        const imageBytes = new Uint8Array(imageBuffer);
+
+        const isPng = url.toLowerCase().includes('.png') || (imageBytes[0] === 0x89 && imageBytes[1] === 0x50);
+        return isPng ? await pdfDoc.embedPng(imageBytes) : await pdfDoc.embedJpg(imageBytes);
+      } catch (e) {
+        lastError = e;
+        continue;
+      }
     }
-    
-    const imageBuffer = await response.arrayBuffer();
-    const imageBytes = new Uint8Array(imageBuffer);
-    
-    // Try to determine image type from URL or content
-    const isPng = fullUrl.toLowerCase().includes('.png') || 
-                  (imageBytes[0] === 0x89 && imageBytes[1] === 0x50);
-    
-    if (isPng) {
-      return await pdfDoc.embedPng(imageBytes);
-    } else {
-      return await pdfDoc.embedJpg(imageBytes);
-    }
+
+    console.error("Failed to fetch/embed image. source=", imageUrlOrPath, "error=", lastError);
+    return null;
   } catch (error) {
     console.error("Error embedding image:", error);
     return null;
@@ -1461,6 +1475,28 @@ serve(async (req) => {
       if (!photosError && photosData) {
         jobPhotos = photosData;
         console.log(`Found ${jobPhotos.length} job photos`);
+
+        // job-photos bucket is PRIVATE in this project, so photo_url is typically a storage path.
+        // We must generate a signed URL so pdf-lib can fetch/embed the bytes.
+        const signed = await Promise.all(
+          jobPhotos.map(async (p) => {
+            if (isAbsoluteUrl(p.photo_url)) return p;
+
+            const { data: signedData, error: signedErr } = await supabase
+              .storage
+              .from('job-photos')
+              .createSignedUrl(p.photo_url, 60 * 10); // 10 minutes
+
+            if (signedErr || !signedData?.signedUrl) {
+              console.error('Failed to create signed URL for photo', { photoId: p.id, path: p.photo_url, signedErr });
+              return p;
+            }
+
+            return { ...p, photo_url: signedData.signedUrl };
+          })
+        );
+
+        jobPhotos = signed;
       }
     }
 
