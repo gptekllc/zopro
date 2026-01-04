@@ -1982,7 +1982,7 @@ const Jobs = () => {
                 {['scheduled', 'in_progress'].includes(viewingJob.status) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="secondary">
+                      <Button size="sm" variant="default">
                         <Navigation className="w-4 h-4 mr-1" />
                         On My Way
                       </Button>
