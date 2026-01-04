@@ -49,6 +49,7 @@ const Company = () => {
     pdf_show_notes: true,
     pdf_show_signature: true,
     pdf_show_line_item_details: true,
+    pdf_show_photos: true,
     pdf_terms_conditions: '',
     pdf_footer_text: '',
     // Email Templates
@@ -113,6 +114,7 @@ const Company = () => {
       pdf_show_notes: company.pdf_show_notes ?? true,
       pdf_show_signature: company.pdf_show_signature ?? true,
       pdf_show_line_item_details: company.pdf_show_line_item_details ?? true,
+      pdf_show_photos: (company as any).pdf_show_photos ?? true,
       pdf_terms_conditions: company.pdf_terms_conditions ?? '',
       pdf_footer_text: company.pdf_footer_text ?? '',
       email_job_body: (company as any).email_job_body ?? 'Please find your job summary attached. We appreciate your business and look forward to serving you.',
@@ -633,6 +635,16 @@ const Company = () => {
                         <Switch
                           checked={preferences.pdf_show_line_item_details}
                           onCheckedChange={(checked) => setPreferences({ ...preferences, pdf_show_line_item_details: checked })}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between space-x-4">
+                        <div className="space-y-0.5">
+                          <Label className="font-medium">Show Job Photos in PDF</Label>
+                          <p className="text-sm text-muted-foreground">Include uploaded job photos in job summary PDFs</p>
+                        </div>
+                        <Switch
+                          checked={preferences.pdf_show_photos}
+                          onCheckedChange={(checked) => setPreferences({ ...preferences, pdf_show_photos: checked })}
                         />
                       </div>
                       <div className="space-y-2">
