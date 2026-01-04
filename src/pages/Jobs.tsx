@@ -233,13 +233,21 @@ const Jobs = () => {
 
   // State for pending edit from URL param
   const [pendingEditJobId, setPendingEditJobId] = useState<string | null>(null);
+  const [pendingFromQuoteId, setPendingFromQuoteId] = useState<string | null>(null);
 
   // Handle URL param to auto-open job detail or edit form
   useEffect(() => {
     const viewJobId = searchParams.get('view');
     const editJobId = searchParams.get('edit');
+    const fromQuoteId = searchParams.get('fromQuote');
     
-    if (editJobId && safeJobs.length > 0) {
+    if (fromQuoteId) {
+      setPendingFromQuoteId(fromQuoteId);
+      // Clear the URL param
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('fromQuote');
+      setSearchParams(newParams, { replace: true });
+    } else if (editJobId && safeJobs.length > 0) {
       setPendingEditJobId(editJobId);
       // Clear the URL param
       const newParams = new URLSearchParams(searchParams);
@@ -483,6 +491,45 @@ const Jobs = () => {
       }
     }
   }, [pendingEditJobId, safeJobs]);
+
+  // Handle fromQuote URL param to create job from quote
+  useEffect(() => {
+    if (pendingFromQuoteId && safeQuotes.length > 0) {
+      const quote: any = safeQuotes.find((q: any) => q?.id === pendingFromQuoteId);
+      if (quote) {
+        // Pre-fill form with quote data
+        setFormData({
+          customer_id: quote.customer_id,
+          quote_id: quote.id,
+          assigned_to: null,
+          title: `Job from Quote ${quote.quote_number}`,
+          description: quote.notes || '',
+          priority: 'medium',
+          status: 'draft',
+          scheduled_start: '',
+          scheduled_end: '',
+          notes: '',
+          estimated_duration: 60,
+          discountType: quote.discount_type || 'amount',
+          discountValue: Number(quote.discount_value) || 0
+        });
+        // Import quote items as line items
+        if (quote.items && quote.items.length > 0) {
+          setLineItems(quote.items.map((item: any) => ({
+            id: crypto.randomUUID(),
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unit_price
+          })));
+        } else {
+          setLineItems([]);
+        }
+        setEditingJob(null);
+        openEditDialog(true);
+        setPendingFromQuoteId(null);
+      }
+    }
+  }, [pendingFromQuoteId, safeQuotes]);
 
   const handleDelete = (jobId: string) => {
     scheduleJobDelete(jobId);
