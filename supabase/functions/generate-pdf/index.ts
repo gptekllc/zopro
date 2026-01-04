@@ -525,7 +525,7 @@ async function generatePDFDocument(
     color: whiteColor,
   });
 
-  y -= headerHeight + 10;
+  y -= headerHeight + 6;
 
   // Items rows
   for (const item of items) {
