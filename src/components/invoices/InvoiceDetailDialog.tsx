@@ -11,7 +11,7 @@ import {
 import { 
   FileDown, Mail, Edit, PenTool, Calendar, 
   DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
-  ChevronRight, CheckCircle2, Copy, Briefcase, FileText, Link2
+  ChevronRight, CheckCircle2, Copy, Briefcase, FileText, Link2, Send
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -41,6 +41,7 @@ interface LinkedJob {
 interface InvoiceDetailDialogProps {
   invoice: CustomerInvoice | null;
   customerName?: string;
+  customerEmail?: string;
   creatorName?: string;
   linkedJobNumber?: string | null;
   linkedQuote?: LinkedQuote | null;
@@ -50,6 +51,7 @@ interface InvoiceDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onDownload?: (invoiceId: string) => void;
   onEmail?: (invoiceId: string) => void;
+  onEmailCustom?: (invoiceId: string) => void;
   onMarkPaid?: (invoiceId: string) => void;
   onEdit?: (invoiceId: string) => void;
   onDuplicate?: (invoiceId: string) => void;
@@ -92,6 +94,7 @@ const jobStatusColors: Record<string, string> = {
 export function InvoiceDetailDialog({
   invoice,
   customerName,
+  customerEmail,
   creatorName,
   linkedJobNumber,
   linkedQuote,
@@ -101,6 +104,7 @@ export function InvoiceDetailDialog({
   onOpenChange,
   onDownload,
   onEmail,
+  onEmailCustom,
   onMarkPaid,
   onEdit,
   onDuplicate,
@@ -427,9 +431,14 @@ export function InvoiceDetailDialog({
           {/* Actions */}
           <Separator />
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
-            <Button variant="outline" size="sm" onClick={() => onEdit?.(invoice.id)}>
-              <Edit className="w-4 h-4 mr-1" />
-              Edit
+            <Button 
+              size="sm" 
+              onClick={() => onEmail?.(invoice.id)} 
+              disabled={!customerEmail}
+              title={!customerEmail ? 'Customer has no email address' : undefined}
+            >
+              <Send className="w-4 h-4 mr-1" />
+              Send to Customer
             </Button>
             {onDuplicate && (
               <Button variant="outline" size="sm" onClick={() => onDuplicate(invoice.id)}>
@@ -441,7 +450,7 @@ export function InvoiceDetailDialog({
               <FileDown className="w-4 h-4 mr-1" />
               Download
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onEmail?.(invoice.id)}>
+            <Button variant="outline" size="sm" onClick={() => onEmailCustom?.(invoice.id)}>
               <Mail className="w-4 h-4 mr-1" />
               Email
             </Button>
@@ -457,11 +466,15 @@ export function InvoiceDetailDialog({
               </Button>
             )}
             {invoice.status !== 'paid' && (
-              <Button size="sm" onClick={() => onMarkPaid?.(invoice.id)}>
+              <Button variant="outline" size="sm" onClick={() => onMarkPaid?.(invoice.id)}>
                 <CheckCircle className="w-4 h-4 mr-1" />
                 Mark Paid
               </Button>
             )}
+            <Button size="sm" onClick={() => onEdit?.(invoice.id)} className="sm:ml-auto">
+              <Edit className="w-4 h-4 mr-1" />
+              Edit
+            </Button>
           </div>
         </div>
       </DialogContent>
