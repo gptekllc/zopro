@@ -1,4 +1,5 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -847,14 +848,14 @@ export function JobDetailDialog({
           </div>
 
           {/* Email Modal */}
-          <Dialog open={showEmailModal} onOpenChange={setShowEmailModal}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
+          <AlertDialog open={showEmailModal} onOpenChange={setShowEmailModal}>
+            <AlertDialogContent className="sm:max-w-md">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
                   <Mail className="w-5 h-5 text-primary" />
                   Send Job Summary
-                </DialogTitle>
-              </DialogHeader>
+                </AlertDialogTitle>
+              </AlertDialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email-address">Email Address</Label>
@@ -879,8 +880,8 @@ export function JobDetailDialog({
                   </Button>
                 </div>
               </div>
-            </DialogContent>
-          </Dialog>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
