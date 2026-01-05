@@ -848,7 +848,7 @@ const Jobs = () => {
                 <DropdownMenuItem onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
                   All Status
                 </DropdownMenuItem>
-                {JOB_STATUSES.map(s => (
+                {JOB_STATUSES_EDITABLE.map(s => (
                   <DropdownMenuItem key={s} onClick={() => setStatusFilter(s)} className={`capitalize ${statusFilter === s ? 'bg-accent' : ''}`}>
                     {s.replace('_', ' ')}
                   </DropdownMenuItem>
