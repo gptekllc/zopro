@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DollarSign, Clock, BarChart3, Users, UserCheck } from 'lucide-react';
 import TransactionsReport from '@/components/reports/TransactionsReport';
@@ -6,14 +6,30 @@ import TimesheetReportTab from '@/components/reports/TimesheetReportTab';
 import MonthlySummaryReport from '@/components/reports/MonthlySummaryReport';
 import CustomerRevenueReport from '@/components/reports/CustomerRevenueReport';
 import TechnicianPerformanceReport from '@/components/reports/TechnicianPerformanceReport';
+import { cn } from '@/lib/utils';
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('transactions');
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
     <div className="space-y-6 lg:space-y-8 animate-fade-in">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="sticky top-0 lg:top-0 z-10 bg-background pb-4 -mx-3 px-3 lg:-mx-6 lg:px-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div 
+          className={cn(
+            "sticky top-0 lg:top-0 z-10 bg-background pb-4 -mx-3 px-3 lg:-mx-6 lg:px-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 transition-shadow duration-200",
+            isScrolled && "shadow-md border-b border-border"
+          )}
+        >
           <header>
             <h1 className="text-2xl sm:text-3xl font-bold">Reports</h1>
             <p className="text-muted-foreground mt-1 text-sm sm:text-base">
@@ -73,4 +89,3 @@ const Reports = () => {
 };
 
 export default Reports;
-
