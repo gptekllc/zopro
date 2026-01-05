@@ -66,30 +66,34 @@ const Templates = () => {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-4xl">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BookTemplate className="w-6 h-6" />
-          Templates & Catalog
-        </h1>
-        <p className="text-muted-foreground">Manage your templates and product/service catalog</p>
-      </div>
-
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="jobs" className="flex items-center gap-2">
-            <Briefcase className="w-4 h-4" />
-            Job Templates
-          </TabsTrigger>
-          <TabsTrigger value="quotes" className="flex items-center gap-2">
-            <FileText className="w-4 h-4" />
-            Quote Templates
-          </TabsTrigger>
-          <TabsTrigger value="catalog" className="flex items-center gap-2">
-            <Package className="w-4 h-4" />
-            Catalog
-          </TabsTrigger>
-        </TabsList>
+        {/* Header with tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <BookTemplate className="w-6 h-6" />
+              Templates & Catalog
+            </h1>
+            <p className="text-muted-foreground">Manage your templates and product/service catalog</p>
+          </div>
+
+          <TabsList>
+            <TabsTrigger value="jobs" className="flex items-center gap-2">
+              <Briefcase className="w-4 h-4" />
+              <span className="hidden sm:inline">Job Templates</span>
+              <span className="sm:hidden">Jobs</span>
+            </TabsTrigger>
+            <TabsTrigger value="quotes" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Quote Templates</span>
+              <span className="sm:hidden">Quotes</span>
+            </TabsTrigger>
+            <TabsTrigger value="catalog" className="flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              Catalog
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="jobs">
           <JobTemplatesTab />
