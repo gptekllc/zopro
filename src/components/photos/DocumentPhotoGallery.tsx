@@ -53,6 +53,8 @@ export function DocumentPhotoGallery({
   const [changeCategoryOpen, setChangeCategoryOpen] = useState(false);
   const [photoToChangeCategory, setPhotoToChangeCategory] = useState<DocumentPhoto | null>(null);
   const [newCategory, setNewCategory] = useState<'before' | 'after' | 'other'>('other');
+  const [draggedPhoto, setDraggedPhoto] = useState<DocumentPhoto | null>(null);
+  const [dragOverCategory, setDragOverCategory] = useState<'before' | 'after' | 'other' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sort photos by display_order
@@ -95,11 +97,16 @@ export function DocumentPhotoGallery({
   const afterPhotos = orderedPhotos.filter(p => p.photo_type === 'after');
   const otherPhotos = orderedPhotos.filter(p => p.photo_type === 'other');
 
-  const photosByType = [
+  const allCategories = [
     { type: 'before', label: 'Before', photos: beforePhotos, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
     { type: 'after', label: 'After', photos: afterPhotos, color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
     { type: 'other', label: 'Other', photos: otherPhotos, color: 'bg-muted text-muted-foreground' },
-  ].filter(g => g.photos.length > 0);
+  ];
+
+  // Show only non-empty categories, but show all when dragging to allow dropping in empty categories
+  const photosByType = draggedPhoto 
+    ? allCategories 
+    : allCategories.filter(g => g.photos.length > 0);
 
   const allPhotosFlat = [...beforePhotos, ...afterPhotos, ...otherPhotos];
 
@@ -173,6 +180,40 @@ export function DocumentPhotoGallery({
     }
     setDeleteConfirmOpen(false);
     setPhotoToDelete(null);
+  };
+
+  // Drag and drop handlers for moving between categories
+  const handleDragStart = (e: React.DragEvent, photo: DocumentPhoto) => {
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedPhoto(photo);
+  };
+
+  const handleCategoryDragOver = (e: React.DragEvent, category: 'before' | 'after' | 'other') => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCategory(category);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverCategory(null);
+  };
+
+  const handleCategoryDrop = (e: React.DragEvent, targetCategory: 'before' | 'after' | 'other') => {
+    e.preventDefault();
+    setDragOverCategory(null);
+    
+    if (!draggedPhoto) return;
+
+    if (draggedPhoto.photo_type !== targetCategory && onUpdateType) {
+      onUpdateType(draggedPhoto.id, targetCategory);
+    }
+
+    setDraggedPhoto(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedPhoto(null);
+    setDragOverCategory(null);
   };
 
   useEffect(() => {
@@ -253,17 +294,34 @@ export function DocumentPhotoGallery({
               <Camera className="w-4 h-4 text-muted-foreground" />
               <span className="font-medium text-sm">Photos ({photos.length})</span>
             </div>
+            {editable && onUpdateType && (
+              <span className="text-xs text-muted-foreground">Drag to move between categories</span>
+            )}
           </div>
 
           <div className="space-y-4">
             {photosByType.map((group) => (
-              <div key={group.type}>
-                <Badge className={`mb-2 ${group.color}`} variant="secondary">
+              <div 
+                key={group.type}
+                onDragOver={(e) => handleCategoryDragOver(e, group.type as 'before' | 'after' | 'other')}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleCategoryDrop(e, group.type as 'before' | 'after' | 'other')}
+              >
+                <Badge 
+                  className={`mb-2 ${group.color} ${draggedPhoto && dragOverCategory === group.type && draggedPhoto.photo_type !== group.type ? 'ring-2 ring-primary ring-offset-2' : ''}`} 
+                  variant="secondary"
+                >
                   {group.label} ({group.photos.length})
                 </Badge>
                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                   {group.photos.map((photo) => (
-                    <div key={photo.id} className="relative group">
+                    <div 
+                      key={photo.id} 
+                      className={`relative group ${draggedPhoto?.id === photo.id ? 'opacity-50' : ''}`}
+                      draggable={editable && !!onUpdateType}
+                      onDragStart={(e) => handleDragStart(e, photo)}
+                      onDragEnd={handleDragEnd}
+                    >
                       {editable && onUpdateType && (
                         <button
                           onClick={(e) => {
@@ -309,6 +367,16 @@ export function DocumentPhotoGallery({
                       </button>
                     </div>
                   ))}
+                  {/* Empty category drop zone */}
+                  {group.photos.length === 0 && draggedPhoto && draggedPhoto.photo_type !== group.type && (
+                    <div 
+                      className={`aspect-square rounded-lg border-2 border-dashed flex items-center justify-center text-muted-foreground ${
+                        dragOverCategory === group.type ? 'border-primary bg-primary/10' : 'border-muted-foreground/30'
+                      }`}
+                    >
+                      <span className="text-xs">Drop here</span>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
