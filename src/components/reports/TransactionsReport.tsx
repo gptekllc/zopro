@@ -13,7 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { TablePagination } from '@/components/ui/table-pagination';
-import { DollarSign, TrendingDown, Hash, Calculator, Plus, MoreHorizontal, FileText, Download, Mail, Search, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { SortableTableHeader } from '@/components/ui/sortable-table-header';
+import { DollarSign, TrendingDown, Hash, Calculator, Plus, MoreHorizontal, FileText, Download, Mail, Search, X, Loader2 } from 'lucide-react';
 import { PAYMENT_METHODS, RecordPaymentDialog, PaymentData } from '@/components/invoices/RecordPaymentDialog';
 import SelectInvoiceDialog from '@/components/reports/SelectInvoiceDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -138,15 +139,6 @@ const TransactionsReport = () => {
       setSortColumn(column);
       setSortDirection('desc');
     }
-  };
-
-  const getSortIcon = (column: 'date' | 'customer' | 'amount') => {
-    if (sortColumn !== column) {
-      return <ArrowUpDown className="w-4 h-4 ml-1 opacity-50" />;
-    }
-    return sortDirection === 'asc' 
-      ? <ArrowUp className="w-4 h-4 ml-1" />
-      : <ArrowDown className="w-4 h-4 ml-1" />;
   };
 
   // Calculate summary stats
@@ -516,26 +508,30 @@ const TransactionsReport = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>
-                    <Button variant="ghost" size="sm" className="h-8 -ml-3 font-medium" onClick={() => handleSort('date')}>
-                      Date
-                      {getSortIcon('date')}
-                    </Button>
-                  </TableHead>
+                  <SortableTableHeader
+                    column="date"
+                    label="Date"
+                    currentSortColumn={sortColumn}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
                   <TableHead>Invoice #</TableHead>
-                  <TableHead>
-                    <Button variant="ghost" size="sm" className="h-8 -ml-3 font-medium" onClick={() => handleSort('customer')}>
-                      Customer
-                      {getSortIcon('customer')}
-                    </Button>
-                  </TableHead>
+                  <SortableTableHeader
+                    column="customer"
+                    label="Customer"
+                    currentSortColumn={sortColumn}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
                   <TableHead>Method</TableHead>
-                  <TableHead className="text-right">
-                    <Button variant="ghost" size="sm" className="h-8 -mr-3 font-medium" onClick={() => handleSort('amount')}>
-                      Amount
-                      {getSortIcon('amount')}
-                    </Button>
-                  </TableHead>
+                  <SortableTableHeader
+                    column="amount"
+                    label="Amount"
+                    currentSortColumn={sortColumn}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                  />
                   <TableHead>Status</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
