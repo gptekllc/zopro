@@ -14,7 +14,7 @@ const logStep = (step: string, details?: any) => {
 };
 
 interface NotificationRequest {
-  type: "invoice_paid" | "quote_approved" | "payment_failed" | "late_fee_applied" | "payment_reminder" | "payment_recorded";
+  type: "invoice_paid" | "quote_approved" | "payment_failed" | "late_fee_applied" | "payment_reminder" | "payment_recorded" | "payment_refunded";
   invoiceNumber?: string;
   quoteNumber?: string;
   customerName: string;
@@ -34,6 +34,8 @@ interface NotificationRequest {
   totalDue?: number;
   remainingBalance?: number;
   isFullyPaid?: boolean;
+  refundReason?: string;
+  refundType?: 'refunded' | 'voided';
 }
 
 serve(async (req) => {
@@ -323,6 +325,89 @@ serve(async (req) => {
         `,
       });
       logStep("Payment recorded email sent to company", { response: companyEmailResponse });
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    if (payload.type === "payment_refunded") {
+      const isVoided = payload.refundType === 'voided';
+      const actionWord = isVoided ? 'Voided' : 'Refunded';
+      const formatMethod = (method: string) => {
+        const methodLabels: Record<string, string> = {
+          'cash': 'Cash',
+          'check': 'Check',
+          'credit_debit': 'Credit/Debit Card',
+          'bank_payment': 'Bank Payment',
+          'zelle': 'Zelle',
+          'venmo': 'Venmo',
+          'paypal': 'PayPal',
+          'other': 'Other',
+        };
+        return methodLabels[method] || method;
+      };
+      
+      // Email to customer about refund
+      const customerEmailResponse = await resend.emails.send({
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
+        to: [payload.customerEmail],
+        reply_to: payload.companyEmail || undefined,
+        subject: `Payment ${actionWord} - Invoice #${payload.invoiceNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #f59e0b;">Payment ${actionWord}</h1>
+            <p>Hello ${payload.customerName},</p>
+            <p>A payment on your Invoice #${payload.invoiceNumber} from <strong>${payload.companyName}</strong> has been ${isVoided ? 'voided' : 'refunded'}.</p>
+            <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+              <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
+              <p style="margin: 10px 0 0 0;"><strong>${actionWord} Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
+              ${payload.refundReason ? `<p style="margin: 10px 0 0 0;"><strong>Reason:</strong> ${payload.refundReason}</p>` : ''}
+              ${payload.remainingBalance !== undefined && payload.remainingBalance > 0 ? `
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #fcd34d;">
+                  <p style="margin: 0; color: #dc2626;"><strong>New Balance Due:</strong> $${payload.remainingBalance.toFixed(2)}</p>
+                </div>
+              ` : ''}
+            </div>
+            ${isVoided 
+              ? '<p>This payment has been voided and removed from your invoice balance.</p>'
+              : '<p>The refund has been processed. Please allow a few business days for the refund to appear in your account.</p>'
+            }
+            <p>If you have any questions, please contact us.</p>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Best regards,<br>${payload.companyName}</p>
+          </div>
+        `,
+      });
+      logStep("Payment refund email sent to customer", { response: customerEmailResponse });
+
+      // Email to company about refund
+      const companyEmailResponse = await resend.emails.send({
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
+        to: [payload.companyEmail],
+        subject: `Payment ${actionWord} - Invoice #${payload.invoiceNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #f59e0b;">Payment ${actionWord}</h1>
+            <p>A payment has been ${isVoided ? 'voided' : 'refunded'} on Invoice #${payload.invoiceNumber}.</p>
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0;"><strong>Customer:</strong> ${payload.customerName}</p>
+              <p style="margin: 10px 0 0 0;"><strong>${actionWord} Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
+              ${payload.refundReason ? `<p style="margin: 10px 0 0 0;"><strong>Reason:</strong> ${payload.refundReason}</p>` : ''}
+              ${payload.remainingBalance !== undefined ? `
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                  <p style="margin: 0;"><strong>New Balance Due:</strong> $${payload.remainingBalance.toFixed(2)}</p>
+                </div>
+              ` : ''}
+            </div>
+            <p>The customer has been notified via email.</p>
+            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
+          </div>
+        `,
+      });
+      logStep("Payment refund email sent to company", { response: companyEmailResponse });
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
