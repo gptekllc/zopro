@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, RotateCcw, XCircle } from 'lucide-react';
 import { Payment } from '@/hooks/usePayments';
 import { PAYMENT_METHODS } from './RecordPaymentDialog';
@@ -22,8 +23,9 @@ interface RefundPaymentDialogProps {
   onOpenChange: (open: boolean) => void;
   payment: Payment | null;
   action: RefundAction;
-  onConfirm: (reason: string) => void;
+  onConfirm: (reason: string, sendNotification: boolean) => void;
   isLoading?: boolean;
+  customerHasEmail?: boolean;
 }
 
 export function RefundPaymentDialog({
@@ -33,12 +35,14 @@ export function RefundPaymentDialog({
   action,
   onConfirm,
   isLoading = false,
+  customerHasEmail = false,
 }: RefundPaymentDialogProps) {
   const [reason, setReason] = useState('');
+  const [sendNotification, setSendNotification] = useState(true);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onConfirm(reason);
+    onConfirm(reason, sendNotification);
   };
 
   const formatPaymentMethod = (method: string) => {
@@ -98,6 +102,19 @@ export function RefundPaymentDialog({
               rows={3}
             />
           </div>
+
+          {customerHasEmail && (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="sendNotification"
+                checked={sendNotification}
+                onCheckedChange={(checked) => setSendNotification(checked === true)}
+              />
+              <Label htmlFor="sendNotification" className="text-sm font-normal cursor-pointer">
+                Send {isRefund ? 'refund' : 'void'} notification email to customer
+              </Label>
+            </div>
+          )}
 
           <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <Button
