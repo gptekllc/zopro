@@ -16,7 +16,12 @@ import { Plus, Edit, Trash2, Package, Wrench, Loader2, Search, X, MoreVertical, 
 import { formatAmount } from '@/lib/formatAmount';
 import { toast } from 'sonner';
 
-export const CatalogManager = () => {
+interface CatalogManagerProps {
+  searchQuery?: string;
+  statusFilter?: 'all' | 'active' | 'inactive';
+}
+
+export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: CatalogManagerProps) => {
   const { data: items = [], isLoading } = useCatalogItems();
   const createItem = useCreateCatalogItem();
   const updateItem = useUpdateCatalogItem();
@@ -25,10 +30,6 @@ export const CatalogManager = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<CatalogItem | null>(null);
-  
-  // Search/filter state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
   
   const [formData, setFormData] = useState({
@@ -190,57 +191,7 @@ export const CatalogManager = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Search/Filter Section */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or description..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-9"
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                  onClick={() => setSearchQuery('')}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-            <Select value={statusFilter} onValueChange={(v: 'all' | 'active' | 'inactive') => setStatusFilter(v)}>
-              <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {(searchQuery || statusFilter !== 'all') && (
-            <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-              <span>Showing {filteredItems.length} of {items.length} items</span>
-              <Button
-                variant="link"
-                size="sm"
-                className="h-auto p-0 text-xs"
-                onClick={() => { setSearchQuery(''); setStatusFilter('all'); }}
-              >
-                Clear filters
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
+    <div className="space-y-4">
       {/* Products/Services Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'products' | 'services')} className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-4">
