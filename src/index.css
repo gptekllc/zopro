@@ -330,3 +330,13 @@
 .dark .rbc-today {
   background: hsl(var(--primary) / 0.1);
 }
+
+/* Swipe hint animation */
+@keyframes slide-hint {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-4px);
+  }
+}
