@@ -8,6 +8,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { 
@@ -26,6 +27,8 @@ import { usePayments, useDeletePayment, useUpdatePayment, useRefundPayment, useV
 import { PAYMENT_METHODS } from './RecordPaymentDialog';
 import { EditPaymentDialog, EditPaymentData } from './EditPaymentDialog';
 import { RefundPaymentDialog } from './RefundPaymentDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const INVOICE_STATUSES = ['draft', 'sent', 'paid'] as const;
 
@@ -157,6 +160,9 @@ export function InvoiceDetailDialog({
   const [refundPayment_, setRefundPayment] = useState<Payment | null>(null);
   const [refundAction, setRefundAction] = useState<'refund' | 'void'>('refund');
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  
+  // Receipt loading state
+  const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
 
   if (!invoice) return null;
 
@@ -251,6 +257,54 @@ export function InvoiceDetailDialog({
     }
     setRefundDialogOpen(false);
     setRefundPayment(null);
+  };
+
+  const handleDownloadReceipt = async (paymentId: string) => {
+    setReceiptLoadingId(paymentId);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-payment-receipt', {
+        body: { paymentId, action: 'download' },
+      });
+
+      if (error) throw error;
+      if (!data?.pdf) throw new Error('No PDF data received');
+
+      // Download the PDF
+      const link = document.createElement('a');
+      link.href = `data:application/pdf;base64,${data.pdf}`;
+      link.download = data.fileName || `Receipt-${invoice.invoice_number}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success('Receipt downloaded');
+    } catch (error) {
+      console.error('Failed to download receipt:', error);
+      toast.error('Failed to download receipt');
+    } finally {
+      setReceiptLoadingId(null);
+    }
+  };
+
+  const handleEmailReceipt = async (paymentId: string) => {
+    if (!customerEmail) {
+      toast.error('Customer email not available');
+      return;
+    }
+    
+    setReceiptLoadingId(paymentId);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-payment-receipt', {
+        body: { paymentId, action: 'email', recipientEmail: customerEmail },
+      });
+
+      if (error) throw error;
+      toast.success('Receipt emailed to customer');
+    } catch (error) {
+      console.error('Failed to email receipt:', error);
+      toast.error('Failed to email receipt');
+    } finally {
+      setReceiptLoadingId(null);
+    }
   };
 
   return (
@@ -559,6 +613,31 @@ export function InvoiceDetailDialog({
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
+                                    <DropdownMenuItem 
+                                      onClick={() => handleDownloadReceipt(payment.id)}
+                                      disabled={receiptLoadingId === payment.id}
+                                    >
+                                      {receiptLoadingId === payment.id ? (
+                                        <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                                      ) : (
+                                        <FileDown className="w-3 h-3 mr-2" />
+                                      )}
+                                      Download Receipt
+                                    </DropdownMenuItem>
+                                    {customerEmail && (
+                                      <DropdownMenuItem 
+                                        onClick={() => handleEmailReceipt(payment.id)}
+                                        disabled={receiptLoadingId === payment.id}
+                                      >
+                                        {receiptLoadingId === payment.id ? (
+                                          <Loader2 className="w-3 h-3 mr-2 animate-spin" />
+                                        ) : (
+                                          <Mail className="w-3 h-3 mr-2" />
+                                        )}
+                                        Email Receipt
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={() => handleEditPayment(payment)}>
                                       <Pencil className="w-3 h-3 mr-2" />
                                       Edit
@@ -571,6 +650,7 @@ export function InvoiceDetailDialog({
                                       <XCircle className="w-3 h-3 mr-2" />
                                       Void
                                     </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem 
                                       onClick={() => deletePayment.mutate({ paymentId: payment.id, invoiceId: invoice.id })}
                                       className="text-destructive"

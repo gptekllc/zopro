@@ -3,6 +3,9 @@ project_id = "emscfiinctuysscrarlg"
 [functions.generate-pdf]
 verify_jwt = false
 
+[functions.generate-payment-receipt]
+verify_jwt = false
+
 [functions.send-notification]
 verify_jwt = true
 
