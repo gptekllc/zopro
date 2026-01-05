@@ -157,6 +157,92 @@ export function useCreatePayment() {
   });
 }
 
+export function useUpdatePayment() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      paymentId,
+      invoiceId,
+      amount, 
+      method, 
+      paymentDate, 
+      notes,
+    }: { 
+      paymentId: string;
+      invoiceId: string;
+      amount: number; 
+      method: string; 
+      paymentDate: Date; 
+      notes?: string;
+    }) => {
+      // Update payment record
+      const { error: paymentError } = await (supabase as any)
+        .from('payments')
+        .update({
+          amount,
+          method,
+          payment_date: paymentDate.toISOString(),
+          notes: notes || null,
+        })
+        .eq('id', paymentId);
+      
+      if (paymentError) throw paymentError;
+      
+      // Get all payments for this invoice to calculate total paid
+      const { data: allPayments, error: paymentsError } = await (supabase as any)
+        .from('payments')
+        .select('amount')
+        .eq('invoice_id', invoiceId);
+      
+      if (paymentsError) throw paymentsError;
+      
+      // Get invoice totals
+      const { data: invoice, error: invoiceError } = await (supabase as any)
+        .from('invoices')
+        .select('total, late_fee_amount, status')
+        .eq('id', invoiceId)
+        .single();
+      
+      if (invoiceError) throw invoiceError;
+      
+      const totalPaid = allPayments.reduce((sum: number, p: { amount: number }) => sum + Number(p.amount), 0);
+      const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
+      const isFullyPaid = totalPaid >= totalDue;
+      
+      // Update invoice status based on new payment totals
+      if (isFullyPaid && invoice.status !== 'paid') {
+        await (supabase as any)
+          .from('invoices')
+          .update({ 
+            status: 'paid',
+            paid_at: paymentDate.toISOString()
+          })
+          .eq('id', invoiceId);
+      } else if (!isFullyPaid && invoice.status === 'paid') {
+        await (supabase as any)
+          .from('invoices')
+          .update({ 
+            status: 'sent',
+            paid_at: null
+          })
+          .eq('id', invoiceId);
+      }
+      
+      return { isFullyPaid, totalPaid, totalDue };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success('Payment updated');
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error('Failed to update payment: ' + message);
+    },
+  });
+}
+
 export function useDeletePayment() {
   const queryClient = useQueryClient();
   
