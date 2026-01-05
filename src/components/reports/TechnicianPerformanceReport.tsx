@@ -304,6 +304,10 @@ const TechnicianPerformanceReport = () => {
   const exportToCSV = () => {
     if (filteredData.length === 0) return;
 
+    const filterNote = selectedMemberIds.length > 0 
+      ? `Filtered: ${getSelectedMemberNames()}`
+      : '';
+
     const headers = ['Team Member', 'Email', 'Role', 'Jobs Completed', 'Hours Worked', 'Revenue Generated', 'Avg Job Value', 'Effective Rate'];
     
     const rows = filteredData.map(t => [
@@ -326,14 +330,16 @@ const TechnicianPerformanceReport = () => {
     rows.push(['Total Revenue', `$${formatAmount(stats?.totalRevenue || 0)}`, '', '', '', '', '', '']);
 
     const csvContent = [
+      ...(filterNote ? [`"${filterNote}"`] : []),
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
     ].join('\n');
 
+    const filterSuffix = selectedMemberIds.length > 0 ? '_filtered' : '';
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `technician-performance-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.download = `technician-performance-${format(new Date(), 'yyyy-MM-dd')}${filterSuffix}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
   };
@@ -374,8 +380,8 @@ const TechnicianPerformanceReport = () => {
         </style>
       </head>
       <body>
-        <h1>Technician Performance Report</h1>
-        <p class="subtitle">${getTimeRangeLabel()} • Generated on ${format(new Date(), 'MMMM d, yyyy')}</p>
+        <h1>Technician Performance Report${selectedMemberIds.length > 0 ? ' (Filtered)' : ''}</h1>
+        <p class="subtitle">${getTimeRangeLabel()} • Generated on ${format(new Date(), 'MMMM d, yyyy')}${selectedMemberIds.length > 0 ? `<br><span style="font-size: 11px;">Showing: ${getSelectedMemberNames()}</span>` : ''}</p>
         
         <div class="summary-cards">
           <div class="card">
