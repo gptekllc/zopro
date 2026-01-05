@@ -133,6 +133,45 @@ const TransactionsReport = () => {
 
   const hasActiveFilters = startDate || endDate || customerId !== 'all' || paymentMethod !== 'all' || paymentStatus !== 'all' || searchQuery;
 
+  // Export to CSV
+  const exportToCSV = () => {
+    if (filteredPayments.length === 0) return;
+
+    const headers = ['Date', 'Invoice #', 'Customer', 'Method', 'Amount', 'Status', 'Notes'];
+    
+    const rows = filteredPayments.map(payment => [
+      format(new Date(payment.payment_date), 'yyyy-MM-dd'),
+      payment.invoice?.invoice_number || '-',
+      payment.invoice?.customer?.name || '-',
+      getMethodLabel(payment.method),
+      formatCurrency(payment.amount),
+      payment.status,
+      payment.notes || '',
+    ]);
+
+    // Add summary row
+    rows.push([]);
+    rows.push(['Summary', '', '', '', '', '', '']);
+    rows.push(['Total Collected', '', '', '', formatCurrency(stats.totalCollected), '', '']);
+    rows.push(['Total Refunded', '', '', '', formatCurrency(stats.totalRefunded), '', '']);
+    rows.push(['Transaction Count', '', '', '', stats.count.toString(), '', '']);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    const dateStr = startDate && endDate 
+      ? `${startDate}_to_${endDate}` 
+      : format(new Date(), 'yyyy-MM-dd');
+    link.download = `transactions-${dateStr}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   const handleInvoiceSelected = (invoice: {
     id: string;
     invoice_number: string;
@@ -297,10 +336,21 @@ const TransactionsReport = () => {
         <CardHeader className="pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle>Payment History</CardTitle>
-            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Record Payment
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={exportToCSV} 
+                variant="outline" 
+                size="sm"
+                disabled={filteredPayments.length === 0}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+              <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Record Payment
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
