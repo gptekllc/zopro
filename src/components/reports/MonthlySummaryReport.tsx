@@ -455,7 +455,7 @@ const MonthlySummaryReport = () => {
           <Printer className="w-4 h-4 mr-2" />
           Print/PDF
         </Button>
-        <Button onClick={exportToCSV} variant="outline" size="sm" disabled={monthlyData.length === 0}>
+        <Button onClick={exportToCSV} variant="outline" size="sm" disabled={monthlyData.length === 0} className="hidden sm:inline-flex">
           <Download className="w-4 h-4 mr-2" />
           Export CSV
         </Button>
