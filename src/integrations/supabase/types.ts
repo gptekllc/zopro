@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      catalog_items: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          type?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_items_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           address: string | null
@@ -365,6 +409,7 @@ export type Database = {
           invoice_id: string
           quantity: number
           total: number
+          type: string
           unit_price: number
         }
         Insert: {
@@ -374,6 +419,7 @@ export type Database = {
           invoice_id: string
           quantity?: number
           total?: number
+          type?: string
           unit_price?: number
         }
         Update: {
@@ -383,6 +429,7 @@ export type Database = {
           invoice_id?: string
           quantity?: number
           total?: number
+          type?: string
           unit_price?: number
         }
         Relationships: [
@@ -689,6 +736,7 @@ export type Database = {
           job_id: string
           quantity: number
           total: number
+          type: string
           unit_price: number
         }
         Insert: {
@@ -698,6 +746,7 @@ export type Database = {
           job_id: string
           quantity?: number
           total?: number
+          type?: string
           unit_price?: number
         }
         Update: {
@@ -707,6 +756,7 @@ export type Database = {
           job_id?: string
           quantity?: number
           total?: number
+          type?: string
           unit_price?: number
         }
         Relationships: [
@@ -836,6 +886,7 @@ export type Database = {
           quantity: number
           template_id: string
           total: number
+          type: string
           unit_price: number
         }
         Insert: {
@@ -845,6 +896,7 @@ export type Database = {
           quantity?: number
           template_id: string
           total?: number
+          type?: string
           unit_price?: number
         }
         Update: {
@@ -854,6 +906,7 @@ export type Database = {
           quantity?: number
           template_id?: string
           total?: number
+          type?: string
           unit_price?: number
         }
         Relationships: [
@@ -1204,6 +1257,7 @@ export type Database = {
           quantity: number
           quote_id: string
           total: number
+          type: string
           unit_price: number
         }
         Insert: {
@@ -1213,6 +1267,7 @@ export type Database = {
           quantity?: number
           quote_id: string
           total?: number
+          type?: string
           unit_price?: number
         }
         Update: {
@@ -1222,6 +1277,7 @@ export type Database = {
           quantity?: number
           quote_id?: string
           total?: number
+          type?: string
           unit_price?: number
         }
         Relationships: [
@@ -1290,6 +1346,7 @@ export type Database = {
           quantity: number
           template_id: string
           total: number
+          type: string
           unit_price: number
         }
         Insert: {
@@ -1299,6 +1356,7 @@ export type Database = {
           quantity?: number
           template_id: string
           total?: number
+          type?: string
           unit_price?: number
         }
         Update: {
@@ -1308,6 +1366,7 @@ export type Database = {
           quantity?: number
           template_id?: string
           total?: number
+          type?: string
           unit_price?: number
         }
         Relationships: [

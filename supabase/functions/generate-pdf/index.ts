@@ -26,6 +26,7 @@ interface DocumentItem {
   quantity: number;
   unit_price: number;
   total: number;
+  type?: 'product' | 'service';
 }
 
 interface SocialLink {
@@ -516,7 +517,7 @@ async function generatePDFDocument(
 
   y -= 20;
 
-  // Items table with header
+  // Items table - grouped by Products and Services
   const tableLeft = margin;
   const tableRight = width - margin;
   const colQty = tableRight - 130;
@@ -524,102 +525,118 @@ async function generatePDFDocument(
   const colTotal = tableRight - 30;
   const headerHeight = 20;
 
-  // Table header background
-  page.drawRectangle({
-    x: tableLeft,
-    y: y - headerHeight + 5,
-    width: tableRight - tableLeft,
-    height: headerHeight,
-    color: tableHeaderBg,
-  });
+  // Separate items by type
+  const products = items.filter(item => item.type === 'product');
+  const services = items.filter(item => item.type === 'service' || !item.type);
 
-  // Table header text
-  page.drawText("Items", {
-    x: tableLeft + 5,
-    y: y - 10,
-    size: 9,
-    font: helveticaBold,
-    color: whiteColor,
-  });
-  page.drawText("Qty", {
-    x: colQty,
-    y: y - 10,
-    size: 9,
-    font: helveticaBold,
-    color: whiteColor,
-  });
-  page.drawText("Unit Price", {
-    x: colPrice - 15,
-    y: y - 10,
-    size: 9,
-    font: helveticaBold,
-    color: whiteColor,
-  });
-  page.drawText("Total", {
-    x: colTotal - 10,
-    y: y - 10,
-    size: 9,
-    font: helveticaBold,
-    color: whiteColor,
-  });
+  // Helper function to draw a section of items
+  const drawItemsSection = (sectionItems: DocumentItem[], sectionTitle: string) => {
+    if (sectionItems.length === 0) return;
+    
+    if (y < 180) return; // Safety check for page overflow
 
-  y -= headerHeight + 4;
+    // Section header background
+    page.drawRectangle({
+      x: tableLeft,
+      y: y - headerHeight + 5,
+      width: tableRight - tableLeft,
+      height: headerHeight,
+      color: tableHeaderBg,
+    });
 
-  // Items rows
-  for (const item of items) {
-    if (y < 180) {
-      // Would need new page, but keeping it simple for now
-      break;
+    // Section header text
+    page.drawText(sectionTitle, {
+      x: tableLeft + 5,
+      y: y - 10,
+      size: 9,
+      font: helveticaBold,
+      color: whiteColor,
+    });
+    page.drawText("Qty", {
+      x: colQty,
+      y: y - 10,
+      size: 9,
+      font: helveticaBold,
+      color: whiteColor,
+    });
+    page.drawText("Unit Price", {
+      x: colPrice - 15,
+      y: y - 10,
+      size: 9,
+      font: helveticaBold,
+      color: whiteColor,
+    });
+    page.drawText("Total", {
+      x: colTotal - 10,
+      y: y - 10,
+      size: 9,
+      font: helveticaBold,
+      color: whiteColor,
+    });
+
+    y -= headerHeight + 4;
+
+    // Items rows
+    for (const item of sectionItems) {
+      if (y < 180) {
+        break;
+      }
+
+      const maxDescLength = 50;
+      const itemName = item.description.length > maxDescLength 
+        ? item.description.substring(0, maxDescLength) + '...' 
+        : item.description;
+
+      page.drawText(itemName, {
+        x: tableLeft + 5,
+        y,
+        size: 9,
+        font: helvetica,
+        color: blackColor,
+      });
+
+      page.drawText(String(item.quantity), {
+        x: colQty,
+        y,
+        size: 9,
+        font: helvetica,
+        color: blackColor,
+      });
+
+      page.drawText(`$${Number(item.unit_price).toFixed(2)}`, {
+        x: colPrice - 15,
+        y,
+        size: 9,
+        font: helvetica,
+        color: blackColor,
+      });
+
+      page.drawText(`$${Number(item.total).toFixed(2)}`, {
+        x: colTotal - 10,
+        y,
+        size: 9,
+        font: helvetica,
+        color: blackColor,
+      });
+
+      page.drawLine({
+        start: { x: tableLeft, y: y - 5 },
+        end: { x: tableRight, y: y - 5 },
+        thickness: 0.5,
+        color: rgb(0.9, 0.9, 0.9),
+      });
+
+      y -= 18;
     }
 
-    // Item name
-    const maxDescLength = 50;
-    const itemName = item.description.length > maxDescLength 
-      ? item.description.substring(0, maxDescLength) + '...' 
-      : item.description;
+    y -= 10; // Space between sections
+  };
 
-    page.drawText(itemName, {
-      x: tableLeft + 5,
-      y,
-      size: 9,
-      font: helvetica,
-      color: blackColor,
-    });
+  // Draw Products section (if any)
+  drawItemsSection(products, "Products");
 
-    page.drawText(String(item.quantity), {
-      x: colQty,
-      y,
-      size: 9,
-      font: helvetica,
-      color: blackColor,
-    });
-
-    page.drawText(`$${Number(item.unit_price).toFixed(2)}`, {
-      x: colPrice - 15,
-      y,
-      size: 9,
-      font: helvetica,
-      color: blackColor,
-    });
-
-    page.drawText(`$${Number(item.total).toFixed(2)}`, {
-      x: colTotal - 10,
-      y,
-      size: 9,
-      font: helvetica,
-      color: blackColor,
-    });
-
-    // Row separator line - draw below the text with proper spacing
-    page.drawLine({
-      start: { x: tableLeft, y: y - 5 },
-      end: { x: tableRight, y: y - 5 },
-      thickness: 0.5,
-      color: rgb(0.9, 0.9, 0.9),
-    });
-
-    y -= 18;
-  }
+  // Draw Services section (if any)
+  drawItemsSection(services, "Services");
 
   y -= 20;
 
