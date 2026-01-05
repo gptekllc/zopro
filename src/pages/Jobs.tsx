@@ -854,12 +854,6 @@ const Jobs = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Link to="/jobs/templates">
-              <Button variant="outline" size="sm" className="gap-1 whitespace-nowrap hidden sm:flex">
-                <BookTemplate className="w-4 h-4" />
-                <span>Templates</span>
-              </Button>
-            </Link>
             
             <div className="hidden sm:flex gap-1 border rounded-md p-1">
               <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')} title="List View">
