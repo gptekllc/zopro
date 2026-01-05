@@ -453,6 +453,17 @@ const TimesheetReportTab = () => {
 
           {/* Mobile: Team Member Filter + Actions on second row */}
           <div className="flex sm:hidden items-center justify-center gap-2 w-full">
+            {/* Mobile: Week Select */}
+            <Select value={numWeeks} onValueChange={setNumWeeks}>
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 Week</SelectItem>
+                <SelectItem value="2">2 Weeks</SelectItem>
+                <SelectItem value="4">4 Weeks</SelectItem>
+              </SelectContent>
+            </Select>
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="flex-1 justify-start">
@@ -510,17 +521,6 @@ const TimesheetReportTab = () => {
                 </div>
               </PopoverContent>
             </Popover>
-            {/* Mobile: Week Select */}
-            <Select value={numWeeks} onValueChange={setNumWeeks}>
-              <SelectTrigger className="w-[100px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">1 Week</SelectItem>
-                <SelectItem value="2">2 Weeks</SelectItem>
-                <SelectItem value="4">4 Weeks</SelectItem>
-              </SelectContent>
-            </Select>
             {/* Mobile Actions Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
