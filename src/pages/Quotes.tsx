@@ -510,10 +510,11 @@ const Quotes = () => {
     setSelectedQuoteForJob(quote);
     setAddToJobDialogOpen(true);
   };
-  const handleCreateJobFromQuote = async (quoteId: string, selectedItemIds: string[]) => {
+  const handleCreateJobFromQuote = async (quoteId: string, selectedItemIds: string[], copyPhotos: boolean) => {
     const job = await createJobFromQuote.mutateAsync({
       quoteId,
-      selectedItemIds
+      selectedItemIds,
+      copyPhotos
     });
     if (job?.id) {
       window.location.href = `/jobs?edit=${job.id}`;

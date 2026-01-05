@@ -33,7 +33,7 @@ interface CreateJobFromQuoteDialogProps {
   quote: Quote | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (quoteId: string, selectedItemIds: string[]) => Promise<void>;
+  onConfirm: (quoteId: string, selectedItemIds: string[], copyPhotos: boolean) => Promise<void>;
   isPending: boolean;
 }
 
@@ -45,12 +45,14 @@ export function CreateJobFromQuoteDialog({
   isPending,
 }: CreateJobFromQuoteDialogProps) {
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [copyPhotos, setCopyPhotos] = useState(true);
 
   // Initialize selection when quote changes
   useMemo(() => {
     if (quote?.items) {
       setSelectedItemIds(quote.items.map(item => item.id));
     }
+    setCopyPhotos(true);
   }, [quote?.id]);
 
   const handleToggleItem = (itemId: string) => {
@@ -80,7 +82,7 @@ export function CreateJobFromQuoteDialog({
 
   const handleConfirm = async () => {
     if (quote && selectedItemIds.length > 0) {
-      await onConfirm(quote.id, selectedItemIds);
+      await onConfirm(quote.id, selectedItemIds, copyPhotos);
       onOpenChange(false);
     }
   };
@@ -147,6 +149,20 @@ export function CreateJobFromQuoteDialog({
               ${selectedTotal.toLocaleString()}
             </span>
           </div>
+
+          {/* Copy Photos Option */}
+          <label className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors">
+            <Checkbox
+              checked={copyPhotos}
+              onCheckedChange={(checked) => setCopyPhotos(checked === true)}
+            />
+            <div className="flex-1">
+              <p className="font-medium text-sm">Copy photos to job</p>
+              <p className="text-xs text-muted-foreground">
+                Include all photos from this quote in the new job
+              </p>
+            </div>
+          </label>
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
