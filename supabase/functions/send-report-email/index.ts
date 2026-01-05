@@ -384,6 +384,61 @@ const handler = async (req: Request): Promise<Response> => {
         </body>
         </html>
       `;
+    } else if (reportType === 'timesheet') {
+      subject = `Timesheet Report - ${reportData.timeRange}`;
+      
+      const timesheetRows = (reportData as any).timesheets?.map((t: any) => `
+        <tr>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">
+            <div style="font-weight: 500;">${t.name}</div>
+            <div style="font-size: 11px; color: #6b7280;">${t.email}</div>
+          </td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: center; font-weight: 600;">${t.totalHours}</td>
+        </tr>
+      `).join('') || '';
+
+      html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f9fafb; margin: 0; padding: 20px;">
+          <div style="max-width: 800px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 32px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">${reportData.title}</h1>
+              <p style="color: rgba(255, 255, 255, 0.9); margin: 8px 0 0 0; font-size: 16px;">${reportData.timeRange}</p>
+            </div>
+            <div style="padding: 32px;">
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 32px;">
+                <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Team Members</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #1f2937;">${reportData.stats.teamSize}</div>
+                </div>
+                <div style="background-color: #eef2ff; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #6366f1; text-transform: uppercase;">Total Hours</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #6366f1;">${reportData.stats.totalHours}</div>
+                </div>
+              </div>
+              <h2 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Team Hours</h2>
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                  <tr style="background-color: #f3f4f6;">
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left; font-weight: 600;">Team Member</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: center; font-weight: 600;">Total Hours</th>
+                  </tr>
+                </thead>
+                <tbody>${timesheetRows}</tbody>
+              </table>
+            </div>
+            <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">Generated on ${reportData.generatedAt}</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
     } else {
       // Generic report type
       subject = `${reportData.title} - ${reportData.timeRange}`;

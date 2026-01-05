@@ -13,8 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, FileText, Mail } from 'lucide-react';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, differenceInMinutes, isSameDay } from 'date-fns';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { ReportEmailDialog } from './ReportEmailDialog';
+import { formatAmount } from '@/lib/formatAmount';
 
 const TimesheetReportTab = () => {
   const { roles } = useAuth();
@@ -25,6 +29,8 @@ const TimesheetReportTab = () => {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
   const [numWeeks, setNumWeeks] = useState('1');
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const canViewAll = roles.some(r => r.role === 'admin' || r.role === 'manager');
 
@@ -215,6 +221,64 @@ const TimesheetReportTab = () => {
     }
   };
 
+  // Send email report
+  const sendReportEmail = async (emails: string[]): Promise<{ successful: string[]; failed: { email: string; reason: string }[] }> => {
+    setIsSendingEmail(true);
+    try {
+      const dailyTotals = weekDays.map((_, i) => 
+        timesheetData.reduce((sum, row) => sum + row.dailyHours[i].minutes, 0)
+      );
+      const grandTotal = timesheetData.reduce((sum, row) => sum + row.weeklyTotal, 0);
+
+      const reportData = {
+        title: 'Timesheet Report',
+        timeRange: `${format(weekStart, 'MMM d')} - ${format(weekEnd, 'MMM d, yyyy')}`,
+        generatedAt: format(new Date(), 'MMMM d, yyyy'),
+        stats: {
+          teamSize: timesheetData.length,
+          totalHours: formatMinutes(grandTotal),
+          periodWeeks: numWeeks,
+        },
+        timesheets: timesheetData.slice(0, 20).map(row => ({
+          name: row.member.full_name || row.member.email,
+          email: row.member.email,
+          totalHours: formatMinutes(row.weeklyTotal),
+          dailyHours: row.dailyHours.map(d => ({
+            date: format(d.date, 'EEE MMM d'),
+            hours: formatMinutes(d.minutes),
+          })),
+        })),
+      };
+
+      const { data, error } = await supabase.functions.invoke('send-report-email', {
+        body: { 
+          to: emails, 
+          reportType: 'timesheet',
+          reportData 
+        },
+      });
+
+      if (error) throw error;
+
+      const result = data as { successful: string[]; failed: { email: string; reason: string }[] };
+      
+      if (result.successful.length > 0) {
+        toast.success(`Report sent to ${result.successful.length} recipient${result.successful.length !== 1 ? 's' : ''}`);
+      }
+      if (result.failed.length > 0) {
+        toast.error(`Failed to send to ${result.failed.length} recipient${result.failed.length !== 1 ? 's' : ''}`);
+      }
+
+      return result;
+    } catch (error: any) {
+      console.error('Failed to send email:', error);
+      toast.error('Failed to send email: ' + (error.message || 'Unknown error'));
+      return { successful: [], failed: emails.map(e => ({ email: e, reason: error.message || 'Unknown error' })) };
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   const isLoading = loadingEntries || loadingProfiles;
 
   if (isLoading) {
@@ -269,6 +333,15 @@ const TimesheetReportTab = () => {
               <SelectItem value="4">4 Weeks</SelectItem>
             </SelectContent>
           </Select>
+          <Button 
+            onClick={() => setEmailDialogOpen(true)} 
+            variant="outline" 
+            size="sm"
+            disabled={timesheetData.length === 0}
+          >
+            <Mail className="w-4 h-4 mr-2" />
+            Email
+          </Button>
           <Button onClick={exportToCSV} variant="outline" size="sm">
             <Download className="w-4 h-4 mr-2" />
             CSV
@@ -353,6 +426,15 @@ const TimesheetReportTab = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Email Dialog */}
+      <ReportEmailDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        onSend={sendReportEmail}
+        isSending={isSendingEmail}
+        title="Email Timesheet Report"
+      />
     </div>
   );
 };
