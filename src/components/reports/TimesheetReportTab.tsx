@@ -13,7 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, FileText, Mail } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, FileText, Mail, Users, X } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, differenceInMinutes, isSameDay } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -31,15 +34,38 @@ const TimesheetReportTab = () => {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   const canViewAll = roles.some(r => r.role === 'admin' || r.role === 'manager');
+
+  // Get all team members for the filter dropdown
+  const allTeamMembers = useMemo(() => {
+    return profiles.filter(p => p.company_id === company?.id);
+  }, [profiles, company?.id]);
+
+  const toggleMember = (memberId: string) => {
+    setSelectedMemberIds(prev => 
+      prev.includes(memberId) 
+        ? prev.filter(id => id !== memberId)
+        : [...prev, memberId]
+    );
+  };
+
+  const clearSelectedMembers = () => {
+    setSelectedMemberIds([]);
+  };
 
   const weekEnd = endOfWeek(addWeeks(weekStart, parseInt(numWeeks) - 1), { weekStartsOn: 0 });
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
   // Group entries by user and day
   const timesheetData = useMemo(() => {
-    const teamMembers = profiles.filter(p => p.company_id === company?.id);
+    let teamMembers = profiles.filter(p => p.company_id === company?.id);
+    
+    // Filter by selected members if any are selected
+    if (selectedMemberIds.length > 0) {
+      teamMembers = teamMembers.filter(m => selectedMemberIds.includes(m.id));
+    }
     
     return teamMembers.map(member => {
       const memberEntries = timeEntries.filter(e => e.user_id === member.id);
@@ -71,7 +97,7 @@ const TimesheetReportTab = () => {
         weeklyTotal,
       };
     }).filter(row => row.weeklyTotal > 0 || row.dailyHours.some(d => d.entries.length > 0));
-  }, [profiles, timeEntries, weekDays, company?.id]);
+  }, [profiles, timeEntries, weekDays, company?.id, selectedMemberIds]);
 
   const formatMinutes = (mins: number) => {
     if (mins <= 0) return '-';
@@ -330,6 +356,53 @@ const TimesheetReportTab = () => {
               <SelectItem value="4">4 Weeks</SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Team Member Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="min-w-[140px] justify-start">
+                <Users className="w-4 h-4 mr-2" />
+                {selectedMemberIds.length === 0 ? (
+                  <span className="text-muted-foreground">All Members</span>
+                ) : (
+                  <span>{selectedMemberIds.length} selected</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2 bg-background" align="start">
+              <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                <span className="text-sm font-medium">Filter by Member</span>
+                {selectedMemberIds.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={clearSelectedMembers} className="h-6 px-2 text-xs">
+                    Clear all
+                  </Button>
+                )}
+              </div>
+              <div className="max-h-[250px] overflow-y-auto space-y-1">
+                {allTeamMembers.map(member => (
+                  <div
+                    key={member.id}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                    onClick={() => toggleMember(member.id)}
+                  >
+                    <Checkbox
+                      checked={selectedMemberIds.includes(member.id)}
+                      onCheckedChange={() => toggleMember(member.id)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm truncate">{member.full_name || member.email}</div>
+                      {member.full_name && (
+                        <div className="text-xs text-muted-foreground truncate">{member.email}</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {allTeamMembers.length === 0 && (
+                  <div className="text-sm text-muted-foreground text-center py-4">No team members</div>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
         
         <div className="flex items-center justify-center lg:justify-end gap-2">
