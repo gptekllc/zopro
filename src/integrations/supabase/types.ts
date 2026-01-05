@@ -1168,6 +1168,10 @@ export type Database = {
           notes: string | null
           payment_date: string
           recorded_by: string | null
+          refund_reason: string | null
+          refunded_at: string | null
+          refunded_by: string | null
+          status: string
         }
         Insert: {
           amount: number
@@ -1179,6 +1183,10 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           recorded_by?: string | null
+          refund_reason?: string | null
+          refunded_at?: string | null
+          refunded_by?: string | null
+          status?: string
         }
         Update: {
           amount?: number
@@ -1190,6 +1198,10 @@ export type Database = {
           notes?: string | null
           payment_date?: string
           recorded_by?: string | null
+          refund_reason?: string | null
+          refunded_at?: string | null
+          refunded_by?: string | null
+          status?: string
         }
         Relationships: [
           {
@@ -1209,6 +1221,13 @@ export type Database = {
           {
             foreignKeyName: "payments_recorded_by_fkey"
             columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_refunded_by_fkey"
+            columns: ["refunded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

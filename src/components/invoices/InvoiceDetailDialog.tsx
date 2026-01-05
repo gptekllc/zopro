@@ -14,7 +14,7 @@ import {
   FileDown, Mail, Edit, PenTool, Calendar, 
   DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
   ChevronRight, CheckCircle2, Copy, Briefcase, FileText, Link2, Send, Loader2,
-  List, Image as ImageIcon, CreditCard, Trash2, Pencil
+  List, Image as ImageIcon, CreditCard, Trash2, Pencil, RotateCcw, XCircle, MoreHorizontal
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -22,9 +22,10 @@ import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto, useUpdateInvoicePhotoType } from '@/hooks/useInvoicePhotos';
-import { usePayments, useDeletePayment, useUpdatePayment, Payment } from '@/hooks/usePayments';
+import { usePayments, useDeletePayment, useUpdatePayment, useRefundPayment, useVoidPayment, Payment } from '@/hooks/usePayments';
 import { PAYMENT_METHODS } from './RecordPaymentDialog';
 import { EditPaymentDialog, EditPaymentData } from './EditPaymentDialog';
+import { RefundPaymentDialog } from './RefundPaymentDialog';
 
 const INVOICE_STATUSES = ['draft', 'sent', 'paid'] as const;
 
@@ -145,10 +146,17 @@ export function InvoiceDetailDialog({
   const { data: payments = [], isLoading: loadingPayments } = usePayments(invoice?.id || null);
   const deletePayment = useDeletePayment();
   const updatePayment = useUpdatePayment();
+  const refundPayment = useRefundPayment();
+  const voidPayment = useVoidPayment();
   
   // Edit payment dialog state
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
   const [editPaymentDialogOpen, setEditPaymentDialogOpen] = useState(false);
+  
+  // Refund/void dialog state
+  const [refundPayment_, setRefundPayment] = useState<Payment | null>(null);
+  const [refundAction, setRefundAction] = useState<'refund' | 'void'>('refund');
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
 
   if (!invoice) return null;
 
@@ -157,9 +165,10 @@ export function InvoiceDetailDialog({
   const canApplyLateFee = isOverdue && !hasLateFee && lateFeePercentage > 0;
   const linkedDocsCount = (linkedQuote ? 1 : 0) + (linkedJob ? 1 : 0);
   
-  // Calculate payment totals
+  // Calculate payment totals - only count completed payments
   const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
-  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const completedPayments = payments.filter(p => p.status === 'completed');
+  const totalPaid = completedPayments.reduce((sum, p) => sum + Number(p.amount), 0);
   const remainingBalance = Math.max(0, totalDue - totalPaid);
   
   // Helper to format payment method
@@ -209,6 +218,37 @@ export function InvoiceDetailDialog({
     });
     setEditPaymentDialogOpen(false);
     setEditingPayment(null);
+  };
+
+  const handleRefundPayment = (payment: Payment) => {
+    setRefundPayment(payment);
+    setRefundAction('refund');
+    setRefundDialogOpen(true);
+  };
+
+  const handleVoidPayment = (payment: Payment) => {
+    setRefundPayment(payment);
+    setRefundAction('void');
+    setRefundDialogOpen(true);
+  };
+
+  const handleConfirmRefund = async (reason: string) => {
+    if (!refundPayment_) return;
+    if (refundAction === 'refund') {
+      await refundPayment.mutateAsync({
+        paymentId: refundPayment_.id,
+        invoiceId: invoice.id,
+        reason,
+      });
+    } else {
+      await voidPayment.mutateAsync({
+        paymentId: refundPayment_.id,
+        invoiceId: invoice.id,
+        reason,
+      });
+    }
+    setRefundDialogOpen(false);
+    setRefundPayment(null);
   };
 
   return (
@@ -453,43 +493,101 @@ export function InvoiceDetailDialog({
                       Payment History ({payments.length})
                     </h4>
                     <div className="space-y-2">
-                      {payments.map((payment) => (
-                        <div key={payment.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 px-3 bg-green-50 dark:bg-green-900/20 rounded text-sm">
-                          <div className="flex items-center gap-2">
-                            <CheckCircle className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />
-                            <span className="font-medium text-green-700 dark:text-green-400">
-                              ${Number(payment.amount).toFixed(2)}
-                            </span>
-                            <Badge variant="outline" className="text-xs">
-                              {formatPaymentMethod(payment.method)}
-                            </Badge>
+                      {payments.map((payment) => {
+                        const isCompleted = payment.status === 'completed';
+                        const isRefunded = payment.status === 'refunded';
+                        const isVoided = payment.status === 'voided';
+                        
+                        return (
+                          <div 
+                            key={payment.id} 
+                            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 px-3 rounded text-sm ${
+                              isCompleted 
+                                ? 'bg-green-50 dark:bg-green-900/20' 
+                                : isRefunded 
+                                  ? 'bg-orange-50 dark:bg-orange-900/20' 
+                                  : 'bg-muted/50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {isCompleted ? (
+                                <CheckCircle className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />
+                              ) : isRefunded ? (
+                                <RotateCcw className="w-3 h-3 text-orange-600 dark:text-orange-400 shrink-0" />
+                              ) : (
+                                <XCircle className="w-3 h-3 text-muted-foreground shrink-0" />
+                              )}
+                              <span className={`font-medium ${
+                                isCompleted 
+                                  ? 'text-green-700 dark:text-green-400' 
+                                  : isRefunded 
+                                    ? 'text-orange-700 dark:text-orange-400 line-through' 
+                                    : 'text-muted-foreground line-through'
+                              }`}>
+                                ${Number(payment.amount).toFixed(2)}
+                              </span>
+                              <Badge variant="outline" className="text-xs">
+                                {formatPaymentMethod(payment.method)}
+                              </Badge>
+                              {isRefunded && (
+                                <Badge variant="outline" className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-300">
+                                  Refunded
+                                </Badge>
+                              )}
+                              {isVoided && (
+                                <Badge variant="outline" className="text-xs bg-muted text-muted-foreground">
+                                  Voided
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {payment.recorded_by_profile?.full_name && (
+                                <span>by {payment.recorded_by_profile.full_name}</span>
+                              )}
+                              <span>{format(new Date(payment.payment_date), 'MMM d, yyyy')}</span>
+                              {isCompleted && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                    >
+                                      <MoreHorizontal className="w-3 h-3" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleEditPayment(payment)}>
+                                      <Pencil className="w-3 h-3 mr-2" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleRefundPayment(payment)}>
+                                      <RotateCcw className="w-3 h-3 mr-2" />
+                                      Refund
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleVoidPayment(payment)}>
+                                      <XCircle className="w-3 h-3 mr-2" />
+                                      Void
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => deletePayment.mutate({ paymentId: payment.id, invoiceId: invoice.id })}
+                                      className="text-destructive"
+                                    >
+                                      <Trash2 className="w-3 h-3 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                              {(isRefunded || isVoided) && payment.refund_reason && (
+                                <span className="italic" title={payment.refund_reason}>
+                                  "{payment.refund_reason.substring(0, 20)}{payment.refund_reason.length > 20 ? '...' : ''}"
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {payment.recorded_by_profile?.full_name && (
-                              <span>by {payment.recorded_by_profile.full_name}</span>
-                            )}
-                            <span>{format(new Date(payment.payment_date), 'MMM d, yyyy')}</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                              onClick={() => handleEditPayment(payment)}
-                              title="Edit payment"
-                            >
-                              <Pencil className="w-3 h-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                              onClick={() => deletePayment.mutate({ paymentId: payment.id, invoiceId: invoice.id })}
-                              title="Delete payment"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </>
@@ -743,6 +841,19 @@ export function InvoiceDetailDialog({
         payment={editingPayment}
         onConfirm={handleUpdatePayment}
         isLoading={updatePayment.isPending}
+      />
+
+      {/* Refund/Void Payment Dialog */}
+      <RefundPaymentDialog
+        open={refundDialogOpen}
+        onOpenChange={(open) => {
+          setRefundDialogOpen(open);
+          if (!open) setRefundPayment(null);
+        }}
+        payment={refundPayment_}
+        action={refundAction}
+        onConfirm={handleConfirmRefund}
+        isLoading={refundPayment.isPending || voidPayment.isPending}
       />
     </Dialog>
   );
