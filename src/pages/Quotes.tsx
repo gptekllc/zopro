@@ -14,7 +14,7 @@ import { useInvoices } from '@/hooks/useInvoices';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useApproveQuoteWithSignature } from '@/hooks/useSignatures';
 import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
-import { useQuotePhotos, useUploadQuotePhoto, useDeleteQuotePhoto } from '@/hooks/useQuotePhotos';
+import { useQuotePhotos, useUploadQuotePhoto, useDeleteQuotePhoto, useUpdateQuotePhotoType } from '@/hooks/useQuotePhotos';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -161,6 +161,9 @@ const Quotes = () => {
   
   // Fetch photos for the currently viewed quote
   const { data: viewingQuotePhotos = [] } = useQuotePhotos(viewingQuote?.id || null);
+  const uploadQuotePhoto = useUploadQuotePhoto();
+  const deleteQuotePhoto = useDeleteQuotePhoto();
+  const updateQuotePhotoType = useUpdateQuotePhotoType();
   const [quoteToDelete, setQuoteToDelete] = useState<typeof quotes[0] | null>(null);
   
   // Duplicate prevention confirmation dialogs
@@ -1494,11 +1497,41 @@ const Quotes = () => {
 
               {/* Photos Tab */}
               <TabsContent value="photos" className="mt-4">
-                <div className="p-4 text-center text-muted-foreground bg-muted/50 rounded-lg">
-                  <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Photo management available in full quote detail view.</p>
-                  <p className="text-xs mt-1">Open from the customer's quotes history to manage photos.</p>
-                </div>
+                <DocumentPhotoGallery
+                  photos={viewingQuotePhotos.map(p => ({
+                    id: p.id,
+                    photo_url: p.photo_url,
+                    photo_type: p.photo_type,
+                    caption: p.caption,
+                    created_at: p.created_at,
+                    display_order: p.display_order ?? 0,
+                  }))}
+                  bucketName="quote-photos"
+                  documentId={viewingQuote.id}
+                  onUpload={async (file, photoType) => {
+                    await uploadQuotePhoto.mutateAsync({
+                      quoteId: viewingQuote.id,
+                      file,
+                      photoType,
+                    });
+                  }}
+                  onDelete={async (photoId, photoUrl) => {
+                    await deleteQuotePhoto.mutateAsync({
+                      photoId,
+                      photoUrl,
+                      quoteId: viewingQuote.id,
+                    });
+                  }}
+                  onUpdateType={(photoId, photoType) => {
+                    updateQuotePhotoType.mutate({
+                      photoId,
+                      photoType,
+                      quoteId: viewingQuote.id,
+                    });
+                  }}
+                  isUploading={uploadQuotePhoto.isPending}
+                  editable={true}
+                />
                     </TabsContent>
                   </Tabs>
                 </div>
