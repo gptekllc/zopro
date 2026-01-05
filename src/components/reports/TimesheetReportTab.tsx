@@ -302,7 +302,7 @@ const TimesheetReportTab = () => {
     <div className="space-y-6">
       {/* Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2">
           <Button variant="outline" size="icon" onClick={() => setWeekStart(subWeeks(weekStart, 1))}>
             <ChevronLeft className="w-4 h-4" />
           </Button>
