@@ -15,54 +15,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TablePagination } from '@/components/ui/table-pagination';
 import { SortableTableHeader } from '@/components/ui/sortable-table-header';
 import { cn } from '@/lib/utils';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from 'recharts';
-import {
-  Users,
-  Clock,
-  Briefcase,
-  DollarSign,
-  Download,
-  Search,
-  Printer,
-  CalendarIcon,
-  Mail,
-  User,
-  MoreVertical,
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Users, Clock, Briefcase, DollarSign, Download, Search, Printer, CalendarIcon, Mail, User, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatAmount } from '@/lib/formatAmount';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ReportEmailDialog } from './ReportEmailDialog';
-
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
-
 type SortField = 'name' | 'jobsCompleted' | 'hoursWorked' | 'revenueGenerated' | 'avgJobValue';
 type SortDirection = 'asc' | 'desc';
-
 const TechnicianPerformanceReport = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('revenueGenerated');
@@ -78,24 +42,32 @@ const TechnicianPerformanceReport = () => {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-
-  const { data: profiles, isLoading: loadingProfiles } = useProfiles();
-  const { data: timeEntries, isLoading: loadingTimeEntries } = useTimeEntries();
-  const { data: jobs, isLoading: loadingJobs } = useJobs();
-  const { data: payments, isLoading: loadingPayments } = useAllPayments();
-  const { data: invoices, isLoading: loadingInvoices } = useInvoices();
-
+  const {
+    data: profiles,
+    isLoading: loadingProfiles
+  } = useProfiles();
+  const {
+    data: timeEntries,
+    isLoading: loadingTimeEntries
+  } = useTimeEntries();
+  const {
+    data: jobs,
+    isLoading: loadingJobs
+  } = useJobs();
+  const {
+    data: payments,
+    isLoading: loadingPayments
+  } = useAllPayments();
+  const {
+    data: invoices,
+    isLoading: loadingInvoices
+  } = useInvoices();
   const isLoading = loadingProfiles || loadingTimeEntries || loadingJobs || loadingPayments || loadingInvoices;
 
   // Toggle member selection for filter
   const toggleMember = (memberId: string) => {
-    setSelectedMemberIds(prev => 
-      prev.includes(memberId) 
-        ? prev.filter(id => id !== memberId)
-        : [...prev, memberId]
-    );
+    setSelectedMemberIds(prev => prev.includes(memberId) ? prev.filter(id => id !== memberId) : [...prev, memberId]);
   };
-
   const clearSelectedMembers = () => {
     setSelectedMemberIds([]);
   };
@@ -103,43 +75,44 @@ const TechnicianPerformanceReport = () => {
   // Get all team members for filter dropdown
   const allTeamMembers = useMemo(() => {
     if (!profiles) return [];
-    return profiles.filter(p => 
-      ['technician', 'manager', 'admin'].includes(p.role) && 
-      p.employment_status !== 'terminated'
-    );
+    return profiles.filter(p => ['technician', 'manager', 'admin'].includes(p.role) && p.employment_status !== 'terminated');
   }, [profiles]);
 
   // Filter members in dropdown by search
   const filteredDropdownMembers = useMemo(() => {
     if (!memberFilterSearch.trim()) return allTeamMembers;
     const search = memberFilterSearch.toLowerCase();
-    return allTeamMembers.filter(m => 
-      (m.full_name && m.full_name.toLowerCase().includes(search)) ||
-      m.email.toLowerCase().includes(search)
-    );
+    return allTeamMembers.filter(m => m.full_name && m.full_name.toLowerCase().includes(search) || m.email.toLowerCase().includes(search));
   }, [allTeamMembers, memberFilterSearch]);
 
   // Calculate date range
   const dateRange = useMemo(() => {
     const now = new Date();
-    
     if (timeRange === 'custom' && customStartDate && customEndDate) {
-      return { start: startOfMonth(customStartDate), end: endOfMonth(customEndDate) };
+      return {
+        start: startOfMonth(customStartDate),
+        end: endOfMonth(customEndDate)
+      };
     }
-    
     if (timeRange === 'all') return null;
-    
     if (timeRange === 'ytd') {
-      return { start: startOfYear(now), end: now };
+      return {
+        start: startOfYear(now),
+        end: now
+      };
     }
-    
     if (timeRange === 'lastyear') {
       const lastYear = subYears(now, 1);
-      return { start: startOfYear(lastYear), end: new Date(lastYear.getFullYear(), 11, 31) };
+      return {
+        start: startOfYear(lastYear),
+        end: new Date(lastYear.getFullYear(), 11, 31)
+      };
     }
-    
     const months = parseInt(timeRange);
-    return { start: startOfMonth(subMonths(now, months - 1)), end: now };
+    return {
+      start: startOfMonth(subMonths(now, months - 1)),
+      end: now
+    };
   }, [timeRange, customStartDate, customEndDate]);
 
   // Calculate technician metrics
@@ -147,20 +120,18 @@ const TechnicianPerformanceReport = () => {
     if (!profiles || !timeEntries || !jobs || !payments || !invoices) return [];
 
     // Only include team members (technicians, managers, admins)
-    const teamMembers = profiles.filter(p => 
-      ['technician', 'manager', 'admin'].includes(p.role) && 
-      p.employment_status !== 'terminated'
-    );
-
+    const teamMembers = profiles.filter(p => ['technician', 'manager', 'admin'].includes(p.role) && p.employment_status !== 'terminated');
     return teamMembers.map(technician => {
       // Filter time entries by date range
       const techTimeEntries = timeEntries.filter(te => {
         if (te.user_id !== technician.id) return false;
         if (!te.clock_out) return false;
-        
         if (dateRange) {
           const clockIn = parseISO(te.clock_in);
-          if (!isWithinInterval(clockIn, { start: dateRange.start, end: dateRange.end })) {
+          if (!isWithinInterval(clockIn, {
+            start: dateRange.start,
+            end: dateRange.end
+          })) {
             return false;
           }
         }
@@ -174,16 +145,18 @@ const TechnicianPerformanceReport = () => {
         const minutes = differenceInMinutes(clockOut, clockIn) - (te.break_minutes || 0);
         return sum + Math.max(0, minutes);
       }, 0);
-      const hoursWorked = Math.round((totalMinutesWorked / 60) * 100) / 100;
+      const hoursWorked = Math.round(totalMinutesWorked / 60 * 100) / 100;
 
       // Get jobs assigned to this technician
       const techJobs = jobs.filter(j => {
         if (j.assigned_to !== technician.id) return false;
         if (!['completed', 'invoiced', 'paid'].includes(j.status)) return false;
-        
         if (dateRange) {
           const jobDate = j.actual_end ? parseISO(j.actual_end) : parseISO(j.updated_at);
-          if (!isWithinInterval(jobDate, { start: dateRange.start, end: dateRange.end })) {
+          if (!isWithinInterval(jobDate, {
+            start: dateRange.start,
+            end: dateRange.end
+          })) {
             return false;
           }
         }
@@ -191,16 +164,9 @@ const TechnicianPerformanceReport = () => {
       });
 
       // Calculate revenue from jobs assigned to this technician
-      const techInvoiceIds = invoices
-        .filter(i => techJobs.some(j => j.id === i.job_id))
-        .map(i => i.id);
-
-      const revenueGenerated = payments
-        .filter(p => techInvoiceIds.includes(p.invoice_id) && p.status === 'completed')
-        .reduce((sum, p) => sum + Number(p.amount), 0);
-
+      const techInvoiceIds = invoices.filter(i => techJobs.some(j => j.id === i.job_id)).map(i => i.id);
+      const revenueGenerated = payments.filter(p => techInvoiceIds.includes(p.invoice_id) && p.status === 'completed').reduce((sum, p) => sum + Number(p.amount), 0);
       const avgJobValue = techJobs.length > 0 ? revenueGenerated / techJobs.length : 0;
-
       return {
         id: technician.id,
         name: technician.full_name || technician.email,
@@ -211,7 +177,7 @@ const TechnicianPerformanceReport = () => {
         revenueGenerated,
         avgJobValue,
         hourlyRate: technician.hourly_rate || 0,
-        effectiveHourlyRate: hoursWorked > 0 ? revenueGenerated / hoursWorked : 0,
+        effectiveHourlyRate: hoursWorked > 0 ? revenueGenerated / hoursWorked : 0
       };
     }).filter(t => t.jobsCompleted > 0 || t.hoursWorked > 0);
   }, [profiles, timeEntries, jobs, payments, invoices, dateRange]);
@@ -224,33 +190,24 @@ const TechnicianPerformanceReport = () => {
         return false;
       }
       // Apply search filter
-      return t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.email.toLowerCase().includes(searchQuery.toLowerCase());
+      return t.name.toLowerCase().includes(searchQuery.toLowerCase()) || t.email.toLowerCase().includes(searchQuery.toLowerCase());
     });
-
     result.sort((a, b) => {
       let aVal = a[sortField];
       let bVal = b[sortField];
-      
       if (typeof aVal === 'string') aVal = aVal.toLowerCase();
       if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-      
       if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-
     return result;
   }, [technicianData, searchQuery, sortField, sortDirection, selectedMemberIds]);
 
   // Get selected member names for display
   const getSelectedMemberNames = () => {
     if (selectedMemberIds.length === 0) return null;
-    return selectedMemberIds
-      .map(id => allTeamMembers.find(m => m.id === id))
-      .filter(Boolean)
-      .map(m => m!.full_name || m!.email)
-      .join(', ');
+    return selectedMemberIds.map(id => allTeamMembers.find(m => m.id === id)).filter(Boolean).map(m => m!.full_name || m!.email).join(', ');
   };
 
   // Reset to first page when filters change
@@ -263,41 +220,33 @@ const TechnicianPerformanceReport = () => {
     const startIndex = (currentPage - 1) * pageSize;
     return filteredData.slice(startIndex, startIndex + pageSize);
   }, [filteredData, currentPage, pageSize]);
-
   const totalPages = Math.ceil(filteredData.length / pageSize);
-
 
   // Calculate summary stats
   const stats = useMemo(() => {
     if (filteredData.length === 0) return null;
-
     const totalHours = filteredData.reduce((sum, t) => sum + t.hoursWorked, 0);
     const totalJobs = filteredData.reduce((sum, t) => sum + t.jobsCompleted, 0);
     const totalRevenue = filteredData.reduce((sum, t) => sum + t.revenueGenerated, 0);
     const avgEffectiveRate = totalHours > 0 ? totalRevenue / totalHours : 0;
-
     return {
       teamSize: filteredData.length,
       totalHours,
       totalJobs,
       totalRevenue,
-      avgEffectiveRate,
+      avgEffectiveRate
     };
   }, [filteredData]);
 
   // Chart data
   const chartData = useMemo(() => {
-    return filteredData
-      .sort((a, b) => b.revenueGenerated - a.revenueGenerated)
-      .slice(0, 10)
-      .map(t => ({
-        name: t.name.length > 12 ? t.name.substring(0, 12) + '...' : t.name,
-        jobs: t.jobsCompleted,
-        hours: t.hoursWorked,
-        revenue: t.revenueGenerated,
-      }));
+    return filteredData.sort((a, b) => b.revenueGenerated - a.revenueGenerated).slice(0, 10).map(t => ({
+      name: t.name.length > 12 ? t.name.substring(0, 12) + '...' : t.name,
+      jobs: t.jobsCompleted,
+      hours: t.hoursWorked,
+      revenue: t.revenueGenerated
+    }));
   }, [filteredData]);
-
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
@@ -306,7 +255,6 @@ const TechnicianPerformanceReport = () => {
       setSortDirection('desc');
     }
   };
-
   const getTimeRangeLabel = () => {
     if (timeRange === 'all') return 'All Time';
     if (timeRange === 'custom' && customStartDate && customEndDate) {
@@ -321,23 +269,9 @@ const TechnicianPerformanceReport = () => {
   // Export to CSV
   const exportToCSV = () => {
     if (filteredData.length === 0) return;
-
-    const filterNote = selectedMemberIds.length > 0 
-      ? `Filtered: ${getSelectedMemberNames()}`
-      : '';
-
+    const filterNote = selectedMemberIds.length > 0 ? `Filtered: ${getSelectedMemberNames()}` : '';
     const headers = ['Team Member', 'Email', 'Role', 'Jobs Completed', 'Hours Worked', 'Revenue Generated', 'Avg Job Value', 'Effective Rate'];
-    
-    const rows = filteredData.map(t => [
-      t.name,
-      t.email,
-      t.role,
-      t.jobsCompleted,
-      t.hoursWorked.toFixed(1),
-      `$${formatAmount(t.revenueGenerated)}`,
-      `$${formatAmount(t.avgJobValue)}`,
-      `$${formatAmount(t.effectiveHourlyRate)}/hr`,
-    ]);
+    const rows = filteredData.map(t => [t.name, t.email, t.role, t.jobsCompleted, t.hoursWorked.toFixed(1), `$${formatAmount(t.revenueGenerated)}`, `$${formatAmount(t.avgJobValue)}`, `$${formatAmount(t.effectiveHourlyRate)}/hr`]);
 
     // Add summary
     rows.push([]);
@@ -346,15 +280,11 @@ const TechnicianPerformanceReport = () => {
     rows.push(['Total Hours', stats?.totalHours.toFixed(1) || '0', '', '', '', '', '', '']);
     rows.push(['Total Jobs', stats?.totalJobs || 0, '', '', '', '', '', '']);
     rows.push(['Total Revenue', `$${formatAmount(stats?.totalRevenue || 0)}`, '', '', '', '', '', '']);
-
-    const csvContent = [
-      ...(filterNote ? [`"${filterNote}"`] : []),
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
-    ].join('\n');
-
+    const csvContent = [...(filterNote ? [`"${filterNote}"`] : []), headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
     const filterSuffix = selectedMemberIds.length > 0 ? '_filtered' : '';
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvContent], {
+      type: 'text/csv;charset=utf-8;'
+    });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `technician-performance-${format(new Date(), 'yyyy-MM-dd')}${filterSuffix}.csv`;
@@ -366,7 +296,6 @@ const TechnicianPerformanceReport = () => {
   const printReport = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-
     const tableRows = filteredData.map(t => `
       <tr>
         <td style="border: 1px solid #ddd; padding: 8px;">${t.name}</td>
@@ -377,7 +306,6 @@ const TechnicianPerformanceReport = () => {
         <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$${formatAmount(t.effectiveHourlyRate)}/hr</td>
       </tr>
     `).join('');
-
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -444,7 +372,13 @@ const TechnicianPerformanceReport = () => {
   };
 
   // Send email
-  const sendReportEmail = async (emails: string[]): Promise<{ successful: string[]; failed: { email: string; reason: string }[] }> => {
+  const sendReportEmail = async (emails: string[]): Promise<{
+    successful: string[];
+    failed: {
+      email: string;
+      reason: string;
+    }[];
+  }> => {
     setIsSendingEmail(true);
     try {
       const reportData = {
@@ -455,7 +389,7 @@ const TechnicianPerformanceReport = () => {
           teamSize: stats?.teamSize || 0,
           totalJobs: stats?.totalJobs || 0,
           totalHours: stats?.totalHours.toFixed(1) || '0',
-          totalRevenue: formatAmount(stats?.totalRevenue || 0),
+          totalRevenue: formatAmount(stats?.totalRevenue || 0)
         },
         technicians: filteredData.slice(0, 20).map(t => ({
           name: t.name,
@@ -463,53 +397,61 @@ const TechnicianPerformanceReport = () => {
           jobsCompleted: t.jobsCompleted,
           hoursWorked: t.hoursWorked.toFixed(1),
           revenueGenerated: formatAmount(t.revenueGenerated),
-          effectiveRate: formatAmount(t.effectiveHourlyRate),
-        })),
+          effectiveRate: formatAmount(t.effectiveHourlyRate)
+        }))
       };
-
-      const { data, error } = await supabase.functions.invoke('send-report-email', {
-        body: { 
-          to: emails, 
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('send-report-email', {
+        body: {
+          to: emails,
           reportType: 'technician-performance',
-          reportData 
-        },
+          reportData
+        }
       });
-
       if (error) throw error;
-
-      const result = data as { successful: string[]; failed: { email: string; reason: string }[] };
-      
+      const result = data as {
+        successful: string[];
+        failed: {
+          email: string;
+          reason: string;
+        }[];
+      };
       if (result.successful.length > 0) {
         toast.success(`Report sent to ${result.successful.length} recipient${result.successful.length !== 1 ? 's' : ''}`);
       }
       if (result.failed.length > 0) {
         toast.error(`Failed to send to ${result.failed.length} recipient${result.failed.length !== 1 ? 's' : ''}`);
       }
-
       return result;
     } catch (error: any) {
       console.error('Failed to send email:', error);
       toast.error('Failed to send email: ' + (error.message || 'Unknown error'));
-      return { successful: [], failed: emails.map(e => ({ email: e, reason: error.message || 'Unknown error' })) };
+      return {
+        successful: [],
+        failed: emails.map(e => ({
+          email: e,
+          reason: error.message || 'Unknown error'
+        }))
+      };
     } finally {
       setIsSendingEmail(false);
     }
   };
-
   if (isLoading) {
-    return (
-      <div className="space-y-6">
+    return <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i}>
+          {Array.from({
+          length: 4
+        }).map((_, i) => <Card key={i}>
               <CardHeader className="pb-2">
                 <Skeleton className="h-4 w-24" />
               </CardHeader>
               <CardContent>
                 <Skeleton className="h-8 w-16" />
               </CardContent>
-            </Card>
-          ))}
+            </Card>)}
         </div>
         <Card>
           <CardHeader>
@@ -519,12 +461,9 @@ const TechnicianPerformanceReport = () => {
             <Skeleton className="h-[300px] w-full" />
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Header with filters and export */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -533,75 +472,45 @@ const TechnicianPerformanceReport = () => {
             <div className="flex items-center gap-2">
               <div className="relative flex-1 sm:flex-none sm:min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search team members..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
+                <Input placeholder="Search team members..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
               </div>
               {/* Team Member Filter */}
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="min-w-[140px] justify-start">
                     <User className="w-4 h-4 mr-2" />
-                    {selectedMemberIds.length === 0 ? (
-                      <span className="text-muted-foreground">All Members</span>
-                    ) : (
-                      <span>{selectedMemberIds.length} selected</span>
-                    )}
+                    {selectedMemberIds.length === 0 ? <span className="text-muted-foreground">All Members</span> : <span>{selectedMemberIds.length} selected</span>}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-2 bg-background" align="start">
                   <div className="flex items-center justify-between mb-2 pb-2 border-b">
                     <span className="text-sm font-medium">Filter by Member</span>
-                    {selectedMemberIds.length > 0 && (
-                      <Button variant="ghost" size="sm" onClick={clearSelectedMembers} className="h-6 px-2 text-xs">
+                    {selectedMemberIds.length > 0 && <Button variant="ghost" size="sm" onClick={clearSelectedMembers} className="h-6 px-2 text-xs">
                         Clear all
-                      </Button>
-                    )}
+                      </Button>}
                   </div>
                   <div className="relative mb-2">
                     <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      placeholder="Search members..."
-                      value={memberFilterSearch}
-                      onChange={(e) => setMemberFilterSearch(e.target.value)}
-                      className="pl-8 h-8 text-sm"
-                    />
+                    <Input placeholder="Search members..." value={memberFilterSearch} onChange={e => setMemberFilterSearch(e.target.value)} className="pl-8 h-8 text-sm" />
                   </div>
                   <div className="max-h-[200px] overflow-y-auto space-y-1">
-                    {filteredDropdownMembers.map(member => (
-                      <div
-                        key={member.id}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
-                        onClick={() => toggleMember(member.id)}
-                      >
-                        <Checkbox
-                          checked={selectedMemberIds.includes(member.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          onCheckedChange={() => toggleMember(member.id)}
-                        />
+                    {filteredDropdownMembers.map(member => <div key={member.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer" onClick={() => toggleMember(member.id)}>
+                        <Checkbox checked={selectedMemberIds.includes(member.id)} onClick={e => e.stopPropagation()} onCheckedChange={() => toggleMember(member.id)} />
                         <div className="flex-1 min-w-0">
                           <div className="text-sm truncate">{member.full_name || member.email}</div>
-                          {member.full_name && (
-                            <div className="text-xs text-muted-foreground truncate">{member.email}</div>
-                          )}
+                          {member.full_name && <div className="text-xs text-muted-foreground truncate">{member.email}</div>}
                         </div>
-                      </div>
-                    ))}
-                    {filteredDropdownMembers.length === 0 && (
-                      <div className="text-sm text-muted-foreground text-center py-4">
+                      </div>)}
+                    {filteredDropdownMembers.length === 0 && <div className="text-sm text-muted-foreground text-center py-4">
                         {allTeamMembers.length === 0 ? 'No team members' : 'No matches found'}
-                      </div>
-                    )}
+                      </div>}
                   </div>
                 </PopoverContent>
               </Popover>
             </div>
 
             {/* Row 2: Time Range + Mobile Actions Dropdown */}
-            <div className="flex items-center gap-2">
+            <div className="gap-2 flex items-center justify-end">
               <Select value={timeRange} onValueChange={setTimeRange}>
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Time range" />
@@ -641,56 +550,30 @@ const TechnicianPerformanceReport = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {timeRange === 'custom' && (
-                <>
+              {timeRange === 'custom' && <>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-[130px] justify-start text-left font-normal",
-                          !customStartDate && "text-muted-foreground"
-                        )}
-                      >
+                      <Button variant="outline" className={cn("w-[130px] justify-start text-left font-normal", !customStartDate && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {customStartDate ? format(customStartDate, "MMM yyyy") : "Start"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 bg-popover" align="end">
-                      <Calendar
-                        mode="single"
-                        selected={customStartDate}
-                        onSelect={setCustomStartDate}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
+                      <Calendar mode="single" selected={customStartDate} onSelect={setCustomStartDate} initialFocus className="p-3 pointer-events-auto" />
                     </PopoverContent>
                   </Popover>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-[130px] justify-start text-left font-normal",
-                          !customEndDate && "text-muted-foreground"
-                        )}
-                      >
+                      <Button variant="outline" className={cn("w-[130px] justify-start text-left font-normal", !customEndDate && "text-muted-foreground")}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {customEndDate ? format(customEndDate, "MMM yyyy") : "End"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 bg-popover" align="end">
-                      <Calendar
-                        mode="single"
-                        selected={customEndDate}
-                        onSelect={setCustomEndDate}
-                        initialFocus
-                        className="p-3 pointer-events-auto"
-                      />
+                      <Calendar mode="single" selected={customEndDate} onSelect={setCustomEndDate} initialFocus className="p-3 pointer-events-auto" />
                     </PopoverContent>
                   </Popover>
-                </>
-              )}
+                </>}
             </div>
           </div>
 
@@ -775,34 +658,27 @@ const TechnicianPerformanceReport = () => {
           <CardTitle>Team Performance Comparison</CardTitle>
         </CardHeader>
         <CardContent>
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
+          {chartData.length > 0 ? <ResponsiveContainer width="100%" height={300}>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="name" className="text-xs" />
                 <YAxis className="text-xs" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px'
-                  }}
-                  formatter={(value: number, name: string) => {
-                    if (name === 'revenue') return [`$${formatAmount(value)}`, 'Revenue'];
-                    if (name === 'hours') return [`${value}h`, 'Hours'];
-                    return [value, 'Jobs'];
-                  }}
-                />
+                <Tooltip contentStyle={{
+              backgroundColor: 'hsl(var(--card))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: '8px'
+            }} formatter={(value: number, name: string) => {
+              if (name === 'revenue') return [`$${formatAmount(value)}`, 'Revenue'];
+              if (name === 'hours') return [`${value}h`, 'Hours'];
+              return [value, 'Jobs'];
+            }} />
                 <Legend />
                 <Bar dataKey="jobs" name="Jobs" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="hours" name="Hours" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+            </ResponsiveContainer> : <div className="flex items-center justify-center h-[300px] text-muted-foreground">
               No performance data available
-            </div>
-          )}
+            </div>}
         </CardContent>
       </Card>
 
@@ -816,63 +692,22 @@ const TechnicianPerformanceReport = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <SortableTableHeader
-                    column="name"
-                    label="Team Member"
-                    currentSortColumn={sortField}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                  />
-                  <SortableTableHeader
-                    column="jobsCompleted"
-                    label="Jobs"
-                    currentSortColumn={sortField}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                  />
-                  <SortableTableHeader
-                    column="hoursWorked"
-                    label="Hours"
-                    currentSortColumn={sortField}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="hidden sm:table-cell"
-                  />
-                  <SortableTableHeader
-                    column="revenueGenerated"
-                    label="Revenue"
-                    currentSortColumn={sortField}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="hidden md:table-cell"
-                  />
-                  <SortableTableHeader
-                    column="avgJobValue"
-                    label="Avg Job"
-                    currentSortColumn={sortField}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="hidden lg:table-cell"
-                  />
+                  <SortableTableHeader column="name" label="Team Member" currentSortColumn={sortField} currentSortDirection={sortDirection} onSort={handleSort} />
+                  <SortableTableHeader column="jobsCompleted" label="Jobs" currentSortColumn={sortField} currentSortDirection={sortDirection} onSort={handleSort} align="right" />
+                  <SortableTableHeader column="hoursWorked" label="Hours" currentSortColumn={sortField} currentSortDirection={sortDirection} onSort={handleSort} align="right" className="hidden sm:table-cell" />
+                  <SortableTableHeader column="revenueGenerated" label="Revenue" currentSortColumn={sortField} currentSortDirection={sortDirection} onSort={handleSort} align="right" className="hidden md:table-cell" />
+                  <SortableTableHeader column="avgJobValue" label="Avg Job" currentSortColumn={sortField} currentSortDirection={sortDirection} onSort={handleSort} align="right" className="hidden lg:table-cell" />
                   <TableHead className="text-right hidden lg:table-cell">
                     Effective Rate
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.length === 0 ? (
-                  <TableRow>
+                {filteredData.length === 0 ? <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                       No team performance data found
                     </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedData.map(t => (
-                    <TableRow key={t.id}>
+                  </TableRow> : paginatedData.map(t => <TableRow key={t.id}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{t.name}</div>
@@ -890,36 +725,18 @@ const TechnicianPerformanceReport = () => {
                       <TableCell className="text-right hidden lg:table-cell text-muted-foreground">
                         ${formatAmount(t.effectiveHourlyRate)}/hr
                       </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                    </TableRow>)}
               </TableBody>
             </Table>
           </div>
 
           {/* Pagination */}
-          <TablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            totalItems={filteredData.length}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-            itemLabel="team members"
-          />
+          <TablePagination currentPage={currentPage} totalPages={totalPages} pageSize={pageSize} totalItems={filteredData.length} onPageChange={setCurrentPage} onPageSizeChange={setPageSize} itemLabel="team members" />
         </CardContent>
       </Card>
 
       {/* Email Dialog */}
-      <ReportEmailDialog
-        open={emailDialogOpen}
-        onOpenChange={setEmailDialogOpen}
-        onSend={sendReportEmail}
-        isSending={isSendingEmail}
-        title="Email Technician Performance Report"
-      />
-    </div>
-  );
+      <ReportEmailDialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen} onSend={sendReportEmail} isSending={isSendingEmail} title="Email Technician Performance Report" />
+    </div>;
 };
-
 export default TechnicianPerformanceReport;
