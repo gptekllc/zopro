@@ -1182,7 +1182,7 @@ const Jobs = () => {
                         </div>
                         {job.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{job.notes}</p>}
                       </div>
-                      {(job.total ?? 0) > 0 && <span className="text-sm font-medium text-primary shrink-0">${Number(job.total).toFixed(2)}</span>}
+                      {/* Total moved to row 2 after status */}
                     </div>
                     
                     {/* Row 2: Tags + Actions */}
@@ -1210,6 +1210,7 @@ const Jobs = () => {
                         <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
                           {job.status.replace('_', ' ')}
                         </span>
+                        {(job.total ?? 0) > 0 && <span className="text-sm font-semibold text-primary">${Number(job.total).toFixed(2)}</span>}
                         {/* Notification sent indicator */}
                         {(notificationCounts.get(job.id) || 0) > 0 && (
                           <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1 text-xs">
@@ -1390,10 +1391,6 @@ const Jobs = () => {
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
-                          {(job.total ?? 0) > 0 && <Badge variant="secondary" className="gap-1">
-                              <DollarSign className="w-3 h-3" />
-                              {Number(job.total).toFixed(2)}
-                            </Badge>}
                           {/* Signature Badge */}
                           {(job as any).completion_signature_id && (
                             <Badge variant="outline" className="bg-success/10 text-success border-success/30 gap-1">
@@ -1404,6 +1401,7 @@ const Jobs = () => {
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
                             {job.status.replace('_', ' ')}
                           </span>
+                          {(job.total ?? 0) > 0 && <span className="text-base font-semibold text-primary">${Number(job.total).toFixed(2)}</span>}
                           {/* Notification sent indicator */}
                           {(notificationCounts.get(job.id) || 0) > 0 && (
                             <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1">
