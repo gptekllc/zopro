@@ -209,14 +209,23 @@ export function useCreatePayment() {
       const totalPaid = allPayments.reduce((sum: number, p: { amount: number }) => sum + Number(p.amount), 0);
       const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
       const isFullyPaid = totalPaid >= totalDue;
+      const hasPartialPayment = totalPaid > 0 && totalPaid < totalDue;
       
-      // Update invoice status if fully paid
+      // Update invoice status based on payment
       if (isFullyPaid) {
         await (supabase as any)
           .from('invoices')
           .update({ 
             status: 'paid',
             paid_at: paymentDate.toISOString()
+          })
+          .eq('id', invoiceId);
+      } else if (hasPartialPayment) {
+        await (supabase as any)
+          .from('invoices')
+          .update({ 
+            status: 'partially_paid',
+            paid_at: null
           })
           .eq('id', invoiceId);
       }
@@ -318,6 +327,7 @@ export function useUpdatePayment() {
       const totalPaid = allPayments.reduce((sum: number, p: { amount: number }) => sum + Number(p.amount), 0);
       const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
       const isFullyPaid = totalPaid >= totalDue;
+      const hasPartialPayment = totalPaid > 0 && totalPaid < totalDue;
       
       // Update invoice status based on new payment totals
       if (isFullyPaid && invoice.status !== 'paid') {
@@ -328,11 +338,20 @@ export function useUpdatePayment() {
             paid_at: paymentDate.toISOString()
           })
           .eq('id', invoiceId);
-      } else if (!isFullyPaid && invoice.status === 'paid') {
+      } else if (hasPartialPayment && invoice.status !== 'partially_paid') {
         await (supabase as any)
           .from('invoices')
           .update({ 
-            status: 'sent',
+            status: 'partially_paid',
+            paid_at: null
+          })
+          .eq('id', invoiceId);
+      } else if (!isFullyPaid && !hasPartialPayment && (invoice.status === 'paid' || invoice.status === 'partially_paid')) {
+        const isOverdue = invoice.due_date && new Date(invoice.due_date) < new Date();
+        await (supabase as any)
+          .from('invoices')
+          .update({ 
+            status: isOverdue ? 'overdue' : 'sent',
             paid_at: null
           })
           .eq('id', invoiceId);
@@ -376,17 +395,36 @@ export function useDeletePayment() {
         .eq('id', invoiceId)
         .single();
       
-      if (invoice) {
-        const totalPaid = (remainingPayments || []).reduce((sum: number, p: { amount: number }) => sum + Number(p.amount), 0);
+      if (invoice && invoice.status !== 'voided') {
+        const completedPayments = (remainingPayments || []).filter((p: { status: string }) => p.status === 'completed');
+        const totalPaid = completedPayments.reduce((sum: number, p: { amount: number }) => sum + Number(p.amount), 0);
         const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
+        const hasPartialPayment = totalPaid > 0 && totalPaid < totalDue;
         
-        // If was paid but now has remaining balance, update status
-        if (invoice.status === 'paid' && totalPaid < totalDue) {
+        // Update status based on remaining payments
+        if (hasPartialPayment && invoice.status !== 'partially_paid') {
           await (supabase as any)
             .from('invoices')
             .update({ 
-              status: 'sent',
+              status: 'partially_paid',
               paid_at: null
+            })
+            .eq('id', invoiceId);
+        } else if (totalPaid === 0 && (invoice.status === 'paid' || invoice.status === 'partially_paid')) {
+          const isOverdue = invoice.due_date && new Date(invoice.due_date) < new Date();
+          await (supabase as any)
+            .from('invoices')
+            .update({ 
+              status: isOverdue ? 'overdue' : 'sent',
+              paid_at: null
+            })
+            .eq('id', invoiceId);
+        } else if (totalPaid >= totalDue && invoice.status !== 'paid') {
+          await (supabase as any)
+            .from('invoices')
+            .update({ 
+              status: 'paid',
+              paid_at: new Date().toISOString()
             })
             .eq('id', invoiceId);
         }
@@ -605,7 +643,7 @@ export function useVoidPayment() {
 }
 
 // Helper function to recalculate invoice status based on payments
-async function recalculateInvoiceStatus(invoiceId: string) {
+export async function recalculateInvoiceStatus(invoiceId: string) {
   // Get all completed payments for this invoice
   const { data: payments } = await (supabase as any)
     .from('payments')
@@ -614,33 +652,46 @@ async function recalculateInvoiceStatus(invoiceId: string) {
   
   const { data: invoice } = await (supabase as any)
     .from('invoices')
-    .select('total, late_fee_amount, status')
+    .select('total, late_fee_amount, status, due_date')
     .eq('id', invoiceId)
     .single();
   
   if (!invoice) return;
+  
+  // Skip voided invoices
+  if (invoice.status === 'voided') return;
   
   // Only count completed payments
   const completedPayments = (payments || []).filter((p: { status: string }) => p.status === 'completed');
   const totalPaid = completedPayments.reduce((sum: number, p: { amount: number }) => sum + Number(p.amount), 0);
   const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
   const isFullyPaid = totalPaid >= totalDue;
+  const hasPartialPayment = totalPaid > 0 && totalPaid < totalDue;
   
-  // Update invoice status
-  if (isFullyPaid && invoice.status !== 'paid') {
+  // Determine new status
+  let newStatus: string;
+  let paidAt: string | null = null;
+  
+  if (isFullyPaid) {
+    newStatus = 'paid';
+    paidAt = new Date().toISOString();
+  } else if (hasPartialPayment) {
+    newStatus = 'partially_paid';
+    paidAt = null;
+  } else {
+    // No payments - revert to sent or overdue based on due date
+    const isOverdue = invoice.due_date && new Date(invoice.due_date) < new Date();
+    newStatus = isOverdue ? 'overdue' : 'sent';
+    paidAt = null;
+  }
+  
+  // Only update if status changed
+  if (newStatus !== invoice.status) {
     await (supabase as any)
       .from('invoices')
       .update({ 
-        status: 'paid',
-        paid_at: new Date().toISOString()
-      })
-      .eq('id', invoiceId);
-  } else if (!isFullyPaid && invoice.status === 'paid') {
-    await (supabase as any)
-      .from('invoices')
-      .update({ 
-        status: 'sent',
-        paid_at: null
+        status: newStatus,
+        paid_at: paidAt
       })
       .eq('id', invoiceId);
   }

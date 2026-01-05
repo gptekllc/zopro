@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Search, Filter, Archive } from 'lucide-react';
+import { getInvoiceStatusLabel } from '@/hooks/useInvoices';
 
 interface InvoiceListControlsProps {
   searchQuery: string;
@@ -11,6 +12,8 @@ interface InvoiceListControlsProps {
   showSearch?: boolean;
   showFilters?: boolean;
 }
+
+const filterStatuses = ['all', 'draft', 'sent', 'partially_paid', 'paid', 'overdue', 'voided'];
 
 export function InvoiceListControls({
   searchQuery,
@@ -41,21 +44,15 @@ export function InvoiceListControls({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-popover">
-            <DropdownMenuItem onClick={() => onStatusFilterChange('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
-              All Status
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onStatusFilterChange('draft')} className={statusFilter === 'draft' ? 'bg-accent' : ''}>
-              Draft
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onStatusFilterChange('sent')} className={statusFilter === 'sent' ? 'bg-accent' : ''}>
-              Sent
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onStatusFilterChange('paid')} className={statusFilter === 'paid' ? 'bg-accent' : ''}>
-              Paid
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onStatusFilterChange('overdue')} className={statusFilter === 'overdue' ? 'bg-accent' : ''}>
-              Overdue
-            </DropdownMenuItem>
+            {filterStatuses.map((status) => (
+              <DropdownMenuItem 
+                key={status}
+                onClick={() => onStatusFilterChange(status)} 
+                className={statusFilter === status ? 'bg-accent' : ''}
+              >
+                {status === 'all' ? 'All Status' : getInvoiceStatusLabel(status)}
+              </DropdownMenuItem>
+            ))}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onStatusFilterChange('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
               <Archive className="w-4 h-4 mr-2" />
