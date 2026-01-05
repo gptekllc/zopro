@@ -23,6 +23,7 @@ const corsHeaders = {
 
 interface DocumentItem {
   description: string;
+  item_description?: string | null;
   quantity: number;
   unit_price: number;
   total: number;
@@ -591,7 +592,7 @@ async function generatePDFDocument(
         x: tableLeft + 5,
         y,
         size: 9,
-        font: helvetica,
+        font: helveticaBold,
         color: blackColor,
       });
 
@@ -619,14 +620,33 @@ async function generatePDFDocument(
         color: blackColor,
       });
 
+      y -= 14;
+
+      // Draw item description on a new line if it exists
+      if (item.item_description) {
+        const maxItemDescLength = 80;
+        const itemDesc = item.item_description.length > maxItemDescLength 
+          ? item.item_description.substring(0, maxItemDescLength) + '...' 
+          : item.item_description;
+
+        page.drawText(itemDesc, {
+          x: tableLeft + 10,
+          y,
+          size: 8,
+          font: helvetica,
+          color: grayColor,
+        });
+        y -= 12;
+      }
+
       page.drawLine({
-        start: { x: tableLeft, y: y - 5 },
-        end: { x: tableRight, y: y - 5 },
+        start: { x: tableLeft, y: y - 3 },
+        end: { x: tableRight, y: y - 3 },
         thickness: 0.5,
         color: rgb(0.9, 0.9, 0.9),
       });
 
-      y -= 18;
+      y -= 8;
     }
 
     y -= 10; // Space between sections
