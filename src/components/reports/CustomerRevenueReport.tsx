@@ -14,55 +14,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TablePagination } from '@/components/ui/table-pagination';
 import { SortableTableHeader } from '@/components/ui/sortable-table-header';
 import { cn } from '@/lib/utils';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from 'recharts';
-import {
-  Users,
-  DollarSign,
-  TrendingUp,
-  Download,
-  Search,
-  Printer,
-  CalendarIcon,
-  Mail,
-  User,
-  MoreVertical,
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Users, DollarSign, TrendingUp, Download, Search, Printer, CalendarIcon, Mail, User, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatAmount } from '@/lib/formatAmount';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ReportEmailDialog } from './ReportEmailDialog';
-
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
-
 type SortField = 'name' | 'totalRevenue' | 'jobCount' | 'avgJobValue' | 'ltv';
 type SortDirection = 'asc' | 'desc';
-
 const CustomerRevenueReport = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('totalRevenue');
@@ -78,23 +41,28 @@ const CustomerRevenueReport = () => {
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-
-  const { data: customers, isLoading: loadingCustomers } = useCustomers();
-  const { data: payments, isLoading: loadingPayments } = useAllPayments();
-  const { data: invoices, isLoading: loadingInvoices } = useInvoices();
-  const { data: jobs, isLoading: loadingJobs } = useJobs();
-
+  const {
+    data: customers,
+    isLoading: loadingCustomers
+  } = useCustomers();
+  const {
+    data: payments,
+    isLoading: loadingPayments
+  } = useAllPayments();
+  const {
+    data: invoices,
+    isLoading: loadingInvoices
+  } = useInvoices();
+  const {
+    data: jobs,
+    isLoading: loadingJobs
+  } = useJobs();
   const isLoading = loadingCustomers || loadingPayments || loadingInvoices || loadingJobs;
 
   // Toggle customer selection for filter
   const toggleCustomer = (customerId: string) => {
-    setSelectedCustomerIds(prev => 
-      prev.includes(customerId) 
-        ? prev.filter(id => id !== customerId)
-        : [...prev, customerId]
-    );
+    setSelectedCustomerIds(prev => prev.includes(customerId) ? prev.filter(id => id !== customerId) : [...prev, customerId]);
   };
-
   const clearSelectedCustomers = () => {
     setSelectedCustomerIds([]);
   };
@@ -108,67 +76,76 @@ const CustomerRevenueReport = () => {
   const filteredDropdownCustomers = useMemo(() => {
     if (!customerFilterSearch.trim()) return allCustomers;
     const search = customerFilterSearch.toLowerCase();
-    return allCustomers.filter(c => 
-      c.name.toLowerCase().includes(search) ||
-      (c.email && c.email.toLowerCase().includes(search))
-    );
+    return allCustomers.filter(c => c.name.toLowerCase().includes(search) || c.email && c.email.toLowerCase().includes(search));
   }, [allCustomers, customerFilterSearch]);
 
   // Calculate date range
   const dateRange = useMemo(() => {
     const now = new Date();
-    
     if (timeRange === 'custom' && customStartDate && customEndDate) {
-      return { start: startOfMonth(customStartDate), end: endOfMonth(customEndDate) };
+      return {
+        start: startOfMonth(customStartDate),
+        end: endOfMonth(customEndDate)
+      };
     }
-    
     if (timeRange === 'all') return null;
-    
     if (timeRange === 'ytd') {
-      return { start: startOfYear(now), end: now };
+      return {
+        start: startOfYear(now),
+        end: now
+      };
     }
-    
     if (timeRange === 'lastyear') {
       const lastYear = subYears(now, 1);
-      return { start: startOfYear(lastYear), end: new Date(lastYear.getFullYear(), 11, 31) };
+      return {
+        start: startOfYear(lastYear),
+        end: new Date(lastYear.getFullYear(), 11, 31)
+      };
     }
-    
+
     // Months
     const months = parseInt(timeRange);
-    return { start: startOfMonth(subMonths(now, months - 1)), end: now };
+    return {
+      start: startOfMonth(subMonths(now, months - 1)),
+      end: now
+    };
   }, [timeRange, customStartDate, customEndDate]);
 
   // Calculate customer metrics
   const customerData = useMemo(() => {
     if (!customers || !payments || !invoices || !jobs) return [];
-
     return customers.map(customer => {
       // Get all completed payments for this customer (filtered by date range)
       const customerPayments = payments.filter(p => {
         const invoice = invoices.find(i => i.id === p.invoice_id);
         if (invoice?.customer_id !== customer.id || p.status !== 'completed') return false;
-        
+
         // Apply date filter
         if (dateRange) {
           const paymentDate = parseISO(p.payment_date);
-          if (!isWithinInterval(paymentDate, { start: dateRange.start, end: dateRange.end })) {
+          if (!isWithinInterval(paymentDate, {
+            start: dateRange.start,
+            end: dateRange.end
+          })) {
             return false;
           }
         }
         return true;
       });
-
       const totalRevenue = customerPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
       // Get customer jobs (filtered by date range for job count)
       const customerJobs = jobs.filter(j => j.customer_id === customer.id);
       const completedJobs = customerJobs.filter(j => {
         if (!['completed', 'invoiced', 'paid'].includes(j.status)) return false;
-        
+
         // Apply date filter based on completion/update date
         if (dateRange) {
           const jobDate = j.actual_end ? parseISO(j.actual_end) : parseISO(j.updated_at);
-          if (!isWithinInterval(jobDate, { start: dateRange.start, end: dateRange.end })) {
+          if (!isWithinInterval(jobDate, {
+            start: dateRange.start,
+            end: dateRange.end
+          })) {
             return false;
           }
         }
@@ -176,37 +153,25 @@ const CustomerRevenueReport = () => {
       });
 
       // Calculate average job value
-      const avgJobValue = completedJobs.length > 0 
-        ? totalRevenue / completedJobs.length 
-        : 0;
+      const avgJobValue = completedJobs.length > 0 ? totalRevenue / completedJobs.length : 0;
 
       // Calculate customer lifetime (days since first job) - use all jobs, not filtered
       const allCustomerJobs = jobs.filter(j => j.customer_id === customer.id);
-      const firstJobDate = allCustomerJobs.length > 0
-        ? allCustomerJobs.reduce((earliest, job) => {
-            const jobDate = parseISO(job.created_at);
-            return jobDate < earliest ? jobDate : earliest;
-          }, parseISO(allCustomerJobs[0].created_at))
-        : null;
-
-      const customerLifetimeDays = firstJobDate 
-        ? differenceInDays(new Date(), firstJobDate) 
-        : 0;
+      const firstJobDate = allCustomerJobs.length > 0 ? allCustomerJobs.reduce((earliest, job) => {
+        const jobDate = parseISO(job.created_at);
+        return jobDate < earliest ? jobDate : earliest;
+      }, parseISO(allCustomerJobs[0].created_at)) : null;
+      const customerLifetimeDays = firstJobDate ? differenceInDays(new Date(), firstJobDate) : 0;
 
       // Calculate LTV (simple: total revenue, could be more complex with projections)
       // Using a simple model: if customer has been active for X days, project annual value
-      const annualizedRevenue = customerLifetimeDays > 30
-        ? (totalRevenue / customerLifetimeDays) * 365
-        : totalRevenue * 12; // Assume monthly for new customers
+      const annualizedRevenue = customerLifetimeDays > 30 ? totalRevenue / customerLifetimeDays * 365 : totalRevenue * 12; // Assume monthly for new customers
 
       // Get last payment date
-      const lastPaymentDate = customerPayments.length > 0
-        ? customerPayments.reduce((latest, p) => {
-            const pDate = parseISO(p.payment_date);
-            return pDate > latest ? pDate : latest;
-          }, parseISO(customerPayments[0].payment_date))
-        : null;
-
+      const lastPaymentDate = customerPayments.length > 0 ? customerPayments.reduce((latest, p) => {
+        const pDate = parseISO(p.payment_date);
+        return pDate > latest ? pDate : latest;
+      }, parseISO(customerPayments[0].payment_date)) : null;
       return {
         id: customer.id,
         name: customer.name,
@@ -217,7 +182,7 @@ const CustomerRevenueReport = () => {
         ltv: annualizedRevenue,
         customerLifetimeDays,
         lastPaymentDate,
-        paymentCount: customerPayments.length,
+        paymentCount: customerPayments.length
       };
     }).filter(c => c.totalRevenue > 0 || c.jobCount > 0);
   }, [customers, payments, invoices, jobs, dateRange]);
@@ -230,33 +195,24 @@ const CustomerRevenueReport = () => {
         return false;
       }
       // Apply search filter
-      return c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (c.email && c.email.toLowerCase().includes(searchQuery.toLowerCase()));
+      return c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.email && c.email.toLowerCase().includes(searchQuery.toLowerCase());
     });
-
     result.sort((a, b) => {
       let aVal = a[sortField];
       let bVal = b[sortField];
-      
       if (typeof aVal === 'string') aVal = aVal.toLowerCase();
       if (typeof bVal === 'string') bVal = bVal.toLowerCase();
-      
       if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
       return 0;
     });
-
     return result;
   }, [customerData, searchQuery, sortField, sortDirection, selectedCustomerIds]);
 
   // Get selected customer names for display
   const getSelectedCustomerNames = () => {
     if (selectedCustomerIds.length === 0) return null;
-    return selectedCustomerIds
-      .map(id => allCustomers.find(c => c.id === id))
-      .filter(Boolean)
-      .map(c => c!.name)
-      .join(', ');
+    return selectedCustomerIds.map(id => allCustomers.find(c => c.id === id)).filter(Boolean).map(c => c!.name).join(', ');
   };
 
   // Reset to first page when filters change
@@ -269,39 +225,30 @@ const CustomerRevenueReport = () => {
     const startIndex = (currentPage - 1) * pageSize;
     return filteredData.slice(startIndex, startIndex + pageSize);
   }, [filteredData, currentPage, pageSize]);
-
   const totalPages = Math.ceil(filteredData.length / pageSize);
-
 
   // Calculate summary stats
   const stats = useMemo(() => {
     if (filteredData.length === 0) return null;
-
     const totalRevenue = filteredData.reduce((sum, c) => sum + c.totalRevenue, 0);
     const avgRevenue = totalRevenue / filteredData.length;
-    const topCustomer = filteredData.reduce((top, c) => 
-      c.totalRevenue > (top?.totalRevenue || 0) ? c : top, filteredData[0]
-    );
+    const topCustomer = filteredData.reduce((top, c) => c.totalRevenue > (top?.totalRevenue || 0) ? c : top, filteredData[0]);
     const avgLTV = filteredData.reduce((sum, c) => sum + c.ltv, 0) / filteredData.length;
-
     return {
       totalCustomers: filteredData.length,
       totalRevenue,
       avgRevenue,
       topCustomer,
-      avgLTV,
+      avgLTV
     };
   }, [filteredData]);
 
   // Top 10 customers for chart
   const topCustomersChart = useMemo(() => {
-    return filteredData
-      .sort((a, b) => b.totalRevenue - a.totalRevenue)
-      .slice(0, 10)
-      .map(c => ({
-        name: c.name.length > 15 ? c.name.substring(0, 15) + '...' : c.name,
-        revenue: c.totalRevenue,
-      }));
+    return filteredData.sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 10).map(c => ({
+      name: c.name.length > 15 ? c.name.substring(0, 15) + '...' : c.name,
+      revenue: c.totalRevenue
+    }));
   }, [filteredData]);
 
   // Revenue distribution for pie chart
@@ -310,19 +257,18 @@ const CustomerRevenueReport = () => {
     const top5 = sorted.slice(0, 5);
     const others = sorted.slice(5);
     const othersTotal = others.reduce((sum, c) => sum + c.totalRevenue, 0);
-
     const result = top5.map(c => ({
       name: c.name.length > 12 ? c.name.substring(0, 12) + '...' : c.name,
-      value: c.totalRevenue,
+      value: c.totalRevenue
     }));
-
     if (othersTotal > 0) {
-      result.push({ name: 'Others', value: othersTotal });
+      result.push({
+        name: 'Others',
+        value: othersTotal
+      });
     }
-
     return result;
   }, [filteredData]);
-
   const handleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
@@ -335,22 +281,9 @@ const CustomerRevenueReport = () => {
   // Export to CSV
   const exportToCSV = () => {
     if (filteredData.length === 0) return;
-
-    const filterNote = selectedCustomerIds.length > 0 
-      ? `Filtered: ${getSelectedCustomerNames()}`
-      : '';
-
+    const filterNote = selectedCustomerIds.length > 0 ? `Filtered: ${getSelectedCustomerNames()}` : '';
     const headers = ['Customer', 'Email', 'Total Revenue', 'Jobs Completed', 'Avg Job Value', 'Est. Annual LTV', 'Last Payment'];
-    
-    const rows = filteredData.map(c => [
-      c.name,
-      c.email || '',
-      `$${formatAmount(c.totalRevenue)}`,
-      c.jobCount,
-      `$${formatAmount(c.avgJobValue)}`,
-      `$${formatAmount(c.ltv)}`,
-      c.lastPaymentDate ? format(c.lastPaymentDate, 'yyyy-MM-dd') : '-',
-    ]);
+    const rows = filteredData.map(c => [c.name, c.email || '', `$${formatAmount(c.totalRevenue)}`, c.jobCount, `$${formatAmount(c.avgJobValue)}`, `$${formatAmount(c.ltv)}`, c.lastPaymentDate ? format(c.lastPaymentDate, 'yyyy-MM-dd') : '-']);
 
     // Add summary
     rows.push([]);
@@ -359,15 +292,11 @@ const CustomerRevenueReport = () => {
     rows.push(['Total Revenue', `$${formatAmount(stats?.totalRevenue || 0)}`, '', '', '', '', '']);
     rows.push(['Average Revenue per Customer', `$${formatAmount(stats?.avgRevenue || 0)}`, '', '', '', '', '']);
     rows.push(['Average LTV', `$${formatAmount(stats?.avgLTV || 0)}`, '', '', '', '', '']);
-
-    const csvContent = [
-      ...(filterNote ? [`"${filterNote}"`] : []),
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
-    ].join('\n');
-
+    const csvContent = [...(filterNote ? [`"${filterNote}"`] : []), headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
     const filterSuffix = selectedCustomerIds.length > 0 ? '_filtered' : '';
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvContent], {
+      type: 'text/csv;charset=utf-8;'
+    });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = `customer-revenue-${format(new Date(), 'yyyy-MM-dd')}${filterSuffix}.csv`;
@@ -379,19 +308,7 @@ const CustomerRevenueReport = () => {
   const printReport = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
-
-    const timeRangeLabel = timeRange === 'all' 
-      ? 'All Time'
-      : timeRange === 'custom' && customStartDate && customEndDate
-        ? `${format(customStartDate, 'MMM yyyy')} - ${format(customEndDate, 'MMM yyyy')}`
-        : timeRange === 'ytd' 
-          ? 'Year to Date'
-          : timeRange === 'lastyear'
-            ? 'Last Year'
-            : timeRange === '1'
-              ? 'Last Month'
-              : `Last ${timeRange} Months`;
-
+    const timeRangeLabel = timeRange === 'all' ? 'All Time' : timeRange === 'custom' && customStartDate && customEndDate ? `${format(customStartDate, 'MMM yyyy')} - ${format(customEndDate, 'MMM yyyy')}` : timeRange === 'ytd' ? 'Year to Date' : timeRange === 'lastyear' ? 'Last Year' : timeRange === '1' ? 'Last Month' : `Last ${timeRange} Months`;
     const tableRows = filteredData.slice(0, 50).map(c => `
       <tr>
         <td style="border: 1px solid #ddd; padding: 8px;">${c.name}</td>
@@ -402,7 +319,6 @@ const CustomerRevenueReport = () => {
         <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$${formatAmount(c.ltv)}</td>
       </tr>
     `).join('');
-
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -468,7 +384,6 @@ const CustomerRevenueReport = () => {
     printWindow.document.close();
     printWindow.print();
   };
-
   const getTimeRangeLabel = () => {
     if (timeRange === 'all') return 'All Time';
     if (timeRange === 'custom' && customStartDate && customEndDate) {
@@ -481,7 +396,13 @@ const CustomerRevenueReport = () => {
   };
 
   // Send email
-  const sendReportEmail = async (emails: string[]): Promise<{ successful: string[]; failed: { email: string; reason: string }[] }> => {
+  const sendReportEmail = async (emails: string[]): Promise<{
+    successful: string[];
+    failed: {
+      email: string;
+      reason: string;
+    }[];
+  }> => {
     setIsSendingEmail(true);
     try {
       const reportData = {
@@ -492,7 +413,7 @@ const CustomerRevenueReport = () => {
           totalCustomers: stats?.totalCustomers || 0,
           totalRevenue: formatAmount(stats?.totalRevenue || 0),
           avgRevenue: formatAmount(stats?.avgRevenue || 0),
-          avgLTV: formatAmount(stats?.avgLTV || 0),
+          avgLTV: formatAmount(stats?.avgLTV || 0)
         },
         customers: filteredData.slice(0, 20).map(c => ({
           name: c.name,
@@ -500,53 +421,61 @@ const CustomerRevenueReport = () => {
           totalRevenue: formatAmount(c.totalRevenue),
           jobCount: c.jobCount,
           avgJobValue: formatAmount(c.avgJobValue),
-          ltv: formatAmount(c.ltv),
-        })),
+          ltv: formatAmount(c.ltv)
+        }))
       };
-
-      const { data, error } = await supabase.functions.invoke('send-report-email', {
-        body: { 
-          to: emails, 
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('send-report-email', {
+        body: {
+          to: emails,
           reportType: 'customer-revenue',
-          reportData 
-        },
+          reportData
+        }
       });
-
       if (error) throw error;
-
-      const result = data as { successful: string[]; failed: { email: string; reason: string }[] };
-      
+      const result = data as {
+        successful: string[];
+        failed: {
+          email: string;
+          reason: string;
+        }[];
+      };
       if (result.successful.length > 0) {
         toast.success(`Report sent to ${result.successful.length} recipient${result.successful.length !== 1 ? 's' : ''}`);
       }
       if (result.failed.length > 0) {
         toast.error(`Failed to send to ${result.failed.length} recipient${result.failed.length !== 1 ? 's' : ''}`);
       }
-
       return result;
     } catch (error: any) {
       console.error('Failed to send email:', error);
       toast.error('Failed to send email: ' + (error.message || 'Unknown error'));
-      return { successful: [], failed: emails.map(e => ({ email: e, reason: error.message || 'Unknown error' })) };
+      return {
+        successful: [],
+        failed: emails.map(e => ({
+          email: e,
+          reason: error.message || 'Unknown error'
+        }))
+      };
     } finally {
       setIsSendingEmail(false);
     }
   };
-
   if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i}>
+    return <div className="space-y-6">
+        <div className="grid gap-4 md:grid-cols-4">
+          {Array.from({
+          length: 4
+        }).map((_, i) => <Card key={i}>
               <CardHeader className="pb-2">
                 <Skeleton className="h-4 w-24" />
               </CardHeader>
               <CardContent>
                 <Skeleton className="h-8 w-16" />
               </CardContent>
-            </Card>
-          ))}
+            </Card>)}
         </div>
         <Card>
           <CardHeader>
@@ -556,80 +485,47 @@ const CustomerRevenueReport = () => {
             <Skeleton className="h-[300px] w-full" />
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <div className="space-y-6">
+  return <div className="space-y-6">
       {/* Header with filters and export */}
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="lg:flex-row lg:items-center lg:justify-between gap-4 flex-row flex items-center justify-center">
           <div className="flex flex-wrap items-center justify-end sm:justify-start gap-2">
             <div className="relative flex-1 sm:flex-none sm:min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search customers..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+              <Input placeholder="Search customers..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
             {/* Customer Filter - Desktop: next to search */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="hidden sm:flex min-w-[140px] justify-start">
                   <User className="w-4 h-4 mr-2" />
-                  {selectedCustomerIds.length === 0 ? (
-                    <span className="text-muted-foreground">All Customers</span>
-                  ) : (
-                    <span>{selectedCustomerIds.length} selected</span>
-                  )}
+                  {selectedCustomerIds.length === 0 ? <span className="text-muted-foreground">All Customers</span> : <span>{selectedCustomerIds.length} selected</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-2 bg-background" align="start">
                 <div className="flex items-center justify-between mb-2 pb-2 border-b">
                   <span className="text-sm font-medium">Filter by Customer</span>
-                  {selectedCustomerIds.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearSelectedCustomers} className="h-6 px-2 text-xs">
+                  {selectedCustomerIds.length > 0 && <Button variant="ghost" size="sm" onClick={clearSelectedCustomers} className="h-6 px-2 text-xs">
                       Clear all
-                    </Button>
-                  )}
+                    </Button>}
                 </div>
                 <div className="relative mb-2">
                   <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Search customers..."
-                    value={customerFilterSearch}
-                    onChange={(e) => setCustomerFilterSearch(e.target.value)}
-                    className="pl-8 h-8 text-sm"
-                  />
+                  <Input placeholder="Search customers..." value={customerFilterSearch} onChange={e => setCustomerFilterSearch(e.target.value)} className="pl-8 h-8 text-sm" />
                 </div>
                 <div className="max-h-[200px] overflow-y-auto space-y-1">
-                  {filteredDropdownCustomers.map(customer => (
-                    <div
-                      key={customer.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
-                      onClick={() => toggleCustomer(customer.id)}
-                    >
-                      <Checkbox
-                        checked={selectedCustomerIds.includes(customer.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        onCheckedChange={() => toggleCustomer(customer.id)}
-                      />
+                  {filteredDropdownCustomers.map(customer => <div key={customer.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer" onClick={() => toggleCustomer(customer.id)}>
+                      <Checkbox checked={selectedCustomerIds.includes(customer.id)} onClick={e => e.stopPropagation()} onCheckedChange={() => toggleCustomer(customer.id)} />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm truncate">{customer.name}</div>
-                        {customer.email && (
-                          <div className="text-xs text-muted-foreground truncate">{customer.email}</div>
-                        )}
+                        {customer.email && <div className="text-xs text-muted-foreground truncate">{customer.email}</div>}
                       </div>
-                    </div>
-                  ))}
-                  {filteredDropdownCustomers.length === 0 && (
-                    <div className="text-sm text-muted-foreground text-center py-4">
+                    </div>)}
+                  {filteredDropdownCustomers.length === 0 && <div className="text-sm text-muted-foreground text-center py-4">
                       {allCustomers.length === 0 ? 'No customers' : 'No matches found'}
-                    </div>
-                  )}
+                    </div>}
                 </div>
               </PopoverContent>
             </Popover>
@@ -638,56 +534,31 @@ const CustomerRevenueReport = () => {
               <PopoverTrigger asChild>
                 <Button variant="outline" className="min-w-[140px] justify-start sm:hidden">
                   <User className="w-4 h-4 mr-2" />
-                  {selectedCustomerIds.length === 0 ? (
-                    <span className="text-muted-foreground">All Customers</span>
-                  ) : (
-                    <span>{selectedCustomerIds.length} selected</span>
-                  )}
+                  {selectedCustomerIds.length === 0 ? <span className="text-muted-foreground">All Customers</span> : <span>{selectedCustomerIds.length} selected</span>}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-64 p-2 bg-background" align="end">
                 <div className="flex items-center justify-between mb-2 pb-2 border-b">
                   <span className="text-sm font-medium">Filter by Customer</span>
-                  {selectedCustomerIds.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearSelectedCustomers} className="h-6 px-2 text-xs">
+                  {selectedCustomerIds.length > 0 && <Button variant="ghost" size="sm" onClick={clearSelectedCustomers} className="h-6 px-2 text-xs">
                       Clear all
-                    </Button>
-                  )}
+                    </Button>}
                 </div>
                 <div className="relative mb-2">
                   <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Search customers..."
-                    value={customerFilterSearch}
-                    onChange={(e) => setCustomerFilterSearch(e.target.value)}
-                    className="pl-8 h-8 text-sm"
-                  />
+                  <Input placeholder="Search customers..." value={customerFilterSearch} onChange={e => setCustomerFilterSearch(e.target.value)} className="pl-8 h-8 text-sm" />
                 </div>
                 <div className="max-h-[200px] overflow-y-auto space-y-1">
-                  {filteredDropdownCustomers.map(customer => (
-                    <div
-                      key={customer.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
-                      onClick={() => toggleCustomer(customer.id)}
-                    >
-                      <Checkbox
-                        checked={selectedCustomerIds.includes(customer.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        onCheckedChange={() => toggleCustomer(customer.id)}
-                      />
+                  {filteredDropdownCustomers.map(customer => <div key={customer.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer" onClick={() => toggleCustomer(customer.id)}>
+                      <Checkbox checked={selectedCustomerIds.includes(customer.id)} onClick={e => e.stopPropagation()} onCheckedChange={() => toggleCustomer(customer.id)} />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm truncate">{customer.name}</div>
-                        {customer.email && (
-                          <div className="text-xs text-muted-foreground truncate">{customer.email}</div>
-                        )}
+                        {customer.email && <div className="text-xs text-muted-foreground truncate">{customer.email}</div>}
                       </div>
-                    </div>
-                  ))}
-                  {filteredDropdownCustomers.length === 0 && (
-                    <div className="text-sm text-muted-foreground text-center py-4">
+                    </div>)}
+                  {filteredDropdownCustomers.length === 0 && <div className="text-sm text-muted-foreground text-center py-4">
                       {allCustomers.length === 0 ? 'No customers' : 'No matches found'}
-                    </div>
-                  )}
+                    </div>}
                 </div>
               </PopoverContent>
             </Popover>
@@ -706,56 +577,30 @@ const CustomerRevenueReport = () => {
                 <SelectItem value="custom">Custom Range</SelectItem>
               </SelectContent>
             </Select>
-            {timeRange === 'custom' && (
-              <>
+            {timeRange === 'custom' && <>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[130px] justify-start text-left font-normal",
-                        !customStartDate && "text-muted-foreground"
-                      )}
-                    >
+                    <Button variant="outline" className={cn("w-[130px] justify-start text-left font-normal", !customStartDate && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {customStartDate ? format(customStartDate, "MMM yyyy") : "Start"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 bg-popover" align="end">
-                    <Calendar
-                      mode="single"
-                      selected={customStartDate}
-                      onSelect={setCustomStartDate}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
+                    <Calendar mode="single" selected={customStartDate} onSelect={setCustomStartDate} initialFocus className="p-3 pointer-events-auto" />
                   </PopoverContent>
                 </Popover>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[130px] justify-start text-left font-normal",
-                        !customEndDate && "text-muted-foreground"
-                      )}
-                    >
+                    <Button variant="outline" className={cn("w-[130px] justify-start text-left font-normal", !customEndDate && "text-muted-foreground")}>
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {customEndDate ? format(customEndDate, "MMM yyyy") : "End"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 bg-popover" align="end">
-                    <Calendar
-                      mode="single"
-                      selected={customEndDate}
-                      onSelect={setCustomEndDate}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
+                    <Calendar mode="single" selected={customEndDate} onSelect={setCustomEndDate} initialFocus className="p-3 pointer-events-auto" />
                   </PopoverContent>
                 </Popover>
-              </>
-            )}
+              </>}
 
             {/* Mobile Actions Dropdown */}
             <DropdownMenu>
@@ -781,33 +626,8 @@ const CustomerRevenueReport = () => {
             </DropdownMenu>
           </div>
 
-          {/* Tablet: Actions Dropdown */}
-          <div className="hidden sm:flex lg:hidden items-center justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={filteredData.length === 0}>
-                  <Mail className="w-4 h-4 mr-2" />
-                  Email
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={printReport} disabled={filteredData.length === 0}>
-                  <Printer className="w-4 h-4 mr-2" />
-                  Print/PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={exportToCSV} disabled={filteredData.length === 0}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Export CSV
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
           {/* Desktop Actions */}
-          <div className="hidden lg:flex items-center justify-end gap-2">
+          <div className="hidden sm:flex items-center justify-end gap-2">
             <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredData.length === 0}>
               <Mail className="w-4 h-4 mr-2" />
               Email
@@ -825,7 +645,7 @@ const CustomerRevenueReport = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active Customers</CardTitle>
@@ -892,41 +712,21 @@ const CustomerRevenueReport = () => {
             <CardTitle>Top 10 Customers by Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-            {topCustomersChart.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+            {topCustomersChart.length > 0 ? <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={topCustomersChart} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis 
-                    type="number" 
-                    tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                    className="text-xs"
-                  />
-                  <YAxis 
-                    type="category" 
-                    dataKey="name" 
-                    width={100}
-                    className="text-xs"
-                  />
-                  <Tooltip 
-                    formatter={(value: number) => [`$${formatAmount(value)}`, 'Revenue']}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Bar 
-                    dataKey="revenue" 
-                    fill="hsl(var(--primary))" 
-                    radius={[0, 4, 4, 0]}
-                  />
+                  <XAxis type="number" tickFormatter={value => `$${(value / 1000).toFixed(0)}k`} className="text-xs" />
+                  <YAxis type="category" dataKey="name" width={100} className="text-xs" />
+                  <Tooltip formatter={(value: number) => [`$${formatAmount(value)}`, 'Revenue']} contentStyle={{
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '8px'
+              }} />
+                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
                 </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+              </ResponsiveContainer> : <div className="flex items-center justify-center h-[300px] text-muted-foreground">
                 No customer data available
-              </div>
-            )}
+              </div>}
           </CardContent>
         </Card>
 
@@ -935,39 +735,23 @@ const CustomerRevenueReport = () => {
             <CardTitle>Revenue Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            {revenueDistribution.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
+            {revenueDistribution.length > 0 ? <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie
-                    data={revenueDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
-                  >
-                    {revenueDistribution.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                  <Pie data={revenueDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" label={({
+                name,
+                percent
+              }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                    {revenueDistribution.map((_, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip 
-                    formatter={(value: number) => [`$${formatAmount(value)}`, 'Revenue']}
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '8px'
-                    }}
-                  />
+                  <Tooltip formatter={(value: number) => [`$${formatAmount(value)}`, 'Revenue']} contentStyle={{
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
+                borderRadius: '8px'
+              }} />
                 </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="flex items-center justify-center h-[300px] text-muted-foreground">
+              </ResponsiveContainer> : <div className="flex items-center justify-center h-[300px] text-muted-foreground">
                 No revenue data available
-              </div>
-            )}
+              </div>}
           </CardContent>
         </Card>
       </div>
@@ -982,69 +766,26 @@ const CustomerRevenueReport = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <SortableTableHeader
-                    column="name"
-                    label="Customer"
-                    currentSortColumn={sortField}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                  />
-                  <SortableTableHeader
-                    column="totalRevenue"
-                    label="Total Revenue"
-                    currentSortColumn={sortField}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                  />
-                  <SortableTableHeader
-                    column="jobCount"
-                    label="Jobs"
-                    currentSortColumn={sortField}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="hidden sm:table-cell"
-                  />
-                  <SortableTableHeader
-                    column="avgJobValue"
-                    label="Avg Job"
-                    currentSortColumn={sortField}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="hidden md:table-cell"
-                  />
-                  <SortableTableHeader
-                    column="ltv"
-                    label="Est. LTV"
-                    currentSortColumn={sortField}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                    className="hidden lg:table-cell"
-                  />
+                  <SortableTableHeader column="name" label="Customer" currentSortColumn={sortField} currentSortDirection={sortDirection} onSort={handleSort} />
+                  <SortableTableHeader column="totalRevenue" label="Total Revenue" currentSortColumn={sortField} currentSortDirection={sortDirection} onSort={handleSort} align="right" />
+                  <SortableTableHeader column="jobCount" label="Jobs" currentSortColumn={sortField} currentSortDirection={sortDirection} onSort={handleSort} align="right" className="hidden sm:table-cell" />
+                  <SortableTableHeader column="avgJobValue" label="Avg Job" currentSortColumn={sortField} currentSortDirection={sortDirection} onSort={handleSort} align="right" className="hidden md:table-cell" />
+                  <SortableTableHeader column="ltv" label="Est. LTV" currentSortColumn={sortField} currentSortDirection={sortDirection} onSort={handleSort} align="right" className="hidden lg:table-cell" />
                   <TableHead className="text-right hidden xl:table-cell">
                     Last Payment
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.length === 0 ? (
-                  <TableRow>
+                {filteredData.length === 0 ? <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       No customers found
                     </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedData.map((customer) => (
-                    <TableRow key={customer.id}>
+                  </TableRow> : paginatedData.map(customer => <TableRow key={customer.id}>
                       <TableCell>
                         <div>
                           <div className="font-medium">{customer.name}</div>
-                          {customer.email && (
-                            <div className="text-xs text-muted-foreground">{customer.email}</div>
-                          )}
+                          {customer.email && <div className="text-xs text-muted-foreground">{customer.email}</div>}
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-medium text-green-600">
@@ -1060,41 +801,20 @@ const CustomerRevenueReport = () => {
                         ${formatAmount(customer.ltv)}
                       </TableCell>
                       <TableCell className="text-right hidden xl:table-cell text-muted-foreground">
-                        {customer.lastPaymentDate 
-                          ? format(customer.lastPaymentDate, 'MMM d, yyyy')
-                          : '-'
-                        }
+                        {customer.lastPaymentDate ? format(customer.lastPaymentDate, 'MMM d, yyyy') : '-'}
                       </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                    </TableRow>)}
               </TableBody>
             </Table>
           </div>
 
           {/* Pagination */}
-          <TablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            totalItems={filteredData.length}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-            itemLabel="customers"
-          />
+          <TablePagination currentPage={currentPage} totalPages={totalPages} pageSize={pageSize} totalItems={filteredData.length} onPageChange={setCurrentPage} onPageSizeChange={setPageSize} itemLabel="customers" />
         </CardContent>
       </Card>
 
       {/* Email Dialog */}
-      <ReportEmailDialog
-        open={emailDialogOpen}
-        onOpenChange={setEmailDialogOpen}
-        onSend={sendReportEmail}
-        isSending={isSendingEmail}
-        title="Email Customer Revenue Report"
-      />
-    </div>
-  );
+      <ReportEmailDialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen} onSend={sendReportEmail} isSending={isSendingEmail} title="Email Customer Revenue Report" />
+    </div>;
 };
-
 export default CustomerRevenueReport;
