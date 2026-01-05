@@ -367,6 +367,7 @@ const TransactionsReport = () => {
             variant="outline" 
             size="sm"
             disabled={filteredPayments.length === 0}
+            className="hidden sm:inline-flex"
           >
             <Download className="w-4 h-4 mr-2" />
             Export CSV
