@@ -1215,24 +1215,22 @@ const Quotes = () => {
               
               return (
                 <div className="space-y-4 sm:space-y-6">
-                  {/* Customer & Dates - responsive grid */}
+                  {/* Basic Info - responsive grid */}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                     <div>
-                      <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
+                      <Label className="text-muted-foreground text-xs sm:text-sm">Customer</Label>
                       <p className="font-medium text-sm sm:text-base truncate">{getCustomerName(viewingQuote.customer_id)}</p>
                     </div>
                     {(viewingQuote as any).creator?.full_name && <div>
-                        <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                          <UserCog className="w-3 h-3" /> Created By
-                        </p>
+                        <Label className="text-muted-foreground text-xs sm:text-sm">Created By</Label>
                         <p className="font-medium text-sm sm:text-base truncate">{(viewingQuote as any).creator.full_name}</p>
                       </div>}
                     <div>
-                      <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
+                      <Label className="text-muted-foreground text-xs sm:text-sm">Created</Label>
                       <p className="font-medium text-sm sm:text-base">{format(new Date(viewingQuote.created_at), 'MMM d, yyyy')}</p>
                     </div>
                     {viewingQuote.valid_until && <div>
-                        <p className="text-xs sm:text-sm text-muted-foreground">Valid Until</p>
+                        <Label className="text-muted-foreground text-xs sm:text-sm">Valid Until</Label>
                         <p className="font-medium text-sm sm:text-base">{format(new Date(viewingQuote.valid_until), 'MMM d, yyyy')}</p>
                       </div>}
                   </div>
@@ -1254,168 +1252,100 @@ const Quotes = () => {
                     </TabsList>
 
                     {/* Items Tab */}
-                    <TabsContent value="items" className="mt-4">
-                      <div className="space-y-4">
-                        {/* Line Items */}
-                        <div>
-                          <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
-                <div className="space-y-2">
-                  {viewingQuote.items && viewingQuote.items.length > 0 ? <>
-                      {/* Desktop header - hidden on mobile */}
-                      <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
-                        <div className="col-span-6">Description</div>
-                        <div className="col-span-2 text-right">Qty</div>
-                        <div className="col-span-2 text-right">Price</div>
-                        <div className="col-span-2 text-right">Total</div>
-                      </div>
-                      {viewingQuote.items.map((item: any) => <div key={item.id} className="py-2 px-2 sm:px-3 bg-muted/50 rounded text-sm">
-                          {/* Mobile layout */}
-                          <div className="sm:hidden space-y-1">
-                            <p className="font-medium">{item.description}</p>
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>{item.quantity} × ${Number(item.unit_price).toLocaleString()}</span>
-                              <span className="font-medium text-foreground">${Number(item.total).toLocaleString()}</span>
+                    <TabsContent value="items" className="space-y-6 mt-4">
+                      {/* Line Items Section */}
+                      <div className="space-y-3">
+                        <Label className="text-muted-foreground text-xs sm:text-sm font-medium">Line Items</Label>
+                        {viewingQuote.items && viewingQuote.items.length > 0 ? <>
+                            <div className="rounded-lg border">
+                              {/* Desktop header - hidden on mobile */}
+                              <div className="hidden sm:grid grid-cols-12 gap-2 p-3 bg-muted/50 font-medium text-sm">
+                                <div className="col-span-6">Description</div>
+                                <div className="col-span-2 text-center">Qty</div>
+                                <div className="col-span-2 text-right">Unit Price</div>
+                                <div className="col-span-2 text-right">Total</div>
+                              </div>
+                              {viewingQuote.items.map((item: any) => <div key={item.id} className="p-3 border-t text-sm">
+                                  {/* Mobile layout */}
+                                  <div className="sm:hidden space-y-1">
+                                    <p className="font-medium">{item.description}</p>
+                                    <div className="flex justify-between text-xs text-muted-foreground">
+                                      <span>{item.quantity} × ${Number(item.unit_price).toFixed(2)}</span>
+                                      <span className="font-medium text-foreground">${Number(item.total).toFixed(2)}</span>
+                                    </div>
+                                  </div>
+                                  {/* Desktop layout */}
+                                  <div className="hidden sm:grid grid-cols-12 gap-2">
+                                    <div className="col-span-6">{item.description}</div>
+                                    <div className="col-span-2 text-center">{item.quantity}</div>
+                                    <div className="col-span-2 text-right">${Number(item.unit_price).toFixed(2)}</div>
+                                    <div className="col-span-2 text-right">${Number(item.total).toFixed(2)}</div>
+                                  </div>
+                                </div>)}
                             </div>
-                          </div>
-                          {/* Desktop layout */}
-                          <div className="hidden sm:grid grid-cols-12">
-                            <div className="col-span-6">{item.description}</div>
-                            <div className="col-span-2 text-right">{item.quantity}</div>
-                            <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
-                            <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
-                          </div>
-                        </div>)}
-                    </> : <p className="text-sm text-muted-foreground">No line items</p>}
-                </div>
-              </div>
+                            <div className="flex flex-col items-end gap-1 text-sm">
+                              <div className="flex justify-between w-full sm:w-56">
+                                <span className="text-muted-foreground">Subtotal:</span>
+                                <span>${Number(viewingQuote.subtotal).toFixed(2)}</span>
+                              </div>
+                              {Number(viewingQuote.discount_value) > 0 && (
+                                <div className="flex justify-between w-full sm:w-56 text-success">
+                                  <span>Discount ({formatDiscount(viewingQuote.discount_type, Number(viewingQuote.discount_value))}):</span>
+                                  <span>-${calculateDiscountAmount(Number(viewingQuote.subtotal), viewingQuote.discount_type, Number(viewingQuote.discount_value)).toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between w-full sm:w-56">
+                                <span className="text-muted-foreground">Tax:</span>
+                                <span>${Number(viewingQuote.tax).toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between w-full sm:w-56 font-semibold text-base pt-1 border-t">
+                                <span>Total:</span>
+                                <span>${Number(viewingQuote.total).toFixed(2)}</span>
+                              </div>
+                            </div>
+                          </> : <div className="text-center py-6 text-muted-foreground border rounded-lg">
+                            <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No line items added</p>
+                            <Button variant="outline" size="sm" className="mt-2" onClick={() => {
+                              handleEdit(viewingQuote);
+                              openViewingQuote(null);
+                            }}>
+                              <Plus className="w-4 h-4 mr-1" />
+                              Add Items
+                            </Button>
+                          </div>}
+                      </div>
 
-              {/* Totals */}
-              <div className="flex justify-end">
-                <div className="w-full sm:w-56 space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>${Number(viewingQuote.subtotal).toLocaleString()}</span>
-                  </div>
-                  {Number(viewingQuote.discount_value) > 0 && (
-                    <div className="flex justify-between text-sm text-success">
-                      <span>Discount ({formatDiscount(viewingQuote.discount_type, Number(viewingQuote.discount_value))})</span>
-                      <span>-${calculateDiscountAmount(Number(viewingQuote.subtotal), viewingQuote.discount_type, Number(viewingQuote.discount_value)).toLocaleString()}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Tax</span>
-                    <span>${Number(viewingQuote.tax).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
-                    <span>Total</span>
-                    <span>${Number(viewingQuote.total).toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notes */}
-              {viewingQuote.notes && <div>
-                  <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
-                  <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{viewingQuote.notes}</p>
-                </div>}
-
-              {/* Signature Section */}
-              <Separator />
-              <ConstrainedPanel>
-                <SignatureSection signatureId={viewingQuote.signature_id} title="Customer Signature" onCollectSignature={() => {
-              setSignatureQuote(viewingQuote);
-              setSignatureDialogOpen(true);
-            }} showCollectButton={viewingQuote.status !== 'accepted' && viewingQuote.status !== 'rejected'} collectButtonText="Collect Signature" isCollecting={approveWithSignature.isPending} />
-
-                {/* Send Signature Request Button */}
-                {viewingQuote.status !== 'accepted' && viewingQuote.status !== 'rejected' && !viewingQuote.signature_id && (() => {
-              const customer = customers.find(c => c.id === viewingQuote.customer_id);
-              return customer?.email ? <Button variant="outline" size="sm" onClick={() => handleSendSignatureRequest(viewingQuote)} className="w-full mt-2" disabled={sendSignatureRequest.isPending}>
-                      {sendSignatureRequest.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
-                      Send Signature Request via Email
-                    </Button> : null;
-            })()}
-              </ConstrainedPanel>
-
-              {/* Actions */}
-              <Separator />
-              <div className="flex flex-wrap justify-center gap-2 pt-2 sm:pt-4">
-                <Button variant="outline" size="sm" onClick={() => {
-                  handleEdit(viewingQuote);
-                  openViewingQuote(null);
-                }}>
-                  <Edit className="w-4 h-4 mr-1" />
-                  Edit
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => {
-                  handleDuplicateQuote(viewingQuote);
-                  openViewingQuote(null);
-                }}>
-                  <Copy className="w-4 h-4 mr-1" />
-                  Duplicate
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handleDownload(viewingQuote.id)}>
-                  <FileDown className="w-4 h-4 mr-1" />
-                  Download
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handleOpenEmailDialog(viewingQuote.id, viewingQuote.customer_id)}>
-                  <Mail className="w-4 h-4 mr-1" />
-                  Email
-                </Button>
-                {viewingQuote.status !== 'rejected' && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-1" disabled={createJobFromQuote.isPending || addItemsToJob.isPending}>
-                        {(createJobFromQuote.isPending || addItemsToJob.isPending) ? (
-                          <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                      {/* Notes Section */}
+                      <div className="space-y-2">
+                        <Label className="text-muted-foreground text-xs sm:text-sm font-medium">Notes</Label>
+                        {viewingQuote.notes ? (
+                          <p className="text-sm whitespace-pre-wrap">{viewingQuote.notes}</p>
                         ) : (
-                          <Briefcase className="w-4 h-4 mr-1" />
+                          <p className="text-sm text-muted-foreground">No notes</p>
                         )}
-                        Create Job
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover z-50">
-                      <DropdownMenuItem onClick={() => {
-                        openViewingQuote(null);
-                        handleOpenCreateJobDialog(viewingQuote);
-                      }}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create New Job
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        openViewingQuote(null);
-                        handleOpenAddToJobDialog(viewingQuote);
-                      }}>
-                        <Briefcase className="w-4 h-4 mr-2" />
-                        Add to Existing Job
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                {viewingQuote.status !== 'rejected' && (
-                  <Button 
-                    size="sm" 
-                    onClick={() => {
-                      handleConvertToInvoice(viewingQuote);
-                      if ((invoicesPerQuote.get(viewingQuote.id) || 0) === 0) {
-                        openViewingQuote(null);
-                      }
-                    }}
-                    disabled={convertingQuoteId === viewingQuote.id}
-                  >
-                    {convertingQuoteId === viewingQuote.id ? (
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                    ) : (
-                      <ArrowRight className="w-4 h-4 mr-1" />
-                    )}
-                    Convert to Invoice
-                  </Button>
-                )}
                       </div>
-                      </div>
+
+                      {/* Signature Section */}
+                      <ConstrainedPanel>
+                        <SignatureSection signatureId={viewingQuote.signature_id} title="Customer Signature" onCollectSignature={() => {
+                          setSignatureQuote(viewingQuote);
+                          setSignatureDialogOpen(true);
+                        }} showCollectButton={viewingQuote.status !== 'accepted' && viewingQuote.status !== 'rejected'} collectButtonText="Collect Signature" isCollecting={approveWithSignature.isPending} />
+
+                        {/* Send Signature Request Button */}
+                        {viewingQuote.status !== 'accepted' && viewingQuote.status !== 'rejected' && !viewingQuote.signature_id && (() => {
+                          const customer = customers.find(c => c.id === viewingQuote.customer_id);
+                          return customer?.email ? <Button variant="outline" size="sm" onClick={() => handleSendSignatureRequest(viewingQuote)} className="w-full mt-2" disabled={sendSignatureRequest.isPending}>
+                                  {sendSignatureRequest.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+                                  Send Signature Request via Email
+                                </Button> : null;
+                        })()}
+                      </ConstrainedPanel>
                     </TabsContent>
 
-              <TabsContent value="linked" className="mt-4">
+                    {/* Linked Docs Tab */}
+                    <TabsContent value="linked" className="mt-4">
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <Link2 className="w-4 h-4" />
