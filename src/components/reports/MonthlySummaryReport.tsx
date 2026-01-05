@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, parse } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, startOfYear, subYears } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon } from 'lucide-react';
@@ -60,14 +60,32 @@ const MonthlySummaryReport = () => {
 
   // Generate months for the selected range
   const months = useMemo(() => {
+    const now = new Date();
+    
     if (timeRange === 'custom' && customStartDate && customEndDate) {
       return eachMonthOfInterval({ 
         start: startOfMonth(customStartDate), 
         end: endOfMonth(customEndDate) 
       });
     }
-    const endDate = endOfMonth(new Date());
-    const startDate = startOfMonth(subMonths(new Date(), parseInt(timeRange) - 1));
+    
+    if (timeRange === 'ytd') {
+      return eachMonthOfInterval({ 
+        start: startOfYear(now), 
+        end: endOfMonth(now) 
+      });
+    }
+    
+    if (timeRange === 'lastyear') {
+      const lastYear = subYears(now, 1);
+      return eachMonthOfInterval({ 
+        start: startOfYear(lastYear), 
+        end: endOfMonth(new Date(lastYear.getFullYear(), 11, 31))
+      });
+    }
+    
+    const endDate = endOfMonth(now);
+    const startDate = startOfMonth(subMonths(now, parseInt(timeRange) - 1));
     return eachMonthOfInterval({ start: startDate, end: endDate });
   }, [timeRange, customStartDate, customEndDate]);
 
@@ -273,6 +291,8 @@ const MonthlySummaryReport = () => {
             <SelectItem value="3">Last 3 months</SelectItem>
             <SelectItem value="6">Last 6 months</SelectItem>
             <SelectItem value="12">Last 12 months</SelectItem>
+            <SelectItem value="ytd">Year to Date</SelectItem>
+            <SelectItem value="lastyear">Last Year</SelectItem>
             <SelectItem value="custom">Custom Range</SelectItem>
           </SelectContent>
         </Select>
@@ -336,7 +356,7 @@ const MonthlySummaryReport = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalJobs || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {timeRange === 'custom' ? 'In selected range' : `In the last ${timeRange === '1' ? 'month' : `${timeRange} months`}`}
+              {timeRange === 'custom' ? 'In selected range' : timeRange === 'ytd' ? 'Year to date' : timeRange === 'lastyear' ? 'Last year' : `In the last ${timeRange === '1' ? 'month' : `${timeRange} months`}`}
             </p>
           </CardContent>
         </Card>
@@ -362,7 +382,7 @@ const MonthlySummaryReport = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalInvoices || 0}</div>
             <p className="text-xs text-muted-foreground">
-              {timeRange === 'custom' ? 'In selected range' : `In the last ${timeRange === '1' ? 'month' : `${timeRange} months`}`}
+              {timeRange === 'custom' ? 'In selected range' : timeRange === 'ytd' ? 'Year to date' : timeRange === 'lastyear' ? 'Last year' : `In the last ${timeRange === '1' ? 'month' : `${timeRange} months`}`}
             </p>
           </CardContent>
         </Card>
