@@ -338,30 +338,44 @@ const TransactionsReport = () => {
 
   return (
     <div className="space-y-6">
-      {/* Action Buttons */}
-      <div className="flex items-center justify-end gap-2">
-        <Button 
-          onClick={() => setEmailDialogOpen(true)} 
-          variant="outline" 
-          size="sm"
-          disabled={filteredPayments.length === 0}
-        >
-          <Mail className="w-4 h-4 mr-2" />
-          Email
-        </Button>
-        <Button 
-          onClick={exportToCSV} 
-          variant="outline" 
-          size="sm"
-          disabled={filteredPayments.length === 0}
-        >
-          <Download className="w-4 h-4 mr-2" />
-          Export CSV
-        </Button>
-        <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Record Payment
-        </Button>
+      {/* Header with Title, Search, and Actions */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <h2 className="text-xl font-semibold whitespace-nowrap">Payment History</h2>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => setEmailDialogOpen(true)} 
+            variant="outline" 
+            size="sm"
+            disabled={filteredPayments.length === 0}
+          >
+            <Mail className="w-4 h-4 mr-2" />
+            Email
+          </Button>
+          <Button 
+            onClick={exportToCSV} 
+            variant="outline" 
+            size="sm"
+            disabled={filteredPayments.length === 0}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Record Payment
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -425,20 +439,7 @@ const TransactionsReport = () => {
 
       {/* Filters */}
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle>Payment History</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by invoice number or customer..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+        <CardContent className="pt-6 space-y-4">
 
           {/* Filters */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
