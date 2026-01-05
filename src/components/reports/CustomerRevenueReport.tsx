@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -44,8 +45,6 @@ import {
   Printer,
   CalendarIcon,
   Mail,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 import { supabase } from '@/integrations/supabase/client';
@@ -872,73 +871,15 @@ const CustomerRevenueReport = () => {
           </div>
 
           {/* Pagination */}
-          {filteredData.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">
-                  Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredData.length)} of {filteredData.length} customers
-                </p>
-                <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
-                  <SelectTrigger className="w-20 h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background">
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
-                <span className="text-sm text-muted-foreground">per page</span>
-              </div>
-              {totalPages > 1 && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Previous
-                  </Button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum: number;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={currentPage === pageNum ? "default" : "outline"}
-                          size="sm"
-                          className="w-8 h-8 p-0"
-                          onClick={() => setCurrentPage(pageNum)}
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filteredData.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="customers"
+          />
         </CardContent>
       </Card>
 
