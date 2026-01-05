@@ -56,3 +56,6 @@ verify_jwt = false
 
 [functions.send-job-notification]
 verify_jwt = false
+
+[functions.send-report-email]
+verify_jwt = false
