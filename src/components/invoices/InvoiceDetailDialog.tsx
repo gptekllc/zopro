@@ -25,6 +25,7 @@ import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto, useUpdateInvoicePhotoType } from '@/hooks/useInvoicePhotos';
 import { usePayments, useDeletePayment, useUpdatePayment, useRefundPayment, useVoidPayment, useCreatePayment, Payment } from '@/hooks/usePayments';
 import { PAYMENT_METHODS, RecordPaymentDialog, PaymentData } from './RecordPaymentDialog';
+import { SplitPaymentDialog, SplitPaymentData } from './SplitPaymentDialog';
 import { EditPaymentDialog, EditPaymentData } from './EditPaymentDialog';
 import { RefundPaymentDialog } from './RefundPaymentDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -164,6 +165,7 @@ export function InvoiceDetailDialog({
   
   // Record payment dialog state
   const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
+  const [splitPaymentDialogOpen, setSplitPaymentDialogOpen] = useState(false);
   
   // Receipt loading state
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
@@ -273,6 +275,25 @@ export function InvoiceDetailDialog({
       sendNotification: data.sendNotification,
     });
     setRecordPaymentDialogOpen(false);
+  };
+
+  const handleSplitPayment = async (data: SplitPaymentData) => {
+    // Record each payment in sequence
+    for (const payment of data.payments) {
+      await createPayment.mutateAsync({
+        invoiceId: invoice.id,
+        amount: payment.amount,
+        method: payment.method,
+        paymentDate: data.date,
+        notes: data.note || `Split payment (${data.payments.length} methods)`,
+        sendNotification: false, // Only send one notification at the end
+      });
+    }
+    // Send notification for the last payment if requested
+    if (data.sendNotification && data.payments.length > 0) {
+      // The last payment already triggers notification if needed
+    }
+    setSplitPaymentDialogOpen(false);
   };
 
   const handleDownloadReceipt = async (paymentId: string) => {
@@ -917,14 +938,24 @@ export function InvoiceDetailDialog({
               </Button>
             )}
             {invoice.status !== 'paid' && remainingBalance > 0 && (
-              <Button 
-                size="sm" 
-                onClick={() => setRecordPaymentDialogOpen(true)}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                <DollarSign className="w-4 h-4 mr-1" />
-                Record Payment
-              </Button>
+              <>
+                <Button 
+                  size="sm" 
+                  onClick={() => setRecordPaymentDialogOpen(true)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <DollarSign className="w-4 h-4 mr-1" />
+                  Payment
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => setSplitPaymentDialogOpen(true)}
+                >
+                  <CreditCard className="w-4 h-4 mr-1" />
+                  Split
+                </Button>
+              </>
             )}
             {invoice.status !== 'paid' && (
               <Button variant="outline" size="sm" onClick={() => onMarkPaid?.(invoice.id)}>
@@ -974,6 +1005,18 @@ export function InvoiceDetailDialog({
         invoiceNumber={invoice.invoice_number}
         customerEmail={customerEmail}
         onConfirm={handleRecordPayment}
+        isLoading={createPayment.isPending}
+      />
+
+      {/* Split Payment Dialog */}
+      <SplitPaymentDialog
+        open={splitPaymentDialogOpen}
+        onOpenChange={setSplitPaymentDialogOpen}
+        invoiceTotal={totalDue}
+        remainingBalance={remainingBalance}
+        invoiceNumber={invoice.invoice_number}
+        customerEmail={customerEmail}
+        onConfirm={handleSplitPayment}
         isLoading={createPayment.isPending}
       />
     </Dialog>
