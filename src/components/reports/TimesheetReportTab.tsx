@@ -320,9 +320,6 @@ const TimesheetReportTab = () => {
           >
             <ChevronRight className="w-4 h-4" />
           </Button>
-        </div>
-        
-        <div className="flex items-center justify-center lg:justify-end gap-2">
           <Select value={numWeeks} onValueChange={setNumWeeks}>
             <SelectTrigger className="w-[100px] sm:w-[120px]">
               <SelectValue />
@@ -333,6 +330,9 @@ const TimesheetReportTab = () => {
               <SelectItem value="4">4 Weeks</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        
+        <div className="flex items-center justify-center lg:justify-end gap-2">
           <Button 
             onClick={() => setEmailDialogOpen(true)} 
             variant="outline" 
