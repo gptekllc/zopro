@@ -446,19 +446,7 @@ const MonthlySummaryReport = () => {
   return (
     <div className="space-y-6">
       {/* Time Range Selector and Export */}
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={monthlyData.length === 0}>
-          <Mail className="w-4 h-4 mr-2" />
-          Email
-        </Button>
-        <Button onClick={printReport} variant="outline" size="sm" disabled={monthlyData.length === 0}>
-          <Printer className="w-4 h-4 mr-2" />
-          Print/PDF
-        </Button>
-        <Button onClick={exportToCSV} variant="outline" size="sm" disabled={monthlyData.length === 0} className="hidden sm:inline-flex">
-          <Download className="w-4 h-4 mr-2" />
-          Export CSV
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Select value={timeRange} onValueChange={setTimeRange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select range" />
@@ -473,55 +461,69 @@ const MonthlySummaryReport = () => {
             <SelectItem value="custom">Custom Range</SelectItem>
           </SelectContent>
         </Select>
-        {timeRange === 'custom' && (
-          <>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-[140px] justify-start text-left font-normal",
-                    !customStartDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {customStartDate ? format(customStartDate, "MMM yyyy") : "Start"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-popover" align="end">
-                <Calendar
-                  mode="single"
-                  selected={customStartDate}
-                  onSelect={setCustomStartDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-[140px] justify-start text-left font-normal",
-                    !customEndDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {customEndDate ? format(customEndDate, "MMM yyyy") : "End"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0 bg-popover" align="end">
-                <Calendar
-                  mode="single"
-                  selected={customEndDate}
-                  onSelect={setCustomEndDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </>
-        )}
+        <div className="flex items-center gap-2">
+          <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={monthlyData.length === 0}>
+            <Mail className="w-4 h-4 mr-2" />
+            Email
+          </Button>
+          <Button onClick={printReport} variant="outline" size="sm" disabled={monthlyData.length === 0}>
+            <Printer className="w-4 h-4 mr-2" />
+            Print/PDF
+          </Button>
+          <Button onClick={exportToCSV} variant="outline" size="sm" disabled={monthlyData.length === 0} className="hidden sm:inline-flex">
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
+      {timeRange === 'custom' && (
+        <div className="flex flex-wrap gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[140px] justify-start text-left font-normal",
+                  !customStartDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {customStartDate ? format(customStartDate, "MMM yyyy") : "Start"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 bg-popover" align="end">
+              <Calendar
+                mode="single"
+                selected={customStartDate}
+                onSelect={setCustomStartDate}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-[140px] justify-start text-left font-normal",
+                  !customEndDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {customEndDate ? format(customEndDate, "MMM yyyy") : "End"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 bg-popover" align="end">
+              <Calendar
+                mode="single"
+                selected={customEndDate}
+                onSelect={setCustomEndDate}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
