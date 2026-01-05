@@ -1,8 +1,10 @@
-import { Plus, Trash2, X, Clock, Package, Wrench } from 'lucide-react';
+import { Plus, X, Clock, Package, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { CatalogPicker } from './CatalogPicker';
+import { CatalogItem } from '@/hooks/useCatalog';
 
 export interface LineItem {
   id: string;
@@ -15,6 +17,7 @@ export interface LineItem {
 interface LineItemsEditorProps {
   items: LineItem[];
   onAddItem: (type: 'product' | 'service') => void;
+  onAddFromCatalog?: (item: CatalogItem) => void;
   onRemoveItem: (id: string) => void;
   onUpdateItem: (id: string, field: keyof LineItem, value: string | number) => void;
   showTypeColumn?: boolean;
@@ -25,6 +28,7 @@ interface LineItemsEditorProps {
 export const LineItemsEditor = ({
   items,
   onAddItem,
+  onAddFromCatalog,
   onRemoveItem,
   onUpdateItem,
   showTypeColumn = false,
@@ -33,6 +37,12 @@ export const LineItemsEditor = ({
 }: LineItemsEditorProps) => {
   const products = items.filter(item => item.type === 'product');
   const services = items.filter(item => item.type === 'service');
+
+  const handleCatalogSelect = (catalogItem: CatalogItem) => {
+    if (onAddFromCatalog) {
+      onAddFromCatalog(catalogItem);
+    }
+  };
 
   const renderItemRow = (item: LineItem, canRemove: boolean) => {
     const isAutoLabor = item.description.toLowerCase() === 'labor';
@@ -163,11 +173,14 @@ export const LineItemsEditor = ({
             <Package className="w-4 h-4 text-muted-foreground" />
             Products
           </Label>
-          <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('product')}>
-            <Plus className="w-4 h-4 mr-1" />
-            <span className="hidden sm:inline">Add Product</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
+          <div className="flex items-center gap-1">
+            {onAddFromCatalog && <CatalogPicker type="product" onSelect={handleCatalogSelect} />}
+            <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('product')}>
+              <Plus className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Add Product</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          </div>
         </div>
         
         {products.length > 0 ? (
@@ -188,11 +201,14 @@ export const LineItemsEditor = ({
             <Wrench className="w-4 h-4 text-muted-foreground" />
             Services
           </Label>
-          <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('service')}>
-            <Plus className="w-4 h-4 mr-1" />
-            <span className="hidden sm:inline">Add Service</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
+          <div className="flex items-center gap-1">
+            {onAddFromCatalog && <CatalogPicker type="service" onSelect={handleCatalogSelect} />}
+            <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('service')}>
+              <Plus className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Add Service</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          </div>
         </div>
         
         {services.length > 0 ? (

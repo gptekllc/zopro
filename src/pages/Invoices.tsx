@@ -627,6 +627,18 @@ const Invoices = () => {
                   <LineItemsEditor
                     items={formData.items}
                     onAddItem={handleAddItem}
+                    onAddFromCatalog={(catalogItem) => {
+                      setFormData({
+                        ...formData,
+                        items: [...formData.items, {
+                          id: Date.now().toString(),
+                          description: catalogItem.name + (catalogItem.description ? ` - ${catalogItem.description}` : ''),
+                          quantity: 1,
+                          unitPrice: Number(catalogItem.unit_price),
+                          type: catalogItem.type
+                        }]
+                      });
+                    }}
                     onRemoveItem={handleRemoveItem}
                     onUpdateItem={handleItemChange}
                   />
