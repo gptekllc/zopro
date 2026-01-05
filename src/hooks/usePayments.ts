@@ -312,11 +312,22 @@ export function useRefundPayment() {
       paymentId,
       invoiceId,
       reason,
+      sendNotification = true,
     }: { 
       paymentId: string;
       invoiceId: string;
       reason?: string;
+      sendNotification?: boolean;
     }) => {
+      // Get the payment details before refunding
+      const { data: payment, error: fetchError } = await (supabase as any)
+        .from('payments')
+        .select('amount, method')
+        .eq('id', paymentId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
       // Mark payment as refunded
       const { error: paymentError } = await (supabase as any)
         .from('payments')
@@ -332,6 +343,52 @@ export function useRefundPayment() {
       
       // Recalculate invoice status
       await recalculateInvoiceStatus(invoiceId);
+      
+      // Get invoice details for notification
+      if (sendNotification) {
+        const { data: invoice } = await (supabase as any)
+          .from('invoices')
+          .select(`
+            invoice_number, total, late_fee_amount,
+            customer:customers(name, email),
+            company:companies(name, email)
+          `)
+          .eq('id', invoiceId)
+          .single();
+        
+        if (invoice?.customer?.email && invoice?.company?.email) {
+          // Get remaining balance
+          const { data: payments } = await (supabase as any)
+            .from('payments')
+            .select('amount, status')
+            .eq('invoice_id', invoiceId);
+          
+          const completedPayments = (payments || []).filter((p: { status: string }) => p.status === 'completed');
+          const totalPaid = completedPayments.reduce((sum: number, p: { amount: number }) => sum + Number(p.amount), 0);
+          const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
+          const remainingBalance = Math.max(0, totalDue - totalPaid);
+          
+          try {
+            await supabase.functions.invoke('send-payment-notification', {
+              body: {
+                type: 'payment_refunded',
+                invoiceNumber: invoice.invoice_number,
+                customerName: invoice.customer.name || 'Customer',
+                customerEmail: invoice.customer.email,
+                companyName: invoice.company.name || 'Company',
+                companyEmail: invoice.company.email,
+                paymentAmount: payment.amount,
+                paymentMethod: payment.method,
+                refundReason: reason,
+                refundType: 'refunded',
+                remainingBalance,
+              },
+            });
+          } catch (emailError) {
+            console.error('Failed to send refund notification email:', emailError);
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments'] });
@@ -354,11 +411,22 @@ export function useVoidPayment() {
       paymentId,
       invoiceId,
       reason,
+      sendNotification = true,
     }: { 
       paymentId: string;
       invoiceId: string;
       reason?: string;
+      sendNotification?: boolean;
     }) => {
+      // Get the payment details before voiding
+      const { data: payment, error: fetchError } = await (supabase as any)
+        .from('payments')
+        .select('amount, method')
+        .eq('id', paymentId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
       // Mark payment as voided
       const { error: paymentError } = await (supabase as any)
         .from('payments')
@@ -374,6 +442,52 @@ export function useVoidPayment() {
       
       // Recalculate invoice status
       await recalculateInvoiceStatus(invoiceId);
+      
+      // Get invoice details for notification
+      if (sendNotification) {
+        const { data: invoice } = await (supabase as any)
+          .from('invoices')
+          .select(`
+            invoice_number, total, late_fee_amount,
+            customer:customers(name, email),
+            company:companies(name, email)
+          `)
+          .eq('id', invoiceId)
+          .single();
+        
+        if (invoice?.customer?.email && invoice?.company?.email) {
+          // Get remaining balance
+          const { data: payments } = await (supabase as any)
+            .from('payments')
+            .select('amount, status')
+            .eq('invoice_id', invoiceId);
+          
+          const completedPayments = (payments || []).filter((p: { status: string }) => p.status === 'completed');
+          const totalPaid = completedPayments.reduce((sum: number, p: { amount: number }) => sum + Number(p.amount), 0);
+          const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
+          const remainingBalance = Math.max(0, totalDue - totalPaid);
+          
+          try {
+            await supabase.functions.invoke('send-payment-notification', {
+              body: {
+                type: 'payment_refunded',
+                invoiceNumber: invoice.invoice_number,
+                customerName: invoice.customer.name || 'Customer',
+                customerEmail: invoice.customer.email,
+                companyName: invoice.company.name || 'Company',
+                companyEmail: invoice.company.email,
+                paymentAmount: payment.amount,
+                paymentMethod: payment.method,
+                refundReason: reason,
+                refundType: 'voided',
+                remainingBalance,
+              },
+            });
+          } catch (emailError) {
+            console.error('Failed to send void notification email:', emailError);
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments'] });
