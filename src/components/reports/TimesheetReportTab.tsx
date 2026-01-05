@@ -106,7 +106,20 @@ const TimesheetReportTab = () => {
     return `${hours}:${String(minutes).padStart(2, '0')}`;
   };
 
+  const getFilteredMemberNames = () => {
+    if (selectedMemberIds.length === 0) return null;
+    return selectedMemberIds
+      .map(id => allTeamMembers.find(m => m.id === id))
+      .filter(Boolean)
+      .map(m => m!.full_name || m!.email)
+      .join(', ');
+  };
+
   const exportToCSV = () => {
+    const filterNote = selectedMemberIds.length > 0 
+      ? `Filtered: ${getFilteredMemberNames()}`
+      : '';
+    
     const headers = ['Team Member', ...weekDays.map(d => format(d, 'EEE MMM d')), 'Total'];
     
     const rows = timesheetData.map(row => [
@@ -122,14 +135,16 @@ const TimesheetReportTab = () => {
     rows.push(['TOTAL', ...dailyTotals.map(formatMinutes), formatMinutes(grandTotal)]);
 
     const csvContent = [
+      ...(filterNote ? [`"${filterNote}"`] : []),
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
     ].join('\n');
 
+    const filterSuffix = selectedMemberIds.length > 0 ? '_filtered' : '';
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `timesheet_${format(weekStart, 'yyyy-MM-dd')}_to_${format(weekEnd, 'yyyy-MM-dd')}.csv`;
+    link.download = `timesheet_${format(weekStart, 'yyyy-MM-dd')}_to_${format(weekEnd, 'yyyy-MM-dd')}${filterSuffix}.csv`;
     link.click();
   };
 
@@ -183,8 +198,8 @@ const TimesheetReportTab = () => {
             ${company?.logo_url ? `<img src="${company.logo_url}" class="logo" alt="Company Logo" />` : ''}
           </div>
 
-          <div class="report-title">Weekly Timesheet Report</div>
-          <div class="date-range">${format(weekStart, 'MMMM d, yyyy')} - ${format(weekEnd, 'MMMM d, yyyy')}</div>
+          <div class="report-title">Weekly Timesheet Report${selectedMemberIds.length > 0 ? ' (Filtered)' : ''}</div>
+          <div class="date-range">${format(weekStart, 'MMMM d, yyyy')} - ${format(weekEnd, 'MMMM d, yyyy')}${selectedMemberIds.length > 0 ? `<br><span style="font-size: 12px;">Showing: ${getFilteredMemberNames()}</span>` : ''}</div>
 
           <table>
             <thead>
