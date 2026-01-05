@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format, parseISO, differenceInDays, subMonths, startOfMonth, endOfMonth, startOfYear, subYears, isWithinInterval } from 'date-fns';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useAllPayments } from '@/hooks/usePayments';
 import { useInvoices } from '@/hooks/useInvoices';
@@ -8,6 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -36,6 +40,7 @@ import {
   Search,
   ArrowUpDown,
   Printer,
+  CalendarIcon,
 } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 
@@ -48,6 +53,9 @@ const CustomerRevenueReport = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('totalRevenue');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [timeRange, setTimeRange] = useState('all');
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
 
   const { data: customers, isLoading: loadingCustomers } = useCustomers();
   const { data: payments, isLoading: loadingPayments } = useAllPayments();
@@ -56,36 +64,79 @@ const CustomerRevenueReport = () => {
 
   const isLoading = loadingCustomers || loadingPayments || loadingInvoices || loadingJobs;
 
+  // Calculate date range
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    
+    if (timeRange === 'custom' && customStartDate && customEndDate) {
+      return { start: startOfMonth(customStartDate), end: endOfMonth(customEndDate) };
+    }
+    
+    if (timeRange === 'all') return null;
+    
+    if (timeRange === 'ytd') {
+      return { start: startOfYear(now), end: now };
+    }
+    
+    if (timeRange === 'lastyear') {
+      const lastYear = subYears(now, 1);
+      return { start: startOfYear(lastYear), end: new Date(lastYear.getFullYear(), 11, 31) };
+    }
+    
+    // Months
+    const months = parseInt(timeRange);
+    return { start: startOfMonth(subMonths(now, months - 1)), end: now };
+  }, [timeRange, customStartDate, customEndDate]);
+
   // Calculate customer metrics
   const customerData = useMemo(() => {
     if (!customers || !payments || !invoices || !jobs) return [];
 
     return customers.map(customer => {
-      // Get all completed payments for this customer
+      // Get all completed payments for this customer (filtered by date range)
       const customerPayments = payments.filter(p => {
         const invoice = invoices.find(i => i.id === p.invoice_id);
-        return invoice?.customer_id === customer.id && p.status === 'completed';
+        if (invoice?.customer_id !== customer.id || p.status !== 'completed') return false;
+        
+        // Apply date filter
+        if (dateRange) {
+          const paymentDate = parseISO(p.payment_date);
+          if (!isWithinInterval(paymentDate, { start: dateRange.start, end: dateRange.end })) {
+            return false;
+          }
+        }
+        return true;
       });
 
       const totalRevenue = customerPayments.reduce((sum, p) => sum + Number(p.amount), 0);
 
-      // Get customer jobs
+      // Get customer jobs (filtered by date range for job count)
       const customerJobs = jobs.filter(j => j.customer_id === customer.id);
-      const completedJobs = customerJobs.filter(j => 
-        ['completed', 'invoiced', 'paid'].includes(j.status)
-      );
+      const completedJobs = customerJobs.filter(j => {
+        if (!['completed', 'invoiced', 'paid'].includes(j.status)) return false;
+        
+        // Apply date filter based on completion/update date
+        if (dateRange) {
+          const jobDate = j.actual_end ? parseISO(j.actual_end) : parseISO(j.updated_at);
+          if (!isWithinInterval(jobDate, { start: dateRange.start, end: dateRange.end })) {
+            return false;
+          }
+        }
+        return true;
+      });
 
       // Calculate average job value
       const avgJobValue = completedJobs.length > 0 
         ? totalRevenue / completedJobs.length 
         : 0;
 
-      // Calculate customer lifetime (days since first job)
-      const firstJobDate = customerJobs.length > 0
-        ? customerJobs.reduce((earliest, job) => {
+      // Calculate customer lifetime (days since first job) - use all jobs, not filtered
+      const allCustomerJobs = jobs.filter(j => j.customer_id === customer.id);
+      const firstJobDate = allCustomerJobs.length > 0
+        ? allCustomerJobs.reduce((earliest, job) => {
             const jobDate = parseISO(job.created_at);
             return jobDate < earliest ? jobDate : earliest;
-          }, parseISO(customerJobs[0].created_at))
+          }, parseISO(allCustomerJobs[0].created_at))
         : null;
 
       const customerLifetimeDays = firstJobDate 
@@ -119,7 +170,7 @@ const CustomerRevenueReport = () => {
         paymentCount: customerPayments.length,
       };
     }).filter(c => c.totalRevenue > 0 || c.jobCount > 0);
-  }, [customers, payments, invoices, jobs]);
+  }, [customers, payments, invoices, jobs, dateRange]);
 
   // Filter and sort
   const filteredData = useMemo(() => {
@@ -244,6 +295,18 @@ const CustomerRevenueReport = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    const timeRangeLabel = timeRange === 'all' 
+      ? 'All Time'
+      : timeRange === 'custom' && customStartDate && customEndDate
+        ? `${format(customStartDate, 'MMM yyyy')} - ${format(customEndDate, 'MMM yyyy')}`
+        : timeRange === 'ytd' 
+          ? 'Year to Date'
+          : timeRange === 'lastyear'
+            ? 'Last Year'
+            : timeRange === '1'
+              ? 'Last Month'
+              : `Last ${timeRange} Months`;
+
     const tableRows = filteredData.slice(0, 50).map(c => `
       <tr>
         <td style="border: 1px solid #ddd; padding: 8px;">${c.name}</td>
@@ -276,7 +339,7 @@ const CustomerRevenueReport = () => {
       </head>
       <body>
         <h1>Customer Revenue Report</h1>
-        <p class="subtitle">Generated on ${format(new Date(), 'MMMM d, yyyy')}</p>
+        <p class="subtitle">${timeRangeLabel} • Generated on ${format(new Date(), 'MMMM d, yyyy')}</p>
         
         <div class="summary-cards">
           <div class="card">
@@ -350,26 +413,93 @@ const CustomerRevenueReport = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header with search and export */}
-      <div className="flex flex-col sm:flex-row justify-between gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search customers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={printReport} variant="outline" size="sm" disabled={filteredData.length === 0}>
-            <Printer className="w-4 h-4 mr-2" />
-            Print/PDF
-          </Button>
-          <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredData.length === 0}>
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
+      {/* Header with filters and export */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap justify-between gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search customers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Select value={timeRange} onValueChange={setTimeRange}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Time range" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Time</SelectItem>
+                <SelectItem value="1">Last Month</SelectItem>
+                <SelectItem value="3">Last 3 Months</SelectItem>
+                <SelectItem value="6">Last 6 Months</SelectItem>
+                <SelectItem value="12">Last 12 Months</SelectItem>
+                <SelectItem value="ytd">Year to Date</SelectItem>
+                <SelectItem value="lastyear">Last Year</SelectItem>
+                <SelectItem value="custom">Custom Range</SelectItem>
+              </SelectContent>
+            </Select>
+            {timeRange === 'custom' && (
+              <>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[130px] justify-start text-left font-normal",
+                        !customStartDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customStartDate ? format(customStartDate, "MMM yyyy") : "Start"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-popover" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={customStartDate}
+                      onSelect={setCustomStartDate}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[130px] justify-start text-left font-normal",
+                        !customEndDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customEndDate ? format(customEndDate, "MMM yyyy") : "End"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-popover" align="end">
+                    <Calendar
+                      mode="single"
+                      selected={customEndDate}
+                      onSelect={setCustomEndDate}
+                      initialFocus
+                      className="p-3 pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+              </>
+            )}
+            <Button onClick={printReport} variant="outline" size="sm" disabled={filteredData.length === 0}>
+              <Printer className="w-4 h-4 mr-2" />
+              Print/PDF
+            </Button>
+            <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredData.length === 0}>
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
         </div>
       </div>
 
