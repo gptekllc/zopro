@@ -35,6 +35,7 @@ import {
   Download,
   Search,
   ArrowUpDown,
+  Printer,
 } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 
@@ -238,6 +239,88 @@ const CustomerRevenueReport = () => {
     URL.revokeObjectURL(link.href);
   };
 
+  // Print/PDF export
+  const printReport = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const tableRows = filteredData.slice(0, 50).map(c => `
+      <tr>
+        <td style="border: 1px solid #ddd; padding: 8px;">${c.name}</td>
+        <td style="border: 1px solid #ddd; padding: 8px;">${c.email || '-'}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$${formatAmount(c.totalRevenue)}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${c.jobCount}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$${formatAmount(c.avgJobValue)}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$${formatAmount(c.ltv)}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Customer Revenue Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+          h1 { color: #1a1a2e; margin-bottom: 5px; }
+          .subtitle { color: #666; margin-bottom: 20px; }
+          .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+          .card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; }
+          .card-title { font-size: 12px; color: #666; margin-bottom: 5px; }
+          .card-value { font-size: 24px; font-weight: bold; }
+          .green { color: #16a34a; }
+          table { border-collapse: collapse; width: 100%; margin-top: 20px; font-size: 12px; }
+          th { background-color: #f5f5f5; border: 1px solid #ddd; padding: 8px; text-align: left; }
+          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <h1>Customer Revenue Report</h1>
+        <p class="subtitle">Generated on ${format(new Date(), 'MMMM d, yyyy')}</p>
+        
+        <div class="summary-cards">
+          <div class="card">
+            <div class="card-title">Active Customers</div>
+            <div class="card-value">${stats?.totalCustomers || 0}</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Total Revenue</div>
+            <div class="card-value green">$${formatAmount(stats?.totalRevenue || 0)}</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Avg per Customer</div>
+            <div class="card-value">$${formatAmount(stats?.avgRevenue || 0)}</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Avg Annual LTV</div>
+            <div class="card-value">$${formatAmount(stats?.avgLTV || 0)}</div>
+          </div>
+        </div>
+
+        <h2>Customer Details${filteredData.length > 50 ? ' (Top 50)' : ''}</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Email</th>
+              <th style="text-align: right;">Total Revenue</th>
+              <th style="text-align: right;">Jobs</th>
+              <th style="text-align: right;">Avg Job</th>
+              <th style="text-align: right;">Est. LTV</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+        ${filteredData.length > 50 ? `<p style="margin-top: 10px; color: #666; font-size: 12px;">Showing top 50 of ${filteredData.length} customers. Export CSV for complete data.</p>` : ''}
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -278,10 +361,16 @@ const CustomerRevenueReport = () => {
             className="pl-10"
           />
         </div>
-        <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredData.length === 0}>
-          <Download className="w-4 h-4 mr-2" />
-          Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={printReport} variant="outline" size="sm" disabled={filteredData.length === 0}>
+            <Printer className="w-4 h-4 mr-2" />
+            Print/PDF
+          </Button>
+          <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredData.length === 0}>
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
