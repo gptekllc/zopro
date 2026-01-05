@@ -1,4 +1,4 @@
-import { useState, useRef, ReactNode, TouchEvent } from "react";
+import { useState, useRef, ReactNode, TouchEvent, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 export interface SwipeAction {
@@ -14,6 +14,8 @@ interface SwipeableCardProps {
   rightActions?: SwipeAction[];
   className?: string;
   disabled?: boolean;
+  showHint?: boolean;
+  onHintDismiss?: () => void;
 }
 
 const variantStyles = {
@@ -23,34 +25,73 @@ const variantStyles = {
   success: "bg-success text-white",
 };
 
+// Trigger haptic feedback if available
+const triggerHaptic = (style: "light" | "medium" | "heavy" = "light") => {
+  if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+    const duration = style === "light" ? 10 : style === "medium" ? 20 : 30;
+    navigator.vibrate(duration);
+  }
+};
+
 export function SwipeableCard({
   children,
   leftActions = [],
   rightActions = [],
   className,
   disabled = false,
+  showHint = false,
+  onHintDismiss,
 }: SwipeableCardProps) {
   const [translateX, setTranslateX] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isHintAnimating, setIsHintAnimating] = useState(false);
   const startXRef = useRef(0);
   const currentXRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasTriggeredHapticRef = useRef(false);
 
   const ACTION_WIDTH = 64;
   const maxLeftSwipe = leftActions.length * ACTION_WIDTH;
   const maxRightSwipe = rightActions.length * ACTION_WIDTH;
+
+  // Show hint animation on first render if showHint is true
+  useEffect(() => {
+    if (showHint && rightActions.length > 0) {
+      const timer = setTimeout(() => {
+        setIsHintAnimating(true);
+        setTranslateX(-40);
+        
+        setTimeout(() => {
+          setIsAnimating(true);
+          setTranslateX(0);
+          setIsHintAnimating(false);
+          onHintDismiss?.();
+        }, 600);
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [showHint, rightActions.length, onHintDismiss]);
 
   const handleTouchStart = (e: TouchEvent) => {
     if (disabled) return;
     setIsAnimating(false);
     startXRef.current = e.touches[0].clientX;
     currentXRef.current = translateX;
+    hasTriggeredHapticRef.current = false;
   };
 
   const handleTouchMove = (e: TouchEvent) => {
     if (disabled) return;
     const diff = e.touches[0].clientX - startXRef.current;
     let newTranslate = currentXRef.current + diff;
+
+    // Trigger haptic when crossing threshold
+    const threshold = ACTION_WIDTH / 2;
+    if (!hasTriggeredHapticRef.current && Math.abs(newTranslate) > threshold) {
+      triggerHaptic("light");
+      hasTriggeredHapticRef.current = true;
+    }
 
     // Clamp the translation
     if (newTranslate > maxLeftSwipe) {
@@ -70,8 +111,10 @@ export function SwipeableCard({
     const threshold = ACTION_WIDTH / 2;
 
     if (translateX > threshold && leftActions.length > 0) {
+      triggerHaptic("medium");
       setTranslateX(maxLeftSwipe);
     } else if (translateX < -threshold && rightActions.length > 0) {
+      triggerHaptic("medium");
       setTranslateX(-maxRightSwipe);
     } else {
       setTranslateX(0);
@@ -79,6 +122,7 @@ export function SwipeableCard({
   };
 
   const handleActionClick = (action: SwipeAction) => {
+    triggerHaptic("medium");
     setIsAnimating(true);
     setTranslateX(0);
     // Small delay to let the animation complete
@@ -141,7 +185,7 @@ export function SwipeableCard({
       <div
         className={cn(
           "relative bg-background",
-          isAnimating && "transition-transform duration-200 ease-out"
+          (isAnimating || isHintAnimating) && "transition-transform duration-200 ease-out"
         )}
         style={{ transform: `translateX(${translateX}px)` }}
         onTouchStart={handleTouchStart}
@@ -153,4 +197,23 @@ export function SwipeableCard({
       </div>
     </div>
   );
+}
+
+// Hook to manage swipe hint state
+export function useSwipeHint(storageKey: string) {
+  const [showHint, setShowHint] = useState(false);
+
+  useEffect(() => {
+    const hasSeenHint = localStorage.getItem(storageKey);
+    if (!hasSeenHint) {
+      setShowHint(true);
+    }
+  }, [storageKey]);
+
+  const dismissHint = () => {
+    localStorage.setItem(storageKey, "true");
+    setShowHint(false);
+  };
+
+  return { showHint, dismissHint };
 }

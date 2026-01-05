@@ -54,6 +54,9 @@ type Props = {
   onArchive: (invoice: Invoice) => void;
   onUnarchive: (invoice: Invoice) => void;
   onDelete: (invoice: Invoice) => void;
+
+  showSwipeHint?: boolean;
+  onSwipeHintDismiss?: () => void;
 };
 
 const invoiceStatusColors: Record<string, string> = {
@@ -82,6 +85,8 @@ export function InvoiceListCard({
   onArchive,
   onUnarchive,
   onDelete,
+  showSwipeHint = false,
+  onSwipeHintDismiss,
 }: Props) {
   const signatureId = (invoice as any).signature_id as string | undefined;
   const archivedAt = (invoice as any).archived_at as string | undefined;
@@ -284,6 +289,8 @@ export function InvoiceListCard({
       tagsRow={tagsRow}
       actionsMenu={actionsMenu}
       swipeRightActions={swipeRightActions}
+      showSwipeHint={showSwipeHint}
+      onSwipeHintDismiss={onSwipeHintDismiss}
     />
   );
 }

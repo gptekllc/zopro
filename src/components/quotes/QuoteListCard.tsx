@@ -60,6 +60,8 @@ interface QuoteListCardProps {
   onUnarchive: (quote: Quote) => void;
   onDelete: (quote: Quote) => void;
   onStatusChange: (quoteId: string, status: string) => void;
+  showSwipeHint?: boolean;
+  onSwipeHintDismiss?: () => void;
 }
 
 // Map database status to display label (accepted -> Approved)
@@ -93,6 +95,8 @@ export function QuoteListCard({
   onUnarchive,
   onDelete,
   onStatusChange,
+  showSwipeHint = false,
+  onSwipeHintDismiss,
 }: QuoteListCardProps) {
   const signatureId = quote.signature_id;
   const archivedAt = (quote as any).archived_at as string | undefined;
@@ -295,6 +299,8 @@ export function QuoteListCard({
       tagsRow={tagsRow}
       actionsMenu={actionsMenu}
       swipeRightActions={swipeRightActions}
+      showSwipeHint={showSwipeHint}
+      onSwipeHintDismiss={onSwipeHintDismiss}
     />
   );
 }
