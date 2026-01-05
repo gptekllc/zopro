@@ -1241,29 +1241,16 @@ const Quotes = () => {
                   <Separator />
 
                   {/* Tabs for Items, Linked Docs, Photos */}
-                  <Tabs defaultValue="items" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
-                      <TabsTrigger value="items" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                        <List className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">Items</span>
-                        {(viewingQuote.items?.length || 0) > 0 && (
-                          <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                            {viewingQuote.items?.length}
-                          </Badge>
-                        )}
+                  <Tabs defaultValue="items" className="mt-4">
+                    <TabsList className="flex-wrap h-auto gap-1 p-1">
+                      <TabsTrigger value="items" className="text-xs sm:text-sm px-2 sm:px-3">
+                        Details
                       </TabsTrigger>
-                      <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                        <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">Linked Docs</span>
-                        {linkedDocsCount > 0 && (
-                          <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                            {linkedDocsCount}
-                          </Badge>
-                        )}
+                      <TabsTrigger value="linked" className="text-xs sm:text-sm px-2 sm:px-3">
+                        Linked Docs ({linkedDocsCount})
                       </TabsTrigger>
-                      <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                        <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-                        <span className="hidden sm:inline">Photos</span>
+                      <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">
+                        Photos
                       </TabsTrigger>
                     </TabsList>
 
