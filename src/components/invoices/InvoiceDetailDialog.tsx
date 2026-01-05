@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,7 @@ import {
   FileDown, Mail, Edit, PenTool, Calendar, 
   DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
   ChevronRight, CheckCircle2, Copy, Briefcase, FileText, Link2, Send, Loader2,
-  List, Image as ImageIcon, CreditCard, Trash2
+  List, Image as ImageIcon, CreditCard, Trash2, Pencil
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -21,8 +22,9 @@ import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto, useUpdateInvoicePhotoType } from '@/hooks/useInvoicePhotos';
-import { usePayments, useDeletePayment, Payment } from '@/hooks/usePayments';
+import { usePayments, useDeletePayment, useUpdatePayment, Payment } from '@/hooks/usePayments';
 import { PAYMENT_METHODS } from './RecordPaymentDialog';
+import { EditPaymentDialog, EditPaymentData } from './EditPaymentDialog';
 
 const INVOICE_STATUSES = ['draft', 'sent', 'paid'] as const;
 
@@ -142,6 +144,11 @@ export function InvoiceDetailDialog({
   // Fetch payments for this invoice
   const { data: payments = [], isLoading: loadingPayments } = usePayments(invoice?.id || null);
   const deletePayment = useDeletePayment();
+  const updatePayment = useUpdatePayment();
+  
+  // Edit payment dialog state
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [editPaymentDialogOpen, setEditPaymentDialogOpen] = useState(false);
 
   if (!invoice) return null;
 
@@ -183,6 +190,25 @@ export function InvoiceDetailDialog({
       photoType,
       invoiceId: invoice.id,
     });
+  };
+
+  const handleEditPayment = (payment: Payment) => {
+    setEditingPayment(payment);
+    setEditPaymentDialogOpen(true);
+  };
+
+  const handleUpdatePayment = async (data: EditPaymentData) => {
+    if (!editingPayment) return;
+    await updatePayment.mutateAsync({
+      paymentId: editingPayment.id,
+      invoiceId: invoice.id,
+      amount: data.amount,
+      method: data.method,
+      paymentDate: data.date,
+      notes: data.notes || undefined,
+    });
+    setEditPaymentDialogOpen(false);
+    setEditingPayment(null);
   };
 
   return (
@@ -446,8 +472,18 @@ export function InvoiceDetailDialog({
                             <Button
                               variant="ghost"
                               size="sm"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                              onClick={() => handleEditPayment(payment)}
+                              title="Edit payment"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                               onClick={() => deletePayment.mutate({ paymentId: payment.id, invoiceId: invoice.id })}
+                              title="Delete payment"
                             >
                               <Trash2 className="w-3 h-3" />
                             </Button>
@@ -696,6 +732,18 @@ export function InvoiceDetailDialog({
             </Button>
           </div>
       </DialogContent>
+
+      {/* Edit Payment Dialog */}
+      <EditPaymentDialog
+        open={editPaymentDialogOpen}
+        onOpenChange={(open) => {
+          setEditPaymentDialogOpen(open);
+          if (!open) setEditingPayment(null);
+        }}
+        payment={editingPayment}
+        onConfirm={handleUpdatePayment}
+        isLoading={updatePayment.isPending}
+      />
     </Dialog>
   );
 }
