@@ -1,5 +1,9 @@
 import { useState, useMemo } from 'react';
-import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, parse } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useJobs } from '@/hooks/useJobs';
 import { useQuotes } from '@/hooks/useQuotes';
 import { useInvoices } from '@/hooks/useInvoices';
@@ -44,6 +48,8 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 
 const MonthlySummaryReport = () => {
   const [timeRange, setTimeRange] = useState('6');
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
   
   const { data: jobs, isLoading: loadingJobs } = useJobs();
   const { data: quotes, isLoading: loadingQuotes } = useQuotes();
@@ -54,10 +60,16 @@ const MonthlySummaryReport = () => {
 
   // Generate months for the selected range
   const months = useMemo(() => {
+    if (timeRange === 'custom' && customStartDate && customEndDate) {
+      return eachMonthOfInterval({ 
+        start: startOfMonth(customStartDate), 
+        end: endOfMonth(customEndDate) 
+      });
+    }
     const endDate = endOfMonth(new Date());
     const startDate = startOfMonth(subMonths(new Date(), parseInt(timeRange) - 1));
     return eachMonthOfInterval({ start: startDate, end: endDate });
-  }, [timeRange]);
+  }, [timeRange, customStartDate, customEndDate]);
 
   // Calculate monthly data
   const monthlyData = useMemo(() => {
@@ -247,7 +259,7 @@ const MonthlySummaryReport = () => {
   return (
     <div className="space-y-6">
       {/* Time Range Selector and Export */}
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button onClick={exportToCSV} variant="outline" size="sm" disabled={monthlyData.length === 0}>
           <Download className="w-4 h-4 mr-2" />
           Export CSV
@@ -257,11 +269,61 @@ const MonthlySummaryReport = () => {
             <SelectValue placeholder="Select range" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="1">Last Month</SelectItem>
             <SelectItem value="3">Last 3 months</SelectItem>
             <SelectItem value="6">Last 6 months</SelectItem>
             <SelectItem value="12">Last 12 months</SelectItem>
+            <SelectItem value="custom">Custom Range</SelectItem>
           </SelectContent>
         </Select>
+        {timeRange === 'custom' && (
+          <>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[140px] justify-start text-left font-normal",
+                    !customStartDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {customStartDate ? format(customStartDate, "MMM yyyy") : "Start"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-popover" align="end">
+                <Calendar
+                  mode="single"
+                  selected={customStartDate}
+                  onSelect={setCustomStartDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-[140px] justify-start text-left font-normal",
+                    !customEndDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {customEndDate ? format(customEndDate, "MMM yyyy") : "End"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-popover" align="end">
+                <Calendar
+                  mode="single"
+                  selected={customEndDate}
+                  onSelect={setCustomEndDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -274,7 +336,7 @@ const MonthlySummaryReport = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalJobs || 0}</div>
             <p className="text-xs text-muted-foreground">
-              In the last {timeRange} months
+              {timeRange === 'custom' ? 'In selected range' : `In the last ${timeRange === '1' ? 'month' : `${timeRange} months`}`}
             </p>
           </CardContent>
         </Card>
@@ -300,7 +362,7 @@ const MonthlySummaryReport = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalInvoices || 0}</div>
             <p className="text-xs text-muted-foreground">
-              In the last {timeRange} months
+              {timeRange === 'custom' ? 'In selected range' : `In the last ${timeRange === '1' ? 'month' : `${timeRange} months`}`}
             </p>
           </CardContent>
         </Card>
