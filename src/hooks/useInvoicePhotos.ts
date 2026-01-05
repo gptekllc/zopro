@@ -134,3 +134,27 @@ export function useDeleteInvoicePhoto() {
     },
   });
 }
+
+export function useUpdateInvoicePhotoType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ photoId, photoType, invoiceId }: { photoId: string; photoType: 'before' | 'after' | 'other'; invoiceId: string }) => {
+      const { error } = await supabase
+        .from('invoice_photos')
+        .update({ photo_type: photoType })
+        .eq('id', photoId);
+
+      if (error) throw error;
+      return invoiceId;
+    },
+    onSuccess: (invoiceId) => {
+      queryClient.invalidateQueries({ queryKey: ['invoice-photos', invoiceId] });
+      toast.success('Photo category updated');
+    },
+    onError: (error) => {
+      console.error('Failed to update photo category:', error);
+      toast.error('Failed to update photo category');
+    },
+  });
+}

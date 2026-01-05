@@ -3,7 +3,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, GripVertical } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, GripVertical, FolderInput } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -22,11 +23,12 @@ interface PhotoGalleryProps {
   className?: string;
   onReorder?: (photos: JobPhoto[]) => void;
   onDelete?: (photoId: string) => void;
+  onUpdateType?: (photoId: string, photoType: 'before' | 'after' | 'other') => void;
   editable?: boolean;
   deletable?: boolean;
 }
 
-export function PhotoGallery({ photos, className, onReorder, onDelete, editable = true, deletable = false }: PhotoGalleryProps) {
+export function PhotoGallery({ photos, className, onReorder, onDelete, onUpdateType, editable = true, deletable = false }: PhotoGalleryProps) {
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [loadingUrls, setLoadingUrls] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -38,6 +40,11 @@ export function PhotoGallery({ photos, className, onReorder, onDelete, editable 
   // Delete confirmation state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [photoToDelete, setPhotoToDelete] = useState<string | null>(null);
+  
+  // Category change state
+  const [changeCategoryOpen, setChangeCategoryOpen] = useState(false);
+  const [photoToChangeCategory, setPhotoToChangeCategory] = useState<JobPhoto | null>(null);
+  const [newCategory, setNewCategory] = useState<'before' | 'after' | 'other'>('other');
   
   // Drag and drop state
   const [draggedPhoto, setDraggedPhoto] = useState<JobPhoto | null>(null);
@@ -350,6 +357,20 @@ export function PhotoGallery({ photos, className, onReorder, onDelete, editable 
                       </div>
                     </div>
                   )}
+                  {editable && onUpdateType && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPhotoToChangeCategory(photo);
+                        setNewCategory(photo.photo_type);
+                        setChangeCategoryOpen(true);
+                      }}
+                      className="absolute bottom-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-primary/80 rounded p-1 hover:bg-primary"
+                      title="Change category"
+                    >
+                      <FolderInput className="w-4 h-4 text-white" />
+                    </button>
+                  )}
                   {deletable && onDelete && (
                     <button
                       onClick={(e) => {
@@ -548,6 +569,46 @@ export function PhotoGallery({ photos, className, onReorder, onDelete, editable 
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Change Category Dialog */}
+      <Dialog open={changeCategoryOpen} onOpenChange={setChangeCategoryOpen}>
+        <DialogContent className="sm:max-w-md">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold">Change Photo Category</h3>
+              <p className="text-sm text-muted-foreground">
+                Move this photo to a different category
+              </p>
+            </div>
+            <Select value={newCategory} onValueChange={(v) => setNewCategory(v as 'before' | 'after' | 'other')}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="before">Before</SelectItem>
+                <SelectItem value="after">After</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setChangeCategoryOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (photoToChangeCategory && onUpdateType && newCategory !== photoToChangeCategory.photo_type) {
+                    onUpdateType(photoToChangeCategory.id, newCategory);
+                  }
+                  setChangeCategoryOpen(false);
+                  setPhotoToChangeCategory(null);
+                }}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
