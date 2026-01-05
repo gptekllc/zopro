@@ -424,6 +424,119 @@ const TransactionsReport = () => {
             </Button>
           </div>
         </div>
+
+        {/* Filters */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="space-y-2">
+            <Label>Start Date</Label>
+            <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>End Date</Label>
+            <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Customer</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start">
+                  <User className="w-4 h-4 mr-2" />
+                  {selectedCustomerIds.length === 0 ? (
+                    <span className="text-muted-foreground">All Customers</span>
+                  ) : (
+                    <span className="truncate">{selectedCustomerIds.length} selected</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2 bg-background" align="start">
+                <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                  <span className="text-sm font-medium">Filter by Customer</span>
+                  {selectedCustomerIds.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearSelectedCustomers} className="h-6 px-2 text-xs">
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+                <div className="relative mb-2">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search customers..."
+                    value={customerFilterSearch}
+                    onChange={(e) => setCustomerFilterSearch(e.target.value)}
+                    className="pl-8 h-8 text-sm"
+                  />
+                </div>
+                <div className="max-h-[200px] overflow-y-auto space-y-1">
+                  {filteredDropdownCustomers.map(customer => (
+                    <div
+                      key={customer.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                      onClick={() => toggleCustomer(customer.id)}
+                    >
+                      <Checkbox
+                        checked={selectedCustomerIds.includes(customer.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onCheckedChange={() => toggleCustomer(customer.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm truncate">{customer.name}</div>
+                        {customer.email && (
+                          <div className="text-xs text-muted-foreground truncate">{customer.email}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {filteredDropdownCustomers.length === 0 && (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      {customers?.length === 0 ? 'No customers' : 'No matches found'}
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Method</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <SelectTrigger>
+                <SelectValue placeholder="All methods" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Methods</SelectItem>
+                {PAYMENT_METHODS.map(m => <SelectItem key={m.value} value={m.value}>
+                    {m.label}
+                  </SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+                <SelectItem value="refunded">Refunded</SelectItem>
+                <SelectItem value="voided">Voided</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {hasActiveFilters && (
+          <div className="flex justify-end">
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
+              <X className="w-4 h-4" />
+              Clear Filters
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -469,226 +582,126 @@ const TransactionsReport = () => {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-
-          {/* Filters */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <div className="space-y-2">
-              <Label>Start Date</Label>
-              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>End Date</Label>
-              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Customer</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start">
-                    <User className="w-4 h-4 mr-2" />
-                    {selectedCustomerIds.length === 0 ? (
-                      <span className="text-muted-foreground">All Customers</span>
-                    ) : (
-                      <span className="truncate">{selectedCustomerIds.length} selected</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-2 bg-background" align="start">
-                  <div className="flex items-center justify-between mb-2 pb-2 border-b">
-                    <span className="text-sm font-medium">Filter by Customer</span>
-                    {selectedCustomerIds.length > 0 && (
-                      <Button variant="ghost" size="sm" onClick={clearSelectedCustomers} className="h-6 px-2 text-xs">
-                        Clear all
+      {/* Transactions Table */}
+      <ScrollableTable className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableTableHeader
+                column="date"
+                label="Date"
+                currentSortColumn={sortColumn}
+                currentSortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <TableHead>Invoice #</TableHead>
+              <SortableTableHeader
+                column="customer"
+                label="Customer"
+                currentSortColumn={sortColumn}
+                currentSortDirection={sortDirection}
+                onSort={handleSort}
+              />
+              <TableHead>Method</TableHead>
+              <SortableTableHeader
+                column="amount"
+                label="Amount"
+                currentSortColumn={sortColumn}
+                currentSortDirection={sortDirection}
+                onSort={handleSort}
+                align="right"
+              />
+              <TableHead>Status</TableHead>
+              <TableHead className="w-10"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? Array.from({ length: 5 }).map((_, i) => (
+              <TableRow key={i}>
+                <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+              </TableRow>
+            )) : filteredPayments.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                  {hasActiveFilters ? 'No payments match your filters' : 'No payments recorded yet'}
+                </TableCell>
+              </TableRow>
+            ) : paginatedPayments.map(payment => (
+              <TableRow key={payment.id}>
+                <TableCell className="whitespace-nowrap">
+                  {format(new Date(payment.payment_date), 'MMM d, yyyy')}
+                </TableCell>
+                <TableCell className="font-medium">
+                  {payment.invoice?.invoice_number || '-'}
+                </TableCell>
+                <TableCell>
+                  {payment.invoice?.customer?.name || '-'}
+                </TableCell>
+                <TableCell>{getMethodLabel(payment.method)}</TableCell>
+                <TableCell className="text-right font-medium">
+                  {formatCurrency(payment.amount)}
+                </TableCell>
+                <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" disabled={receiptLoadingId === payment.id}>
+                        {receiptLoadingId === payment.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <MoreHorizontal className="w-4 h-4" />}
                       </Button>
-                    )}
-                  </div>
-                  <div className="relative mb-2">
-                    <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      placeholder="Search customers..."
-                      value={customerFilterSearch}
-                      onChange={(e) => setCustomerFilterSearch(e.target.value)}
-                      className="pl-8 h-8 text-sm"
-                    />
-                  </div>
-                  <div className="max-h-[200px] overflow-y-auto space-y-1">
-                    {filteredDropdownCustomers.map(customer => (
-                      <div
-                        key={customer.id}
-                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
-                        onClick={() => toggleCustomer(customer.id)}
-                      >
-                      <Checkbox
-                          checked={selectedCustomerIds.includes(customer.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          onCheckedChange={() => toggleCustomer(customer.id)}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm truncate">{customer.name}</div>
-                          {customer.email && (
-                            <div className="text-xs text-muted-foreground truncate">{customer.email}</div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {filteredDropdownCustomers.length === 0 && (
-                      <div className="text-sm text-muted-foreground text-center py-4">
-                        {customers?.length === 0 ? 'No customers' : 'No matches found'}
-                      </div>
-                    )}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleDownloadReceipt(payment)}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Receipt
+                      </DropdownMenuItem>
+                      {payment.invoice?.customer?.email && (
+                        <DropdownMenuItem onClick={() => handleEmailReceipt(payment)}>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Email Receipt
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </ScrollableTable>
 
-            <div className="space-y-2">
-              <Label>Method</Label>
-              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All methods" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Methods</SelectItem>
-                  {PAYMENT_METHODS.map(m => <SelectItem key={m.value} value={m.value}>
-                      {m.label}
-                    </SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={paymentStatus} onValueChange={setPaymentStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="refunded">Refunded</SelectItem>
-                  <SelectItem value="voided">Voided</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {hasActiveFilters && <div className="flex justify-end">
-              <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
-                <X className="w-4 h-4" />
-                Clear Filters
-              </Button>
-            </div>}
-
-          {/* Transactions Table */}
-          <ScrollableTable className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <SortableTableHeader
-                    column="date"
-                    label="Date"
-                    currentSortColumn={sortColumn}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                  />
-                  <TableHead>Invoice #</TableHead>
-                  <SortableTableHeader
-                    column="customer"
-                    label="Customer"
-                    currentSortColumn={sortColumn}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                  />
-                  <TableHead>Method</TableHead>
-                  <SortableTableHeader
-                    column="amount"
-                    label="Amount"
-                    currentSortColumn={sortColumn}
-                    currentSortDirection={sortDirection}
-                    onSort={handleSort}
-                    align="right"
-                  />
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-10"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? Array.from({
-                length: 5
-              }).map((_, i) => <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-                    </TableRow>) : filteredPayments.length === 0 ? <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                      {hasActiveFilters ? 'No payments match your filters' : 'No payments recorded yet'}
-                    </TableCell>
-                  </TableRow> : paginatedPayments.map(payment => <TableRow key={payment.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {format(new Date(payment.payment_date), 'MMM d, yyyy')}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {payment.invoice?.invoice_number || '-'}
-                      </TableCell>
-                      <TableCell>
-                        {payment.invoice?.customer?.name || '-'}
-                      </TableCell>
-                      <TableCell>{getMethodLabel(payment.method)}</TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(payment.amount)}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" disabled={receiptLoadingId === payment.id}>
-                              {receiptLoadingId === payment.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <MoreHorizontal className="w-4 h-4" />}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleDownloadReceipt(payment)}>
-                              <Download className="w-4 h-4 mr-2" />
-                              Download Receipt
-                            </DropdownMenuItem>
-                            {payment.invoice?.customer?.email && <DropdownMenuItem onClick={() => handleEmailReceipt(payment)}>
-                                <Mail className="w-4 h-4 mr-2" />
-                                Email Receipt
-                              </DropdownMenuItem>}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>)}
-              </TableBody>
-            </Table>
-          </ScrollableTable>
-
-          {/* Pagination */}
-          <TablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            totalItems={sortedPayments.length}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-            itemLabel="payments"
-          />
-        </CardContent>
-      </Card>
+      {/* Pagination */}
+      <TablePagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        totalItems={sortedPayments.length}
+        onPageChange={setCurrentPage}
+        onPageSizeChange={setPageSize}
+        itemLabel="payments"
+      />
 
       {/* Select Invoice Dialog */}
       <SelectInvoiceDialog open={selectInvoiceOpen} onOpenChange={setSelectInvoiceOpen} onSelect={handleInvoiceSelected} />
 
       {/* Record Payment Dialog */}
-      {selectedInvoice && <RecordPaymentDialog open={recordPaymentOpen} onOpenChange={setRecordPaymentOpen} invoiceTotal={selectedInvoice.total} remainingBalance={selectedInvoice.remainingBalance} invoiceNumber={selectedInvoice.invoice_number} customerEmail={selectedInvoice.customerEmail} onConfirm={handleRecordPayment} isLoading={createPayment.isPending} />}
+      {selectedInvoice && (
+        <RecordPaymentDialog 
+          open={recordPaymentOpen} 
+          onOpenChange={setRecordPaymentOpen} 
+          invoiceTotal={selectedInvoice.total} 
+          remainingBalance={selectedInvoice.remainingBalance} 
+          invoiceNumber={selectedInvoice.invoice_number} 
+          customerEmail={selectedInvoice.customerEmail} 
+          onConfirm={handleRecordPayment} 
+          isLoading={createPayment.isPending} 
+        />
+      )}
 
       {/* Email Dialog */}
       <ReportEmailDialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen} onSend={sendReportEmail} isSending={isSendingEmail} title="Email Transactions Report" />
