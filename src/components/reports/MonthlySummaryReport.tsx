@@ -700,36 +700,30 @@ const MonthlySummaryReport = () => {
                 }}
               />
               <Legend />
-              {selectedTypes.includes('jobs') && (
-                <Line 
-                  type="monotone" 
-                  dataKey="jobsValue" 
-                  name="Jobs Value"
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--primary))' }}
-                />
-              )}
-              {selectedTypes.includes('quotes') && (
-                <Line 
-                  type="monotone" 
-                  dataKey="quotesValue" 
-                  name="Quotes Value"
-                  stroke="hsl(var(--chart-2))" 
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--chart-2))' }}
-                />
-              )}
-              {selectedTypes.includes('invoices') && (
-                <Line 
-                  type="monotone" 
-                  dataKey="invoicesValue" 
-                  name="Invoices Value"
-                  stroke="hsl(var(--chart-3))" 
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--chart-3))' }}
-                />
-              )}
+              <Line 
+                type="monotone" 
+                dataKey="jobsValue" 
+                name="Jobs Value"
+                stroke="hsl(var(--primary))" 
+                strokeWidth={2}
+                dot={{ fill: 'hsl(var(--primary))' }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="quotesValue" 
+                name="Quotes Value"
+                stroke="hsl(var(--chart-2))" 
+                strokeWidth={2}
+                dot={{ fill: 'hsl(var(--chart-2))' }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="invoicesValue" 
+                name="Invoices Value"
+                stroke="hsl(var(--chart-3))" 
+                strokeWidth={2}
+                dot={{ fill: 'hsl(var(--chart-3))' }}
+              />
               {showTotalRevenue && (
                 <Line 
                   type="monotone" 
