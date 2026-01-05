@@ -1,0 +1,210 @@
+import { Plus, Trash2, X, Clock, Package, Wrench } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+
+export interface LineItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  type?: 'product' | 'service';
+}
+
+interface LineItemsEditorProps {
+  items: LineItem[];
+  onAddItem: (type: 'product' | 'service') => void;
+  onRemoveItem: (id: string) => void;
+  onUpdateItem: (id: string, field: keyof LineItem, value: string | number) => void;
+  showTypeColumn?: boolean;
+  quantityLabel?: string;
+  minItems?: number;
+}
+
+export const LineItemsEditor = ({
+  items,
+  onAddItem,
+  onRemoveItem,
+  onUpdateItem,
+  showTypeColumn = false,
+  quantityLabel = 'Qty',
+  minItems = 0,
+}: LineItemsEditorProps) => {
+  const products = items.filter(item => item.type === 'product');
+  const services = items.filter(item => item.type === 'service');
+
+  const renderItemRow = (item: LineItem, canRemove: boolean) => {
+    const isAutoLabor = item.description.toLowerCase() === 'labor';
+    
+    return (
+      <div key={item.id} className="space-y-2 sm:space-y-0">
+        {/* Mobile layout */}
+        <div className={`sm:hidden space-y-2 p-3 rounded-lg ${isAutoLabor ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : 'bg-muted/50'}`}>
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Description"
+              value={item.description}
+              onChange={e => onUpdateItem(item.id, 'description', e.target.value)}
+              className="flex-1"
+            />
+            {isAutoLabor && (
+              <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700 whitespace-nowrap">
+                <Clock className="w-3 h-3 mr-1" />
+                Auto
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <div className="w-20">
+              <Label className="text-xs text-muted-foreground">{quantityLabel}</Label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={item.quantity}
+                onChange={e => onUpdateItem(item.id, 'quantity', parseFloat(e.target.value) || 1)}
+              />
+            </div>
+            <div className="flex-1">
+              <Label className="text-xs text-muted-foreground">Price</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0"
+                value={item.unitPrice === 0 ? '' : item.unitPrice}
+                onChange={e => onUpdateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onRemoveItem(item.id)}
+                disabled={!canRemove}
+                className="text-destructive"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="flex justify-end text-sm font-medium">
+            Total: ${(item.quantity * item.unitPrice).toLocaleString()}
+          </div>
+        </div>
+        
+        {/* Desktop layout */}
+        <div className={`hidden sm:grid grid-cols-12 gap-2 items-start ${isAutoLabor ? 'p-2 -mx-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''}`}>
+          <div className={isAutoLabor ? 'col-span-4' : 'col-span-5'}>
+            <Input
+              placeholder="Description"
+              value={item.description}
+              onChange={e => onUpdateItem(item.id, 'description', e.target.value)}
+            />
+          </div>
+          {isAutoLabor && (
+            <div className="col-span-1 flex items-center justify-center pt-2">
+              <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                <Clock className="w-3 h-3 mr-1" />
+                Auto
+              </Badge>
+            </div>
+          )}
+          <div className="col-span-2">
+            <Input
+              type="number"
+              min="0.01"
+              step="0.01"
+              placeholder={quantityLabel}
+              value={item.quantity}
+              onChange={e => onUpdateItem(item.id, 'quantity', parseFloat(e.target.value) || 1)}
+            />
+          </div>
+          <div className="col-span-3">
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0"
+              value={item.unitPrice === 0 ? '' : item.unitPrice}
+              onChange={e => onUpdateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+            />
+          </div>
+          <div className="col-span-1 text-right pt-2 text-sm font-medium">
+            ${(item.quantity * item.unitPrice).toLocaleString()}
+          </div>
+          <div className="col-span-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => onRemoveItem(item.id)}
+              disabled={!canRemove}
+              className="text-destructive"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const canRemoveItem = items.length > minItems;
+
+  return (
+    <div className="space-y-6">
+      {/* Products Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-base font-semibold flex items-center gap-2">
+            <Package className="w-4 h-4 text-muted-foreground" />
+            Products
+          </Label>
+          <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('product')}>
+            <Plus className="w-4 h-4 mr-1" />
+            <span className="hidden sm:inline">Add Product</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </div>
+        
+        {products.length > 0 ? (
+          <div className="space-y-3">
+            {products.map(item => renderItemRow(item, canRemoveItem))}
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground py-3 px-4 bg-muted/30 rounded-lg text-center">
+            No products added
+          </div>
+        )}
+      </div>
+
+      {/* Services Section */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <Label className="text-base font-semibold flex items-center gap-2">
+            <Wrench className="w-4 h-4 text-muted-foreground" />
+            Services
+          </Label>
+          <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('service')}>
+            <Plus className="w-4 h-4 mr-1" />
+            <span className="hidden sm:inline">Add Service</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </div>
+        
+        {services.length > 0 ? (
+          <div className="space-y-3">
+            {services.map(item => renderItemRow(item, canRemoveItem))}
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground py-3 px-4 bg-muted/30 rounded-lg text-center">
+            No services added
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

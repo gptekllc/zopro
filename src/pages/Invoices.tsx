@@ -35,12 +35,7 @@ import { SignatureSection } from "@/components/signatures/SignatureSection";
 import { ConstrainedPanel } from "@/components/ui/constrained-panel";
 import { formatAmount } from "@/lib/formatAmount";
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
-interface LineItem {
-  id: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-}
+import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
 const normalizeMoneyInput = (value: number | string | null | undefined) => {
   if (typeof value !== "string") return value;
   // Supabase numeric fields can come back as strings like "24.2400".
@@ -209,7 +204,8 @@ const Invoices = () => {
         id: "1",
         description: "",
         quantity: 1,
-        unitPrice: 0
+        unitPrice: 0,
+        type: 'service' as const
       }],
       notes: "",
       status: "draft",
@@ -219,14 +215,15 @@ const Invoices = () => {
     });
     setEditingInvoice(null);
   };
-  const handleAddItem = () => {
+  const handleAddItem = (type: 'product' | 'service' = 'service') => {
     setFormData({
       ...formData,
       items: [...formData.items, {
         id: Date.now().toString(),
         description: "",
         quantity: 1,
-        unitPrice: 0
+        unitPrice: 0,
+        type
       }]
     });
   };
@@ -306,12 +303,14 @@ const Invoices = () => {
         id: item.id,
         description: item.description,
         quantity: item.quantity,
-        unitPrice: Number(item.unit_price)
+        unitPrice: Number(item.unit_price),
+        type: item.type || 'service'
       })) || [{
         id: "1",
         description: "",
         quantity: 1,
-        unitPrice: 0
+        unitPrice: 0,
+        type: 'service' as const
       }],
       notes: invoice.notes || "",
       status: invoice.status as any,
@@ -385,12 +384,14 @@ const Invoices = () => {
         id: Date.now().toString() + Math.random(),
         description: item.description,
         quantity: item.quantity,
-        unitPrice: Number(item.unit_price)
+        unitPrice: Number(item.unit_price),
+        type: item.type || 'service'
       })) || [{
         id: "1",
         description: "",
         quantity: 1,
-        unitPrice: 0
+        unitPrice: 0,
+        type: 'service' as const
       }],
       notes: invoice.notes || "",
       status: "draft",
@@ -623,70 +624,34 @@ const Invoices = () => {
                   </div>
 
                   {/* Line Items */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label>Line Items</Label>
-                      <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>
-                        <Plus className="w-4 h-4 mr-1" /> Add Item
-                      </Button>
+                  <LineItemsEditor
+                    items={formData.items}
+                    onAddItem={handleAddItem}
+                    onRemoveItem={handleRemoveItem}
+                    onUpdateItem={handleItemChange}
+                  />
+
+                  {/* Discount and Totals */}
+                  <div className="border-t pt-3 space-y-2">
+                    <DiscountInput
+                      discountType={formData.discountType}
+                      discountValue={formData.discountValue}
+                      onDiscountTypeChange={(type) => setFormData({ ...formData, discountType: type })}
+                      onDiscountValueChange={(value) => setFormData({ ...formData, discountValue: value })}
+                    />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span>${calculateTotal(formData.items).toLocaleString()}</span>
                     </div>
-
-                    {formData.items.map(item => <div key={item.id} className="space-y-2 sm:space-y-0">
-                        {/* Mobile layout */}
-                        <div className="sm:hidden space-y-2 p-3 bg-muted/50 rounded-lg">
-                          <Input placeholder="Description" value={item.description} onChange={e => handleItemChange(item.id, "description", e.target.value)} />
-                          <div className="flex gap-2">
-                            <div className="w-20">
-                              <Label className="text-xs text-muted-foreground">Qty</Label>
-                              <Input type="number" value={item.quantity} onChange={e => handleItemChange(item.id, "quantity", parseInt(e.target.value) || 0)} />
-                            </div>
-                            <div className="flex-1">
-                              <Label className="text-xs text-muted-foreground">Price</Label>
-                              <Input type="number" placeholder="0" value={item.unitPrice === 0 ? "" : item.unitPrice} onChange={e => handleItemChange(item.id, "unitPrice", parseFloat(e.target.value) || 0)} />
-                            </div>
-                            <div className="flex items-end">
-                              <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} disabled={formData.items.length === 1} className="text-destructive">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="flex justify-end text-sm font-medium">
-                            Total: ${(item.quantity * item.unitPrice).toLocaleString()}
-                          </div>
-                        </div>
-                        {/* Desktop layout */}
-                        <div className="hidden sm:flex gap-2 items-start">
-                          <Input placeholder="Description" value={item.description} onChange={e => handleItemChange(item.id, "description", e.target.value)} className="flex-1" />
-                          <Input type="number" placeholder="Qty" value={item.quantity} onChange={e => handleItemChange(item.id, "quantity", parseInt(e.target.value) || 0)} className="w-20" />
-                          <Input type="number" placeholder="0" value={item.unitPrice === 0 ? "" : item.unitPrice} onChange={e => handleItemChange(item.id, "unitPrice", parseFloat(e.target.value) || 0)} className="w-24" />
-                          <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveItem(item.id)} disabled={formData.items.length === 1}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>)}
-
-                    {/* Discount and Totals */}
-                    <div className="border-t pt-3 space-y-2">
-                      <DiscountInput
-                        discountType={formData.discountType}
-                        discountValue={formData.discountValue}
-                        onDiscountTypeChange={(type) => setFormData({ ...formData, discountType: type })}
-                        onDiscountValueChange={(value) => setFormData({ ...formData, discountValue: value })}
-                      />
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Subtotal:</span>
-                        <span>${calculateTotal(formData.items).toLocaleString()}</span>
+                    {formData.discountValue > 0 && (
+                      <div className="flex justify-between text-sm text-success">
+                        <span>Discount ({formatDiscount(formData.discountType, formData.discountValue)}):</span>
+                        <span>-${calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue).toLocaleString()}</span>
                       </div>
-                      {formData.discountValue > 0 && (
-                        <div className="flex justify-between text-sm text-success">
-                          <span>Discount ({formatDiscount(formData.discountType, formData.discountValue)}):</span>
-                          <span>-${calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue).toLocaleString()}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between font-semibold text-lg pt-1 border-t">
-                        <span>Total:</span>
-                        <span>${(calculateTotal(formData.items) - calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue)).toLocaleString()}</span>
-                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold text-lg pt-1 border-t">
+                      <span>Total:</span>
+                      <span>${(calculateTotal(formData.items) - calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue)).toLocaleString()}</span>
                     </div>
                   </div>
 

@@ -53,12 +53,7 @@ import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { ConvertJobToInvoiceDialog } from '@/components/jobs/ConvertJobToInvoiceDialog';
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
-interface LineItem {
-  id: string;
-  description: string;
-  quantity: number;
-  unitPrice: number;
-}
+import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
 const Jobs = () => {
   const {
     profile,
@@ -300,12 +295,13 @@ const Jobs = () => {
 
   // Line items state
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
-  const addLineItem = () => {
+  const addLineItem = (type: 'product' | 'service' = 'service') => {
     setLineItems([...lineItems, {
       id: crypto.randomUUID(),
       description: '',
       quantity: 1,
-      unitPrice: 0
+      unitPrice: 0,
+      type
     }]);
   };
   const removeLineItem = (id: string) => {
@@ -480,7 +476,8 @@ const Jobs = () => {
         id: item.id,
         description: item.description,
         quantity: item.quantity,
-        unitPrice: item.unit_price
+        unitPrice: item.unit_price,
+        type: (item as any).type || 'service'
       })));
     } else {
       setLineItems([]);
@@ -527,7 +524,8 @@ const Jobs = () => {
             id: crypto.randomUUID(),
             description: item.description,
             quantity: item.quantity,
-            unitPrice: item.unit_price
+            unitPrice: item.unit_price,
+            type: item.type || 'service'
           })));
         } else {
           setLineItems([]);
@@ -564,7 +562,8 @@ const Jobs = () => {
         id: crypto.randomUUID(),
         description: item.description,
         quantity: item.quantity,
-        unitPrice: item.unit_price
+        unitPrice: item.unit_price,
+        type: (item as any).type || 'service'
       })));
     } else {
       setLineItems([]);
@@ -587,7 +586,8 @@ const Jobs = () => {
         id: crypto.randomUUID(),
         description: item.description,
         quantity: item.quantity,
-        unitPrice: item.unit_price
+        unitPrice: item.unit_price,
+        type: (item as any).type || 'service'
       })));
     }
     toast.success(`Loaded template: ${template.name}`);
@@ -609,7 +609,8 @@ const Jobs = () => {
           id: crypto.randomUUID(),
           description: item.description,
           quantity: item.quantity,
-          unitPrice: item.unit_price
+          unitPrice: item.unit_price,
+          type: item.type || 'service'
         })));
       }
     }
@@ -1045,114 +1046,40 @@ const Jobs = () => {
 
               {/* Line Items Section */}
               <Separator />
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-semibold">Line Items (Parts & Labor)</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    <span className="hidden sm:inline">Add Item</span>
-                    <span className="sm:hidden">Add</span>
-                  </Button>
+              <LineItemsEditor
+                items={lineItems}
+                onAddItem={addLineItem}
+                onRemoveItem={removeLineItem}
+                onUpdateItem={updateLineItem}
+                quantityLabel="Qty (hrs)"
+              />
+
+              {/* Discount and Totals */}
+              <div className="border-t pt-3 space-y-2">
+                <DiscountInput
+                  discountType={formData.discountType}
+                  discountValue={formData.discountValue}
+                  onDiscountTypeChange={(type) => setFormData({ ...formData, discountType: type })}
+                  onDiscountValueChange={(value) => setFormData({ ...formData, discountValue: value })}
+                />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal:</span>
+                  <span>${calculateSubtotal().toLocaleString()}</span>
                 </div>
-
-                {lineItems.length > 0 ? <div className="space-y-3">
-                    {lineItems.map((item, index) => {
-                      const isAutoLabor = item.description.toLowerCase() === 'labor';
-                      return (
-                        <div key={item.id} className="space-y-2 sm:space-y-0">
-                          {/* Mobile layout */}
-                          <div className={`sm:hidden space-y-2 p-3 rounded-lg ${isAutoLabor ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : 'bg-muted/50'}`}>
-                            <div className="flex items-center gap-2">
-                              <Input placeholder="Description" value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} className="flex-1" />
-                              {isAutoLabor && (
-                                <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700 whitespace-nowrap">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  Auto
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex gap-2">
-                              <div className="w-20">
-                                <Label className="text-xs text-muted-foreground">Qty (hrs)</Label>
-                                <Input type="number" min="0.01" step="0.01" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', parseFloat(e.target.value) || 1)} />
-                              </div>
-                              <div className="flex-1">
-                                <Label className="text-xs text-muted-foreground">Unit Price</Label>
-                                <Input type="number" min="0" step="0.01" placeholder="0" value={item.unitPrice === 0 ? '' : item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} />
-                              </div>
-                              <div className="flex items-end">
-                                <Button type="button" variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="text-destructive">
-                                  <X className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-                            <div className="flex justify-end text-sm font-medium">
-                              Total: ${(item.quantity * item.unitPrice).toLocaleString()}
-                            </div>
-                          </div>
-                          {/* Desktop layout */}
-                          <div className={`hidden sm:grid grid-cols-12 gap-2 items-start ${isAutoLabor ? 'p-2 -mx-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''}`}>
-                            <div className={isAutoLabor ? 'col-span-4' : 'col-span-5'}>
-                              <Input placeholder="Description" value={item.description} onChange={e => updateLineItem(item.id, 'description', e.target.value)} />
-                            </div>
-                            {isAutoLabor && (
-                              <div className="col-span-1 flex items-center justify-center pt-2">
-                                <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  Auto
-                                </Badge>
-                              </div>
-                            )}
-                            <div className="col-span-2">
-                              <Input type="number" min="0.01" step="0.01" placeholder="Qty" value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', parseFloat(e.target.value) || 1)} />
-                            </div>
-                            <div className="col-span-3">
-                              <Input type="number" min="0" step="0.01" placeholder="0" value={item.unitPrice === 0 ? '' : item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)} />
-                            </div>
-                            <div className="col-span-1 text-right pt-2 text-sm font-medium">
-                              ${(item.quantity * item.unitPrice).toLocaleString()}
-                            </div>
-                            <div className="col-span-1">
-                              <Button type="button" variant="ghost" size="icon" onClick={() => removeLineItem(item.id)} className="text-destructive">
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* Totals */}
-                    {/* Discount and Totals */}
-                    <div className="border-t pt-3 space-y-2">
-                      <DiscountInput
-                        discountType={formData.discountType}
-                        discountValue={formData.discountValue}
-                        onDiscountTypeChange={(type) => setFormData({ ...formData, discountType: type })}
-                        onDiscountValueChange={(value) => setFormData({ ...formData, discountValue: value })}
-                      />
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Subtotal:</span>
-                        <span>${calculateSubtotal().toLocaleString()}</span>
-                      </div>
-                      {formData.discountValue > 0 && (
-                        <div className="flex justify-between text-sm text-success">
-                          <span>Discount ({formatDiscount(formData.discountType, formData.discountValue)}):</span>
-                          <span>-${calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue).toLocaleString()}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Tax ({taxRate}%):</span>
-                        <span>${calculateTax().toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between font-semibold pt-1 border-t">
-                        <span>Total:</span>
-                        <span>${(calculateTotal() - calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue)).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div> : <p className="text-sm text-muted-foreground text-center py-4">
-                    No line items added. Click "Add Item" to add parts or labor.
-                  </p>}
+                {formData.discountValue > 0 && (
+                  <div className="flex justify-between text-sm text-success">
+                    <span>Discount ({formatDiscount(formData.discountType, formData.discountValue)}):</span>
+                    <span>-${calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue).toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Tax ({taxRate}%):</span>
+                  <span>${calculateTax().toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between font-semibold pt-1 border-t">
+                  <span>Total:</span>
+                  <span>${(calculateTotal() - calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue)).toLocaleString()}</span>
+                </div>
               </div>
 
               <div className="space-y-2">
