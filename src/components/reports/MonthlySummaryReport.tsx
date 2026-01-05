@@ -41,6 +41,7 @@ import {
   TrendingUp,
   TrendingDown,
   Download,
+  Printer,
 } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 
@@ -247,6 +248,106 @@ const MonthlySummaryReport = () => {
     URL.revokeObjectURL(link.href);
   };
 
+  // Print/PDF export
+  const printReport = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const timeRangeLabel = timeRange === 'custom' 
+      ? `${customStartDate ? format(customStartDate, 'MMM yyyy') : ''} - ${customEndDate ? format(customEndDate, 'MMM yyyy') : ''}`
+      : timeRange === 'ytd' 
+        ? 'Year to Date'
+        : timeRange === 'lastyear'
+          ? 'Last Year'
+          : timeRange === '1'
+            ? 'Last Month'
+            : `Last ${timeRange} Months`;
+
+    const tableRows = monthlyData.map(m => `
+      <tr>
+        <td style="border: 1px solid #ddd; padding: 8px;">${m.month}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${m.completedJobs}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${m.sentQuotes}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${m.generatedInvoices}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$${formatAmount(m.revenue)}</td>
+        <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$${formatAmount(m.invoiced)}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Monthly Summary Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+          h1 { color: #1a1a2e; margin-bottom: 5px; }
+          .subtitle { color: #666; margin-bottom: 20px; }
+          .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+          .card { border: 1px solid #ddd; border-radius: 8px; padding: 15px; }
+          .card-title { font-size: 12px; color: #666; margin-bottom: 5px; }
+          .card-value { font-size: 24px; font-weight: bold; }
+          .green { color: #16a34a; }
+          table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+          th { background-color: #f5f5f5; border: 1px solid #ddd; padding: 10px; text-align: left; }
+          .totals { font-weight: bold; background-color: #f9f9f9; }
+          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <h1>Monthly Summary Report</h1>
+        <p class="subtitle">${timeRangeLabel} • Generated on ${format(new Date(), 'MMMM d, yyyy')}</p>
+        
+        <div class="summary-cards">
+          <div class="card">
+            <div class="card-title">Jobs Completed</div>
+            <div class="card-value">${stats?.totalJobs || 0}</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Quotes Sent</div>
+            <div class="card-value">${stats?.totalQuotes || 0}</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Invoices Generated</div>
+            <div class="card-value">${stats?.totalInvoices || 0}</div>
+          </div>
+          <div class="card">
+            <div class="card-title">Total Revenue</div>
+            <div class="card-value green">$${formatAmount(stats?.totalRevenue || 0)}</div>
+          </div>
+        </div>
+
+        <h2>Monthly Breakdown</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th style="text-align: right;">Jobs</th>
+              <th style="text-align: right;">Quotes</th>
+              <th style="text-align: right;">Invoices</th>
+              <th style="text-align: right;">Revenue</th>
+              <th style="text-align: right;">Invoiced</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+            <tr class="totals">
+              <td style="border: 1px solid #ddd; padding: 8px;">TOTAL</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${stats?.totalJobs || 0}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${stats?.totalQuotes || 0}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${stats?.totalInvoices || 0}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$${formatAmount(stats?.totalRevenue || 0)}</td>
+              <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">$${formatAmount(monthlyData.reduce((sum, m) => sum + m.invoiced, 0))}</td>
+            </tr>
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -278,6 +379,10 @@ const MonthlySummaryReport = () => {
     <div className="space-y-6">
       {/* Time Range Selector and Export */}
       <div className="flex flex-wrap justify-end gap-2">
+        <Button onClick={printReport} variant="outline" size="sm" disabled={monthlyData.length === 0}>
+          <Printer className="w-4 h-4 mr-2" />
+          Print/PDF
+        </Button>
         <Button onClick={exportToCSV} variant="outline" size="sm" disabled={monthlyData.length === 0}>
           <Download className="w-4 h-4 mr-2" />
           Export CSV
