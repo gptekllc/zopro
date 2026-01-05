@@ -65,18 +65,11 @@ export function DocumentListCard({
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {total !== undefined && total > 0 && (
-                <span className="text-sm font-semibold text-primary">
-                  ${total.toFixed(2)}
-                </span>
-              )}
-              {actionsMenu && (
-                <div onClick={(e) => e.stopPropagation()}>
-                  {actionsMenu}
-                </div>
-              )}
-            </div>
+            {total !== undefined && total > 0 && (
+              <span className="text-sm font-semibold text-primary shrink-0">
+                ${total.toFixed(2)}
+              </span>
+            )}
           </div>
 
           {/* Row 2: Metadata */}
@@ -91,9 +84,16 @@ export function DocumentListCard({
             <p className="text-xs text-muted-foreground line-clamp-1">{notes}</p>
           )}
 
-          {/* Row 3: Tags */}
-          <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-            {tagsRow}
+          {/* Row 3: Tags + Actions */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
+              {tagsRow}
+            </div>
+            {actionsMenu && (
+              <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                {actionsMenu}
+              </div>
+            )}
           </div>
         </div>
 
