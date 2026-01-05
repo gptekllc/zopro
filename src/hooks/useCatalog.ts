@@ -82,10 +82,10 @@ export const useCreateCatalogItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['catalog_items'] });
-      toast.success('Catalog item created');
+      toast.success('Item created');
     },
     onError: () => {
-      toast.error('Failed to create catalog item');
+      toast.error('Failed to create item');
     },
   });
 };
@@ -107,10 +107,10 @@ export const useUpdateCatalogItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['catalog_items'] });
-      toast.success('Catalog item updated');
+      toast.success('Item updated');
     },
     onError: () => {
-      toast.error('Failed to update catalog item');
+      toast.error('Failed to update item');
     },
   });
 };
@@ -129,10 +129,10 @@ export const useDeleteCatalogItem = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['catalog_items'] });
-      toast.success('Catalog item deleted');
+      toast.success('Item deleted');
     },
     onError: () => {
-      toast.error('Failed to delete catalog item');
+      toast.error('Failed to delete item');
     },
   });
 };
