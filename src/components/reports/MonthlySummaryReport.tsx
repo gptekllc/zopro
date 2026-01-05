@@ -446,9 +446,9 @@ const MonthlySummaryReport = () => {
   return (
     <div className="space-y-6">
       {/* Time Range Selector and Export */}
-      <div className="flex flex-wrap items-center justify-center gap-2">
+      <div className="flex items-center justify-center gap-2 flex-wrap">
         <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[140px] sm:w-[180px]">
             <SelectValue placeholder="Select range" />
           </SelectTrigger>
           <SelectContent>
@@ -461,20 +461,18 @@ const MonthlySummaryReport = () => {
             <SelectItem value="custom">Custom Range</SelectItem>
           </SelectContent>
         </Select>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={monthlyData.length === 0}>
-            <Mail className="w-4 h-4 mr-2" />
-            Email
-          </Button>
-          <Button onClick={printReport} variant="outline" size="sm" disabled={monthlyData.length === 0}>
-            <Printer className="w-4 h-4 mr-2" />
-            Print/PDF
-          </Button>
-          <Button onClick={exportToCSV} variant="outline" size="sm" disabled={monthlyData.length === 0} className="hidden sm:inline-flex">
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-        </div>
+        <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={monthlyData.length === 0}>
+          <Mail className="w-4 h-4 sm:mr-2" />
+          <span className="hidden sm:inline">Email</span>
+        </Button>
+        <Button onClick={printReport} variant="outline" size="sm" disabled={monthlyData.length === 0}>
+          <Printer className="w-4 h-4 sm:mr-2" />
+          <span className="hidden sm:inline">Print/PDF</span>
+        </Button>
+        <Button onClick={exportToCSV} variant="outline" size="sm" disabled={monthlyData.length === 0} className="hidden sm:inline-flex">
+          <Download className="w-4 h-4 mr-2" />
+          Export CSV
+        </Button>
       </div>
       {timeRange === 'custom' && (
         <div className="flex flex-wrap gap-2">
