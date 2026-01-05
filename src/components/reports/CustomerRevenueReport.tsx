@@ -39,9 +39,13 @@ import {
   Download,
   Search,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Printer,
   CalendarIcon,
   Mail,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,6 +66,10 @@ const CustomerRevenueReport = () => {
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const { data: customers, isLoading: loadingCustomers } = useCustomers();
   const { data: payments, isLoading: loadingPayments } = useAllPayments();
@@ -199,6 +207,29 @@ const CustomerRevenueReport = () => {
 
     return result;
   }, [customerData, searchQuery, sortField, sortDirection]);
+
+  // Reset to first page when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sortField, sortDirection, timeRange, customStartDate, customEndDate, pageSize]);
+
+  // Paginated data
+  const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredData.slice(startIndex, startIndex + pageSize);
+  }, [filteredData, currentPage, pageSize]);
+
+  const totalPages = Math.ceil(filteredData.length / pageSize);
+
+  // Get sort icon for column
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="ml-2 h-4 w-4" />
+      : <ArrowDown className="ml-2 h-4 w-4" />;
+  };
 
   // Calculate summary stats
   const stats = useMemo(() => {
@@ -745,7 +776,7 @@ const CustomerRevenueReport = () => {
                       onClick={() => handleSort('name')}
                     >
                       Customer
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                      {getSortIcon('name')}
                     </Button>
                   </TableHead>
                   <TableHead className="text-right">
@@ -756,7 +787,7 @@ const CustomerRevenueReport = () => {
                       onClick={() => handleSort('totalRevenue')}
                     >
                       Total Revenue
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                      {getSortIcon('totalRevenue')}
                     </Button>
                   </TableHead>
                   <TableHead className="text-right hidden sm:table-cell">
@@ -767,7 +798,7 @@ const CustomerRevenueReport = () => {
                       onClick={() => handleSort('jobCount')}
                     >
                       Jobs
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                      {getSortIcon('jobCount')}
                     </Button>
                   </TableHead>
                   <TableHead className="text-right hidden md:table-cell">
@@ -778,7 +809,7 @@ const CustomerRevenueReport = () => {
                       onClick={() => handleSort('avgJobValue')}
                     >
                       Avg Job
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                      {getSortIcon('avgJobValue')}
                     </Button>
                   </TableHead>
                   <TableHead className="text-right hidden lg:table-cell">
@@ -789,7 +820,7 @@ const CustomerRevenueReport = () => {
                       onClick={() => handleSort('ltv')}
                     >
                       Est. LTV
-                      <ArrowUpDown className="ml-2 h-4 w-4" />
+                      {getSortIcon('ltv')}
                     </Button>
                   </TableHead>
                   <TableHead className="text-right hidden xl:table-cell">
@@ -805,7 +836,7 @@ const CustomerRevenueReport = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredData.map((customer) => (
+                  paginatedData.map((customer) => (
                     <TableRow key={customer.id}>
                       <TableCell>
                         <div>
@@ -839,6 +870,75 @@ const CustomerRevenueReport = () => {
               </TableBody>
             </Table>
           </div>
+
+          {/* Pagination */}
+          {filteredData.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">
+                  Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredData.length)} of {filteredData.length} customers
+                </p>
+                <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+                  <SelectTrigger className="w-20 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">per page</span>
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum: number;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          className="w-8 h-8 p-0"
+                          onClick={() => setCurrentPage(pageNum)}
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
