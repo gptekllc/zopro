@@ -15,7 +15,13 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, FileText, Mail, Users, X, Search } from 'lucide-react';
+import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, FileText, Mail, Users, X, Search, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, differenceInMinutes, isSameDay } from 'date-fns';
@@ -442,22 +448,45 @@ const TimesheetReportTab = () => {
               </div>
             </PopoverContent>
           </Popover>
+          {/* Mobile Actions Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="sm:hidden">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-popover">
+              <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={timesheetData.length === 0}>
+                <Mail className="w-4 h-4 mr-2" />
+                Email
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToPDF} disabled={isExportingPdf}>
+                <FileText className="w-4 h-4 mr-2" />
+                Print/PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToCSV}>
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         
-        <div className="flex items-center justify-center lg:justify-end gap-2">
+        {/* Desktop Actions */}
+        <div className="hidden sm:flex items-center justify-end gap-2">
           <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={timesheetData.length === 0}>
-            <Mail className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Email</span>
+            <Mail className="w-4 h-4 mr-2" />
+            Email
           </Button>
           <Button onClick={exportToPDF} variant="outline" size="sm" disabled={isExportingPdf}>
             {isExportingPdf ? (
-              <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
-              <FileText className="w-4 h-4 sm:mr-2" />
+              <FileText className="w-4 h-4 mr-2" />
             )}
-            <span className="hidden sm:inline">Print/PDF</span>
+            Print/PDF
           </Button>
-          <Button onClick={exportToCSV} variant="outline" size="sm" className="hidden sm:inline-flex">
+          <Button onClick={exportToCSV} variant="outline" size="sm">
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
