@@ -17,7 +17,7 @@ interface Job {
   title: string;
   description: string | null;
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  estimated_duration: number | null;
+  estimated_duration?: number | null;
   notes: string | null;
   items?: Array<{
     description: string;

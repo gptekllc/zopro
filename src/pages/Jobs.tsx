@@ -1,290 +1,82 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { useSearchParams } from 'react-router-dom';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
-import { useSearchParams, Link } from 'react-router-dom';
-import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useUpdateJobPhotoType, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, useJobRelatedQuotes, Job, JobItem } from '@/hooks/useJobs';
-import { useUndoableDelete } from '@/hooks/useUndoableDelete';
+import { useJobs, useCreateJob, useUpdateJob, Job } from '@/hooks/useJobs';
 import { useJobTemplates, JobTemplate } from '@/hooks/useJobTemplates';
-import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCustomers } from '@/hooks/useCustomers';
-import { useQuotes, Quote } from '@/hooks/useQuotes';
-import { useInvoices, Invoice } from '@/hooks/useInvoices';
+import { useQuotes } from '@/hooks/useQuotes';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
-import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
-import { useSignJobCompletion } from '@/hooks/useSignatures';
-import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
-import { useSendJobNotification } from '@/hooks/useSendJobNotification';
-import { useJobNotificationCounts } from '@/hooks/useJobNotifications';
-import { useJobTimeEntries } from '@/hooks/useTimeEntries';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter, PenTool, Send, Bell, Navigation, Download, Mail, Play, Pause, Timer } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { SignatureDialog } from '@/components/signatures/SignatureDialog';
-import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
-import { format, differenceInMinutes } from 'date-fns';
+import { Plus, Loader2, List, CalendarDays, Users, FileText } from 'lucide-react';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import JobCalendar from '@/components/jobs/JobCalendar';
 import SchedulerView from '@/components/jobs/SchedulerView';
-import { CompleteJobDialog } from '@/components/jobs/CompleteJobDialog';
-import { JobTimeTracker } from '@/components/jobs/JobTimeTracker';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
-import { QuoteDetailDialog } from '@/components/quotes/QuoteDetailDialog';
-import { QuoteCard } from '@/components/quotes/QuoteCard';
-import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { SaveAsTemplateDialog } from '@/components/jobs/SaveAsTemplateDialog';
-import { JobTimeSummary } from '@/components/jobs/JobTimeSummary';
-import { SignatureSection } from '@/components/signatures/SignatureSection';
-import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
-import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
-import { ConvertJobToInvoiceDialog } from '@/components/jobs/ConvertJobToInvoiceDialog';
-import { JobListCard } from '@/components/jobs/JobListCard';
-import { useSwipeHint } from "@/components/ui/swipeable-card";
+import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
+import { JobListManager } from '@/components/jobs/JobListManager';
 
-const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_STATUSES_EDITABLE = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
-import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
+
 const Jobs = () => {
-  const {
-    profile,
-    roles
-  } = useAuth();
+  const { profile, roles } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [includeArchivedInSearch, setIncludeArchivedInSearch] = useState(false);
-  const {
-    saveScrollPosition,
-    restoreScrollPosition
-  } = useScrollRestoration();
+  const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
 
-  // Determine if we need to include archived jobs based on filter or search
-  const needsArchivedData = statusFilter === 'archived' || includeArchivedInSearch;
-  const {
-    data: jobs = [],
-    isLoading,
-    refetch: refetchJobs
-  } = useJobs(needsArchivedData);
+  // Determine if we need to include archived jobs
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const { data: jobs = [], isLoading, refetch: refetchJobs } = useJobs(includeArchived);
 
-  // Defensive: some backends/joins can yield null rows; never let that crash rendering.
+  // Safe arrays
   const safeJobs = useMemo(() => (jobs ?? []).filter(Boolean) as Job[], [jobs]);
-  useEffect(() => {
-    // Debug: help catch any null jobs coming from the backend/cache
-    // eslint-disable-next-line no-console
-    console.log('[Jobs] raw jobs:', jobs);
-    // eslint-disable-next-line no-console
-    console.log('[Jobs] safeJobs.length:', safeJobs.length);
-  }, [jobs, safeJobs.length]);
-  const {
-    data: customers = []
-  } = useCustomers();
-  const {
-    data: quotes = []
-  } = useQuotes();
-  const {
-    data: invoices = []
-  } = useInvoices();
-  const {
-    data: profiles = []
-  } = useProfiles();
-  const {
-    data: company
-  } = useCompany();
-  const taxRate = company?.tax_rate ?? 8.25;
-  const safeCustomers = useMemo(() => (Array.isArray(customers) ? customers : []).filter((c: any) => c && c.id) as any[], [customers]);
-  const safeQuotes = useMemo(() => (Array.isArray(quotes) ? quotes : []).filter((q: any) => q && q.id) as any[], [quotes]);
-  const safeInvoices = useMemo(() => (Array.isArray(invoices) ? invoices : []).filter((i: any) => i && i.id) as any[], [invoices]);
-  const safeProfiles = useMemo(() => (Array.isArray(profiles) ? profiles : []).filter((p: any) => p && p.id) as any[], [profiles]);
+  const { data: customers = [] } = useCustomers();
+  const { data: quotes = [] } = useQuotes();
+  const { data: profiles = [] } = useProfiles();
+  const { data: company } = useCompany();
+  const { data: templates = [] } = useJobTemplates();
   
-  // Track quotes created from jobs (upsell quotes where job_id matches)
-  const quotesPerJob = useMemo(() => {
-    const counts = new Map<string, number>();
-    safeQuotes.forEach((quote: any) => {
-      if (quote.job_id) {
-        counts.set(quote.job_id, (counts.get(quote.job_id) || 0) + 1);
-      }
-    });
-    return counts;
-  }, [safeQuotes]);
+  const taxRate = company?.tax_rate ?? 8.25;
+  const safeCustomers = useMemo(() => (Array.isArray(customers) ? customers : []).filter((c: any) => c && c.id), [customers]);
+  const safeQuotes = useMemo(() => (Array.isArray(quotes) ? quotes : []).filter((q: any) => q && q.id), [quotes]);
+  const safeProfiles = useMemo(() => (Array.isArray(profiles) ? profiles : []).filter((p: any) => p && p.id), [profiles]);
 
-  // Track invoices linked to jobs using direct job_id or fallback to quote matching
-  const invoicesPerJob = useMemo(() => {
-    const counts = new Map<string, number>();
-
-    safeInvoices.forEach((invoice: any) => {
-      if (!invoice?.id) return;
-
-      // Primary: direct job_id link
-      if (invoice.job_id) {
-        counts.set(invoice.job_id, (counts.get(invoice.job_id) || 0) + 1);
-        return;
-      }
-
-      // Fallback: match via origin quote_id
-      if (invoice.quote_id) {
-        const job = safeJobs.find((j: any) => j?.quote_id === invoice.quote_id);
-        if (job?.id) {
-          counts.set(job.id, (counts.get(job.id) || 0) + 1);
-          return;
-        }
-        // Fallback: match via upsell quote
-        const upsellQuote = safeQuotes.find((q: any) => q?.id === invoice.quote_id && q?.job_id);
-        if (upsellQuote?.job_id) {
-          counts.set(upsellQuote.job_id, (counts.get(upsellQuote.job_id) || 0) + 1);
-        }
-      }
-    });
-
-    return counts;
-  }, [safeJobs, safeQuotes, safeInvoices]);
   const createJob = useCreateJob();
   const updateJob = useUpdateJob();
-  const deleteJob = useDeleteJob();
-  const uploadPhoto = useUploadJobPhoto();
-  const deletePhoto = useDeleteJobPhoto();
-  const updatePhotoType = useUpdateJobPhotoType();
-  const convertToInvoice = useConvertJobToInvoice();
-  const convertToQuote = useConvertJobToQuote();
-  const archiveJob = useArchiveJob();
-  const unarchiveJob = useUnarchiveJob();
-  const signJobCompletion = useSignJobCompletion();
-  const sendSignatureRequest = useSendSignatureRequest();
-  const sendJobNotification = useSendJobNotification();
-  const { data: notificationCounts = new Map() } = useJobNotificationCounts();
-  
-  // Undo-able delete
-  const { scheduleDelete: scheduleJobDelete, filterPendingDeletes: filterPendingJobDeletes } = useUndoableDelete(
-    async (id) => { await deleteJob.mutateAsync(id); },
-    { itemLabel: 'job', timeout: 5000 }
-  );
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingJob, setEditingJob] = useState<Job | null>(null);
-  const [viewingJob, setViewingJob] = useState<Job | null>(null);
-  
-  // Email modal state for Job Detail dialog
-  const [showJobEmailModal, setShowJobEmailModal] = useState(false);
-  const [jobEmailAddress, setJobEmailAddress] = useState('');
 
-  const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
-  const [photoType, setPhotoType] = useState<'before' | 'after' | 'other'>('before');
-  const [photoCaption, setPhotoCaption] = useState('');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'scheduler'>('list');
-  const [importQuoteId, setImportQuoteId] = useState<string>('');
-  const [completingJob, setCompletingJob] = useState<Job | null>(null);
-  const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
-  const [archiveConfirmJob, setArchiveConfirmJob] = useState<Job | null>(null);
-  const [deleteConfirmJob, setDeleteConfirmJob] = useState<Job | null>(null);
-  const [saveAsTemplateJob, setSaveAsTemplateJob] = useState<Job | null>(null);
-  const [createQuoteConfirmJob, setCreateQuoteConfirmJob] = useState<Job | null>(null);
-  const [createInvoiceConfirmJob, setCreateInvoiceConfirmJob] = useState<Job | null>(null);
-
-  // Swipe hint for first-time users
-  const { showHint: showSwipeHint, dismissHint: dismissSwipeHint } = useSwipeHint("jobs-swipe-hint-shown");
-
-  const viewingJobInvoices = useMemo(() => {
-    if (!viewingJob) return [] as Invoice[];
-
-    return (safeInvoices as Invoice[]).filter((inv: any) => {
-      if (!inv?.id) return false;
-
-      // Primary: direct job_id link
-      if (inv.job_id === viewingJob.id) return true;
-
-      // Fallback: linked via origin quote
-      if (inv.quote_id && viewingJob.quote_id && inv.quote_id === viewingJob.quote_id) return true;
-
-      // Fallback: linked via upsell quote
-      if (inv.quote_id) {
-        const upsellQuote = safeQuotes.find((q: any) => q?.id === inv.quote_id && q?.job_id === viewingJob.id);
-        if (upsellQuote) return true;
-      }
-
-      return false;
-    });
-  }, [viewingJob, safeInvoices, safeQuotes]);
-  
-  // Signature dialogs
-  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
-  const [signatureJob, setSignatureJob] = useState<Job | null>(null);
-  const [viewSignatureId, setViewSignatureId] = useState<string | null>(null);
-  const [viewSignatureOpen, setViewSignatureOpen] = useState(false);
-  
-  const { data: templates = [] } = useJobTemplates();
-  // Wrapped setters for scroll restoration
-  const openViewingJob = useCallback((job: Job | null) => {
-    if (job) saveScrollPosition();
-    setViewingJob(job);
-    if (!job) restoreScrollPosition();
-  }, [saveScrollPosition, restoreScrollPosition]);
-  const openEditDialog = useCallback((open: boolean) => {
-    if (open) saveScrollPosition();
-    setIsDialogOpen(open);
-    if (!open) restoreScrollPosition();
-  }, [saveScrollPosition, restoreScrollPosition]);
-  const downloadDocument = useDownloadDocument();
-  const emailDocument = useEmailDocument();
   const isAdmin = roles.some(r => r.role === 'admin' || r.role === 'manager');
   const technicians = safeProfiles.filter(p => p.role === 'technician' || p.role === 'admin' || p.role === 'manager');
-  // Filter out technicians on leave for job assignment
   const availableTechnicians = technicians.filter(p => p.employment_status !== 'on_leave');
 
-  // State for pending edit from URL param
+  // View mode state
+  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'scheduler'>('list');
+  const [viewingJob, setViewingJob] = useState<Job | null>(null);
+
+  // Dialog state
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [importQuoteId, setImportQuoteId] = useState<string>('');
+  const [saveAsTemplateJob, setSaveAsTemplateJob] = useState<Job | null>(null);
+
+  // Pending URL actions
   const [pendingEditJobId, setPendingEditJobId] = useState<string | null>(null);
   const [pendingFromQuoteId, setPendingFromQuoteId] = useState<string | null>(null);
+  const [pendingDuplicateJobId, setPendingDuplicateJobId] = useState<string | null>(null);
+  const [pendingSaveTemplateJobId, setPendingSaveTemplateJobId] = useState<string | null>(null);
 
-  // Handle URL param to auto-open job detail or edit form
-  useEffect(() => {
-    const viewJobId = searchParams.get('view');
-    const editJobId = searchParams.get('edit');
-    const fromQuoteId = searchParams.get('fromQuote');
-    
-    if (fromQuoteId) {
-      setPendingFromQuoteId(fromQuoteId);
-      // Clear the URL param
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete('fromQuote');
-      setSearchParams(newParams, { replace: true });
-    } else if (editJobId && safeJobs.length > 0) {
-      setPendingEditJobId(editJobId);
-      // Clear the URL param
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete('edit');
-      setSearchParams(newParams, { replace: true });
-    } else if (viewJobId && safeJobs.length > 0) {
-      const job = safeJobs.find(j => j.id === viewJobId);
-      if (job) {
-        setViewingJob(job);
-        // Clear the URL param after opening
-        const newParams = new URLSearchParams(searchParams);
-        newParams.delete('view');
-        setSearchParams(newParams, { replace: true });
-      }
-    }
-  }, [searchParams, safeJobs, setSearchParams]);
-
-  // Sync viewingJob with latest data when jobs are refetched (e.g., after time tracking updates)
-  useEffect(() => {
-    if (viewingJob && safeJobs.length > 0) {
-      const updatedJob = safeJobs.find(j => j.id === viewingJob.id);
-      if (updatedJob && JSON.stringify(updatedJob) !== JSON.stringify(viewingJob)) {
-        setViewingJob(updatedJob);
-      }
-    }
-  }, [safeJobs, viewingJob?.id]);
+  // Form state
   const [formData, setFormData] = useState({
     customer_id: '',
     quote_id: '' as string | null,
@@ -303,70 +95,123 @@ const Jobs = () => {
 
   // Line items state
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
-  const addLineItem = (type: 'product' | 'service' = 'service') => {
-    setLineItems([...lineItems, {
-      id: crypto.randomUUID(),
-      description: '',
-      quantity: 1,
-      unitPrice: 0,
-      type
-    }]);
-  };
-  const removeLineItem = (id: string) => {
-    setLineItems(lineItems.filter(item => item.id !== id));
-  };
-  const updateLineItem = (id: string, field: keyof LineItem, value: string | number) => {
-    setLineItems(lineItems.map(item => item.id === id ? {
-      ...item,
-      [field]: value
-    } : item));
-  };
-  const calculateSubtotal = () => {
-    return lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-  };
-  const calculateTax = () => {
-    return calculateSubtotal() * (taxRate / 100);
-  };
-  const calculateTotal = () => {
-    return calculateSubtotal() + calculateTax();
-  };
 
-  // Separate active and archived jobs for display
-  const activeJobs = useMemo(() => safeJobs.filter(j => !j.archived_at), [safeJobs]);
-  const archivedJobs = useMemo(() => safeJobs.filter(j => j.archived_at), [safeJobs]);
-  // Check if job is older than 2 years and eligible for archive suggestion
-  const isArchiveEligible = (job: Job) => {
-    const twoYearsAgo = new Date();
-    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
-    return new Date(job.created_at) < twoYearsAgo && (job.status === 'paid' || job.status === 'completed') && !job.archived_at;
-  };
-  const filteredJobs = useMemo(() => {
-    const filtered = safeJobs.filter((job: any) => {
-      if (!job) return false;
-      const matchesSearch = String(job.title ?? '').toLowerCase().includes(searchQuery.toLowerCase()) || String(job.job_number ?? '').toLowerCase().includes(searchQuery.toLowerCase()) || String(job.customer?.name ?? '').toLowerCase().includes(searchQuery.toLowerCase());
-      
-      // Handle archived filter separately
-      if (statusFilter === 'archived') {
-        return matchesSearch && !!job.archived_at;
+  // Wrapped setters for scroll restoration
+  const openEditDialog = useCallback((open: boolean) => {
+    if (open) saveScrollPosition();
+    setIsDialogOpen(open);
+    if (!open) restoreScrollPosition();
+  }, [saveScrollPosition, restoreScrollPosition]);
+
+  // Handle URL params
+  useEffect(() => {
+    const viewJobId = searchParams.get('view');
+    const editJobId = searchParams.get('edit');
+    const fromQuoteId = searchParams.get('fromQuote');
+    const duplicateJobId = searchParams.get('duplicate');
+    const saveTemplateId = searchParams.get('saveTemplate');
+
+    if (saveTemplateId && safeJobs.length > 0) {
+      setPendingSaveTemplateJobId(saveTemplateId);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('saveTemplate');
+      setSearchParams(newParams, { replace: true });
+    } else if (fromQuoteId) {
+      setPendingFromQuoteId(fromQuoteId);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('fromQuote');
+      setSearchParams(newParams, { replace: true });
+    } else if (duplicateJobId && safeJobs.length > 0) {
+      setPendingDuplicateJobId(duplicateJobId);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('duplicate');
+      setSearchParams(newParams, { replace: true });
+    } else if (editJobId && safeJobs.length > 0) {
+      setPendingEditJobId(editJobId);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('edit');
+      setSearchParams(newParams, { replace: true });
+    } else if (viewJobId && safeJobs.length > 0) {
+      const job = safeJobs.find(j => j.id === viewJobId);
+      if (job) {
+        setViewingJob(job);
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('view');
+        setSearchParams(newParams, { replace: true });
       }
-      
-      const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
+    }
+  }, [searchParams, safeJobs, safeQuotes, setSearchParams]);
 
-      // When searching with includeArchivedInSearch, include archived jobs
-      // Otherwise, hide archived jobs
-      let matchesArchiveFilter = true;
-      if (searchQuery && includeArchivedInSearch) {
-        matchesArchiveFilter = true;
-      } else {
-        matchesArchiveFilter = !job.archived_at;
+  // Handle pending save template
+  useEffect(() => {
+    if (pendingSaveTemplateJobId && safeJobs.length > 0) {
+      const job = safeJobs.find(j => j.id === pendingSaveTemplateJobId);
+      if (job) {
+        setSaveAsTemplateJob(job);
+        setPendingSaveTemplateJobId(null);
       }
-      return matchesSearch && matchesStatus && matchesArchiveFilter;
-    });
-    return filterPendingJobDeletes(filtered);
-  }, [safeJobs, searchQuery, statusFilter, includeArchivedInSearch, filterPendingJobDeletes]);
+    }
+  }, [pendingSaveTemplateJobId, safeJobs]);
 
-  // Infinite scroll for job list
-  const { visibleItems: visibleJobs, hasMore: hasMoreJobs, loadMoreRef: loadMoreJobsRef, loadAll: loadAllJobs, totalCount: totalJobsCount } = useInfiniteScroll(filteredJobs, { pageSize: 20 });
+  // Handle pending edit
+  useEffect(() => {
+    if (pendingEditJobId && safeJobs.length > 0) {
+      const job = safeJobs.find(j => j.id === pendingEditJobId);
+      if (job) {
+        handleEdit(job);
+        setPendingEditJobId(null);
+      }
+    }
+  }, [pendingEditJobId, safeJobs]);
+
+  // Handle pending duplicate
+  useEffect(() => {
+    if (pendingDuplicateJobId && safeJobs.length > 0) {
+      const job = safeJobs.find(j => j.id === pendingDuplicateJobId);
+      if (job) {
+        handleDuplicate(job);
+        setPendingDuplicateJobId(null);
+      }
+    }
+  }, [pendingDuplicateJobId, safeJobs]);
+
+  // Handle fromQuote URL param
+  useEffect(() => {
+    if (pendingFromQuoteId && safeQuotes.length > 0) {
+      const quote: any = safeQuotes.find((q: any) => q?.id === pendingFromQuoteId);
+      if (quote) {
+        setFormData({
+          customer_id: quote.customer_id,
+          quote_id: quote.id,
+          assigned_to: null,
+          title: `Job from Quote ${quote.quote_number}`,
+          description: quote.notes || '',
+          priority: 'medium',
+          status: 'draft',
+          scheduled_start: '',
+          scheduled_end: '',
+          notes: '',
+          estimated_duration: 60,
+          discountType: quote.discount_type || 'amount',
+          discountValue: Number(quote.discount_value) || 0
+        });
+        if (quote.items && quote.items.length > 0) {
+          setLineItems(quote.items.map((item: any) => ({
+            id: crypto.randomUUID(),
+            description: item.description,
+            quantity: item.quantity,
+            unitPrice: item.unit_price,
+            type: item.type || 'service'
+          })));
+        } else {
+          setLineItems([]);
+        }
+        setEditingJob(null);
+        openEditDialog(true);
+        setPendingFromQuoteId(null);
+      }
+    }
+  }, [pendingFromQuoteId, safeQuotes]);
 
   const resetForm = () => {
     setFormData({
@@ -388,12 +233,30 @@ const Jobs = () => {
     setEditingJob(null);
     setImportQuoteId('');
   };
+
+  const addLineItem = (type: 'product' | 'service' = 'service') => {
+    setLineItems([...lineItems, { id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, type }]);
+  };
+
+  const removeLineItem = (id: string) => {
+    setLineItems(lineItems.filter(item => item.id !== id));
+  };
+
+  const updateLineItem = (id: string, field: keyof LineItem, value: string | number) => {
+    setLineItems(lineItems.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  const calculateSubtotal = () => lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  const calculateTax = () => calculateSubtotal() * (taxRate / 100);
+  const calculateTotal = () => calculateSubtotal() + calculateTax();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customer_id || !formData.title) {
       toast.error('Please fill in required fields');
       return;
     }
+    
     const jobData = {
       customer_id: formData.customer_id,
       quote_id: formData.quote_id || null,
@@ -416,45 +279,10 @@ const Jobs = () => {
         type: item.type || 'service'
       }))
     };
+    
     try {
       if (editingJob) {
-        await updateJob.mutateAsync({
-          id: editingJob.id,
-          ...jobData
-        });
-        // Update viewingJob immediately if it was the edited job
-        if (viewingJob?.id === editingJob.id) {
-          const customerName = safeCustomers.find(c => c.id === formData.customer_id)?.name || '';
-          const assigneeName = technicians.find(t => t.id === formData.assigned_to)?.full_name || null;
-          setViewingJob(prev => prev ? {
-            ...prev,
-            ...jobData,
-            customer: prev.customer ? {
-              ...prev.customer,
-              name: customerName
-            } : {
-              name: customerName,
-              email: null,
-              phone: null,
-              address: null,
-              city: null,
-              state: null,
-              zip: null
-            },
-            assignee: {
-              full_name: assigneeName
-            },
-            items: lineItems.map((item, idx) => ({
-              id: item.id || `temp-${idx}`,
-              job_id: prev.id,
-              description: item.description,
-              quantity: item.quantity,
-              unit_price: item.unitPrice,
-              total: item.quantity * item.unitPrice,
-              created_at: new Date().toISOString()
-            }))
-          } : null);
-        }
+        await updateJob.mutateAsync({ id: editingJob.id, ...jobData });
       } else {
         await createJob.mutateAsync(jobData);
       }
@@ -464,6 +292,7 @@ const Jobs = () => {
       // Error handled by hook
     }
   };
+
   const handleEdit = (job: Job) => {
     setFormData({
       customer_id: job.customer_id,
@@ -480,7 +309,6 @@ const Jobs = () => {
       discountType: job.discount_type || 'amount',
       discountValue: Number(job.discount_value) || 0
     });
-    // Load existing line items
     if (job.items && job.items.length > 0) {
       setLineItems(job.items.map(item => ({
         id: item.id,
@@ -497,69 +325,15 @@ const Jobs = () => {
     openEditDialog(true);
   };
 
-  // Handle pending edit from URL param (after handleEdit is defined)
-  useEffect(() => {
-    if (pendingEditJobId && safeJobs.length > 0) {
-      const job = safeJobs.find(j => j.id === pendingEditJobId);
-      if (job) {
-        handleEdit(job);
-        setPendingEditJobId(null);
-      }
-    }
-  }, [pendingEditJobId, safeJobs]);
-
-  // Handle fromQuote URL param to create job from quote
-  useEffect(() => {
-    if (pendingFromQuoteId && safeQuotes.length > 0) {
-      const quote: any = safeQuotes.find((q: any) => q?.id === pendingFromQuoteId);
-      if (quote) {
-        // Pre-fill form with quote data
-        setFormData({
-          customer_id: quote.customer_id,
-          quote_id: quote.id,
-          assigned_to: null,
-          title: `Job from Quote ${quote.quote_number}`,
-          description: quote.notes || '',
-          priority: 'medium',
-          status: 'draft',
-          scheduled_start: '',
-          scheduled_end: '',
-          notes: '',
-          estimated_duration: 60,
-          discountType: quote.discount_type || 'amount',
-          discountValue: Number(quote.discount_value) || 0
-        });
-        // Import quote items as line items
-        if (quote.items && quote.items.length > 0) {
-          setLineItems(quote.items.map((item: any) => ({
-            id: crypto.randomUUID(),
-            description: item.description,
-            quantity: item.quantity,
-            unitPrice: item.unit_price,
-            type: item.type || 'service'
-          })));
-        } else {
-          setLineItems([]);
-        }
-        setEditingJob(null);
-        openEditDialog(true);
-        setPendingFromQuoteId(null);
-      }
-    }
-  }, [pendingFromQuoteId, safeQuotes]);
-
-  const handleDelete = (jobId: string) => {
-    scheduleJobDelete(jobId);
-  };
   const handleDuplicate = (job: Job) => {
     setFormData({
       customer_id: job.customer_id,
-      quote_id: null, // Don't copy quote reference
+      quote_id: null,
       assigned_to: job.assigned_to,
       title: `${job.title} (Copy)`,
       description: job.description || '',
       priority: job.priority,
-      status: 'draft', // Always start as draft
+      status: 'draft',
       scheduled_start: '',
       scheduled_end: '',
       notes: job.notes || '',
@@ -567,7 +341,6 @@ const Jobs = () => {
       discountType: job.discount_type || 'amount',
       discountValue: Number(job.discount_value) || 0
     });
-    // Copy line items
     if (job.items && job.items.length > 0) {
       setLineItems(job.items.map(item => ({
         id: crypto.randomUUID(),
@@ -579,9 +352,10 @@ const Jobs = () => {
     } else {
       setLineItems([]);
     }
-    setEditingJob(null); // Not editing, creating new
+    setEditingJob(null);
     openEditDialog(true);
   };
+
   const handleLoadTemplate = (template: JobTemplate) => {
     setFormData({
       ...formData,
@@ -591,7 +365,6 @@ const Jobs = () => {
       notes: template.notes || '',
       estimated_duration: template.estimated_duration ?? 60,
     });
-    // Load template line items
     if (template.items && template.items.length > 0) {
       setLineItems(template.items.map(item => ({
         id: crypto.randomUUID(),
@@ -603,6 +376,7 @@ const Jobs = () => {
     }
     toast.success(`Loaded template: ${template.name}`);
   };
+
   const handleImportQuote = () => {
     if (!importQuoteId) return;
     const quote: any = safeQuotes.find((q: any) => q?.id === importQuoteId);
@@ -614,7 +388,6 @@ const Jobs = () => {
         title: `Job from Quote ${quote.quote_number}`,
         description: quote.notes || ''
       });
-      // Import quote items as line items
       if (quote.items && quote.items.length > 0) {
         setLineItems(quote.items.map((item: any) => ({
           id: crypto.randomUUID(),
@@ -626,204 +399,17 @@ const Jobs = () => {
       }
     }
   };
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0] || !viewingJob) return;
-    const file = e.target.files[0];
-    const result = await uploadPhoto.mutateAsync({
-      jobId: viewingJob.id,
-      file,
-      photoType,
-      caption: photoCaption
-    });
-    setPhotoDialogOpen(false);
-    setPhotoCaption('');
-    // Update viewingJob with new photo immediately
-    if (result) {
-      setViewingJob(prev => prev ? {
-        ...prev,
-        photos: [...(prev.photos || []), result]
-      } : null);
-    }
-  };
-  const handleStatusChange = async (jobId: string, newStatus: Job['status']) => {
-    const job = safeJobs.find(j => j.id === jobId);
-    const oldStatus = job?.status;
-    
-    const updates: Partial<Job> = {
-      status: newStatus
-    };
-    if (newStatus === 'in_progress' && !job?.actual_start) {
-      updates.actual_start = new Date().toISOString();
-    }
-    if (newStatus === 'completed') {
-      updates.actual_end = new Date().toISOString();
-    }
-    await updateJob.mutateAsync({
-      id: jobId,
-      ...updates
-    });
-    
-    // Auto-send notification when status changes to 'scheduled' from 'draft'
-    if (newStatus === 'scheduled' && oldStatus === 'draft' && job?.customer_id) {
-      const autoSendEnabled = (company as any)?.auto_send_job_scheduled_email !== false;
-      if (autoSendEnabled) {
-        sendJobNotification.mutate({ jobId, customerId: job.customer_id });
-      }
-    }
-  };
-  const handlePriorityChange = async (jobId: string, newPriority: Job['priority']) => {
-    await updateJob.mutateAsync({
-      id: jobId,
-      priority: newPriority
-    });
-  };
-  
-  // Signature handlers
-  const handleOpenSignatureDialog = (job: Job) => {
-    setSignatureJob(job);
-    setSignatureDialogOpen(true);
-  };
 
-  const handleSignatureComplete = async (signatureData: string, signerName: string) => {
-    if (!signatureJob) return;
-    const signature = await signJobCompletion.mutateAsync({
-      jobId: signatureJob.id,
-      signatureData,
-      signerName,
-      customerId: signatureJob.customer_id,
-    });
-    // Update viewing job with the new signature and status if it's open
-    if (viewingJob?.id === signatureJob.id) {
-      setViewingJob({
-        ...viewingJob,
-        completion_signature_id: signature.id,
-        completion_signed_at: new Date().toISOString(),
-        completion_signed_by: signerName,
-        status: 'completed',
-      } as any);
-    }
-    setSignatureDialogOpen(false);
-    setSignatureJob(null);
-  };
-
-  const handleViewSignature = (signatureId: string) => {
-    setViewSignatureId(signatureId);
-    setViewSignatureOpen(true);
-  };
-
-  const handleSendSignatureRequest = (job: Job) => {
-    const customer = safeCustomers.find(c => c.id === job.customer_id);
-    if (!customer?.email) {
-      toast.error('Customer does not have an email address');
-      return;
-    }
-    sendSignatureRequest.mutate({
-      documentType: 'job',
-      documentId: job.id,
-      recipientEmail: customer.email,
-      recipientName: customer.name,
-      companyName: company?.name || 'Company',
-      documentNumber: job.job_number,
-      customerId: customer.id,
-  });
-  };
-
-  // On My Way handler
-  const etaOptions = [10, 20, 30, 45, 60] as const;
-  const handleOnMyWay = (job: Job, etaMinutes?: number) => {
-    const customerPhone = job.customer?.phone;
-    if (!customerPhone || !profile?.full_name || !company?.name) {
-      const message = createOnMyWayMessage({
-        technicianName: profile?.full_name || 'Your technician',
-        companyName: company?.name || 'our company',
-        etaMinutes,
-      });
-      navigator.clipboard.writeText(message);
-      toast.success('Message copied to clipboard');
-      return;
-    }
-    const smsLink = createOnMyWaySmsLink({
-      customerPhone,
-      technicianName: profile.full_name,
-      companyName: company.name,
-      etaMinutes,
-    });
-    window.location.href = smsLink;
-  };
-
-  // Handle Create Quote with duplicate confirmation - opens edit form after creation
-  const handleCreateQuote = async (job: Job) => {
-    const existingQuotes = quotesPerJob.get(job.id) || 0;
-    if (existingQuotes > 0) {
-      setCreateQuoteConfirmJob(job);
-    } else {
-      const quote = await convertToQuote.mutateAsync(job);
-      if (quote?.id) {
-        // Navigate to quotes page with edit mode
-        window.location.href = `/quotes?edit=${quote.id}`;
-      }
-    }
-  };
-
-  // Handle Create Invoice - opens dialog with photo toggle
-  const handleCreateInvoice = (job: Job) => {
-    setCreateInvoiceConfirmJob(job);
-  };
-  
-  const handleCreateInvoiceWithPhotos = async (copyPhotos: boolean) => {
-    if (!createInvoiceConfirmJob) return;
-    const invoice = await convertToInvoice.mutateAsync({ job: createInvoiceConfirmJob, copyPhotos });
-    setCreateInvoiceConfirmJob(null);
-    openViewingJob(null);
-    if (invoice?.id) {
-      window.location.href = `/invoices?edit=${invoice.id}`;
-    }
-  };
-  const getStatusColor = (status: Job['status']) => {
-    switch (status) {
-      case 'draft':
-        return 'bg-muted text-muted-foreground';
-      case 'scheduled':
-        return 'bg-blue-500/10 text-blue-500';
-      case 'in_progress':
-        return 'bg-warning/10 text-warning';
-      case 'completed':
-        return 'bg-success/10 text-success';
-      case 'invoiced':
-        return 'bg-primary/10 text-primary';
-      case 'paid':
-        return 'bg-success/10 text-success';
-      default:
-        return 'bg-muted text-muted-foreground';
-    }
-  };
-  const getPriorityColor = (priority: Job['priority']) => {
-    switch (priority) {
-      case 'low':
-        return 'bg-muted text-muted-foreground';
-      case 'medium':
-        return 'bg-blue-500/10 text-blue-500';
-      case 'high':
-        return 'bg-warning/10 text-warning';
-      case 'urgent':
-        return 'bg-destructive/10 text-destructive';
-      default:
-        return 'bg-muted text-muted-foreground';
-    }
-  };
-  const getNextStatus = (currentStatus: Job['status']): Job['status'] | null => {
-    const index = JOB_STATUSES.indexOf(currentStatus);
-    if (index < JOB_STATUSES.length - 1) {
-      return JOB_STATUSES[index + 1];
-    }
-    return null;
-  };
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">
+    return (
+      <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>;
+      </div>
+    );
   }
-  return <div className="space-y-6 animate-fade-in">
+
+  return (
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
@@ -831,37 +417,9 @@ const Jobs = () => {
             <h1 className="text-3xl font-bold">Jobs</h1>
             <p className="text-muted-foreground mt-1 hidden sm:block">{safeJobs.length} total jobs</p>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="relative w-24 sm:w-40">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-8 h-9" />
-            </div>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant={statusFilter !== 'all' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9">
-                  <Filter className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
-                  All Status
-                </DropdownMenuItem>
-                {JOB_STATUSES_EDITABLE.map(s => (
-                  <DropdownMenuItem key={s} onClick={() => setStatusFilter(s)} className={`capitalize ${statusFilter === s ? 'bg-accent' : ''}`}>
-                    {s.replace('_', ' ')}
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setStatusFilter('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
-                  <Archive className="w-4 h-4 mr-2" />
-                  Archived
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
 
-            
+          <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
             <div className="hidden sm:flex gap-1 border rounded-md p-1">
               <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')} title="List View">
                 <List className="w-4 h-4" />
@@ -869,265 +427,227 @@ const Jobs = () => {
               <Button variant={viewMode === 'calendar' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('calendar')} title="Calendar View">
                 <CalendarDays className="w-4 h-4" />
               </Button>
-              {isAdmin && <Button variant={viewMode === 'scheduler' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('scheduler')} title="Scheduler View">
+              {isAdmin && (
+                <Button variant={viewMode === 'scheduler' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('scheduler')} title="Scheduler View">
                   <Users className="w-4 h-4" />
-                </Button>}
+                </Button>
+              )}
             </div>
-            
+
             <Dialog open={isDialogOpen} onOpenChange={open => {
-            openEditDialog(open);
-            if (!open) resetForm();
-          }}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 hidden sm:flex">
-              <Plus className="w-4 h-4" />
-              Create Job
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingJob ? 'Edit Job' : 'Create New Job'}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Import from Quote or Template */}
-              {!editingJob && <div className="flex flex-col gap-3">
-                  <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                    <div className="flex-1 space-y-2">
-                      <Label>Import from Quote (optional)</Label>
-                      <Select value={importQuoteId} onValueChange={setImportQuoteId}>
+              openEditDialog(open);
+              if (!open) resetForm();
+            }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2 hidden sm:flex">
+                  <Plus className="w-4 h-4" />
+                  Create Job
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{editingJob ? 'Edit Job' : 'Create New Job'}</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Import from Quote or Template */}
+                  {!editingJob && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                        <div className="flex-1 space-y-2">
+                          <Label>Import from Quote (optional)</Label>
+                          <Select value={importQuoteId} onValueChange={setImportQuoteId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a quote" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {safeQuotes.filter((q: any) => (q?.status === 'accepted' || q?.status === 'sent') && q?.id).map((q: any) => (
+                                <SelectItem key={q.id} value={q.id}>
+                                  {String(q.quote_number ?? 'Quote')} - {safeCustomers.find((c: any) => c?.id === q?.customer_id)?.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button type="button" variant="outline" onClick={handleImportQuote} disabled={!importQuoteId} className="w-full sm:w-auto">
+                          <FileText className="w-4 h-4 mr-2" />
+                          Import
+                        </Button>
+                      </div>
+
+                      {templates.length > 0 && (
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                          <div className="flex-1 space-y-2">
+                            <Label>Load from Template (optional)</Label>
+                            <Select onValueChange={(templateId) => {
+                              const template = templates.find(t => t.id === templateId);
+                              if (template) handleLoadTemplate(template);
+                            }}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a template" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {templates.map((t) => (
+                                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InlineCustomerForm
+                      customers={safeCustomers}
+                      selectedCustomerId={formData.customer_id}
+                      onCustomerSelect={value => setFormData({ ...formData, customer_id: value })}
+                    />
+                    <div className="space-y-2">
+                      <Label>Assign To</Label>
+                      <Select value={formData.assigned_to || 'unassigned'} onValueChange={value => setFormData({ ...formData, assigned_to: value === 'unassigned' ? null : value })}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a quote" />
+                          <SelectValue placeholder="Select technician" />
                         </SelectTrigger>
                         <SelectContent>
-                          {safeQuotes.filter((q: any) => (q?.status === 'accepted' || q?.status === 'sent') && q?.id).map((q: any) => <SelectItem key={q.id} value={q.id}>
-                                {String(q.quote_number ?? 'Quote')} - {safeCustomers.find((c: any) => c?.id === q?.customer_id)?.name}
-                              </SelectItem>)}
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {availableTechnicians.map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.full_name || t.email}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {technicians.some(t => t.employment_status === 'on_leave') && (
+                        <p className="text-xs text-muted-foreground">Team members on leave are hidden from this list</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Title *</Label>
+                    <Input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="Job title" />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Problem Description</Label>
+                    <Textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={3} placeholder="Describe the issue..." />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Priority</Label>
+                      <Select value={formData.priority} onValueChange={value => setFormData({ ...formData, priority: value as Job['priority'] })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {JOB_PRIORITIES.map(p => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>
-                    <Button type="button" variant="outline" onClick={handleImportQuote} disabled={!importQuoteId} className="w-full sm:w-auto">
-                      <FileText className="w-4 h-4 mr-2" />
-                      Import
+                    <div className="space-y-2">
+                      <Label>Status</Label>
+                      <Select value={formData.status} onValueChange={value => setFormData({ ...formData, status: value as Job['status'] })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {JOB_STATUSES_EDITABLE.map(s => <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Est. Duration</Label>
+                      <Select value={String(formData.estimated_duration)} onValueChange={value => setFormData({ ...formData, estimated_duration: parseInt(value) })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="30">30 min</SelectItem>
+                          <SelectItem value="60">1 hour</SelectItem>
+                          <SelectItem value="90">1.5 hours</SelectItem>
+                          <SelectItem value="120">2 hours</SelectItem>
+                          <SelectItem value="180">3 hours</SelectItem>
+                          <SelectItem value="240">4 hours</SelectItem>
+                          <SelectItem value="300">5 hours</SelectItem>
+                          <SelectItem value="360">6 hours</SelectItem>
+                          <SelectItem value="480">8 hours</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Scheduled Start</Label>
+                      <Input type="datetime-local" value={formData.scheduled_start} onChange={e => setFormData({ ...formData, scheduled_start: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Scheduled End</Label>
+                      <Input type="datetime-local" value={formData.scheduled_end} onChange={e => setFormData({ ...formData, scheduled_end: e.target.value })} />
+                    </div>
+                  </div>
+
+                  {/* Line Items Section */}
+                  <Separator />
+                  <LineItemsEditor
+                    items={lineItems}
+                    onAddItem={addLineItem}
+                    onAddFromCatalog={(catalogItem) => {
+                      setLineItems([...lineItems, {
+                        id: crypto.randomUUID(),
+                        description: catalogItem.name,
+                        itemDescription: catalogItem.description || '',
+                        quantity: 1,
+                        unitPrice: Number(catalogItem.unit_price),
+                        type: catalogItem.type
+                      }]);
+                    }}
+                    onRemoveItem={removeLineItem}
+                    onUpdateItem={updateLineItem}
+                    quantityLabel="Qty (hrs)"
+                  />
+
+                  {/* Discount and Totals */}
+                  <div className="border-t pt-3 space-y-2">
+                    <DiscountInput
+                      discountType={formData.discountType}
+                      discountValue={formData.discountValue}
+                      onDiscountTypeChange={(type) => setFormData({ ...formData, discountType: type })}
+                      onDiscountValueChange={(value) => setFormData({ ...formData, discountValue: value })}
+                    />
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span>${calculateSubtotal().toLocaleString()}</span>
+                    </div>
+                    {formData.discountValue > 0 && (
+                      <div className="flex justify-between text-sm text-success">
+                        <span>Discount ({formatDiscount(formData.discountType, formData.discountValue)}):</span>
+                        <span>-${calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue).toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Tax ({taxRate}%):</span>
+                      <span>${calculateTax().toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold pt-1 border-t">
+                      <span>Total:</span>
+                      <span>${(calculateTotal() - calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue)).toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Notes</Label>
+                    <Textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} rows={2} />
+                  </div>
+
+                  <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
+                    <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="flex-1" disabled={createJob.isPending || updateJob.isPending}>
+                      {(createJob.isPending || updateJob.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      {editingJob ? 'Update' : 'Create'} Job
                     </Button>
                   </div>
-                  
-                  {templates.length > 0 && (
-                    <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                      <div className="flex-1 space-y-2">
-                        <Label>Load from Template (optional)</Label>
-                        <Select onValueChange={(templateId) => {
-                          const template = templates.find(t => t.id === templateId);
-                          if (template) handleLoadTemplate(template);
-                        }}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a template" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {templates.map((t) => (
-                              <SelectItem key={t.id} value={t.id}>
-                                {t.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  )}
-                </div>}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InlineCustomerForm customers={safeCustomers} selectedCustomerId={formData.customer_id} onCustomerSelect={value => setFormData({
-                    ...formData,
-                    customer_id: value
-                  })} />
-                
-                <div className="space-y-2">
-                  <Label>Assign To</Label>
-                  <Select value={formData.assigned_to || 'unassigned'} onValueChange={value => setFormData({
-                      ...formData,
-                      assigned_to: value === 'unassigned' ? null : value
-                    })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select technician" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unassigned">Unassigned</SelectItem>
-                      {availableTechnicians.map(t => <SelectItem key={t.id} value={t.id}>{t.full_name || t.email}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {technicians.some(t => t.employment_status === 'on_leave') && <p className="text-xs text-muted-foreground">
-                      Team members on leave are hidden from this list
-                    </p>}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Title *</Label>
-                <Input value={formData.title} onChange={e => setFormData({
-                    ...formData,
-                    title: e.target.value
-                  })} placeholder="Job title" />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Problem Description</Label>
-                <Textarea value={formData.description} onChange={e => setFormData({
-                    ...formData,
-                    description: e.target.value
-                  })} rows={3} placeholder="Describe the issue..." />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Priority</Label>
-                  <Select value={formData.priority} onValueChange={value => setFormData({
-                      ...formData,
-                      priority: value as Job['priority']
-                    })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {JOB_PRIORITIES.map(p => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={formData.status} onValueChange={value => setFormData({
-                      ...formData,
-                      status: value as Job['status']
-                    })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {JOB_STATUSES_EDITABLE.map(s => <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Est. Duration</Label>
-                  <Select value={String(formData.estimated_duration)} onValueChange={value => setFormData({
-                      ...formData,
-                      estimated_duration: parseInt(value)
-                    })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="30">30 min</SelectItem>
-                      <SelectItem value="60">1 hour</SelectItem>
-                      <SelectItem value="90">1.5 hours</SelectItem>
-                      <SelectItem value="120">2 hours</SelectItem>
-                      <SelectItem value="180">3 hours</SelectItem>
-                      <SelectItem value="240">4 hours</SelectItem>
-                      <SelectItem value="300">5 hours</SelectItem>
-                      <SelectItem value="360">6 hours</SelectItem>
-                      <SelectItem value="480">8 hours</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Scheduled Start</Label>
-                  <Input type="datetime-local" value={formData.scheduled_start} onChange={e => setFormData({
-                      ...formData,
-                      scheduled_start: e.target.value
-                    })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Scheduled End</Label>
-                  <Input type="datetime-local" value={formData.scheduled_end} onChange={e => setFormData({
-                      ...formData,
-                      scheduled_end: e.target.value
-                    })} />
-                </div>
-              </div>
-
-              {/* Line Items Section */}
-              <Separator />
-              <LineItemsEditor
-                items={lineItems}
-                onAddItem={addLineItem}
-                onAddFromCatalog={(catalogItem) => {
-                  setLineItems([...lineItems, {
-                    id: crypto.randomUUID(),
-                    description: catalogItem.name,
-                    itemDescription: catalogItem.description || '',
-                    quantity: 1,
-                    unitPrice: Number(catalogItem.unit_price),
-                    type: catalogItem.type
-                  }]);
-                }}
-                onRemoveItem={removeLineItem}
-                onUpdateItem={updateLineItem}
-                quantityLabel="Qty (hrs)"
-              />
-
-              {/* Discount and Totals */}
-              <div className="border-t pt-3 space-y-2">
-                <DiscountInput
-                  discountType={formData.discountType}
-                  discountValue={formData.discountValue}
-                  onDiscountTypeChange={(type) => setFormData({ ...formData, discountType: type })}
-                  onDiscountValueChange={(value) => setFormData({ ...formData, discountValue: value })}
-                />
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal:</span>
-                  <span>${calculateSubtotal().toLocaleString()}</span>
-                </div>
-                {formData.discountValue > 0 && (
-                  <div className="flex justify-between text-sm text-success">
-                    <span>Discount ({formatDiscount(formData.discountType, formData.discountValue)}):</span>
-                    <span>-${calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue).toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Tax ({taxRate}%):</span>
-                  <span>${calculateTax().toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between font-semibold pt-1 border-t">
-                  <span>Total:</span>
-                  <span>${(calculateTotal() - calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue)).toLocaleString()}</span>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea value={formData.notes} onChange={e => setFormData({
-                    ...formData,
-                    notes: e.target.value
-                  })} rows={2} />
-              </div>
-              
-              <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" className="flex-1" disabled={createJob.isPending || updateJob.isPending}>
-                  {(createJob.isPending || updateJob.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {editingJob ? 'Update' : 'Create'} Job
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
-        
-        
-        {/* Include archived in search toggle - shows when searching */}
-        {searchQuery && <div className="flex items-center gap-2">
-            <Checkbox id="include-archived" checked={includeArchivedInSearch} onCheckedChange={checked => setIncludeArchivedInSearch(checked === true)} />
-            <label htmlFor="include-archived" className="text-sm text-muted-foreground cursor-pointer">
-              Include archived jobs in search
-            </label>
-          </div>}
       </div>
 
       {/* Calendar View */}
@@ -1136,790 +656,33 @@ const Jobs = () => {
       {/* Scheduler View - Admin/Manager only */}
       {viewMode === 'scheduler' && isAdmin && <SchedulerView jobs={safeJobs} technicians={technicians} onJobClick={setViewingJob} />}
 
-      {/* Job List - Mobile Optimized */}
-      {viewMode === 'list' && <PullToRefresh onRefresh={async () => {
-      await refetchJobs();
-    }} className="sm:contents">
-        <div className="space-y-3 lg:max-w-4xl lg:mx-auto">
-          {filteredJobs.length === 0 ? <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                No jobs found
-              </CardContent>
-            </Card> : visibleJobs.map((job, index) => (
-              <JobListCard
-                key={job.id}
-                job={job}
-                notificationCount={notificationCounts.get(job.id) || 0}
-                getPriorityColor={getPriorityColor}
-                getStatusColor={getStatusColor}
-                onView={openViewingJob}
-                onEdit={handleEdit}
-                onDuplicate={handleDuplicate}
-                onSaveAsTemplate={setSaveAsTemplateJob}
-                onPriorityChange={handlePriorityChange}
-                onDownload={(job) => downloadDocument.mutate({ type: 'job', documentId: job.id })}
-                onEmail={(job) => job.customer?.email && emailDocument.mutate({ type: 'job', documentId: job.id, recipientEmail: job.customer.email })}
-                onSendNotification={(job) => sendJobNotification.mutate({ jobId: job.id, customerId: job.customer_id })}
-                onOnMyWay={handleOnMyWay}
-                onViewSignature={handleViewSignature}
-                onOpenSignatureDialog={handleOpenSignatureDialog}
-                onSendSignatureRequest={handleSendSignatureRequest}
-                onCreateInvoice={handleCreateInvoice}
-                onCreateQuote={handleCreateQuote}
-                onArchive={setArchiveConfirmJob}
-                onUnarchive={(job) => unarchiveJob.mutate(job.id)}
-                onDelete={setDeleteConfirmJob}
-                convertToInvoiceIsPending={convertToInvoice.isPending}
-                convertToQuoteIsPending={convertToQuote.isPending}
-                unarchiveIsPending={unarchiveJob.isPending}
-                showSwipeHint={index === 0 && showSwipeHint}
-                onSwipeHintDismiss={dismissSwipeHint}
-              />
-            ))}
-          {/* Infinite scroll trigger */}
-          {hasMoreJobs && (
-            <div ref={loadMoreJobsRef} className="py-4 flex flex-col items-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Showing {visibleJobs.length} of {totalJobsCount}</span>
-                <Button variant="ghost" size="sm" onClick={loadAllJobs} className="h-7 text-xs">
-                  Load All
-                </Button>
-              </div>
-            </div>
-          )}
+      {/* Job List View */}
+      {viewMode === 'list' && (
+        <div className="lg:max-w-4xl lg:mx-auto">
+          <JobListManager
+            jobs={safeJobs}
+            customers={safeCustomers}
+            profiles={safeProfiles}
+            showFilters={true}
+            showSearch={true}
+            onEditJob={handleEdit}
+            onCreateJob={() => openEditDialog(true)}
+            onRefetch={async () => { await refetchJobs(); }}
+            isLoading={isLoading}
+          />
         </div>
-        </PullToRefresh>}
+      )}
 
-      {/* Job Detail Modal */}
-      <Dialog open={!!viewingJob} onOpenChange={open => !open && openViewingJob(null)}>
-        <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
-          {viewingJob && <>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 pr-8 text-base sm:text-lg">
-                  <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                  <span className="truncate">{viewingJob.job_number} - {viewingJob.title}</span>
-                </DialogTitle>
-              </DialogHeader>
-
-              
-              {/* Basic Info - responsive grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mt-4">
-                <div>
-                  <Label className="text-muted-foreground text-xs sm:text-sm">Customer</Label>
-                  <p className="font-medium text-sm sm:text-base truncate">{viewingJob.customer?.name}</p>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs sm:text-sm">Status</Label>
-                  <div className="mt-0.5">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Badge className={`${getStatusColor(viewingJob.status)} cursor-pointer hover:opacity-80 transition-opacity`}>
-                          {viewingJob.status.replace('_', ' ')}
-                          <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                        </Badge>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="bg-popover z-50">
-                        {JOB_STATUSES_EDITABLE.map(status => (
-                          <DropdownMenuItem
-                            key={status}
-                            onClick={() => {
-                              handleStatusChange(viewingJob.id, status);
-                              setViewingJob(prev => prev ? { ...prev, status } : null);
-                            }}
-                            disabled={viewingJob.status === status}
-                            className={viewingJob.status === status ? 'bg-accent' : ''}
-                          >
-                            <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
-                              {status.replace('_', ' ')}
-                            </Badge>
-                            {viewingJob.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-muted-foreground text-xs sm:text-sm">Priority</Label>
-                  <div className="mt-0.5">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Badge className={`${getPriorityColor(viewingJob.priority)} cursor-pointer hover:opacity-80 transition-opacity`}>
-                          {viewingJob.priority}
-                          <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                        </Badge>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="bg-popover z-50">
-                        {JOB_PRIORITIES.map(priority => (
-                          <DropdownMenuItem
-                            key={priority}
-                            onClick={() => {
-                              handlePriorityChange(viewingJob.id, priority);
-                              setViewingJob(prev => prev ? { ...prev, priority } : null);
-                            }}
-                            disabled={viewingJob.priority === priority}
-                            className={viewingJob.priority === priority ? 'bg-accent' : ''}
-                          >
-                            <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
-                              {priority}
-                            </Badge>
-                            {viewingJob.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-                {viewingJob.assignee?.full_name && <div>
-                    <Label className="text-muted-foreground text-xs sm:text-sm">Assigned To</Label>
-                    <p className="font-medium text-sm sm:text-base truncate">{viewingJob.assignee.full_name}</p>
-                  </div>}
-                {viewingJob.scheduled_start && <div>
-                    <Label className="text-muted-foreground text-xs sm:text-sm">Scheduled Start</Label>
-                    <p className="font-medium text-sm sm:text-base">{format(new Date(viewingJob.scheduled_start), 'MMM d, yyyy h:mm a')}</p>
-                  </div>}
-                {viewingJob.scheduled_end && <div>
-                    <Label className="text-muted-foreground text-xs sm:text-sm">Scheduled End</Label>
-                    <p className="font-medium text-sm sm:text-base">{format(new Date(viewingJob.scheduled_end), 'MMM d, yyyy h:mm a')}</p>
-                  </div>}
-              </div>
-              
-              {viewingJob.description && <div className="mt-4">
-                  <Label className="text-muted-foreground text-xs sm:text-sm">Description</Label>
-                  <p className="mt-1 text-sm">{viewingJob.description}</p>
-                </div>}
-
-               <Tabs defaultValue="details" className="mt-4">
-                 <TabsList className="flex-wrap h-auto gap-1 p-1">
-                   <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-3">Details</TabsTrigger>
-                   <TabsTrigger value="time" className="text-xs sm:text-sm px-2 sm:px-3">
-                     <Timer className="w-3 h-3 mr-1" />
-                     Time
-                   </TabsTrigger>
-                   <TabsTrigger value="linked" className="text-xs sm:text-sm px-2 sm:px-3">
-                     Linked Docs ({(quotesPerJob.get(viewingJob.id) || 0) + viewingJobInvoices.length + (viewingJob.quote_id ? 1 : 0)})
-                   </TabsTrigger>
-                    <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">Photos ({viewingJob.photos?.length || 0})</TabsTrigger>
-                 </TabsList>
-                
-                <TabsContent value="details" className="space-y-6 mt-4">
-
-                  {/* Line Items Section */}
-                  <div className="space-y-3">
-                    <Label className="text-muted-foreground text-xs sm:text-sm font-medium">Line Items</Label>
-                    {viewingJob.items && viewingJob.items.length > 0 ? <>
-                        <div className="rounded-lg border">
-                          {/* Desktop header - hidden on mobile */}
-                          <div className="hidden sm:grid grid-cols-12 gap-2 p-3 bg-muted/50 font-medium text-sm">
-                            <div className="col-span-6">Description</div>
-                            <div className="col-span-2 text-center">Qty</div>
-                            <div className="col-span-2 text-right">Unit Price</div>
-                            <div className="col-span-2 text-right">Total</div>
-                          </div>
-                          {viewingJob.items.map(item => <div key={item.id} className="p-3 border-t text-sm">
-                              {/* Mobile layout */}
-                              <div className="sm:hidden space-y-1">
-                                <p className="font-medium">{item.description}</p>
-                                <div className="flex justify-between text-xs text-muted-foreground">
-                                  <span>{item.quantity} × ${Number(item.unit_price).toFixed(2)}</span>
-                                  <span className="font-medium text-foreground">${Number(item.total).toFixed(2)}</span>
-                                </div>
-                              </div>
-                              {/* Desktop layout */}
-                              <div className="hidden sm:grid grid-cols-12 gap-2">
-                                <div className="col-span-6">{item.description}</div>
-                                <div className="col-span-2 text-center">{item.quantity}</div>
-                                <div className="col-span-2 text-right">${Number(item.unit_price).toFixed(2)}</div>
-                                <div className="col-span-2 text-right">${Number(item.total).toFixed(2)}</div>
-                              </div>
-                            </div>)}
-                        </div>
-                        <div className="flex flex-col items-end gap-1 text-sm">
-                          <div className="flex justify-between w-full sm:w-56">
-                            <span className="text-muted-foreground">Subtotal:</span>
-                            <span>${Number(viewingJob.subtotal ?? 0).toFixed(2)}</span>
-                          </div>
-                          {Number(viewingJob.discount_value) > 0 && (
-                            <div className="flex justify-between w-full sm:w-56 text-success">
-                              <span>Discount ({formatDiscount(viewingJob.discount_type, Number(viewingJob.discount_value))}):</span>
-                              <span>-${calculateDiscountAmount(Number(viewingJob.subtotal ?? 0), viewingJob.discount_type, Number(viewingJob.discount_value)).toFixed(2)}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between w-full sm:w-56">
-                            <span className="text-muted-foreground">Tax ({taxRate}%):</span>
-                            <span>${Number(viewingJob.tax ?? 0).toFixed(2)}</span>
-                          </div>
-                          <div className="flex justify-between w-full sm:w-56 font-semibold text-base pt-1 border-t">
-                            <span>Total:</span>
-                            <span>${Number(viewingJob.total ?? 0).toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </> : <div className="text-center py-6 text-muted-foreground border rounded-lg">
-                        <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No line items added</p>
-                        <Button variant="outline" size="sm" className="mt-2" onClick={() => handleEdit(viewingJob)}>
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add Items
-                        </Button>
-                      </div>}
-                  </div>
-
-                  {/* Notes Section */}
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs sm:text-sm font-medium">Notes</Label>
-                    {viewingJob.notes ? <div className="p-4 bg-muted rounded-lg">
-                        <p className="whitespace-pre-wrap text-sm">{viewingJob.notes}</p>
-                      </div> : <p className="text-muted-foreground text-sm">No notes added</p>}
-                  </div>
-
-                  {/* Completion Signature Section */}
-                  <ConstrainedPanel>
-                    <SignatureSection 
-                      signatureId={(viewingJob as any).completion_signature_id}
-                      title="Customer Completion Signature"
-                      onCollectSignature={() => handleOpenSignatureDialog(viewingJob)}
-                      showCollectButton={viewingJob.status === 'completed' || viewingJob.status === 'in_progress'}
-                      collectButtonText="Collect Completion Signature"
-                      isCollecting={signJobCompletion.isPending}
-                    />
-                  </ConstrainedPanel>
-                </TabsContent>
-
-                <TabsContent value="time" className="mt-4">
-                  <div className="space-y-4">
-                    <h4 className="font-medium">Time Tracking</h4>
-                    <JobTimeSummary jobId={viewingJob.id} />
-                    <JobTimeTracker 
-                      jobId={viewingJob.id} 
-                      jobNumber={viewingJob.job_number} 
-                      laborHourlyRate={(viewingJob as any).labor_hourly_rate}
-                    />
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="photos" className="mt-4">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <h4 className="font-medium">Job Photos</h4>
-                      <Dialog open={photoDialogOpen} onOpenChange={setPhotoDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button size="sm" variant="outline">
-                            <Camera className="w-4 h-4 mr-2" />
-                            Add Photo
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Upload Photo</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="space-y-2">
-                              <Label>Photo Type</Label>
-                              <Select value={photoType} onValueChange={(v: any) => setPhotoType(v)}>
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="before">Before</SelectItem>
-                                  <SelectItem value="after">After</SelectItem>
-                                  <SelectItem value="other">Other</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Caption (optional)</Label>
-                              <Input value={photoCaption} onChange={e => setPhotoCaption(e.target.value)} placeholder="Add a caption..." />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Photo</Label>
-                              <Input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploadPhoto.isPending} />
-                            </div>
-                            {uploadPhoto.isPending && <div className="flex items-center gap-2 text-muted-foreground">
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Uploading...
-                              </div>}
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                    
-                    {viewingJob.photos && viewingJob.photos.length > 0 ? <PhotoGallery photos={viewingJob.photos} deletable={true} editable={true} onDelete={photoId => {
-                  deletePhoto.mutate(photoId, {
-                    onSuccess: () => {
-                      // Immediately update local state
-                      setViewingJob(prev => prev ? {
-                        ...prev,
-                        photos: prev.photos?.filter(p => p.id !== photoId) || []
-                      } : null);
-                    }
-                  });
-                }} onUpdateType={(photoId, photoType) => {
-                  updatePhotoType.mutate({ photoId, photoType }, {
-                    onSuccess: () => {
-                      // Immediately update local state
-                      setViewingJob(prev => prev ? {
-                        ...prev,
-                        photos: prev.photos?.map(p => p.id === photoId ? { ...p, photo_type: photoType } : p) || []
-                      } : null);
-                    }
-                  });
-                }} /> : <div className="text-center py-8 text-muted-foreground">
-                        <Image className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                        <p>No photos yet</p>
-                      </div>}
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="linked" className="mt-4 space-y-4">
-                  {/* Quotes */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-sm">Quotes</h4>
-                    </div>
-                    <JobRelatedQuotesSection
-                      job={viewingJob}
-                      onViewQuote={(quote) => {
-                        openViewingJob(null);
-                        setViewingQuote(quote);
-                      }}
-                      onCreateUpsellQuote={() => {
-                        handleCreateQuote(viewingJob);
-                        if ((quotesPerJob.get(viewingJob.id) || 0) === 0) {
-                          openViewingJob(null);
-                        }
-                      }}
-                      isCreatingQuote={convertToQuote.isPending}
-                    />
-                  </div>
-
-                  {/* Invoices */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-sm">Invoices</h4>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          handleCreateInvoice(viewingJob);
-                          if ((invoicesPerJob.get(viewingJob.id) || 0) === 0) {
-                            openViewingJob(null);
-                          }
-                        }}
-                        disabled={convertToInvoice.isPending}
-                      >
-                        <Receipt className="w-4 h-4 mr-2" />
-                        Create Invoice
-                      </Button>
-                    </div>
-
-                    {viewingJobInvoices.length > 0 ? (
-                      <div className="space-y-2">
-                        {viewingJobInvoices.map((invoice: Invoice) => (
-                          <div
-                            key={invoice.id}
-                            className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
-                            onClick={() => {
-                              openViewingJob(null);
-                              window.location.href = `/invoices?view=${invoice.id}`;
-                            }}
-                          >
-                            <div>
-                              <p className="font-medium text-sm">{invoice.invoice_number}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(invoice.created_at), 'MMM d, yyyy')}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-medium text-sm">${Number(invoice.total).toFixed(2)}</p>
-                              <Badge variant="secondary" className="text-xs">
-                                {invoice.status}
-                              </Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-4 rounded-lg border bg-muted/50 text-sm text-muted-foreground">
-                        No invoices linked to this job yet.
-                      </div>
-                    )}
-                  </div>
-                </TabsContent>
-
-              </Tabs>
-              
-              {/* Job Email Modal */}
-              <AlertDialog open={showJobEmailModal} onOpenChange={setShowJobEmailModal}>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                      <Mail className="w-5 h-5 text-primary" />
-                      Email Job PDF
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Send the job summary PDF to your customer.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="job-email-address">Email Address</Label>
-                    <Input
-                      id="job-email-address"
-                      type="email"
-                      value={jobEmailAddress}
-                      onChange={(e) => setJobEmailAddress(e.target.value)}
-                      placeholder="customer@example.com"
-                    />
-                  </div>
-
-                  <AlertDialogFooter>
-                    <AlertDialogCancel
-                      onClick={() => {
-                        setShowJobEmailModal(false);
-                        setJobEmailAddress('');
-                      }}
-                    >
-                      Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => {
-                        if (!viewingJob) return;
-                        if (!jobEmailAddress) return;
-
-                        emailDocument.mutate(
-                          { type: 'job', documentId: viewingJob.id, recipientEmail: jobEmailAddress },
-                          {
-                            onSuccess: () => {
-                              setShowJobEmailModal(false);
-                              setJobEmailAddress('');
-                            },
-                          }
-                        );
-                      }}
-                      disabled={!jobEmailAddress || emailDocument.isPending}
-                    >
-                      {emailDocument.isPending ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Send className="w-4 h-4 mr-2" />
-                      )}
-                      Send
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
-              {/* Actions */}
-              <Separator className="mt-4" />
-              <div className="flex flex-wrap justify-center gap-2 pt-2 sm:pt-4">
-                {/* Quick Actions for scheduled/in_progress */}
-                {['scheduled', 'in_progress'].includes(viewingJob.status) && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="default">
-                        <Navigation className="w-4 h-4 mr-1" />
-                        On My Way
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {etaOptions.map((eta) => (
-                        <DropdownMenuItem key={eta} onClick={() => handleOnMyWay(viewingJob, eta)}>
-                          ~{eta} minutes
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-                <Button 
-                  size="sm"
-                  variant="outline" 
-                  onClick={() => handleEdit(viewingJob)}
-                >
-                  <Edit className="w-4 h-4 mr-1" />
-                  Edit
-                </Button>
-                <Button 
-                  size="sm"
-                  variant="outline" 
-                  onClick={() => {
-                    handleDuplicate(viewingJob);
-                    openViewingJob(null);
-                  }}
-                >
-                  <Copy className="w-4 h-4 mr-1" />
-                  Duplicate
-                </Button>
-                <Button 
-                  size="sm"
-                  variant="outline" 
-                  onClick={() => downloadDocument.mutate({ type: 'job', documentId: viewingJob.id })}
-                  disabled={downloadDocument.isPending}
-                >
-                  {downloadDocument.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Download className="w-4 h-4 mr-1" />}
-                  Download
-                </Button>
-                {viewingJob.customer?.email && (
-                  <Button 
-                    size="sm"
-                    variant="outline" 
-                    onClick={() => {
-                      setJobEmailAddress(viewingJob.customer?.email ?? '');
-                      setShowJobEmailModal(true);
-                    }}
-                    disabled={emailDocument.isPending}
-                  >
-                    {emailDocument.isPending ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Mail className="w-4 h-4 mr-1" />}
-                    Email
-                  </Button>
-                )}
-                <Button 
-                  size="sm"
-                  variant="outline" 
-                  onClick={() => {
-                    handleCreateQuote(viewingJob);
-                    if ((quotesPerJob.get(viewingJob.id) || 0) === 0) {
-                      openViewingJob(null);
-                    }
-                  }} 
-                  disabled={convertToQuote.isPending}
-                >
-                  <FileText className="w-4 h-4 mr-1" />
-                  Create Quote
-                </Button>
-                <Button 
-                  size="sm"
-                  onClick={() => {
-                    handleCreateInvoice(viewingJob);
-                    if ((invoicesPerJob.get(viewingJob.id) || 0) === 0) {
-                      openViewingJob(null);
-                    }
-                  }} 
-                  disabled={convertToInvoice.isPending}
-                >
-                  <Receipt className="w-4 h-4 mr-1" />
-                  Create Invoice
-                </Button>
-              </div>
-            </>}
-        </DialogContent>
-      </Dialog>
-
-      {/* Complete Job Dialog */}
-      <CompleteJobDialog job={completingJob} open={!!completingJob} onOpenChange={open => !open && setCompletingJob(null)} />
-
-      {/* Quote Detail Dialog */}
-      <QuoteDetailDialog quote={viewingQuote} customerName={viewingQuote ? safeCustomers.find(c => c.id === viewingQuote.customer_id)?.name : undefined} open={!!viewingQuote} onOpenChange={open => !open && setViewingQuote(null)} onDownload={quoteId => downloadDocument.mutate({
-      type: 'quote',
-      documentId: quoteId
-    })} onEmail={quoteId => {
-      const customer = safeCustomers.find(c => c.id === viewingQuote?.customer_id);
-      if (customer?.email) {
-        emailDocument.mutate({
-          type: 'quote',
-          documentId: quoteId,
-          recipientEmail: customer.email
-        });
-      } else {
-        toast.error('Customer has no email');
-      }
-    }} onEdit={() => setViewingQuote(null)} />
-
-      {/* Archive Confirmation Dialog */}
-      <AlertDialog open={!!archiveConfirmJob} onOpenChange={(open) => !open && setArchiveConfirmJob(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Archive Job</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to archive "{archiveConfirmJob?.job_number} - {archiveConfirmJob?.title}"? 
-              You can unarchive it later from the archived jobs view.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => {
-                if (archiveConfirmJob) {
-                  archiveJob.mutate(archiveConfirmJob.id);
-                  setArchiveConfirmJob(null);
-                }
-              }}
-              disabled={archiveJob.isPending}
-            >
-              {archiveJob.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Archive
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteConfirmJob} onOpenChange={(open) => !open && setDeleteConfirmJob(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Job</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{deleteConfirmJob?.job_number} - {deleteConfirmJob?.title}"? 
-              You can undo this action within a few seconds.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => {
-                if (deleteConfirmJob) {
-                  scheduleJobDelete(deleteConfirmJob.id);
-                  setDeleteConfirmJob(null);
-                }
-              }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Save as Template Dialog */}
-      <SaveAsTemplateDialog
-        open={!!saveAsTemplateJob}
-        onOpenChange={(open) => !open && setSaveAsTemplateJob(null)}
-        job={saveAsTemplateJob ? {
-          title: saveAsTemplateJob.title,
-          description: saveAsTemplateJob.description,
-          priority: saveAsTemplateJob.priority,
-          estimated_duration: saveAsTemplateJob.estimated_duration,
-          notes: saveAsTemplateJob.notes,
-          items: saveAsTemplateJob.items?.map(item => ({
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-          })),
-        } : null}
-      />
-
-      {/* Create Quote Confirmation Dialog */}
-      <AlertDialog open={!!createQuoteConfirmJob} onOpenChange={(open) => !open && setCreateQuoteConfirmJob(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-500" />
-              Quote Already Exists
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This job already has {quotesPerJob.get(createQuoteConfirmJob?.id || '') || 0} quote(s) created from it. 
-              Are you sure you want to create another quote? This may result in duplicate quotes.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={async () => {
-                if (createQuoteConfirmJob) {
-                  const quote = await convertToQuote.mutateAsync(createQuoteConfirmJob);
-                  setCreateQuoteConfirmJob(null);
-                  openViewingJob(null);
-                  if (quote?.id) {
-                    window.location.href = `/quotes?edit=${quote.id}`;
-                  }
-                }
-              }}
-              disabled={convertToQuote.isPending}
-            >
-              {convertToQuote.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Create Anyway
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Create Invoice Dialog with Photo Toggle */}
-      <ConvertJobToInvoiceDialog
-        open={!!createInvoiceConfirmJob}
-        onOpenChange={(open) => !open && setCreateInvoiceConfirmJob(null)}
-        onConfirm={handleCreateInvoiceWithPhotos}
-        isProcessing={convertToInvoice.isPending}
-        jobNumber={createInvoiceConfirmJob?.job_number}
-      />
-
-
-      {/* Signature Dialog */}
-      <SignatureDialog
-        open={signatureDialogOpen}
-        onOpenChange={(open) => {
-          setSignatureDialogOpen(open);
-          if (!open) setSignatureJob(null);
-        }}
-        title="Job Completion Signature"
-        description="Customer signature to confirm job completion"
-        signerName={signatureJob?.customer?.name || ''}
-        onSignatureComplete={handleSignatureComplete}
-        isSubmitting={signJobCompletion.isPending}
-      />
-
-      {/* View Signature Dialog */}
-      <ViewSignatureDialog
-        signatureId={viewSignatureId}
-        open={viewSignatureOpen}
-        onOpenChange={(open) => {
-          setViewSignatureOpen(open);
-          if (!open) setViewSignatureId(null);
-        }}
-      />
-
-      {/* Mobile Floating Action Button */}
-      <Button className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50" onClick={() => openEditDialog(true)}>
-        <Plus className="w-6 h-6" />
-      </Button>
-    </div>;
+      {/* Save As Template Dialog */}
+      {saveAsTemplateJob && (
+        <SaveAsTemplateDialog
+          job={saveAsTemplateJob}
+          open={!!saveAsTemplateJob}
+          onOpenChange={(open) => !open && setSaveAsTemplateJob(null)}
+        />
+      )}
+    </div>
+  );
 };
 
-// Separate component for related quotes to use the hook properly
-function JobRelatedQuotesSection({
-  job,
-  onViewQuote,
-  onCreateUpsellQuote,
-  isCreatingQuote
-}: {
-  job: Job;
-  onViewQuote: (quote: Quote) => void;
-  onCreateUpsellQuote: () => void;
-  isCreatingQuote: boolean;
-}) {
-  const {
-    data: relatedQuotes,
-    isLoading
-  } = useJobRelatedQuotes(job.id, job.quote_id);
-  if (isLoading) {
-    return <div className="flex items-center justify-center py-8"><Loader2 className="w-6 h-6 animate-spin" /></div>;
-  }
-  return <div className="space-y-6">
-      {/* Origin Quote (Parent) */}
-      <div>
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
-          <ArrowDown className="w-3 h-3" /> Origin Quote (Created This Job)
-        </p>
-        {relatedQuotes?.originQuote ? <QuoteCard quote={relatedQuotes.originQuote} onView={() => onViewQuote(relatedQuotes.originQuote!)} /> : <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-            No origin quote - job was created directly
-          </div>}
-      </div>
-
-      {/* Upsell Quotes (Children) */}
-      <div>
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
-          <ArrowUp className="w-3 h-3" /> Upsell Quotes (Created During Job)
-        </p>
-        
-        {relatedQuotes?.childQuotes && relatedQuotes.childQuotes.length > 0 ? <div className="space-y-2">
-            {relatedQuotes.childQuotes.map((quote: Quote) => <QuoteCard key={quote.id} quote={quote} onView={() => onViewQuote(quote)} />)}
-          </div> : <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <p className="text-sm text-muted-foreground">No upsell quotes yet</p>
-            <Button variant="outline" size="sm" onClick={onCreateUpsellQuote} disabled={isCreatingQuote}>
-              <Plus className="w-3 h-3 mr-1" />
-              Create Upsell Quote
-            </Button>
-          </div>}
-      </div>
-    </div>;
-}
 export default Jobs;
