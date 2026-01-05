@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign, Clock, BarChart3, Users } from 'lucide-react';
+import { DollarSign, Clock, BarChart3, Users, UserCheck } from 'lucide-react';
 import TransactionsReport from '@/components/reports/TransactionsReport';
 import TimesheetReportTab from '@/components/reports/TimesheetReportTab';
 import MonthlySummaryReport from '@/components/reports/MonthlySummaryReport';
 import CustomerRevenueReport from '@/components/reports/CustomerRevenueReport';
+import TechnicianPerformanceReport from '@/components/reports/TechnicianPerformanceReport';
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('transactions');
@@ -21,14 +22,16 @@ const Reports = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
             <TabsTrigger value="transactions" className="gap-2">
               <DollarSign className="w-4 h-4 hidden sm:inline" />
-              Transactions
+              <span className="hidden sm:inline">Transactions</span>
+              <span className="sm:hidden">Trans</span>
             </TabsTrigger>
             <TabsTrigger value="timesheets" className="gap-2">
               <Clock className="w-4 h-4 hidden sm:inline" />
-              Timesheets
+              <span className="hidden sm:inline">Timesheets</span>
+              <span className="sm:hidden">Time</span>
             </TabsTrigger>
             <TabsTrigger value="summary" className="gap-2">
               <BarChart3 className="w-4 h-4 hidden sm:inline" />
@@ -36,7 +39,12 @@ const Reports = () => {
             </TabsTrigger>
             <TabsTrigger value="customers" className="gap-2">
               <Users className="w-4 h-4 hidden sm:inline" />
-              Customers
+              <span className="hidden sm:inline">Customers</span>
+              <span className="sm:hidden">Cust</span>
+            </TabsTrigger>
+            <TabsTrigger value="team" className="gap-2">
+              <UserCheck className="w-4 h-4 hidden sm:inline" />
+              Team
             </TabsTrigger>
           </TabsList>
 
@@ -54,6 +62,10 @@ const Reports = () => {
 
           <TabsContent value="customers" className="mt-6">
             <CustomerRevenueReport />
+          </TabsContent>
+
+          <TabsContent value="team" className="mt-6">
+            <TechnicianPerformanceReport />
           </TabsContent>
         </Tabs>
       </div>
