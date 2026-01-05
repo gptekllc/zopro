@@ -1,6 +1,6 @@
 import { useState, useRef, ReactNode, TouchEvent, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, X } from "lucide-react";
 
 export interface SwipeAction {
   icon: ReactNode;
@@ -193,22 +193,37 @@ export function SwipeableCard({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClick={translateX !== 0 ? resetSwipe : undefined}
+        onClick={(e) => {
+          if (showTooltip) {
+            e.stopPropagation();
+            dismissTooltip();
+            return;
+          }
+          if (translateX !== 0) {
+            resetSwipe();
+          }
+        }}
       >
         {children}
 
         {/* Swipe Hint Tooltip */}
         {showTooltip && (
           <div 
-            className="absolute inset-0 flex items-center justify-end pointer-events-none sm:hidden animate-fade-in"
-            onClick={(e) => {
-              e.stopPropagation();
-              dismissTooltip();
-            }}
+            className="absolute inset-0 flex items-center justify-end bg-foreground/5 sm:hidden animate-fade-in"
           >
-            <div className="pointer-events-auto mr-3 flex items-center gap-1.5 bg-foreground/90 text-background px-3 py-1.5 rounded-full text-xs font-medium shadow-lg animate-[pulse_2s_ease-in-out_infinite]">
+            <div className="mr-3 flex items-center gap-1 bg-foreground/90 text-background pl-3 pr-1.5 py-1.5 rounded-full text-xs font-medium shadow-lg">
               <ChevronLeft className="w-3.5 h-3.5 animate-[slide-hint_1s_ease-in-out_infinite]" />
               <span>Swipe left for actions</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dismissTooltip();
+                }}
+                className="ml-1 p-0.5 rounded-full hover:bg-background/20 transition-colors"
+                aria-label="Dismiss hint"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         )}
