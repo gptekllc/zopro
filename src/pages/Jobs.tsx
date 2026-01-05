@@ -1401,7 +1401,6 @@ const Jobs = () => {
                           <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
                             {job.status.replace('_', ' ')}
                           </span>
-                          {(job.total ?? 0) > 0 && <span className="text-base font-semibold text-primary">${Number(job.total).toFixed(2)}</span>}
                           {/* Notification sent indicator */}
                           {(notificationCounts.get(job.id) || 0) > 0 && (
                             <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1">
@@ -1409,6 +1408,7 @@ const Jobs = () => {
                               Notified
                             </Badge>
                           )}
+                          {(job.total ?? 0) > 0 && <span className="text-base font-semibold text-primary">${Number(job.total).toFixed(2)}</span>}
                         </div>
                         
                         {/* Action Menu */}
