@@ -34,6 +34,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
+import MobileFAB from '@/components/layout/MobileFAB';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -277,6 +278,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
       {/* Mobile bottom navigation */}
       <MobileBottomNav />
+      
+      {/* Mobile FAB for quick create */}
+      <MobileFAB />
     </div>
   );
 };
