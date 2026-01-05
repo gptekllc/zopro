@@ -7,12 +7,43 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { DollarSign, TrendingDown, Hash, Calculator, Plus, MoreHorizontal, FileText, Download, Mail, Search, X, Loader2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  DollarSign,
+  TrendingDown,
+  Hash,
+  Calculator,
+  Plus,
+  MoreHorizontal,
+  FileText,
+  Download,
+  Mail,
+  Search,
+  X,
+  Loader2,
+} from 'lucide-react';
 import { PAYMENT_METHODS, RecordPaymentDialog, PaymentData } from '@/components/invoices/RecordPaymentDialog';
 import SelectInvoiceDialog from '@/components/reports/SelectInvoiceDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,15 +51,12 @@ import { toast } from 'sonner';
 import { formatAmount } from '@/lib/formatAmount';
 import { ReportEmailDialog } from './ReportEmailDialog';
 import { ScrollableTable } from '@/components/ui/scrollable-table';
+
 const formatCurrency = (amount: number) => `$${formatAmount(amount)}`;
+
 const TransactionsReport = () => {
-  const {
-    data: payments,
-    isLoading
-  } = useAllPayments();
-  const {
-    data: customers
-  } = useCustomers();
+  const { data: payments, isLoading } = useAllPayments();
+  const { data: customers } = useCustomers();
   const createPayment = useCreatePayment();
 
   // Filters
@@ -58,7 +86,8 @@ const TransactionsReport = () => {
   // Filter payments
   const filteredPayments = useMemo(() => {
     if (!payments) return [];
-    return payments.filter(payment => {
+
+    return payments.filter((payment) => {
       // Date filter
       if (startDate && new Date(payment.payment_date) < new Date(startDate)) return false;
       if (endDate && new Date(payment.payment_date) > new Date(endDate + 'T23:59:59')) return false;
@@ -79,25 +108,24 @@ const TransactionsReport = () => {
         const customerName = payment.invoice?.customer?.name?.toLowerCase() || '';
         if (!invoiceNumber.includes(query) && !customerName.includes(query)) return false;
       }
+
       return true;
     });
   }, [payments, startDate, endDate, customerId, paymentMethod, paymentStatus, searchQuery]);
 
   // Calculate summary stats
   const stats = useMemo(() => {
-    const completed = filteredPayments.filter(p => p.status === 'completed');
-    const refunded = filteredPayments.filter(p => p.status === 'refunded' || p.status === 'voided');
+    const completed = filteredPayments.filter((p) => p.status === 'completed');
+    const refunded = filteredPayments.filter((p) => p.status === 'refunded' || p.status === 'voided');
+
     const totalCollected = completed.reduce((sum, p) => sum + Number(p.amount), 0);
     const totalRefunded = refunded.reduce((sum, p) => sum + Number(p.amount), 0);
     const count = filteredPayments.length;
     const avgAmount = count > 0 ? totalCollected / completed.length : 0;
-    return {
-      totalCollected,
-      totalRefunded,
-      count,
-      avgAmount
-    };
+
+    return { totalCollected, totalRefunded, count, avgAmount };
   }, [filteredPayments]);
+
   const clearFilters = () => {
     setStartDate('');
     setEndDate('');
@@ -106,13 +134,24 @@ const TransactionsReport = () => {
     setPaymentStatus('all');
     setSearchQuery('');
   };
+
   const hasActiveFilters = startDate || endDate || customerId !== 'all' || paymentMethod !== 'all' || paymentStatus !== 'all' || searchQuery;
 
   // Export to CSV
   const exportToCSV = () => {
     if (filteredPayments.length === 0) return;
+
     const headers = ['Date', 'Invoice #', 'Customer', 'Method', 'Amount', 'Status', 'Notes'];
-    const rows = filteredPayments.map(payment => [format(new Date(payment.payment_date), 'yyyy-MM-dd'), payment.invoice?.invoice_number || '-', payment.invoice?.customer?.name || '-', getMethodLabel(payment.method), formatCurrency(payment.amount), payment.status, payment.notes || '']);
+    
+    const rows = filteredPayments.map(payment => [
+      format(new Date(payment.payment_date), 'yyyy-MM-dd'),
+      payment.invoice?.invoice_number || '-',
+      payment.invoice?.customer?.name || '-',
+      getMethodLabel(payment.method),
+      formatCurrency(payment.amount),
+      payment.status,
+      payment.notes || '',
+    ]);
 
     // Add summary row
     rows.push([]);
@@ -120,17 +159,23 @@ const TransactionsReport = () => {
     rows.push(['Total Collected', '', '', '', formatCurrency(stats.totalCollected), '', '']);
     rows.push(['Total Refunded', '', '', '', formatCurrency(stats.totalRefunded), '', '']);
     rows.push(['Transaction Count', '', '', '', stats.count.toString(), '', '']);
-    const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${cell}"`).join(','))].join('\n');
-    const blob = new Blob([csvContent], {
-      type: 'text/csv;charset=utf-8;'
-    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    const dateStr = startDate && endDate ? `${startDate}_to_${endDate}` : format(new Date(), 'yyyy-MM-dd');
+    const dateStr = startDate && endDate 
+      ? `${startDate}_to_${endDate}` 
+      : format(new Date(), 'yyyy-MM-dd');
     link.download = `transactions-${dateStr}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
   };
+
   const handleInvoiceSelected = (invoice: {
     id: string;
     invoice_number: string;
@@ -142,19 +187,23 @@ const TransactionsReport = () => {
     setSelectInvoiceOpen(false);
     setRecordPaymentOpen(true);
   };
+
   const handleRecordPayment = async (data: PaymentData) => {
     if (!selectedInvoice) return;
+
     await createPayment.mutateAsync({
       invoiceId: selectedInvoice.id,
       amount: data.amount,
       method: data.method,
       paymentDate: data.date,
       notes: data.note,
-      sendNotification: data.sendNotification
+      sendNotification: data.sendNotification,
     });
+
     setRecordPaymentOpen(false);
     setSelectedInvoice(null);
   };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -167,21 +216,18 @@ const TransactionsReport = () => {
         return <Badge variant="outline">{status}</Badge>;
     }
   };
+
   const getMethodLabel = (method: string) => {
-    return PAYMENT_METHODS.find(m => m.value === method)?.label || method;
+    return PAYMENT_METHODS.find((m) => m.value === method)?.label || method;
   };
+
   const handleDownloadReceipt = async (payment: PaymentWithDetails) => {
     setReceiptLoadingId(payment.id);
     try {
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('generate-payment-receipt', {
-        body: {
-          paymentId: payment.id,
-          action: 'download'
-        }
+      const { data, error } = await supabase.functions.invoke('generate-payment-receipt', {
+        body: { paymentId: payment.id, action: 'download' },
       });
+
       if (error) throw error;
 
       // Create blob and download
@@ -191,9 +237,8 @@ const TransactionsReport = () => {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
       const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], {
-        type: 'application/pdf'
-      });
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+      
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -202,6 +247,7 @@ const TransactionsReport = () => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
       toast.success('Receipt downloaded');
     } catch (err: any) {
       console.error('Error downloading receipt:', err);
@@ -210,17 +256,14 @@ const TransactionsReport = () => {
       setReceiptLoadingId(null);
     }
   };
+
   const handleEmailReceipt = async (payment: PaymentWithDetails) => {
     setReceiptLoadingId(payment.id);
     try {
-      const {
-        error
-      } = await supabase.functions.invoke('generate-payment-receipt', {
-        body: {
-          paymentId: payment.id,
-          action: 'email'
-        }
+      const { error } = await supabase.functions.invoke('generate-payment-receipt', {
+        body: { paymentId: payment.id, action: 'email' },
       });
+
       if (error) throw error;
       toast.success('Receipt emailed to customer');
     } catch (err: any) {
@@ -230,6 +273,7 @@ const TransactionsReport = () => {
       setReceiptLoadingId(null);
     }
   };
+
   const getDateRangeLabel = () => {
     if (startDate && endDate) {
       return `${format(new Date(startDate), 'MMM d, yyyy')} - ${format(new Date(endDate), 'MMM d, yyyy')}`;
@@ -240,13 +284,7 @@ const TransactionsReport = () => {
   };
 
   // Send email report
-  const sendReportEmail = async (emails: string[]): Promise<{
-    successful: string[];
-    failed: {
-      email: string;
-      reason: string;
-    }[];
-  }> => {
+  const sendReportEmail = async (emails: string[]): Promise<{ successful: string[]; failed: { email: string; reason: string }[] }> => {
     setIsSendingEmail(true);
     try {
       const reportData = {
@@ -257,7 +295,7 @@ const TransactionsReport = () => {
           totalCollected: formatAmount(stats.totalCollected),
           totalRefunded: formatAmount(stats.totalRefunded),
           transactionCount: stats.count,
-          avgAmount: formatAmount(stats.avgAmount)
+          avgAmount: formatAmount(stats.avgAmount),
         },
         transactions: filteredPayments.slice(0, 30).map(p => ({
           date: format(new Date(p.payment_date), 'MMM d, yyyy'),
@@ -265,68 +303,80 @@ const TransactionsReport = () => {
           customer: p.invoice?.customer?.name || '-',
           method: getMethodLabel(p.method),
           amount: formatAmount(p.amount),
-          status: p.status
-        }))
+          status: p.status,
+        })),
       };
-      const {
-        data,
-        error
-      } = await supabase.functions.invoke('send-report-email', {
-        body: {
-          to: emails,
+
+      const { data, error } = await supabase.functions.invoke('send-report-email', {
+        body: { 
+          to: emails, 
           reportType: 'transactions',
-          reportData
-        }
+          reportData 
+        },
       });
+
       if (error) throw error;
-      const result = data as {
-        successful: string[];
-        failed: {
-          email: string;
-          reason: string;
-        }[];
-      };
+
+      const result = data as { successful: string[]; failed: { email: string; reason: string }[] };
+      
       if (result.successful.length > 0) {
         toast.success(`Report sent to ${result.successful.length} recipient${result.successful.length !== 1 ? 's' : ''}`);
       }
       if (result.failed.length > 0) {
         toast.error(`Failed to send to ${result.failed.length} recipient${result.failed.length !== 1 ? 's' : ''}`);
       }
+
       return result;
     } catch (error: any) {
       console.error('Failed to send email:', error);
       toast.error('Failed to send email: ' + (error.message || 'Unknown error'));
-      return {
-        successful: [],
-        failed: emails.map(e => ({
-          email: e,
-          reason: error.message || 'Unknown error'
-        }))
-      };
+      return { successful: [], failed: emails.map(e => ({ email: e, reason: error.message || 'Unknown error' })) };
     } finally {
       setIsSendingEmail(false);
     }
   };
-  return <div className="space-y-6">
+
+  return (
+    <div className="space-y-6">
       {/* Header with Title, Search, and Actions */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-center gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <h2 className="text-xl font-semibold whitespace-nowrap">Payment History</h2>
-          
-        </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredPayments.length === 0}>
-            <Mail className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Email</span>
-          </Button>
-          <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredPayments.length === 0} className="hidden sm:inline-flex">
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-          <Button onClick={() => setSelectInvoiceOpen(true)} size="sm">
-            <Plus className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Record Payment</span>
-          </Button>
+      <div className="flex flex-col gap-4">
+        <h2 className="text-xl font-semibold text-center lg:hidden">Payment History</h2>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-center gap-4">
+          <h2 className="text-xl font-semibold whitespace-nowrap hidden lg:block">Payment History</h2>
+          <div className="relative w-full lg:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <div className="flex items-center justify-center lg:justify-end gap-2 lg:ml-auto">
+            <Button 
+              onClick={() => setEmailDialogOpen(true)} 
+              variant="outline" 
+              size="sm"
+              disabled={filteredPayments.length === 0}
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Email
+            </Button>
+            <Button 
+              onClick={exportToCSV} 
+              variant="outline" 
+              size="sm"
+              disabled={filteredPayments.length === 0}
+              className="hidden sm:inline-flex"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Record Payment
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -338,7 +388,11 @@ const TransactionsReport = () => {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold text-green-600">{formatCurrency(stats.totalCollected)}</div>}
+            {isLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <div className="text-2xl font-bold text-green-600">{formatCurrency(stats.totalCollected)}</div>
+            )}
           </CardContent>
         </Card>
 
@@ -348,7 +402,11 @@ const TransactionsReport = () => {
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold text-red-600">{formatCurrency(stats.totalRefunded)}</div>}
+            {isLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <div className="text-2xl font-bold text-red-600">{formatCurrency(stats.totalRefunded)}</div>
+            )}
           </CardContent>
         </Card>
 
@@ -358,7 +416,11 @@ const TransactionsReport = () => {
             <Hash className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{stats.count}</div>}
+            {isLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <div className="text-2xl font-bold">{stats.count}</div>
+            )}
           </CardContent>
         </Card>
 
@@ -368,7 +430,11 @@ const TransactionsReport = () => {
             <Calculator className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{formatCurrency(stats.avgAmount)}</div>}
+            {isLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <div className="text-2xl font-bold">{formatCurrency(stats.avgAmount)}</div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -381,12 +447,20 @@ const TransactionsReport = () => {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <div className="space-y-2">
               <Label>Start Date</Label>
-              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
             </div>
 
             <div className="space-y-2">
               <Label>End Date</Label>
-              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
             </div>
 
             <div className="space-y-2">
@@ -397,9 +471,11 @@ const TransactionsReport = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Customers</SelectItem>
-                  {customers?.map(c => <SelectItem key={c.id} value={c.id}>
+                  {customers?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
                       {c.name}
-                    </SelectItem>)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -412,9 +488,11 @@ const TransactionsReport = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Methods</SelectItem>
-                  {PAYMENT_METHODS.map(m => <SelectItem key={m.value} value={m.value}>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
                       {m.label}
-                    </SelectItem>)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -435,12 +513,14 @@ const TransactionsReport = () => {
             </div>
           </div>
 
-          {hasActiveFilters && <div className="flex justify-end">
+          {hasActiveFilters && (
+            <div className="flex justify-end">
               <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1">
                 <X className="w-4 h-4" />
                 Clear Filters
               </Button>
-            </div>}
+            </div>
+          )}
 
           {/* Transactions Table */}
           <ScrollableTable className="rounded-md border">
@@ -457,9 +537,9 @@ const TransactionsReport = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? Array.from({
-                length: 5
-              }).map((_, i) => <TableRow key={i}>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
@@ -467,11 +547,19 @@ const TransactionsReport = () => {
                       <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-                    </TableRow>) : filteredPayments.length === 0 ? <TableRow>
+                    </TableRow>
+                  ))
+                ) : filteredPayments.length === 0 ? (
+                  <TableRow>
                     <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                      {hasActiveFilters ? 'No payments match your filters' : 'No payments recorded yet'}
+                      {hasActiveFilters
+                        ? 'No payments match your filters'
+                        : 'No payments recorded yet'}
                     </TableCell>
-                  </TableRow> : filteredPayments.map(payment => <TableRow key={payment.id}>
+                  </TableRow>
+                ) : (
+                  filteredPayments.map((payment) => (
+                    <TableRow key={payment.id}>
                       <TableCell className="whitespace-nowrap">
                         {format(new Date(payment.payment_date), 'MMM d, yyyy')}
                       </TableCell>
@@ -490,22 +578,34 @@ const TransactionsReport = () => {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" disabled={receiptLoadingId === payment.id}>
-                              {receiptLoadingId === payment.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <MoreHorizontal className="w-4 h-4" />}
+                              {receiptLoadingId === payment.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <MoreHorizontal className="w-4 h-4" />
+                              )}
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleDownloadReceipt(payment)}>
+                            <DropdownMenuItem
+                              onClick={() => handleDownloadReceipt(payment)}
+                            >
                               <Download className="w-4 h-4 mr-2" />
                               Download Receipt
                             </DropdownMenuItem>
-                            {payment.invoice?.customer?.email && <DropdownMenuItem onClick={() => handleEmailReceipt(payment)}>
+                            {payment.invoice?.customer?.email && (
+                              <DropdownMenuItem
+                                onClick={() => handleEmailReceipt(payment)}
+                              >
                                 <Mail className="w-4 h-4 mr-2" />
                                 Email Receipt
-                              </DropdownMenuItem>}
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
-                    </TableRow>)}
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </ScrollableTable>
@@ -513,13 +613,36 @@ const TransactionsReport = () => {
       </Card>
 
       {/* Select Invoice Dialog */}
-      <SelectInvoiceDialog open={selectInvoiceOpen} onOpenChange={setSelectInvoiceOpen} onSelect={handleInvoiceSelected} />
+      <SelectInvoiceDialog
+        open={selectInvoiceOpen}
+        onOpenChange={setSelectInvoiceOpen}
+        onSelect={handleInvoiceSelected}
+      />
 
       {/* Record Payment Dialog */}
-      {selectedInvoice && <RecordPaymentDialog open={recordPaymentOpen} onOpenChange={setRecordPaymentOpen} invoiceTotal={selectedInvoice.total} remainingBalance={selectedInvoice.remainingBalance} invoiceNumber={selectedInvoice.invoice_number} customerEmail={selectedInvoice.customerEmail} onConfirm={handleRecordPayment} isLoading={createPayment.isPending} />}
+      {selectedInvoice && (
+        <RecordPaymentDialog
+          open={recordPaymentOpen}
+          onOpenChange={setRecordPaymentOpen}
+          invoiceTotal={selectedInvoice.total}
+          remainingBalance={selectedInvoice.remainingBalance}
+          invoiceNumber={selectedInvoice.invoice_number}
+          customerEmail={selectedInvoice.customerEmail}
+          onConfirm={handleRecordPayment}
+          isLoading={createPayment.isPending}
+        />
+      )}
 
       {/* Email Dialog */}
-      <ReportEmailDialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen} onSend={sendReportEmail} isSending={isSendingEmail} title="Email Transactions Report" />
-    </div>;
+      <ReportEmailDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        onSend={sendReportEmail}
+        isSending={isSendingEmail}
+        title="Email Transactions Report"
+      />
+    </div>
+  );
 };
+
 export default TransactionsReport;
