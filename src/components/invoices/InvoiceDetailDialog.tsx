@@ -13,7 +13,7 @@ import {
   FileDown, Mail, Edit, PenTool, Calendar, 
   DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
   ChevronRight, CheckCircle2, Copy, Briefcase, FileText, Link2, Send, Loader2,
-  List, Image as ImageIcon
+  List, Image as ImageIcon, CreditCard, Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -21,6 +21,8 @@ import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto, useUpdateInvoicePhotoType } from '@/hooks/useInvoicePhotos';
+import { usePayments, useDeletePayment, Payment } from '@/hooks/usePayments';
+import { PAYMENT_METHODS } from './RecordPaymentDialog';
 
 const INVOICE_STATUSES = ['draft', 'sent', 'paid'] as const;
 
@@ -136,6 +138,10 @@ export function InvoiceDetailDialog({
   const uploadPhoto = useUploadInvoicePhoto();
   const deletePhoto = useDeleteInvoicePhoto();
   const updatePhotoType = useUpdateInvoicePhotoType();
+  
+  // Fetch payments for this invoice
+  const { data: payments = [], isLoading: loadingPayments } = usePayments(invoice?.id || null);
+  const deletePayment = useDeletePayment();
 
   if (!invoice) return null;
 
@@ -143,6 +149,17 @@ export function InvoiceDetailDialog({
   const hasLateFee = invoice.late_fee_amount && Number(invoice.late_fee_amount) > 0;
   const canApplyLateFee = isOverdue && !hasLateFee && lateFeePercentage > 0;
   const linkedDocsCount = (linkedQuote ? 1 : 0) + (linkedJob ? 1 : 0);
+  
+  // Calculate payment totals
+  const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
+  const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const remainingBalance = Math.max(0, totalDue - totalPaid);
+  
+  // Helper to format payment method
+  const formatPaymentMethod = (method: string) => {
+    const found = PAYMENT_METHODS.find(m => m.value === method);
+    return found?.label || method;
+  };
 
   const handleUploadPhoto = async (file: File, photoType: 'before' | 'after' | 'other') => {
     await uploadPhoto.mutateAsync({
@@ -345,7 +362,7 @@ export function InvoiceDetailDialog({
 
               {/* Totals */}
               <div className="flex justify-end">
-                <div className="w-full sm:w-56 space-y-1">
+                <div className="w-full sm:w-64 space-y-1">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>${Number(invoice.subtotal).toLocaleString()}</span>
@@ -359,26 +376,32 @@ export function InvoiceDetailDialog({
                     <span>${Number(invoice.total).toLocaleString()}</span>
                   </div>
                   {hasLateFee && (
-                    <>
-                      <div className="flex justify-between text-sm text-destructive">
-                        <span className="flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" />
-                          Late Fee {lateFeePercentage > 0 && `(${lateFeePercentage}%)`}
-                        </span>
-                        <span>+${Number(invoice.late_fee_amount).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-base sm:text-lg pt-2 border-t border-destructive/30">
-                        <span className="flex items-center gap-1 text-destructive"><DollarSign className="w-4 h-4" />Total Due</span>
-                        <span className="text-destructive">${(Number(invoice.total) + Number(invoice.late_fee_amount)).toLocaleString()}</span>
-                      </div>
-                    </>
-                  )}
-                  {!hasLateFee && (
-                    <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
-                      <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
-                      <span>${Number(invoice.total).toLocaleString()}</span>
+                    <div className="flex justify-between text-sm text-destructive">
+                      <span className="flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Late Fee {lateFeePercentage > 0 && `(${lateFeePercentage}%)`}
+                      </span>
+                      <span>+${Number(invoice.late_fee_amount).toFixed(2)}</span>
                     </div>
                   )}
+                  {totalPaid > 0 && (
+                    <div className="flex justify-between text-sm text-green-600 dark:text-green-400">
+                      <span className="flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        Paid
+                      </span>
+                      <span>-${totalPaid.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className={`flex justify-between font-bold text-base sm:text-lg pt-2 border-t ${remainingBalance > 0 && invoice.status !== 'paid' ? 'border-destructive/30' : ''}`}>
+                    <span className="flex items-center gap-1">
+                      <DollarSign className="w-4 h-4" />
+                      {remainingBalance > 0 && invoice.status !== 'paid' ? 'Balance Due' : 'Total'}
+                    </span>
+                    <span className={remainingBalance > 0 && invoice.status !== 'paid' ? 'text-destructive' : ''}>
+                      ${remainingBalance > 0 ? remainingBalance.toFixed(2) : totalDue.toFixed(2)}
+                    </span>
+                  </div>
                   {canApplyLateFee && onApplyLateFee && (
                     <Button
                       variant="destructive"
@@ -394,11 +417,65 @@ export function InvoiceDetailDialog({
                 </div>
               </div>
 
+              {/* Payment History */}
+              {payments.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      Payment History ({payments.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {payments.map((payment) => (
+                        <div key={payment.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 px-3 bg-green-50 dark:bg-green-900/20 rounded text-sm">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-3 h-3 text-green-600 dark:text-green-400 shrink-0" />
+                            <span className="font-medium text-green-700 dark:text-green-400">
+                              ${Number(payment.amount).toFixed(2)}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              {formatPaymentMethod(payment.method)}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {payment.recorded_by_profile?.full_name && (
+                              <span>by {payment.recorded_by_profile.full_name}</span>
+                            )}
+                            <span>{format(new Date(payment.payment_date), 'MMM d, yyyy')}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={() => deletePayment.mutate({ paymentId: payment.id, invoiceId: invoice.id })}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
               {/* Payment Status Banner */}
-              {invoice.status === 'paid' ? (
+              {invoice.status === 'paid' || (totalPaid > 0 && remainingBalance === 0) ? (
                 <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-700 dark:text-green-400">
                   <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                  <span className="font-medium text-xs sm:text-sm">Payment received on {format(new Date(invoice.paid_at!), 'MMM d, yyyy')}</span>
+                  <span className="font-medium text-xs sm:text-sm">
+                    {invoice.paid_at 
+                      ? `Paid in full on ${format(new Date(invoice.paid_at), 'MMM d, yyyy')}`
+                      : 'Paid in full'
+                    }
+                  </span>
+                </div>
+              ) : totalPaid > 0 ? (
+                <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg text-yellow-700 dark:text-yellow-400">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                  <span className="font-medium text-xs sm:text-sm">
+                    Partial payment received - ${remainingBalance.toFixed(2)} remaining
+                  </span>
                 </div>
               ) : invoice.due_date && new Date(invoice.due_date) < new Date() ? (
                 <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-700 dark:text-red-400">

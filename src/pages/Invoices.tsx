@@ -3,6 +3,7 @@ import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useInvoices, useCreateInvoice, useUpdateInvoice, useDeleteInvoice, useApplyLateFee, useArchiveInvoice, useUnarchiveInvoice, isInvoiceOverdue, getTotalWithLateFee, Invoice, useSendPaymentReminder, useInvoiceReminders } from "@/hooks/useInvoices";
+import { useCreatePayment, useInvoiceBalance } from "@/hooks/usePayments";
 import { PullToRefresh } from "@/components/ui/pull-to-refresh";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useProfiles } from "@/hooks/useProfiles";
@@ -82,6 +83,7 @@ const Invoices = () => {
   const signInvoice = useSignInvoice();
   const sendSignatureRequest = useSendSignatureRequest();
   const sendPaymentReminder = useSendPaymentReminder();
+  const createPayment = useCreatePayment();
   const {
     saveScrollPosition,
     restoreScrollPosition
@@ -121,6 +123,9 @@ const Invoices = () => {
   const {
     data: invoiceReminders = []
   } = useInvoiceReminders(viewingInvoice?.id || null);
+  
+  // Fetch balance for pending payment invoice
+  const { data: pendingInvoiceBalance } = useInvoiceBalance(pendingPaymentInvoice?.id || null);
   
   // Fetch photos for the currently viewed invoice
   const { data: viewingInvoicePhotos = [] } = useInvoicePhotos(viewingInvoice?.id || null);
@@ -371,28 +376,28 @@ const Invoices = () => {
   // Callback when payment is recorded
   const handleRecordPayment = async (paymentData: PaymentData) => {
     if (!pendingPaymentInvoice) return;
+    
+    // Get customer info for notification
+    const customer = customers.find(c => c.id === pendingPaymentInvoice.customer_id);
+    
     try {
-      await updateInvoice.mutateAsync({
-        id: pendingPaymentInvoice.id,
-        status: "paid",
-        paid_at: paymentData.date.toISOString(),
-        notes: pendingPaymentInvoice.notes 
-          ? `${pendingPaymentInvoice.notes}\n\nPayment: ${paymentData.method} - $${paymentData.amount.toFixed(2)}${paymentData.note ? ` - ${paymentData.note}` : ''}`
-          : `Payment: ${paymentData.method} - $${paymentData.amount.toFixed(2)}${paymentData.note ? ` - ${paymentData.note}` : ''}`
+      await createPayment.mutateAsync({
+        invoiceId: pendingPaymentInvoice.id,
+        amount: paymentData.amount,
+        method: paymentData.method,
+        paymentDate: paymentData.date,
+        notes: paymentData.note || undefined,
+        sendNotification: paymentData.sendNotification,
       });
-      toast.success("Payment recorded successfully");
-      // Update viewing invoice if it's open
+      
+      // Refresh viewing invoice if it's open
       if (viewingInvoice?.id === pendingPaymentInvoice.id) {
-        setViewingInvoice({
-          ...viewingInvoice,
-          status: "paid",
-          paid_at: paymentData.date.toISOString()
-        } as any);
+        refetchInvoices();
       }
       setRecordPaymentDialogOpen(false);
       setPendingPaymentInvoice(null);
     } catch (error) {
-      toast.error("Failed to record payment");
+      // Error is handled by the hook
     }
   };
 
@@ -1238,9 +1243,11 @@ const Invoices = () => {
           if (!open) setPendingPaymentInvoice(null);
         }}
         invoiceTotal={pendingPaymentInvoice ? getTotalWithLateFee(pendingPaymentInvoice) : 0}
+        remainingBalance={pendingInvoiceBalance?.remaining}
         invoiceNumber={pendingPaymentInvoice?.invoice_number || ""}
+        customerEmail={pendingPaymentInvoice ? customers.find(c => c.id === pendingPaymentInvoice.customer_id)?.email : null}
         onConfirm={handleRecordPayment}
-        isLoading={updateInvoice.isPending}
+        isLoading={createPayment.isPending}
       />
 
       <Button className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50" onClick={() => openEditDialog(true)}>
