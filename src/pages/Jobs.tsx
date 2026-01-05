@@ -1595,7 +1595,94 @@ const Jobs = () => {
                 </DialogTitle>
               </DialogHeader>
               
-               <Tabs defaultValue="details" className="mt-2 sm:mt-4">
+              {/* Basic Info - responsive grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mt-4">
+                <div>
+                  <Label className="text-muted-foreground text-xs sm:text-sm">Customer</Label>
+                  <p className="font-medium text-sm sm:text-base truncate">{viewingJob.customer?.name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs sm:text-sm">Status</Label>
+                  <div className="mt-0.5">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Badge className={`${getStatusColor(viewingJob.status)} cursor-pointer hover:opacity-80 transition-opacity`}>
+                          {viewingJob.status.replace('_', ' ')}
+                          <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                        </Badge>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="bg-popover z-50">
+                        {JOB_STATUSES.map(status => (
+                          <DropdownMenuItem
+                            key={status}
+                            onClick={() => {
+                              handleStatusChange(viewingJob.id, status);
+                              setViewingJob(prev => prev ? { ...prev, status } : null);
+                            }}
+                            disabled={viewingJob.status === status}
+                            className={viewingJob.status === status ? 'bg-accent' : ''}
+                          >
+                            <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
+                              {status.replace('_', ' ')}
+                            </Badge>
+                            {viewingJob.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground text-xs sm:text-sm">Priority</Label>
+                  <div className="mt-0.5">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Badge className={`${getPriorityColor(viewingJob.priority)} cursor-pointer hover:opacity-80 transition-opacity`}>
+                          {viewingJob.priority}
+                          <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                        </Badge>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="bg-popover z-50">
+                        {JOB_PRIORITIES.map(priority => (
+                          <DropdownMenuItem
+                            key={priority}
+                            onClick={() => {
+                              handlePriorityChange(viewingJob.id, priority);
+                              setViewingJob(prev => prev ? { ...prev, priority } : null);
+                            }}
+                            disabled={viewingJob.priority === priority}
+                            className={viewingJob.priority === priority ? 'bg-accent' : ''}
+                          >
+                            <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
+                              {priority}
+                            </Badge>
+                            {viewingJob.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+                {viewingJob.assignee?.full_name && <div>
+                    <Label className="text-muted-foreground text-xs sm:text-sm">Assigned To</Label>
+                    <p className="font-medium text-sm sm:text-base truncate">{viewingJob.assignee.full_name}</p>
+                  </div>}
+                {viewingJob.scheduled_start && <div>
+                    <Label className="text-muted-foreground text-xs sm:text-sm">Scheduled Start</Label>
+                    <p className="font-medium text-sm sm:text-base">{format(new Date(viewingJob.scheduled_start), 'MMM d, yyyy h:mm a')}</p>
+                  </div>}
+                {viewingJob.scheduled_end && <div>
+                    <Label className="text-muted-foreground text-xs sm:text-sm">Scheduled End</Label>
+                    <p className="font-medium text-sm sm:text-base">{format(new Date(viewingJob.scheduled_end), 'MMM d, yyyy h:mm a')}</p>
+                  </div>}
+              </div>
+              
+              {viewingJob.description && <div className="mt-4">
+                  <Label className="text-muted-foreground text-xs sm:text-sm">Description</Label>
+                  <p className="mt-1 text-sm">{viewingJob.description}</p>
+                </div>}
+
+               <Tabs defaultValue="details" className="mt-4">
                  <TabsList className="flex-wrap h-auto gap-1 p-1">
                    <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-3">Details</TabsTrigger>
                    <TabsTrigger value="linked" className="text-xs sm:text-sm px-2 sm:px-3">
@@ -1605,92 +1692,6 @@ const Jobs = () => {
                  </TabsList>
                 
                 <TabsContent value="details" className="space-y-6 mt-4">
-                  {/* Basic Info - responsive grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                    <div>
-                      <Label className="text-muted-foreground text-xs sm:text-sm">Customer</Label>
-                      <p className="font-medium text-sm sm:text-base truncate">{viewingJob.customer?.name}</p>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs sm:text-sm">Status</Label>
-                      <div className="mt-0.5">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Badge className={`${getStatusColor(viewingJob.status)} cursor-pointer hover:opacity-80 transition-opacity`}>
-                              {viewingJob.status.replace('_', ' ')}
-                              <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                            </Badge>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="bg-popover z-50">
-                            {JOB_STATUSES.map(status => (
-                              <DropdownMenuItem
-                                key={status}
-                                onClick={() => {
-                                  handleStatusChange(viewingJob.id, status);
-                                  setViewingJob(prev => prev ? { ...prev, status } : null);
-                                }}
-                                disabled={viewingJob.status === status}
-                                className={viewingJob.status === status ? 'bg-accent' : ''}
-                              >
-                                <Badge className={`${getStatusColor(status)} mr-2`} variant="outline">
-                                  {status.replace('_', ' ')}
-                                </Badge>
-                                {viewingJob.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-muted-foreground text-xs sm:text-sm">Priority</Label>
-                      <div className="mt-0.5">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Badge className={`${getPriorityColor(viewingJob.priority)} cursor-pointer hover:opacity-80 transition-opacity`}>
-                              {viewingJob.priority}
-                              <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                            </Badge>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="start" className="bg-popover z-50">
-                            {JOB_PRIORITIES.map(priority => (
-                              <DropdownMenuItem
-                                key={priority}
-                                onClick={() => {
-                                  handlePriorityChange(viewingJob.id, priority);
-                                  setViewingJob(prev => prev ? { ...prev, priority } : null);
-                                }}
-                                disabled={viewingJob.priority === priority}
-                                className={viewingJob.priority === priority ? 'bg-accent' : ''}
-                              >
-                                <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
-                                  {priority}
-                                </Badge>
-                                {viewingJob.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                    {viewingJob.assignee?.full_name && <div>
-                        <Label className="text-muted-foreground text-xs sm:text-sm">Assigned To</Label>
-                        <p className="font-medium text-sm sm:text-base truncate">{viewingJob.assignee.full_name}</p>
-                      </div>}
-                    {viewingJob.scheduled_start && <div>
-                        <Label className="text-muted-foreground text-xs sm:text-sm">Scheduled Start</Label>
-                        <p className="font-medium text-sm sm:text-base">{format(new Date(viewingJob.scheduled_start), 'MMM d, yyyy h:mm a')}</p>
-                      </div>}
-                    {viewingJob.scheduled_end && <div>
-                        <Label className="text-muted-foreground text-xs sm:text-sm">Scheduled End</Label>
-                        <p className="font-medium text-sm sm:text-base">{format(new Date(viewingJob.scheduled_end), 'MMM d, yyyy h:mm a')}</p>
-                      </div>}
-                  </div>
-                  
-                  {viewingJob.description && <div>
-                      <Label className="text-muted-foreground text-xs sm:text-sm">Description</Label>
-                      <p className="mt-1 text-sm">{viewingJob.description}</p>
-                    </div>}
 
                   {/* Line Items Section */}
                   <div className="space-y-3">
