@@ -444,17 +444,17 @@ const TechnicianPerformanceReport = () => {
     <div className="space-y-6">
       {/* Header with filters and export */}
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap justify-center gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search team members..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+            <div className="relative w-full sm:w-auto sm:min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search team members..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <Select value={timeRange} onValueChange={setTimeRange}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Time range" />
@@ -520,6 +520,8 @@ const TechnicianPerformanceReport = () => {
                 </Popover>
               </>
             )}
+          </div>
+          <div className="flex items-center justify-center lg:justify-end gap-2">
             <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredData.length === 0}>
               <Mail className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Email</span>
