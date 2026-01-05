@@ -804,10 +804,10 @@ const MonthlySummaryReport = () => {
                 <Bar dataKey="completedJobs" name="Jobs Completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               )}
               {selectedTypes.includes('quotes') && (
-                <Bar dataKey="sentQuotes" name="Quotes Sent" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="sentQuotes" name="Quotes Sent" fill="#f97316" radius={[4, 4, 0, 0]} />
               )}
               {selectedTypes.includes('invoices') && (
-                <Bar dataKey="generatedInvoices" name="Invoices" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="generatedInvoices" name="Invoices" fill="#22c55e" radius={[4, 4, 0, 0]} />
               )}
             </BarChart>
           </ResponsiveContainer>
