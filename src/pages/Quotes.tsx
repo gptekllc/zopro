@@ -44,6 +44,8 @@ import { QuoteTemplate } from '@/hooks/useQuoteTemplates';
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
 import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
 import { QuoteListCard } from '@/components/quotes/QuoteListCard';
+import { useSwipeHint } from "@/components/ui/swipeable-card";
+
 const Quotes = () => {
   const {
     profile
@@ -156,6 +158,9 @@ const Quotes = () => {
   const [viewSignatureOpen, setViewSignatureOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [archiveConfirmQuote, setArchiveConfirmQuote] = useState<Quote | null>(null);
+  
+  // Swipe hint for first-time users
+  const { showHint: showSwipeHint, dismissHint: dismissSwipeHint } = useSwipeHint("quotes-swipe-hint-shown");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
   const [viewingQuote, setViewingQuote] = useState<typeof quotes[0] | null>(null);
@@ -841,7 +846,7 @@ const Quotes = () => {
       await refetchQuotes();
     }} className="sm:contents">
       <div className="space-y-3 lg:max-w-4xl lg:mx-auto">
-        {visibleQuotes.map(quote => (
+        {visibleQuotes.map((quote, index) => (
           <QuoteListCard
             key={quote.id}
             quote={quote}
@@ -862,6 +867,8 @@ const Quotes = () => {
             onUnarchive={handleUnarchiveQuote}
             onDelete={handleDeleteClick}
             onStatusChange={handleStatusChange}
+            showSwipeHint={index === 0 && showSwipeHint}
+            onSwipeHintDismiss={dismissSwipeHint}
           />
         ))}
         {filteredQuotes.length === 0 && <Card>

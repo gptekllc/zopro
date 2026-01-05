@@ -66,6 +66,8 @@ interface JobListCardProps {
   convertToInvoiceIsPending?: boolean;
   convertToQuoteIsPending?: boolean;
   unarchiveIsPending?: boolean;
+  showSwipeHint?: boolean;
+  onSwipeHintDismiss?: () => void;
 }
 
 export function JobListCard({
@@ -93,6 +95,8 @@ export function JobListCard({
   convertToInvoiceIsPending = false,
   convertToQuoteIsPending = false,
   unarchiveIsPending = false,
+  showSwipeHint = false,
+  onSwipeHintDismiss,
 }: JobListCardProps) {
   const signatureId = (job as any).completion_signature_id as string | undefined;
 
@@ -322,6 +326,8 @@ export function JobListCard({
       actionsMenu={actionsMenu}
       icon={icon}
       swipeRightActions={swipeRightActions}
+      showSwipeHint={showSwipeHint}
+      onSwipeHintDismiss={onSwipeHintDismiss}
     />
   );
 }

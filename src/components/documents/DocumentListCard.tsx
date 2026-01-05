@@ -23,6 +23,9 @@ interface DocumentListCardProps {
   // Swipe actions for mobile
   swipeLeftActions?: SwipeAction[];
   swipeRightActions?: SwipeAction[];
+  // Swipe hint for first-time users
+  showSwipeHint?: boolean;
+  onSwipeHintDismiss?: () => void;
 }
 
 export function DocumentListCard({
@@ -40,6 +43,8 @@ export function DocumentListCard({
   icon,
   swipeLeftActions = [],
   swipeRightActions = [],
+  showSwipeHint = false,
+  onSwipeHintDismiss,
 }: DocumentListCardProps) {
   const hasSwipeActions = swipeLeftActions.length > 0 || swipeRightActions.length > 0;
 
@@ -175,6 +180,8 @@ export function DocumentListCard({
       <SwipeableCard
         leftActions={swipeLeftActions}
         rightActions={swipeRightActions}
+        showHint={showSwipeHint}
+        onHintDismiss={onSwipeHintDismiss}
       >
         {cardContent}
       </SwipeableCard>

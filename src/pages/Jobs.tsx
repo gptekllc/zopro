@@ -52,6 +52,8 @@ import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/compon
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { ConvertJobToInvoiceDialog } from '@/components/jobs/ConvertJobToInvoiceDialog';
 import { JobListCard } from '@/components/jobs/JobListCard';
+import { useSwipeHint } from "@/components/ui/swipeable-card";
+
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
@@ -188,6 +190,9 @@ const Jobs = () => {
   const [saveAsTemplateJob, setSaveAsTemplateJob] = useState<Job | null>(null);
   const [createQuoteConfirmJob, setCreateQuoteConfirmJob] = useState<Job | null>(null);
   const [createInvoiceConfirmJob, setCreateInvoiceConfirmJob] = useState<Job | null>(null);
+
+  // Swipe hint for first-time users
+  const { showHint: showSwipeHint, dismissHint: dismissSwipeHint } = useSwipeHint("jobs-swipe-hint-shown");
 
   const viewingJobInvoices = useMemo(() => {
     if (!viewingJob) return [] as Invoice[];
@@ -1139,7 +1144,7 @@ const Jobs = () => {
               <CardContent className="py-8 text-center text-muted-foreground">
                 No jobs found
               </CardContent>
-            </Card> : visibleJobs.map(job => (
+            </Card> : visibleJobs.map((job, index) => (
               <JobListCard
                 key={job.id}
                 job={job}
@@ -1166,6 +1171,8 @@ const Jobs = () => {
                 convertToInvoiceIsPending={convertToInvoice.isPending}
                 convertToQuoteIsPending={convertToQuote.isPending}
                 unarchiveIsPending={unarchiveJob.isPending}
+                showSwipeHint={index === 0 && showSwipeHint}
+                onSwipeHintDismiss={dismissSwipeHint}
               />
             ))}
           {/* Infinite scroll trigger */}
