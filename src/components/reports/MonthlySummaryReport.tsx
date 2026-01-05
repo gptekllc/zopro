@@ -468,7 +468,7 @@ const MonthlySummaryReport = () => {
     <div className="space-y-6">
       {/* Time Range Selector and Export */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center lg:justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap justify-end sm:justify-start">
+        <div className="flex items-center gap-2 flex-wrap justify-end sm:ml-auto">
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-[140px] sm:w-[180px]">
               <SelectValue placeholder="Select range" />
@@ -543,35 +543,10 @@ const MonthlySummaryReport = () => {
             </PopoverContent>
           </Popover>
 
-          {/* Mobile Actions Dropdown */}
+          {/* Mobile & Tablet Actions Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="sm:hidden">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-popover">
-              <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={monthlyData.length === 0}>
-                <Mail className="w-4 h-4 mr-2" />
-                Email
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={printReport} disabled={monthlyData.length === 0}>
-                <Printer className="w-4 h-4 mr-2" />
-                Print/PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToCSV} disabled={monthlyData.length === 0}>
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        {/* Tablet: Actions Dropdown */}
-        <div className="hidden sm:flex lg:hidden items-center justify-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" className="lg:hidden">
                 <MoreVertical className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
