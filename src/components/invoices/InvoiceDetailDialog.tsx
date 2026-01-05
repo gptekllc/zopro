@@ -232,19 +232,21 @@ export function InvoiceDetailDialog({
     setRefundDialogOpen(true);
   };
 
-  const handleConfirmRefund = async (reason: string) => {
+  const handleConfirmRefund = async (reason: string, sendNotification: boolean) => {
     if (!refundPayment_) return;
     if (refundAction === 'refund') {
       await refundPayment.mutateAsync({
         paymentId: refundPayment_.id,
         invoiceId: invoice.id,
         reason,
+        sendNotification,
       });
     } else {
       await voidPayment.mutateAsync({
         paymentId: refundPayment_.id,
         invoiceId: invoice.id,
         reason,
+        sendNotification,
       });
     }
     setRefundDialogOpen(false);
@@ -854,6 +856,7 @@ export function InvoiceDetailDialog({
         action={refundAction}
         onConfirm={handleConfirmRefund}
         isLoading={refundPayment.isPending || voidPayment.isPending}
+        customerHasEmail={!!customerEmail}
       />
     </Dialog>
   );
