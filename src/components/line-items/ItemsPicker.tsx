@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useActiveCatalogItems, CatalogItem } from '@/hooks/useCatalog';
+import { useActiveItems, Item } from '@/hooks/useItems';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -8,12 +8,12 @@ import { formatAmount } from '@/lib/formatAmount';
 
 interface ItemsPickerProps {
   type: 'product' | 'service';
-  onSelect: (item: CatalogItem) => void;
+  onSelect: (item: Item) => void;
 }
 
 export const ItemsPicker = ({ type, onSelect }: ItemsPickerProps) => {
   const [open, setOpen] = useState(false);
-  const { data: items = [] } = useActiveCatalogItems();
+  const { data: items = [] } = useActiveItems();
 
   const filteredItems = items.filter(item => item.type === type);
 
@@ -21,7 +21,7 @@ export const ItemsPicker = ({ type, onSelect }: ItemsPickerProps) => {
     return null;
   }
 
-  const handleSelect = (item: CatalogItem) => {
+  const handleSelect = (item: Item) => {
     onSelect(item);
     setOpen(false);
   };

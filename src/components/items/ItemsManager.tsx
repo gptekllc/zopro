@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useCatalogItems, useCreateCatalogItem, useUpdateCatalogItem, useDeleteCatalogItem, CatalogItem } from '@/hooks/useCatalog';
+import { useItems, useCreateItem, useUpdateItem, useDeleteItem, Item } from '@/hooks/useItems';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,14 +34,14 @@ interface ImportPreviewItem {
 }
 
 export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsManagerProps) => {
-  const { data: items = [], isLoading } = useCatalogItems();
-  const createItem = useCreateCatalogItem();
-  const updateItem = useUpdateCatalogItem();
-  const deleteItem = useDeleteCatalogItem();
+  const { data: items = [], isLoading } = useItems();
+  const createItem = useCreateItem();
+  const updateItem = useUpdateItem();
+  const deleteItem = useDeleteItem();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
-  const [deleteConfirmItem, setDeleteConfirmItem] = useState<CatalogItem | null>(null);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<Item | null>(null);
   const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
   
   // Import/Export state
@@ -93,7 +93,7 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
     setDialogOpen(true);
   };
 
-  const openEditDialog = (item: CatalogItem) => {
+  const openEditDialog = (item: Item) => {
     setFormData({
       name: item.name,
       description: item.description || '',
@@ -125,11 +125,11 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
     }
   };
 
-  const handleToggleActive = async (item: CatalogItem) => {
+  const handleToggleActive = async (item: Item) => {
     await updateItem.mutateAsync({ id: item.id, is_active: !item.is_active });
   };
 
-  const handleDuplicate = async (item: CatalogItem) => {
+  const handleDuplicate = async (item: Item) => {
     await createItem.mutateAsync({
       name: `${item.name} (Copy)`,
       description: item.description || null,
@@ -289,7 +289,7 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
     setImportExportOpen(false);
   };
 
-  const renderItemCard = (item: CatalogItem) => (
+  const renderItemCard = (item: Item) => (
     <div
       key={item.id}
       className={`flex items-center justify-between p-3 rounded-lg border ${
