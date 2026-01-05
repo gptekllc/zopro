@@ -193,6 +193,7 @@ export function useCreatePayment() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['all-payments'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       if (data.isFullyPaid) {
         toast.success('Payment recorded - Invoice fully paid!');
