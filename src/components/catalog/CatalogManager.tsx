@@ -7,12 +7,22 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Package, Wrench, Loader2, Upload, Download, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, Wrench, Loader2, Upload, Download, FileText, EyeOff } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 import { toast } from 'sonner';
+
+interface ParsedImportItem {
+  name: string;
+  description: string;
+  type: 'product' | 'service';
+  unit_price: number;
+  is_active: boolean;
+  existingId?: string;
+}
 
 export const CatalogManager = () => {
   const { data: items = [], isLoading } = useCatalogItems();
@@ -25,6 +35,15 @@ export const CatalogManager = () => {
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<CatalogItem | null>(null);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Import preview state
+  const [importPreviewOpen, setImportPreviewOpen] = useState(false);
+  const [parsedImportItems, setParsedImportItems] = useState<ParsedImportItem[]>([]);
+  
+  // Bulk selection state
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [bulkDeactivateOpen, setBulkDeactivateOpen] = useState(false);
+  const [bulkProcessing, setBulkProcessing] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -86,6 +105,49 @@ export const CatalogManager = () => {
     }
   };
 
+  // Bulk selection handlers
+  const toggleItemSelection = (itemId: string) => {
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleSelectAll = (itemList: CatalogItem[]) => {
+    const allSelected = itemList.every(item => selectedItems.has(item.id));
+    setSelectedItems(prev => {
+      const newSet = new Set(prev);
+      if (allSelected) {
+        itemList.forEach(item => newSet.delete(item.id));
+      } else {
+        itemList.forEach(item => newSet.add(item.id));
+      }
+      return newSet;
+    });
+  };
+
+  const handleBulkDeactivate = async () => {
+    setBulkProcessing(true);
+    try {
+      const promises = Array.from(selectedItems).map(id =>
+        updateItem.mutateAsync({ id, is_active: false })
+      );
+      await Promise.all(promises);
+      toast.success(`Deactivated ${selectedItems.size} items`);
+      setSelectedItems(new Set());
+      setBulkDeactivateOpen(false);
+    } catch (error) {
+      toast.error('Failed to deactivate some items');
+    } finally {
+      setBulkProcessing(false);
+    }
+  };
+
   // CSV Export
   const handleExportCSV = () => {
     if (items.length === 0) {
@@ -144,12 +206,37 @@ export const CatalogManager = () => {
     toast.success('Template downloaded');
   };
 
-  // CSV Import with duplicate detection
-  const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Parse CSV row helper
+  const parseCSVRow = (row: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < row.length; i++) {
+      const char = row[i];
+      if (char === '"') {
+        if (inQuotes && row[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  // CSV Import - Parse and show preview
+  const handleSelectCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setImporting(true);
     try {
       const text = await file.text();
       const lines = text.split('\n').filter(line => line.trim());
@@ -172,50 +259,19 @@ export const CatalogManager = () => {
         return;
       }
 
-      // Parse rows
-      const parseCSVRow = (row: string): string[] => {
-        const result: string[] = [];
-        let current = '';
-        let inQuotes = false;
-        
-        for (let i = 0; i < row.length; i++) {
-          const char = row[i];
-          if (char === '"') {
-            if (inQuotes && row[i + 1] === '"') {
-              current += '"';
-              i++;
-            } else {
-              inQuotes = !inQuotes;
-            }
-          } else if (char === ',' && !inQuotes) {
-            result.push(current.trim());
-            current = '';
-          } else {
-            current += char;
-          }
-        }
-        result.push(current.trim());
-        return result;
-      };
-
       // Build a map of existing items by name (case-insensitive)
       const existingByName = new Map<string, CatalogItem>();
       items.forEach(item => {
         existingByName.set(item.name.toLowerCase().trim(), item);
       });
 
-      let created = 0;
-      let updated = 0;
-      let skipped = 0;
+      const parsed: ParsedImportItem[] = [];
 
       for (let i = 1; i < lines.length; i++) {
         const values = parseCSVRow(lines[i]);
         const name = values[nameIdx]?.trim();
         
-        if (!name) {
-          skipped++;
-          continue;
-        }
+        if (!name) continue;
 
         const description = descIdx !== -1 ? values[descIdx]?.trim() || '' : '';
         const typeValue = typeIdx !== -1 ? values[typeIdx]?.trim().toLowerCase() : 'service';
@@ -225,31 +281,65 @@ export const CatalogManager = () => {
 
         const existingItem = existingByName.get(name.toLowerCase().trim());
 
+        parsed.push({
+          name,
+          description,
+          type,
+          unit_price,
+          is_active,
+          existingId: existingItem?.id,
+        });
+      }
+
+      if (parsed.length === 0) {
+        toast.error('No valid items found in CSV');
+        return;
+      }
+
+      setParsedImportItems(parsed);
+      setImportPreviewOpen(true);
+    } catch (error) {
+      console.error('CSV parse error:', error);
+      toast.error('Failed to parse CSV file');
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Execute the actual import
+  const handleConfirmImport = async () => {
+    setImporting(true);
+    let created = 0;
+    let updated = 0;
+    let skipped = 0;
+
+    try {
+      for (const item of parsedImportItems) {
         try {
-          if (existingItem) {
-            // Update existing item
+          if (item.existingId) {
             await updateItem.mutateAsync({
-              id: existingItem.id,
-              name,
-              description: description || null,
-              type,
-              unit_price,
-              is_active,
+              id: item.existingId,
+              name: item.name,
+              description: item.description || null,
+              type: item.type,
+              unit_price: item.unit_price,
+              is_active: item.is_active,
             });
             updated++;
           } else {
-            // Create new item
             await createItem.mutateAsync({
-              name,
-              description: description || null,
-              type,
-              unit_price,
-              is_active,
+              name: item.name,
+              description: item.description || null,
+              type: item.type,
+              unit_price: item.unit_price,
+              is_active: item.is_active,
             });
             created++;
           }
         } catch (error) {
-          console.error('Failed to import item:', name, error);
+          console.error('Failed to import item:', item.name, error);
           skipped++;
         }
       }
@@ -260,33 +350,43 @@ export const CatalogManager = () => {
       if (skipped > 0) messages.push(`${skipped} skipped`);
       toast.success(`Import complete: ${messages.join(', ')}`);
     } catch (error) {
-      console.error('CSV import error:', error);
-      toast.error('Failed to parse CSV file');
+      console.error('Import error:', error);
+      toast.error('Import failed');
     } finally {
       setImporting(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
+      setImportPreviewOpen(false);
+      setParsedImportItems([]);
     }
   };
 
-  const renderItemCard = (item: CatalogItem) => (
+  const newItemsCount = parsedImportItems.filter(i => !i.existingId).length;
+  const updateItemsCount = parsedImportItems.filter(i => i.existingId).length;
+
+  const renderItemCard = (item: CatalogItem, showCheckbox: boolean = false) => (
     <div
       key={item.id}
       className={`flex items-center justify-between p-3 rounded-lg border ${
         item.is_active ? 'bg-background' : 'bg-muted/50 opacity-60'
       }`}
     >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium truncate">{item.name}</span>
-          {!item.is_active && (
-            <Badge variant="secondary" className="text-xs">Inactive</Badge>
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        {showCheckbox && (
+          <Checkbox
+            checked={selectedItems.has(item.id)}
+            onCheckedChange={() => toggleItemSelection(item.id)}
+          />
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium truncate">{item.name}</span>
+            {!item.is_active && (
+              <Badge variant="secondary" className="text-xs">Inactive</Badge>
+            )}
+          </div>
+          {item.description && (
+            <p className="text-sm text-muted-foreground truncate">{item.description}</p>
           )}
         </div>
-        {item.description && (
-          <p className="text-sm text-muted-foreground truncate">{item.description}</p>
-        )}
       </div>
       <div className="flex items-center gap-3">
         <span className="font-semibold text-primary">
@@ -317,6 +417,10 @@ export const CatalogManager = () => {
     );
   }
 
+  const activeSelectedCount = Array.from(selectedItems).filter(id => 
+    items.find(i => i.id === id)?.is_active
+  ).length;
+
   return (
     <div className="space-y-6">
       {/* Import/Export Section */}
@@ -330,7 +434,7 @@ export const CatalogManager = () => {
               ref={fileInputRef}
               type="file"
               accept=".csv"
-              onChange={handleImportCSV}
+              onChange={handleSelectCSV}
               className="hidden"
             />
             <Button
@@ -361,13 +465,53 @@ export const CatalogManager = () => {
         </CardContent>
       </Card>
 
+      {/* Bulk Actions */}
+      {selectedItems.size > 0 && (
+        <Card className="border-primary">
+          <CardContent className="py-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">
+                {selectedItems.size} item{selectedItems.size > 1 ? 's' : ''} selected
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSelectedItems(new Set())}
+                >
+                  Clear Selection
+                </Button>
+                {activeSelectedCount > 0 && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setBulkDeactivateOpen(true)}
+                  >
+                    <EyeOff className="w-4 h-4 mr-1" />
+                    Deactivate ({activeSelectedCount})
+                  </Button>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Products Section */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Package className="w-5 h-5" />
-            Products ({products.length})
-          </CardTitle>
+          <div className="flex items-center gap-3">
+            {products.length > 0 && (
+              <Checkbox
+                checked={products.every(p => selectedItems.has(p.id)) && products.length > 0}
+                onCheckedChange={() => toggleSelectAll(products)}
+              />
+            )}
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Package className="w-5 h-5" />
+              Products ({products.length})
+            </CardTitle>
+          </div>
           <Button size="sm" onClick={() => openCreateDialog('product')}>
             <Plus className="w-4 h-4 mr-1" />
             Add Product
@@ -376,7 +520,7 @@ export const CatalogManager = () => {
         <CardContent>
           {products.length > 0 ? (
             <div className="space-y-2">
-              {products.map(renderItemCard)}
+              {products.map(item => renderItemCard(item, true))}
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-4">
@@ -389,10 +533,18 @@ export const CatalogManager = () => {
       {/* Services Section */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Wrench className="w-5 h-5" />
-            Services ({services.length})
-          </CardTitle>
+          <div className="flex items-center gap-3">
+            {services.length > 0 && (
+              <Checkbox
+                checked={services.every(s => selectedItems.has(s.id)) && services.length > 0}
+                onCheckedChange={() => toggleSelectAll(services)}
+              />
+            )}
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Wrench className="w-5 h-5" />
+              Services ({services.length})
+            </CardTitle>
+          </div>
           <Button size="sm" onClick={() => openCreateDialog('service')}>
             <Plus className="w-4 h-4 mr-1" />
             Add Service
@@ -401,7 +553,7 @@ export const CatalogManager = () => {
         <CardContent>
           {services.length > 0 ? (
             <div className="space-y-2">
-              {services.map(renderItemCard)}
+              {services.map(item => renderItemCard(item, true))}
             </div>
           ) : (
             <p className="text-center text-muted-foreground py-4">
@@ -499,6 +651,89 @@ export const CatalogManager = () => {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Import Preview Dialog */}
+      <Dialog open={importPreviewOpen} onOpenChange={(open) => { if (!importing) setImportPreviewOpen(open); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Import Preview</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="text-2xl font-bold text-green-600">{newItemsCount}</div>
+                <div className="text-sm text-muted-foreground">New items to create</div>
+              </div>
+              <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                <div className="text-2xl font-bold text-blue-600">{updateItemsCount}</div>
+                <div className="text-sm text-muted-foreground">Existing items to update</div>
+              </div>
+            </div>
+
+            {parsedImportItems.length > 0 && (
+              <div className="max-h-60 overflow-y-auto border rounded-lg">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted sticky top-0">
+                    <tr>
+                      <th className="text-left p-2 font-medium">Name</th>
+                      <th className="text-left p-2 font-medium">Type</th>
+                      <th className="text-right p-2 font-medium">Price</th>
+                      <th className="text-center p-2 font-medium">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {parsedImportItems.map((item, idx) => (
+                      <tr key={idx} className="border-t">
+                        <td className="p-2 truncate max-w-[150px]">{item.name}</td>
+                        <td className="p-2 capitalize">{item.type}</td>
+                        <td className="p-2 text-right">${formatAmount(item.unit_price)}</td>
+                        <td className="p-2 text-center">
+                          <Badge variant={item.existingId ? "secondary" : "default"} className="text-xs">
+                            {item.existingId ? 'Update' : 'Create'}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Items with matching names will be updated. New items will be created.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportPreviewOpen(false)} disabled={importing}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmImport} disabled={importing}>
+              {importing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Import {parsedImportItems.length} Items
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Deactivate Confirmation */}
+      <AlertDialog open={bulkDeactivateOpen} onOpenChange={setBulkDeactivateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate Items</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate {activeSelectedCount} item{activeSelectedCount > 1 ? 's' : ''}? 
+              Inactive items won't appear in the catalog picker but can be reactivated later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkProcessing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDeactivate} disabled={bulkProcessing}>
+              {bulkProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirmItem} onOpenChange={() => setDeleteConfirmItem(null)}>
