@@ -6,13 +6,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { Customer, useUpdateCustomer } from '@/hooks/useCustomers';
 import { 
   useCustomerJobs, useCustomerQuotes, useCustomerInvoices, 
-  useCustomerStats, useCustomerActivity, CustomerJob, CustomerQuote, CustomerInvoice 
+  useCustomerStats, useCustomerActivity
 } from '@/hooks/useCustomerHistory';
-import { useDownloadDocument, useEmailDocument, useConvertQuoteToInvoice } from '@/hooks/useDocumentActions';
-import { useUpdateInvoice } from '@/hooks/useInvoices';
-import { useSignInvoice, useApproveQuoteWithSignature } from '@/hooks/useSignatures';
-import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
-import { useCompany } from '@/hooks/useCompany';
+import { useProfiles } from '@/hooks/useProfiles';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,19 +21,17 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ArrowLeft, Mail, Phone, MapPin, User, Loader2, ExternalLink, 
   Briefcase, FileText, Receipt, DollarSign, Clock,
-  Plus, Edit, PenTool, History, Navigation, Camera, Archive, Eye, EyeOff
+  Plus, Edit, PenTool, History, Navigation
 } from 'lucide-react';
 import { openInMaps, hasAddress } from '@/lib/maps';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
-import { QuoteDetailDialog } from '@/components/quotes/QuoteDetailDialog';
-import { InvoiceDetailDialog } from '@/components/invoices/InvoiceDetailDialog';
-import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
-import { SignatureDialog } from '@/components/signatures/SignatureDialog';
-import { RecordPaymentDialog, PaymentData } from '@/components/invoices/RecordPaymentDialog';
-import { getTotalWithLateFee } from '@/hooks/useInvoices';
-import { useCreatePayment, useInvoiceBalance } from '@/hooks/usePayments';
+import { InvoiceListManager } from '@/components/invoices/InvoiceListManager';
+import { QuoteListManager } from '@/components/quotes/QuoteListManager';
+import { JobListManager } from '@/components/jobs/JobListManager';
+import { Invoice } from '@/hooks/useInvoices';
+import { Quote } from '@/hooks/useQuotes';
+import { Job } from '@/hooks/useJobs';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -63,42 +57,6 @@ const CustomerDetail = () => {
   const [portalLinkConfirmOpen, setPortalLinkConfirmOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
-  const [showArchivedJobs, setShowArchivedJobs] = useState(false);
-  const [sendingInvoiceEmail, setSendingInvoiceEmail] = useState(false);
-  
-  // Detail dialogs
-  const [selectedJob, setSelectedJob] = useState<CustomerJob | null>(null);
-  const [selectedQuote, setSelectedQuote] = useState<CustomerQuote | null>(null);
-  const [selectedInvoice, setSelectedInvoice] = useState<CustomerInvoice | null>(null);
-  const [selectedSignatureId, setSelectedSignatureId] = useState<string | null>(null);
-  
-  // Signature dialogs
-  const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
-  const [signatureInvoice, setSignatureInvoice] = useState<CustomerInvoice | null>(null);
-  const [signatureQuote, setSignatureQuote] = useState<CustomerQuote | null>(null);
-
-  // Record Payment dialog
-  const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
-  const [pendingPaymentInvoice, setPendingPaymentInvoice] = useState<CustomerInvoice | null>(null);
-
-  // Wrapped setters for scroll restoration
-  const openSelectedJob = useCallback((job: CustomerJob | null) => {
-    if (job) saveScrollPosition();
-    setSelectedJob(job);
-    if (!job) restoreScrollPosition();
-  }, [saveScrollPosition, restoreScrollPosition]);
-
-  const openSelectedQuote = useCallback((quote: CustomerQuote | null) => {
-    if (quote) saveScrollPosition();
-    setSelectedQuote(quote);
-    if (!quote) restoreScrollPosition();
-  }, [saveScrollPosition, restoreScrollPosition]);
-
-  const openSelectedInvoice = useCallback((invoice: CustomerInvoice | null) => {
-    if (invoice) saveScrollPosition();
-    setSelectedInvoice(invoice);
-    if (!invoice) restoreScrollPosition();
-  }, [saveScrollPosition, restoreScrollPosition]);
 
   const openEditDialog = useCallback((open: boolean) => {
     if (open) saveScrollPosition();
@@ -133,23 +91,14 @@ const CustomerDetail = () => {
     enabled: !!customerId,
   });
 
-  const { data: jobs = [], isLoading: jobsLoading } = useCustomerJobs(customerId);
-  const { data: quotes = [], isLoading: quotesLoading } = useCustomerQuotes(customerId);
-  const { data: invoices = [], isLoading: invoicesLoading } = useCustomerInvoices(customerId);
+  const { data: jobs = [], isLoading: jobsLoading, refetch: refetchJobs } = useCustomerJobs(customerId);
+  const { data: quotes = [], isLoading: quotesLoading, refetch: refetchQuotes } = useCustomerQuotes(customerId);
+  const { data: invoices = [], isLoading: invoicesLoading, refetch: refetchInvoices } = useCustomerInvoices(customerId);
+  const { data: profiles = [] } = useProfiles();
   const stats = useCustomerStats(customerId);
   const activities = useCustomerActivity(customerId);
   
   const updateCustomer = useUpdateCustomer();
-  const downloadDocument = useDownloadDocument();
-  const emailDocument = useEmailDocument();
-  const convertToInvoice = useConvertQuoteToInvoice();
-  const updateInvoice = useUpdateInvoice();
-  const signInvoice = useSignInvoice();
-  const signQuote = useApproveQuoteWithSignature();
-  const sendSignatureRequest = useSendSignatureRequest();
-  const { data: company } = useCompany();
-  const createPayment = useCreatePayment();
-  const { data: pendingInvoiceBalance } = useInvoiceBalance(pendingPaymentInvoice?.id || null);
 
   const handleSendPortalLink = async () => {
     if (!customer?.email) {
@@ -206,233 +155,14 @@ const CustomerDetail = () => {
     }
   };
 
-  // Document actions
-  const handleDownloadQuote = (quoteId: string) => {
-    downloadDocument.mutate({ type: 'quote', documentId: quoteId });
-  };
-
-  const handleEmailQuote = (quoteId: string) => {
-    if (customer?.email) {
-      emailDocument.mutate({ type: 'quote', documentId: quoteId, recipientEmail: customer.email });
-    } else {
-      toast.error('Customer has no email');
-    }
-  };
-
-  const handleConvertQuoteToInvoice = async (quoteId: string) => {
-    if (confirm('Convert this quote to an invoice?')) {
-      await convertToInvoice.mutateAsync({ quoteId });
-      openSelectedQuote(null);
-    }
-  };
-
-  const handleDownloadInvoice = (invoiceId: string) => {
-    downloadDocument.mutate({ type: 'invoice', documentId: invoiceId });
-  };
-
-  const handleEmailInvoice = async (invoiceId: string) => {
-    if (!customer?.email) {
-      toast.error('Customer has no email');
-      return;
-    }
-    setSendingInvoiceEmail(true);
-    try {
-      await new Promise<void>((resolve, reject) => {
-        emailDocument.mutate(
-          { type: 'invoice', documentId: invoiceId, recipientEmail: customer.email! },
-          {
-            onSuccess: () => resolve(),
-            onError: (err) => reject(err),
-          }
-        );
-      });
-      // Auto-update status to 'sent' if currently draft
-      const invoice = invoices.find((i) => i.id === invoiceId);
-      if (invoice && invoice.status === 'draft') {
-        await updateInvoice.mutateAsync({ id: invoiceId, status: 'sent' });
-      }
-      toast.success('Invoice sent to customer');
-    } catch {
-      toast.error('Failed to send invoice');
-    } finally {
-      setSendingInvoiceEmail(false);
-    }
-  };
-
-  // Helper to initiate payment recording
-  const initiateRecordPayment = (invoice: CustomerInvoice) => {
-    setPendingPaymentInvoice(invoice);
-    setRecordPaymentDialogOpen(true);
-  };
-
-  // Callback when payment is recorded
-  const handleRecordPayment = async (paymentData: PaymentData) => {
-    if (!pendingPaymentInvoice) return;
-    try {
-      await createPayment.mutateAsync({
-        invoiceId: pendingPaymentInvoice.id,
-        amount: paymentData.amount,
-        method: paymentData.method,
-        paymentDate: paymentData.date,
-        notes: paymentData.note || undefined,
-        sendNotification: paymentData.sendNotification,
-      });
-      
-      openSelectedInvoice(null);
-      setRecordPaymentDialogOpen(false);
-      setPendingPaymentInvoice(null);
-    } catch {
-      // Error is handled by the hook
-    }
-  };
-
-  const handleMarkInvoicePaid = async (invoiceId: string) => {
-    const invoice = invoices.find(i => i.id === invoiceId);
-    if (invoice) {
-      initiateRecordPayment(invoice);
-    }
-  };
-
-  const handleInvoiceStatusChange = async (invoiceId: string, status: string) => {
-    // If changing to paid, show the record payment dialog
-    if (status === 'paid') {
-      const invoice = invoices.find(i => i.id === invoiceId);
-      if (invoice) {
-        initiateRecordPayment(invoice);
-        return;
-      }
-    }
-    
-    try {
-      await updateInvoice.mutateAsync({
-        id: invoiceId,
-        status,
-        paid_at: null,
-      } as any);
-      toast.success(`Invoice marked as ${status}`);
-    } catch {
-      toast.error('Failed to update invoice status');
-    }
-  };
-
-  const handleDuplicateInvoice = (invoiceId: string) => {
-    navigate(`/invoices?duplicate=${invoiceId}`);
-  };
-
-  // Signature handlers for invoices
-  const handleOpenSignatureDialog = (invoice: CustomerInvoice) => {
-    setSignatureInvoice(invoice);
-    setSignatureDialogOpen(true);
-  };
-
-  const handleSignatureComplete = async (signatureData: string, signerName: string) => {
-    if (!signatureInvoice || !customer) return;
-    try {
-      const signature = await signInvoice.mutateAsync({
-        invoiceId: signatureInvoice.id,
-        signatureData,
-        signerName,
-        customerId: customer.id,
-      });
-      // Update selected invoice with the new signature
-      if (selectedInvoice?.id === signatureInvoice.id) {
-        setSelectedInvoice({
-          ...selectedInvoice,
-          signature_id: signature.id,
-          signed_at: new Date().toISOString(),
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-        } as any);
-      }
-      setSignatureDialogOpen(false);
-      setSignatureInvoice(null);
-      toast.success('Signature collected and invoice marked as paid');
-    } catch {
-      toast.error('Failed to collect signature');
-    }
-  };
-
-  const handleSendInvoiceSignatureRequest = (invoiceId: string) => {
-    if (!customer?.email) {
-      toast.error('Customer does not have an email address');
-      return;
-    }
-    const invoice = invoices.find(i => i.id === invoiceId);
-    if (!invoice) return;
-    
-    sendSignatureRequest.mutate({
-      documentType: 'invoice',
-      documentId: invoiceId,
-      recipientEmail: customer.email,
-      recipientName: customer.name,
-      companyName: company?.name || 'Company',
-      documentNumber: invoice.invoice_number,
-      customerId: customer.id,
-    });
-  };
-
-  // Signature handlers for quotes
-  const handleOpenQuoteSignatureDialog = (quote: CustomerQuote) => {
-    setSignatureQuote(quote);
-    setSignatureDialogOpen(true);
-  };
-
-  const handleQuoteSignatureComplete = async (signatureData: string, signerName: string) => {
-    if (!signatureQuote || !customer) return;
-    try {
-      const signature = await signQuote.mutateAsync({
-        quoteId: signatureQuote.id,
-        signatureData,
-        signerName,
-        customerId: customer.id,
-      });
-      // Update selected quote with the new signature
-      if (selectedQuote?.id === signatureQuote.id) {
-        setSelectedQuote({
-          ...selectedQuote,
-          signature_id: signature.id,
-          signed_at: new Date().toISOString(),
-          status: 'accepted',
-        } as any);
-      }
-      setSignatureDialogOpen(false);
-      setSignatureQuote(null);
-      toast.success('Quote approved with signature');
-    } catch {
-      toast.error('Failed to collect signature');
-    }
-  };
-
-  const handleSendQuoteSignatureRequest = (quoteId: string) => {
-    if (!customer?.email) {
-      toast.error('Customer does not have an email address');
-      return;
-    }
-    const quote = quotes.find(q => q.id === quoteId);
-    if (!quote) return;
-    
-    sendSignatureRequest.mutate({
-      documentType: 'quote',
-      documentId: quoteId,
-      recipientEmail: customer.email,
-      recipientName: customer.name,
-      companyName: company?.name || 'Company',
-      documentNumber: quote.quote_number,
-      customerId: customer.id,
-    });
-  };
-
   const handleActivityClick = (activity: typeof activities[0]) => {
     setActivityDialogOpen(false);
     if (activity.type === 'job') {
-      const job = jobs.find(j => j.id === activity.id);
-      if (job) openSelectedJob(job);
+      navigate(`/jobs?view=${activity.id}`);
     } else if (activity.type === 'quote') {
-      const quote = quotes.find(q => q.id === activity.id);
-      if (quote) openSelectedQuote(quote);
+      navigate(`/quotes?view=${activity.id}`);
     } else if (activity.type === 'invoice') {
-      const invoice = invoices.find(i => i.id === activity.id);
-      if (invoice) openSelectedInvoice(invoice);
+      navigate(`/invoices?view=${activity.id}`);
     }
   };
 
@@ -483,7 +213,7 @@ const CustomerDetail = () => {
         </div>
       </div>
 
-      {/* Contact Information - moved to top */}
+      {/* Contact Information */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base md:text-lg">Contact Information</CardTitle>
@@ -594,213 +324,95 @@ const CustomerDetail = () => {
         </Card>
       </div>
 
-      {/* History Tabs */}
+      {/* History Tabs - Now using List Managers */}
       <Card>
-          <CardContent className="p-0">
-            <Tabs defaultValue="jobs" className="w-full">
-              <div className="border-b">
-                <TabsList className="h-12 w-full grid grid-cols-3 bg-muted/50 rounded-none p-1">
-                  <TabsTrigger value="jobs" className="gap-2 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
-                    <Briefcase className="w-4 h-4" />
-                    Jobs ({jobs.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="quotes" className="gap-2 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
-                    <FileText className="w-4 h-4" />
-                    Quotes ({quotes.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="invoices" className="gap-2 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
-                    <Receipt className="w-4 h-4" />
-                    Invoices ({invoices.length})
-                  </TabsTrigger>
-                </TabsList>
+        <CardContent className="p-0">
+          <Tabs defaultValue="jobs" className="w-full">
+            <div className="border-b">
+              <TabsList className="h-12 w-full grid grid-cols-3 bg-muted/50 rounded-none p-1">
+                <TabsTrigger value="jobs" className="gap-2 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
+                  <Briefcase className="w-4 h-4" />
+                  Jobs ({jobs.length})
+                </TabsTrigger>
+                <TabsTrigger value="quotes" className="gap-2 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
+                  <FileText className="w-4 h-4" />
+                  Quotes ({quotes.length})
+                </TabsTrigger>
+                <TabsTrigger value="invoices" className="gap-2 text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
+                  <Receipt className="w-4 h-4" />
+                  Invoices ({invoices.length})
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            {/* Jobs Tab */}
+            <TabsContent value="jobs" className="m-0 p-3">
+              <div className="flex justify-end mb-3">
+                <Button size="sm" asChild className="h-8">
+                  <Link to={`/jobs?customer=${customerId}`}>
+                    <Plus className="w-4 h-4 mr-1" />New Job
+                  </Link>
+                </Button>
               </div>
+              <JobListManager
+                jobs={jobs as unknown as Job[]}
+                customers={customer ? [customer] : []}
+                profiles={profiles}
+                customerId={customerId}
+                showFilters={false}
+                showSearch={false}
+                onEditJob={(job) => navigate(`/jobs?edit=${job.id}`)}
+                onRefetch={async () => { await refetchJobs(); }}
+                isLoading={jobsLoading}
+              />
+            </TabsContent>
 
-              {/* Jobs Tab */}
-              <TabsContent value="jobs" className="m-0">
-                <div className="p-3 md:p-4 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs md:text-sm text-muted-foreground">
-                      {showArchivedJobs ? 'All jobs' : 'Active jobs'}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowArchivedJobs(!showArchivedJobs)}
-                      className="gap-1 text-xs h-7 px-2"
-                    >
-                      {showArchivedJobs ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                      {showArchivedJobs ? 'Hide' : 'Show'} Archived
-                    </Button>
-                  </div>
-                  <Button size="sm" asChild className="h-8">
-                    <Link to={`/jobs?customer=${customerId}`}>
-                      <Plus className="w-4 h-4 mr-1" />New Job
-                    </Link>
-                  </Button>
-                </div>
-                <ScrollArea className="h-[300px] md:h-96">
-                  <div className="divide-y">
-                    {jobsLoading ? (
-                      <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
-                    ) : jobs.filter(j => showArchivedJobs || !j.archived_at).length === 0 ? (
-                      <div className="p-8 text-center text-muted-foreground text-sm">
-                        {showArchivedJobs ? 'No jobs yet' : 'No active jobs'}
-                      </div>
-                    ) : (
-                      jobs
-                        .filter(j => showArchivedJobs || !j.archived_at)
-                        .map((job) => (
-                        <div 
-                          key={job.id} 
-                          className={`p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer ${job.archived_at ? 'opacity-60' : ''}`}
-                          onClick={() => openSelectedJob(job)}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              {job.archived_at && (
-                                <Archive className="w-4 h-4 text-muted-foreground shrink-0" />
-                              )}
-                              <div className="min-w-0">
-                                <p className="font-medium text-sm md:text-base truncate">{job.title}</p>
-                                <p className="text-xs md:text-sm text-muted-foreground">{job.job_number}</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {job.archived_at && (
-                                <Badge variant="outline" className="text-muted-foreground text-[10px] md:text-xs">Archived</Badge>
-                              )}
-                              {job.completion_signed_at && (
-                                <PenTool className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-500" />
-                              )}
-                              <Badge className={`${statusColors[job.status] || 'bg-muted'} text-[10px] md:text-xs`}>{job.status.replace('_', ' ')}</Badge>
-                            </div>
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2 md:gap-4 text-[10px] md:text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {format(new Date(job.created_at), 'MMM d, yyyy')}
-                            </span>
-                            {job.assignee?.full_name && (
-                              <span className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                {job.assignee.full_name}
-                              </span>
-                            )}
-                            {job.photos && job.photos.length > 0 && (
-                              <span className="flex items-center gap-1 text-primary">
-                                <Camera className="w-3 h-3" />
-                                {job.photos.length}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
+            {/* Quotes Tab */}
+            <TabsContent value="quotes" className="m-0 p-3">
+              <div className="flex justify-end mb-3">
+                <Button size="sm" asChild className="h-8">
+                  <Link to={`/quotes?customer=${customerId}`}>
+                    <Plus className="w-4 h-4 mr-1" />New Quote
+                  </Link>
+                </Button>
+              </div>
+              <QuoteListManager
+                quotes={quotes as unknown as Quote[]}
+                customers={customer ? [customer] : []}
+                profiles={profiles}
+                customerId={customerId}
+                showFilters={false}
+                showSearch={false}
+                onEditQuote={(quote) => navigate(`/quotes?edit=${quote.id}`)}
+                onRefetch={async () => { await refetchQuotes(); }}
+                isLoading={quotesLoading}
+              />
+            </TabsContent>
 
-              {/* Quotes Tab */}
-              <TabsContent value="quotes" className="m-0">
-                <div className="p-3 md:p-4 border-b flex justify-between items-center">
-                  <p className="text-xs md:text-sm text-muted-foreground">All quotes</p>
-                  <Button size="sm" asChild className="h-8">
-                    <Link to={`/quotes?customer=${customerId}`}>
-                      <Plus className="w-4 h-4 mr-1" />New Quote
-                    </Link>
-                  </Button>
-                </div>
-                <ScrollArea className="h-[300px] md:h-96">
-                  <div className="divide-y">
-                    {quotesLoading ? (
-                      <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
-                    ) : quotes.length === 0 ? (
-                      <div className="p-8 text-center text-muted-foreground text-sm">No quotes yet</div>
-                    ) : (
-                      quotes.map((quote) => (
-                        <div 
-                          key={quote.id} 
-                          className="p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer"
-                          onClick={() => openSelectedQuote(quote)}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="font-medium text-sm md:text-base">{quote.quote_number}</p>
-                              <p className="text-xs md:text-sm text-muted-foreground">${Number(quote.total).toLocaleString()}</p>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {quote.signed_at && (
-                                <PenTool className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-500" />
-                              )}
-                              <Badge className={`${statusColors[quote.status] || 'bg-muted'} text-[10px] md:text-xs`}>{quote.status}</Badge>
-                            </div>
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2 md:gap-4 text-[10px] md:text-xs text-muted-foreground">
-                            <span>{format(new Date(quote.created_at), 'MMM d, yyyy')}</span>
-                            {quote.valid_until && (
-                              <span>Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}</span>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-              {/* Invoices Tab */}
-              <TabsContent value="invoices" className="m-0">
-                <div className="p-3 md:p-4 border-b flex justify-between items-center">
-                  <p className="text-xs md:text-sm text-muted-foreground">All invoices</p>
-                  <Button size="sm" asChild className="h-8">
-                    <Link to={`/invoices?customer=${customerId}`}>
-                      <Plus className="w-4 h-4 mr-1" />New Invoice
-                    </Link>
-                  </Button>
-                </div>
-                <ScrollArea className="h-[300px] md:h-96">
-                  <div className="divide-y">
-                    {invoicesLoading ? (
-                      <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>
-                    ) : invoices.length === 0 ? (
-                      <div className="p-8 text-center text-muted-foreground text-sm">No invoices yet</div>
-                    ) : (
-                      invoices.map((invoice) => (
-                        <div 
-                          key={invoice.id} 
-                          className="p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer"
-                          onClick={() => openSelectedInvoice(invoice)}
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="font-medium text-sm md:text-base">{invoice.invoice_number}</p>
-                              <p className="text-xs md:text-sm text-muted-foreground">${Number(invoice.total).toLocaleString()}</p>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {invoice.signed_at && (
-                                <PenTool className="w-3.5 h-3.5 md:w-4 md:h-4 text-green-500" />
-                              )}
-                              <Badge className={`${statusColors[invoice.status] || 'bg-muted'} text-[10px] md:text-xs`}>{invoice.status}</Badge>
-                            </div>
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-2 md:gap-4 text-[10px] md:text-xs text-muted-foreground">
-                            <span>{format(new Date(invoice.created_at), 'MMM d, yyyy')}</span>
-                            {invoice.due_date && (
-                              <span>Due {format(new Date(invoice.due_date), 'MMM d, yyyy')}</span>
-                            )}
-                            {invoice.paid_at && (
-                              <span className="text-green-600">Paid {format(new Date(invoice.paid_at), 'MMM d, yyyy')}</span>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+            {/* Invoices Tab */}
+            <TabsContent value="invoices" className="m-0 p-3">
+              <div className="flex justify-end mb-3">
+                <Button size="sm" asChild className="h-8">
+                  <Link to={`/invoices?customer=${customerId}`}>
+                    <Plus className="w-4 h-4 mr-1" />New Invoice
+                  </Link>
+                </Button>
+              </div>
+              <InvoiceListManager
+                invoices={invoices as unknown as Invoice[]}
+                customers={customer ? [customer] : []}
+                profiles={profiles}
+                customerId={customerId}
+                showFilters={false}
+                showSearch={false}
+                onEditInvoice={(invoice) => navigate(`/invoices?edit=${invoice.id}`)}
+                onRefetch={async () => { await refetchInvoices(); }}
+                isLoading={invoicesLoading}
+              />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
       {/* Portal Link Confirmation Dialog */}
       <Dialog open={portalLinkConfirmOpen} onOpenChange={setPortalLinkConfirmOpen}>
@@ -962,110 +574,6 @@ const CustomerDetail = () => {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Detail Dialogs */}
-      <JobDetailDialog
-        job={selectedJob}
-        customerName={customer.name}
-        customerPhone={customer.phone}
-        open={!!selectedJob}
-        onOpenChange={(open) => !open && openSelectedJob(null)}
-        onEdit={(jobId) => navigate(`/jobs?view=${jobId}`)}
-        onViewQuote={(quote) => {
-          openSelectedJob(null);
-          openSelectedQuote({
-            ...quote,
-            items: quote.items || [],
-            signed_at: quote.signed_at || null,
-            signature_id: quote.signature_id || null,
-          } as CustomerQuote);
-        }}
-      />
-
-      <QuoteDetailDialog
-        quote={selectedQuote}
-        customerName={customer.name}
-        customerEmail={customer.email || undefined}
-        open={!!selectedQuote}
-        onOpenChange={(open) => !open && openSelectedQuote(null)}
-        onDownload={handleDownloadQuote}
-        onEmail={handleEmailQuote}
-        onEmailCustom={(quoteId) => navigate(`/quotes?view=${quoteId}&email=true`)}
-        onConvertToInvoice={handleConvertQuoteToInvoice}
-        onCreateJob={(quoteId) => navigate(`/jobs?fromQuote=${quoteId}`)}
-        onEdit={(quoteId) => navigate(`/quotes?edit=${quoteId}`)}
-        onViewSignature={(sigId) => setSelectedSignatureId(sigId)}
-        onCollectSignature={(quoteId) => {
-          const quote = quotes.find(q => q.id === quoteId);
-          if (quote) handleOpenQuoteSignatureDialog(quote);
-        }}
-        onSendSignatureRequest={handleSendQuoteSignatureRequest}
-        isCollectingSignature={signQuote.isPending}
-      />
-
-      <InvoiceDetailDialog
-        invoice={selectedInvoice}
-        customerName={customer.name}
-        customerEmail={customer.email || undefined}
-        linkedJobNumber={(selectedInvoice as any)?.job?.job_number || (selectedInvoice as any)?.quote?.job?.job_number || null}
-        open={!!selectedInvoice}
-        onOpenChange={(open) => !open && openSelectedInvoice(null)}
-        onDownload={handleDownloadInvoice}
-        onEmail={handleEmailInvoice}
-        onEmailCustom={(invoiceId) => navigate(`/invoices?view=${invoiceId}&email=true`)}
-        onMarkPaid={handleMarkInvoicePaid}
-        onEdit={(invoiceId) => navigate(`/invoices?edit=${invoiceId}`)}
-        onDuplicate={handleDuplicateInvoice}
-        onStatusChange={handleInvoiceStatusChange}
-        onViewSignature={(sigId) => setSelectedSignatureId(sigId)}
-        onCollectSignature={(invoiceId) => {
-          const invoice = invoices.find(i => i.id === invoiceId);
-          if (invoice) handleOpenSignatureDialog(invoice);
-        }}
-        onSendSignatureRequest={handleSendInvoiceSignatureRequest}
-        isCollectingSignature={signInvoice.isPending}
-        isSendingEmail={sendingInvoiceEmail}
-      />
-
-      <ViewSignatureDialog
-        signatureId={selectedSignatureId}
-        open={!!selectedSignatureId}
-        onOpenChange={(open) => !open && setSelectedSignatureId(null)}
-      />
-
-      <SignatureDialog
-        open={signatureDialogOpen}
-        onOpenChange={(open) => {
-          setSignatureDialogOpen(open);
-          if (!open) {
-            setSignatureInvoice(null);
-            setSignatureQuote(null);
-          }
-        }}
-        onSignatureComplete={signatureQuote ? handleQuoteSignatureComplete : handleSignatureComplete}
-        title={signatureQuote 
-          ? `Approve Quote ${signatureQuote.quote_number}` 
-          : `Sign Invoice ${signatureInvoice?.invoice_number || ''}`}
-        description={signatureQuote 
-          ? "Please sign below to approve this quote" 
-          : "Please sign below to confirm receipt and payment"}
-        isSubmitting={signatureQuote ? signQuote.isPending : signInvoice.isPending}
-      />
-
-      {/* Record Payment Dialog */}
-      <RecordPaymentDialog
-        open={recordPaymentDialogOpen}
-        onOpenChange={(open) => {
-          setRecordPaymentDialogOpen(open);
-          if (!open) setPendingPaymentInvoice(null);
-        }}
-        invoiceTotal={pendingPaymentInvoice ? getTotalWithLateFee(pendingPaymentInvoice as any) : 0}
-        remainingBalance={pendingInvoiceBalance?.remaining}
-        invoiceNumber={pendingPaymentInvoice?.invoice_number || ""}
-        customerEmail={customer?.email}
-        onConfirm={handleRecordPayment}
-        isLoading={createPayment.isPending}
-      />
     </div>
   );
 };
