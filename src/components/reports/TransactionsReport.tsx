@@ -523,8 +523,9 @@ const TransactionsReport = () => {
                         className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
                         onClick={() => toggleCustomer(customer.id)}
                       >
-                        <Checkbox
+                      <Checkbox
                           checked={selectedCustomerIds.includes(customer.id)}
+                          onClick={(e) => e.stopPropagation()}
                           onCheckedChange={() => toggleCustomer(customer.id)}
                         />
                         <div className="flex-1 min-w-0">

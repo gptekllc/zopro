@@ -586,6 +586,7 @@ const TechnicianPerformanceReport = () => {
                     >
                       <Checkbox
                         checked={selectedMemberIds.includes(member.id)}
+                        onClick={(e) => e.stopPropagation()}
                         onCheckedChange={() => toggleMember(member.id)}
                       />
                       <div className="flex-1 min-w-0">
