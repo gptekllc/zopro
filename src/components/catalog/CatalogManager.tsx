@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Package, Wrench, Loader2, Search, X, MoreVertical, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, Wrench, Loader2, Search, X, MoreVertical, Eye, EyeOff, Copy } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 import { toast } from 'sonner';
 
@@ -108,6 +108,16 @@ export const CatalogManager = () => {
     await updateItem.mutateAsync({ id: item.id, is_active: !item.is_active });
   };
 
+  const handleDuplicate = async (item: CatalogItem) => {
+    await createItem.mutateAsync({
+      name: `${item.name} (Copy)`,
+      description: item.description || null,
+      type: item.type,
+      unit_price: item.unit_price,
+      is_active: true,
+    });
+  };
+
   const renderItemCard = (item: CatalogItem) => (
     <div
       key={item.id}
@@ -153,6 +163,10 @@ export const CatalogManager = () => {
                   Reactivate
                 </>
               )}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDuplicate(item)}>
+              <Copy className="w-4 h-4 mr-2" />
+              Duplicate
             </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={() => setDeleteConfirmItem(item)}
