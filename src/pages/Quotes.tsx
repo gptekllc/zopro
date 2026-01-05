@@ -21,6 +21,7 @@ import { QuoteTemplate } from '@/hooks/useQuoteTemplates';
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
 import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
 import { QuoteListManager } from '@/components/quotes/QuoteListManager';
+import { QuoteListControls } from '@/components/quotes/QuoteListControls';
 
 const Quotes = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,6 +43,10 @@ const Quotes = () => {
   const [pendingEditQuoteId, setPendingEditQuoteId] = useState<string | null>(null);
   const [pendingDuplicateQuoteId, setPendingDuplicateQuoteId] = useState<string | null>(null);
   const [pendingSaveTemplateQuoteId, setPendingSaveTemplateQuoteId] = useState<string | null>(null);
+
+  // Search and filter state (lifted for header placement)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Template dialogs
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
@@ -303,6 +308,13 @@ const Quotes = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <QuoteListControls
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+          />
+          
           <Button variant="outline" className="gap-2 hidden sm:flex" onClick={() => setSelectTemplateDialogOpen(true)}>
             <BookTemplate className="w-4 h-4" />
             <span className="hidden lg:inline">From Template</span>
@@ -425,8 +437,11 @@ const Quotes = () => {
           quotes={quotes}
           customers={customers}
           profiles={profiles}
-          showFilters={true}
-          showSearch={true}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          hideInlineControls={true}
           onEditQuote={handleEdit}
           onCreateQuote={() => openEditDialog(true)}
           onRefetch={async () => { await refetchQuotes(); }}

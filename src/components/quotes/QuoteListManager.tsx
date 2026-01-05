@@ -42,6 +42,11 @@ interface QuoteListManagerProps {
   customerId?: string;
   showFilters?: boolean;
   showSearch?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  statusFilter?: string;
+  onStatusFilterChange?: (status: string) => void;
+  hideInlineControls?: boolean;
   onEditQuote?: (quote: Quote) => void;
   onCreateQuote?: () => void;
   onRefetch?: () => Promise<void>;
@@ -55,6 +60,11 @@ export function QuoteListManager({
   customerId,
   showFilters = true,
   showSearch = true,
+  searchQuery: externalSearchQuery,
+  onSearchChange,
+  statusFilter: externalStatusFilter,
+  onStatusFilterChange,
+  hideInlineControls = false,
   onEditQuote,
   onCreateQuote,
   onRefetch,
@@ -105,9 +115,28 @@ export function QuoteListManager({
     { itemLabel: 'quote', timeout: 5000 }
   );
 
-  // State
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  // State - use external values if provided, otherwise use internal state
+  const [internalStatusFilter, setInternalStatusFilter] = useState('all');
+  const [internalSearchQuery, setInternalSearchQuery] = useState('');
+  
+  const statusFilter = externalStatusFilter ?? internalStatusFilter;
+  const searchQuery = externalSearchQuery ?? internalSearchQuery;
+  
+  const handleSearchChange = (query: string) => {
+    if (onSearchChange) {
+      onSearchChange(query);
+    } else {
+      setInternalSearchQuery(query);
+    }
+  };
+  
+  const handleStatusFilterChange = (status: string) => {
+    if (onStatusFilterChange) {
+      onStatusFilterChange(status);
+    } else {
+      setInternalStatusFilter(status);
+    }
+  };
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
   const [archiveConfirmQuote, setArchiveConfirmQuote] = useState<Quote | null>(null);
@@ -357,8 +386,8 @@ export function QuoteListManager({
 
   return (
     <div className="space-y-3">
-      {/* Optional Header with Search and Filters */}
-      {(showSearch || showFilters) && (
+      {/* Optional Header with Search and Filters - only show if not hidden */}
+      {!hideInlineControls && (showSearch || showFilters) && (
         <div className="flex items-center gap-2">
           {showSearch && (
             <div className="relative flex-1 max-w-xs">
@@ -366,7 +395,7 @@ export function QuoteListManager({
               <Input
                 placeholder="Search..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-8 h-9"
               />
             </div>
@@ -379,23 +408,23 @@ export function QuoteListManager({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
                   All Status
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('draft')} className={statusFilter === 'draft' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('draft')} className={statusFilter === 'draft' ? 'bg-accent' : ''}>
                   Draft
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('sent')} className={statusFilter === 'sent' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('sent')} className={statusFilter === 'sent' ? 'bg-accent' : ''}>
                   Sent
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('approved')} className={statusFilter === 'approved' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('approved')} className={statusFilter === 'approved' ? 'bg-accent' : ''}>
                   Approved
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('rejected')} className={statusFilter === 'rejected' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('rejected')} className={statusFilter === 'rejected' ? 'bg-accent' : ''}>
                   Rejected
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setStatusFilter('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
                   <Archive className="w-4 h-4 mr-2" />
                   Archived
                 </DropdownMenuItem>

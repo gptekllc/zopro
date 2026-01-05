@@ -18,6 +18,7 @@ import { InlineCustomerForm } from "@/components/customers/InlineCustomerForm";
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
 import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
 import { InvoiceListManager } from "@/components/invoices/InvoiceListManager";
+import { InvoiceListControls } from "@/components/invoices/InvoiceListControls";
 
 const Invoices = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -42,6 +43,10 @@ const Invoices = () => {
   const [editingInvoice, setEditingInvoice] = useState<string | null>(null);
   const [pendingEditInvoiceId, setPendingEditInvoiceId] = useState<string | null>(null);
   const [pendingDuplicateInvoiceId, setPendingDuplicateInvoiceId] = useState<string | null>(null);
+
+  // Search and filter state (lifted for header placement)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Form state
   const [formData, setFormData] = useState<{
@@ -256,6 +261,14 @@ const Invoices = () => {
           <p className="text-muted-foreground mt-1 hidden sm:block">{invoices.length} total invoices</p>
         </div>
 
+        <div className="flex items-center gap-2">
+          <InvoiceListControls
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+          />
+
         <Dialog open={isDialogOpen} onOpenChange={open => {
           openEditDialog(open);
           if (!open) resetForm();
@@ -364,6 +377,7 @@ const Invoices = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Invoice List Manager */}
@@ -372,8 +386,11 @@ const Invoices = () => {
           invoices={invoices}
           customers={customers}
           profiles={profiles}
-          showFilters={true}
-          showSearch={true}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          hideInlineControls={true}
           onEditInvoice={handleEdit}
           onCreateInvoice={() => openEditDialog(true)}
           onRefetch={async () => { await refetchInvoices(); }}
