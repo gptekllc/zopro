@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Package, Wrench, Loader2, Upload, Download, FileText, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, Wrench, Loader2, Upload, Download, FileText, EyeOff, Search, X } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 import { toast } from 'sonner';
 
@@ -45,6 +45,11 @@ export const CatalogManager = () => {
   const [bulkDeactivateOpen, setBulkDeactivateOpen] = useState(false);
   const [bulkProcessing, setBulkProcessing] = useState(false);
   
+  // Search/filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'product' | 'service'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -53,8 +58,23 @@ export const CatalogManager = () => {
     is_active: true,
   });
 
-  const products = items.filter(item => item.type === 'product');
-  const services = items.filter(item => item.type === 'service');
+  // Filter items based on search and filters
+  const filteredItems = items.filter(item => {
+    const matchesSearch = searchQuery === '' || 
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    const matchesType = typeFilter === 'all' || item.type === typeFilter;
+    
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'active' && item.is_active) ||
+      (statusFilter === 'inactive' && !item.is_active);
+    
+    return matchesSearch && matchesType && matchesStatus;
+  });
+
+  const products = filteredItems.filter(item => item.type === 'product');
+  const services = filteredItems.filter(item => item.type === 'service');
 
   const resetForm = () => {
     setFormData({
@@ -423,6 +443,76 @@ export const CatalogManager = () => {
 
   return (
     <div className="space-y-6">
+      {/* Search/Filter Section */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or description..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-9"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                  onClick={() => setSearchQuery('')}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Select value={typeFilter} onValueChange={(v: 'all' | 'product' | 'service') => setTypeFilter(v)}>
+                <SelectTrigger className="w-[130px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="product">
+                    <span className="flex items-center gap-2">
+                      <Package className="w-4 h-4" /> Products
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="service">
+                    <span className="flex items-center gap-2">
+                      <Wrench className="w-4 h-4" /> Services
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={(v: 'all' | 'active' | 'inactive') => setStatusFilter(v)}>
+                <SelectTrigger className="w-[120px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {(searchQuery || typeFilter !== 'all' || statusFilter !== 'all') && (
+            <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+              <span>Showing {filteredItems.length} of {items.length} items</span>
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs"
+                onClick={() => { setSearchQuery(''); setTypeFilter('all'); setStatusFilter('all'); }}
+              >
+                Clear filters
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Import/Export Section */}
       <Card>
         <CardHeader className="pb-3">
