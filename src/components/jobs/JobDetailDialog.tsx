@@ -78,6 +78,7 @@ export function JobDetailDialog({
   onSendSignatureRequest,
   isCollectingSignature,
 }: JobDetailDialogProps) {
+  // ALL hooks must come first, before any conditional returns
   const { profile } = useAuth();
   const { data: company } = useCompany();
   const { data: relatedQuotes, isLoading: loadingQuotes } = useJobRelatedQuotes(
@@ -93,27 +94,11 @@ export function JobDetailDialog({
   const { data: notifications = [], isLoading: loadingNotifications } = useJobNotifications(job?.id || null);
   const { data: feedbacks = [], isLoading: loadingFeedbacks } = useJobFeedbacks(job?.id || null);
   const { data: jobTimeEntries = [] } = useJobTimeEntries(job?.id || null);
+  
+  // State hooks - must be before any conditionals
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
-
-  const handleOpenEmailModal = () => {
-    setEmailAddress(customerEmail || '');
-    setShowEmailModal(true);
-  };
-
-  const handleCloseEmailModal = () => {
-    setShowEmailModal(false);
-    setEmailAddress('');
-  };
-
-  const handleSendEmail = () => {
-    if (emailAddress) {
-      emailDocument.mutate(
-        { type: 'job', documentId: job.id, recipientEmail: emailAddress },
-        { onSuccess: handleCloseEmailModal }
-      );
-    }
-  };
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
 
   // Filter invoices that are linked to this job (via quote_id that matches job's origin quote or child quotes)
   const jobInvoices = useMemo(() => {
@@ -144,7 +129,27 @@ export function JobDetailDialog({
     });
   }, [job, allInvoices, relatedQuotes]);
 
+  // Early return AFTER all hooks
   if (!job) return null;
+
+  const handleOpenEmailModal = () => {
+    setEmailAddress(customerEmail || '');
+    setShowEmailModal(true);
+  };
+
+  const handleCloseEmailModal = () => {
+    setShowEmailModal(false);
+    setEmailAddress('');
+  };
+
+  const handleSendEmail = () => {
+    if (emailAddress) {
+      emailDocument.mutate(
+        { type: 'job', documentId: job.id, recipientEmail: emailAddress },
+        { onSuccess: handleCloseEmailModal }
+      );
+    }
+  };
 
   const handleCreateUpsellQuote = async () => {
     // Convert the CustomerJob to Job format for the mutation
@@ -182,7 +187,6 @@ export function JobDetailDialog({
     }
   };
 
-  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   
   const handleCreateInvoice = () => {
     setShowInvoiceDialog(true);
