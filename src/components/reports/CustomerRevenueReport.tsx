@@ -44,10 +44,9 @@ import {
   Mail,
 } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ReportEmailDialog } from './ReportEmailDialog';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
@@ -62,7 +61,6 @@ const CustomerRevenueReport = () => {
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [emailAddress, setEmailAddress] = useState('');
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const { data: customers, isLoading: loadingCustomers } = useCustomers();
@@ -404,12 +402,7 @@ const CustomerRevenueReport = () => {
   };
 
   // Send email
-  const sendReportEmail = async () => {
-    if (!emailAddress) {
-      toast.error('Please enter an email address');
-      return;
-    }
-
+  const sendReportEmail = async (emails: string[]): Promise<{ successful: string[]; failed: { email: string; reason: string }[] }> => {
     setIsSendingEmail(true);
     try {
       const reportData = {
@@ -432,9 +425,9 @@ const CustomerRevenueReport = () => {
         })),
       };
 
-      const { error } = await supabase.functions.invoke('send-report-email', {
+      const { data, error } = await supabase.functions.invoke('send-report-email', {
         body: { 
-          to: emailAddress, 
+          to: emails, 
           reportType: 'customer-revenue',
           reportData 
         },
@@ -442,12 +435,20 @@ const CustomerRevenueReport = () => {
 
       if (error) throw error;
 
-      toast.success(`Report sent to ${emailAddress}`);
-      setEmailDialogOpen(false);
-      setEmailAddress('');
+      const result = data as { successful: string[]; failed: { email: string; reason: string }[] };
+      
+      if (result.successful.length > 0) {
+        toast.success(`Report sent to ${result.successful.length} recipient${result.successful.length !== 1 ? 's' : ''}`);
+      }
+      if (result.failed.length > 0) {
+        toast.error(`Failed to send to ${result.failed.length} recipient${result.failed.length !== 1 ? 's' : ''}`);
+      }
+
+      return result;
     } catch (error: any) {
       console.error('Failed to send email:', error);
       toast.error('Failed to send email: ' + (error.message || 'Unknown error'));
+      return { successful: [], failed: emails.map(e => ({ email: e, reason: error.message || 'Unknown error' })) };
     } finally {
       setIsSendingEmail(false);
     }
@@ -840,39 +841,13 @@ const CustomerRevenueReport = () => {
       </Card>
 
       {/* Email Dialog */}
-      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Email Report</DialogTitle>
-            <DialogDescription>
-              Send the Customer Revenue Report to an email address.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="recipient@example.com"
-                value={emailAddress}
-                onChange={(e) => setEmailAddress(e.target.value)}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Report includes: {stats?.totalCustomers || 0} customers, ${formatAmount(stats?.totalRevenue || 0)} revenue
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={sendReportEmail} disabled={isSendingEmail}>
-              {isSendingEmail ? 'Sending...' : 'Send Report'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ReportEmailDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        onSend={sendReportEmail}
+        isSending={isSendingEmail}
+        title="Email Customer Revenue Report"
+      />
     </div>
   );
 };
