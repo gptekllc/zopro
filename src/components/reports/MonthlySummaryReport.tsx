@@ -36,6 +36,7 @@ import {
   DollarSign,
   TrendingUp,
   TrendingDown,
+  Download,
 } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 
@@ -176,6 +177,46 @@ const MonthlySummaryReport = () => {
     return total > 0 ? (accepted / total) * 100 : 0;
   }, [quotes]);
 
+  // Export to CSV
+  const exportToCSV = () => {
+    if (monthlyData.length === 0) return;
+
+    const headers = ['Month', 'Jobs Completed', 'Quotes Sent', 'Quotes Accepted', 'Invoices Generated', 'Revenue', 'Invoiced Amount'];
+    
+    const rows = monthlyData.map(m => [
+      m.month,
+      m.completedJobs,
+      m.sentQuotes,
+      m.acceptedQuotes,
+      m.generatedInvoices,
+      `$${formatAmount(m.revenue)}`,
+      `$${formatAmount(m.invoiced)}`,
+    ]);
+
+    // Add totals row
+    rows.push([
+      'TOTAL',
+      stats?.totalJobs || 0,
+      stats?.totalQuotes || 0,
+      monthlyData.reduce((sum, m) => sum + m.acceptedQuotes, 0),
+      stats?.totalInvoices || 0,
+      `$${formatAmount(stats?.totalRevenue || 0)}`,
+      `$${formatAmount(monthlyData.reduce((sum, m) => sum + m.invoiced, 0))}`,
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `monthly-summary-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -205,8 +246,12 @@ const MonthlySummaryReport = () => {
 
   return (
     <div className="space-y-6">
-      {/* Time Range Selector */}
-      <div className="flex justify-end">
+      {/* Time Range Selector and Export */}
+      <div className="flex justify-end gap-2">
+        <Button onClick={exportToCSV} variant="outline" size="sm" disabled={monthlyData.length === 0}>
+          <Download className="w-4 h-4 mr-2" />
+          Export CSV
+        </Button>
         <Select value={timeRange} onValueChange={setTimeRange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select range" />
