@@ -27,6 +27,7 @@ import {
 import { format } from "date-fns";
 import type { Invoice } from "@/hooks/useInvoices";
 import { DocumentListCard } from "@/components/documents/DocumentListCard";
+import type { SwipeAction } from "@/components/ui/swipeable-card";
 
 type Props = {
   invoice: Invoice;
@@ -242,6 +243,34 @@ export function InvoiceListCard({
     </DropdownMenu>
   );
 
+  const swipeRightActions: SwipeAction[] = [
+    {
+      icon: <Edit className="w-4 h-4" />,
+      label: "Edit",
+      onClick: () => onEdit(invoice),
+      variant: "default",
+    },
+    ...(archivedAt
+      ? [{
+          icon: <ArchiveRestore className="w-4 h-4" />,
+          label: "Restore",
+          onClick: () => onUnarchive(invoice),
+          variant: "warning" as const,
+        }]
+      : [{
+          icon: <Archive className="w-4 h-4" />,
+          label: "Archive",
+          onClick: () => onArchive(invoice),
+          variant: "warning" as const,
+        }]),
+    {
+      icon: <Trash2 className="w-4 h-4" />,
+      label: "Delete",
+      onClick: () => onDelete(invoice),
+      variant: "destructive",
+    },
+  ];
+
   return (
     <DocumentListCard
       onClick={() => onOpen(invoice)}
@@ -254,6 +283,7 @@ export function InvoiceListCard({
       notes={invoice.notes}
       tagsRow={tagsRow}
       actionsMenu={actionsMenu}
+      swipeRightActions={swipeRightActions}
     />
   );
 }

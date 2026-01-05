@@ -1,7 +1,8 @@
-import { PenTool, UserCog } from "lucide-react";
+import { PenTool, UserCog, Edit, Archive, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import type { Quote } from "@/hooks/useQuotes";
 import { DocumentListCard } from "@/components/documents/DocumentListCard";
+import type { SwipeAction } from "@/components/ui/swipeable-card";
 
 const quoteStatusColors: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -14,9 +15,12 @@ const quoteStatusColors: Record<string, string> = {
 interface QuoteCardProps {
   quote: Quote;
   onView: () => void;
+  onEdit?: () => void;
+  onArchive?: () => void;
+  onDelete?: () => void;
 }
 
-export function QuoteCard({ quote, onView }: QuoteCardProps) {
+export function QuoteCard({ quote, onView, onEdit, onArchive, onDelete }: QuoteCardProps) {
   const customerName = quote.customer?.name || "Unknown";
   const customerEmail = quote.customer?.email || null;
   const creatorName = (quote as any).creator?.full_name || null;
@@ -56,6 +60,35 @@ export function QuoteCard({ quote, onView }: QuoteCardProps) {
     </>
   );
 
+  const swipeRightActions: SwipeAction[] = [];
+  
+  if (onEdit) {
+    swipeRightActions.push({
+      icon: <Edit className="w-4 h-4" />,
+      label: "Edit",
+      onClick: onEdit,
+      variant: "default",
+    });
+  }
+  
+  if (onArchive) {
+    swipeRightActions.push({
+      icon: <Archive className="w-4 h-4" />,
+      label: "Archive",
+      onClick: onArchive,
+      variant: "warning",
+    });
+  }
+  
+  if (onDelete) {
+    swipeRightActions.push({
+      icon: <Trash2 className="w-4 h-4" />,
+      label: "Delete",
+      onClick: onDelete,
+      variant: "destructive",
+    });
+  }
+
   return (
     <DocumentListCard
       onClick={onView}
@@ -66,6 +99,7 @@ export function QuoteCard({ quote, onView }: QuoteCardProps) {
       metadataRow={metadataRow}
       notes={quote.notes}
       tagsRow={tagsRow}
+      swipeRightActions={swipeRightActions}
     />
   );
 }

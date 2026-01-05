@@ -1,4 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { SwipeableCard, SwipeAction } from "@/components/ui/swipeable-card";
 import { ReactNode } from "react";
 
 interface DocumentListCardProps {
@@ -19,6 +20,9 @@ interface DocumentListCardProps {
   actionsMenu?: ReactNode;
   // Desktop only: show icon
   icon?: ReactNode;
+  // Swipe actions for mobile
+  swipeLeftActions?: SwipeAction[];
+  swipeRightActions?: SwipeAction[];
 }
 
 export function DocumentListCard({
@@ -34,8 +38,12 @@ export function DocumentListCard({
   tagsRow,
   actionsMenu,
   icon,
+  swipeLeftActions = [],
+  swipeRightActions = [],
 }: DocumentListCardProps) {
-  return (
+  const hasSwipeActions = swipeLeftActions.length > 0 || swipeRightActions.length > 0;
+
+  const cardContent = (
     <Card
       className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${isArchived ? 'opacity-60 border-dashed' : ''}`}
       onClick={onClick}
@@ -161,4 +169,17 @@ export function DocumentListCard({
       </CardContent>
     </Card>
   );
+
+  if (hasSwipeActions) {
+    return (
+      <SwipeableCard
+        leftActions={swipeLeftActions}
+        rightActions={swipeRightActions}
+      >
+        {cardContent}
+      </SwipeableCard>
+    );
+  }
+
+  return cardContent;
 }

@@ -35,6 +35,7 @@ import {
 import { format } from "date-fns";
 import type { Job } from "@/hooks/useJobs";
 import { DocumentListCard } from "@/components/documents/DocumentListCard";
+import type { SwipeAction } from "@/components/ui/swipeable-card";
 
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 
@@ -278,6 +279,34 @@ export function JobListCard({
     </div>
   );
 
+  const swipeRightActions: SwipeAction[] = [
+    {
+      icon: <Edit className="w-4 h-4" />,
+      label: "Edit",
+      onClick: () => onEdit(job),
+      variant: "default",
+    },
+    ...(job.archived_at
+      ? [{
+          icon: <ArchiveRestore className="w-4 h-4" />,
+          label: "Restore",
+          onClick: () => onUnarchive(job),
+          variant: "warning" as const,
+        }]
+      : [{
+          icon: <Archive className="w-4 h-4" />,
+          label: "Archive",
+          onClick: () => onArchive(job),
+          variant: "warning" as const,
+        }]),
+    {
+      icon: <Trash2 className="w-4 h-4" />,
+      label: "Delete",
+      onClick: () => onDelete(job),
+      variant: "destructive",
+    },
+  ];
+
   return (
     <DocumentListCard
       onClick={() => onView(job)}
@@ -292,6 +321,7 @@ export function JobListCard({
       tagsRow={tagsRow}
       actionsMenu={actionsMenu}
       icon={icon}
+      swipeRightActions={swipeRightActions}
     />
   );
 }
