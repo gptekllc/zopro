@@ -96,6 +96,34 @@ export function useAllPayments() {
 }
 
 export function usePayments(invoiceId: string | null) {
+  const queryClient = useQueryClient();
+
+  // Set up real-time subscription for invoice-specific payments
+  useEffect(() => {
+    if (!invoiceId) return;
+
+    const channel = supabase
+      .channel(`payments-invoice-${invoiceId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'payments',
+          filter: `invoice_id=eq.${invoiceId}`,
+        },
+        () => {
+          // Invalidate to refresh payment history
+          queryClient.invalidateQueries({ queryKey: ['payments', invoiceId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [invoiceId, queryClient]);
+
   return useQuery({
     queryKey: ['payments', invoiceId],
     queryFn: async () => {
