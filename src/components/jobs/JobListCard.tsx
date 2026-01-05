@@ -1,0 +1,297 @@
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertTriangle,
+  Archive,
+  ArchiveRestore,
+  Bell,
+  Briefcase,
+  Calendar,
+  CheckCircle2,
+  ChevronRight,
+  Copy,
+  Download,
+  Edit,
+  Eye,
+  FileText,
+  Image,
+  Mail,
+  MoreVertical,
+  Navigation,
+  PenTool,
+  Receipt,
+  Save,
+  Send,
+  Trash2,
+  UserCog,
+} from "lucide-react";
+import { format } from "date-fns";
+import type { Job } from "@/hooks/useJobs";
+import { DocumentListCard } from "@/components/documents/DocumentListCard";
+
+const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
+
+type JobPriority = typeof JOB_PRIORITIES[number];
+
+interface JobListCardProps {
+  job: Job;
+  notificationCount: number;
+  getPriorityColor: (priority: string) => string;
+  getStatusColor: (status: string) => string;
+  onView: (job: Job) => void;
+  onEdit: (job: Job) => void;
+  onDuplicate: (job: Job) => void;
+  onSaveAsTemplate: (job: Job) => void;
+  onPriorityChange: (jobId: string, priority: string) => void;
+  onDownload: (job: Job) => void;
+  onEmail: (job: Job) => void;
+  onSendNotification: (job: Job) => void;
+  onOnMyWay: (job: Job, minutes: number) => void;
+  onViewSignature: (signatureId: string) => void;
+  onOpenSignatureDialog: (job: Job) => void;
+  onSendSignatureRequest: (job: Job) => void;
+  onCreateInvoice: (job: Job) => void;
+  onCreateQuote: (job: Job) => void;
+  onArchive: (job: Job) => void;
+  onUnarchive: (job: Job) => void;
+  onDelete: (job: Job) => void;
+  convertToInvoiceIsPending?: boolean;
+  convertToQuoteIsPending?: boolean;
+  unarchiveIsPending?: boolean;
+}
+
+export function JobListCard({
+  job,
+  notificationCount,
+  getPriorityColor,
+  getStatusColor,
+  onView,
+  onEdit,
+  onDuplicate,
+  onSaveAsTemplate,
+  onPriorityChange,
+  onDownload,
+  onEmail,
+  onSendNotification,
+  onOnMyWay,
+  onViewSignature,
+  onOpenSignatureDialog,
+  onSendSignatureRequest,
+  onCreateInvoice,
+  onCreateQuote,
+  onArchive,
+  onUnarchive,
+  onDelete,
+  convertToInvoiceIsPending = false,
+  convertToQuoteIsPending = false,
+  unarchiveIsPending = false,
+}: JobListCardProps) {
+  const signatureId = (job as any).completion_signature_id as string | undefined;
+
+  const metadataRow = (
+    <>
+      {job.assignee?.full_name && (
+        <span className="flex items-center gap-1">
+          <UserCog className="w-3 h-3" />
+          {job.assignee.full_name}
+          {job.assignee.employment_status === 'on_leave' && (
+            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-[10px] px-1 py-0 ml-1">
+              <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
+              On Leave
+            </Badge>
+          )}
+        </span>
+      )}
+      {job.scheduled_start && (
+        <>
+          {job.assignee?.full_name && <span>•</span>}
+          <span className="flex items-center gap-1 shrink-0">
+            <Calendar className="w-3 h-3" />
+            {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
+          </span>
+        </>
+      )}
+      {job.photos && job.photos.length > 0 && (
+        <>
+          {(job.assignee?.full_name || job.scheduled_start) && <span className="hidden sm:inline">•</span>}
+          <span className="hidden sm:flex items-center gap-1">
+            <Image className="w-3 h-3" />
+            {job.photos.length}
+          </span>
+        </>
+      )}
+    </>
+  );
+
+  const tagsRow = (
+    <>
+      {job.archived_at && (
+        <Badge variant="outline" className="text-muted-foreground text-xs sm:text-sm">Archived</Badge>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Badge className={`${getPriorityColor(job.priority)} text-xs cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
+            {job.priority}
+            <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+          </Badge>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="bg-popover z-50">
+          {JOB_PRIORITIES.map(priority => (
+            <DropdownMenuItem
+              key={priority}
+              onClick={() => onPriorityChange(job.id, priority)}
+              disabled={job.priority === priority}
+              className={job.priority === priority ? 'bg-accent' : ''}
+            >
+              <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
+                {priority}
+              </Badge>
+              {job.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
+        {job.status.replace('_', ' ')}
+      </span>
+      {signatureId && (
+        <Badge variant="outline" className="bg-success/10 text-success border-success/30 gap-1 text-xs">
+          <PenTool className="w-3 h-3" />
+          Signed
+        </Badge>
+      )}
+      {notificationCount > 0 && (
+        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1 text-xs">
+          <Bell className="w-3 h-3" />
+          Notified
+        </Badge>
+      )}
+    </>
+  );
+
+  const actionsMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-9 sm:w-9">
+          <MoreVertical className="w-4 h-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="bg-popover">
+        {/* Quick Actions */}
+        {['scheduled', 'in_progress'].includes(job.status) && (
+          <>
+            <DropdownMenuItem onClick={() => onSendNotification(job)}>
+              <Send className="w-4 h-4 mr-2" />
+              Send to Customer
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onOnMyWay(job, 15)}>
+              <Navigation className="w-4 h-4 mr-2" />
+              On My Way (~15 min)
+            </DropdownMenuItem>
+          </>
+        )}
+        <DropdownMenuItem onClick={() => onDownload(job)}>
+          <Download className="w-4 h-4 mr-2" />
+          Download PDF
+        </DropdownMenuItem>
+        {job.customer?.email && (
+          <DropdownMenuItem onClick={() => onEmail(job)}>
+            <Mail className="w-4 h-4 mr-2" />
+            Email PDF
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onEdit(job)}>
+          <Edit className="w-4 h-4 mr-2" />
+          Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onDuplicate(job)}>
+          <Copy className="w-4 h-4 mr-2" />
+          Duplicate
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSaveAsTemplate(job)}>
+          <Save className="w-4 h-4 mr-2" />
+          Save as Template
+        </DropdownMenuItem>
+        {/* Signature Actions */}
+        {signatureId ? (
+          <DropdownMenuItem onClick={() => onViewSignature(signatureId)}>
+            <Eye className="w-4 h-4 mr-2" />
+            View Signature
+          </DropdownMenuItem>
+        ) : (job.status === 'completed' || job.status === 'in_progress') && (
+          <>
+            <DropdownMenuItem onClick={() => onOpenSignatureDialog(job)}>
+              <PenTool className="w-4 h-4 mr-2" />
+              Collect Completion Signature
+            </DropdownMenuItem>
+            {job.customer?.email && (
+              <DropdownMenuItem onClick={() => onSendSignatureRequest(job)}>
+                <Send className="w-4 h-4 mr-2" />
+                Send Signature Request
+              </DropdownMenuItem>
+            )}
+          </>
+        )}
+        {job.archived_at ? (
+          <DropdownMenuItem onClick={() => onUnarchive(job)} disabled={unarchiveIsPending}>
+            <ArchiveRestore className="w-4 h-4 mr-2" />
+            Unarchive
+          </DropdownMenuItem>
+        ) : (
+          <>
+            <DropdownMenuItem onClick={() => onCreateInvoice(job)} disabled={convertToInvoiceIsPending}>
+              <Receipt className="w-4 h-4 mr-2" />
+              Create Invoice
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onCreateQuote(job)} disabled={convertToQuoteIsPending}>
+              <FileText className="w-4 h-4 mr-2" />
+              Create Quote
+            </DropdownMenuItem>
+            {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
+              <DropdownMenuItem onClick={() => onArchive(job)}>
+                <Archive className="w-4 h-4 mr-2" />
+                Archive
+              </DropdownMenuItem>
+            )}
+          </>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onDelete(job)} className="text-destructive focus:text-destructive">
+          <Trash2 className="w-4 h-4 mr-2" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  const icon = (
+    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${job.archived_at ? 'bg-muted' : 'bg-primary/10'}`}>
+      {job.archived_at ? <Archive className="w-5 h-5 text-muted-foreground" /> : <Briefcase className="w-5 h-5 text-primary" />}
+    </div>
+  );
+
+  return (
+    <DocumentListCard
+      onClick={() => onView(job)}
+      isArchived={!!job.archived_at}
+      documentNumber={job.job_number}
+      title={job.title}
+      customerName={job.customer?.name || "Unknown"}
+      customerEmail={job.customer?.email}
+      total={(job.total ?? 0) > 0 ? Number(job.total) : undefined}
+      metadataRow={metadataRow}
+      notes={job.notes}
+      tagsRow={tagsRow}
+      actionsMenu={actionsMenu}
+      icon={icon}
+    />
+  );
+}

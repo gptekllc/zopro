@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +26,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import type { Invoice } from "@/hooks/useInvoices";
+import { DocumentListCard } from "@/components/documents/DocumentListCard";
 
 type Props = {
   invoice: Invoice;
@@ -97,360 +97,163 @@ export function InvoiceListCard({
   // Get linked job number - prefer direct job_id link, fallback to quote's job
   const linkedJobNumber = (invoice as any).job?.job_number || (invoice as any).quote?.job?.job_number || null;
 
+  const metadataRow = (
+    <>
+      {creatorName && (
+        <span className="flex items-center gap-1">
+          <UserCog className="w-3 h-3" />
+          {creatorName}
+        </span>
+      )}
+      {linkedJobNumber && (
+        <>
+          {creatorName && <span>•</span>}
+          <span className="flex items-center gap-1">
+            <Briefcase className="w-3 h-3" />
+            {linkedJobNumber}
+          </span>
+        </>
+      )}
+      {dueText && (
+        <>
+          {(creatorName || linkedJobNumber) && <span>•</span>}
+          <span className="shrink-0">Due {dueText}</span>
+        </>
+      )}
+    </>
+  );
+
+  const tagsRow = (
+    <>
+      {archivedAt && (
+        <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
+      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${invoiceStatusColors[invoice.status] || "bg-muted"}`}>
+            {invoice.status}
+          </span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="bg-popover z-50">
+          {["draft", "sent", "paid", "overdue"].map((status) => (
+            <DropdownMenuItem
+              key={status}
+              onClick={() => onStatusChange(invoice.id, status)}
+              disabled={invoice.status === status}
+              className={invoice.status === status ? "bg-accent" : ""}
+            >
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${invoiceStatusColors[status] || "bg-muted"}`}>
+                {status}
+              </span>
+              {invoice.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
+            </DropdownMenuItem>
+          ))}
+          {isInvoiceOverdue(invoice) && !invoice.late_fee_amount && lateFeePercentage > 0 && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onApplyLateFee(invoice.id)} className="text-destructive">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Apply {lateFeePercentage}% Late Fee
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {signatureId && (
+        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success flex items-center gap-1">
+          <PenTool className="w-3 h-3" />
+          Signed
+        </span>
+      )}
+    </>
+  );
+
+  const actionsMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-9 sm:w-9">
+          <MoreVertical className="w-4 h-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="bg-popover z-50">
+        <DropdownMenuItem onClick={() => onEdit(invoice)}>
+          <Edit className="w-4 h-4 mr-2" />
+          Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onDuplicate(invoice)}>
+          <Copy className="w-4 h-4 mr-2" />
+          Duplicate
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onDownload(invoice.id)}>
+          <FileDown className="w-4 h-4 mr-2" />
+          Download PDF
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onEmail(invoice.id, invoice.customer_id)}>
+          <Mail className="w-4 h-4 mr-2" />
+          Email Invoice
+        </DropdownMenuItem>
+        {invoice.status !== "paid" && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onMarkPaid(invoice.id)}>
+              <CheckCircle className="w-4 h-4 mr-2 text-success" />
+              Mark as Paid
+            </DropdownMenuItem>
+          </>
+        )}
+        {signatureId ? (
+          <DropdownMenuItem onClick={() => onViewSignature(signatureId)}>
+            <Eye className="w-4 h-4 mr-2" />
+            View Signature
+          </DropdownMenuItem>
+        ) : (
+          invoice.status !== "paid" && (
+            <>
+              <DropdownMenuItem onClick={() => onOpenSignatureDialog(invoice)}>
+                <PenTool className="w-4 h-4 mr-2" />
+                Collect Signature
+              </DropdownMenuItem>
+              {customerEmail && (
+                <DropdownMenuItem onClick={() => onSendSignatureRequest(invoice)}>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send Signature Request
+                </DropdownMenuItem>
+              )}
+            </>
+          )
+        )}
+        <DropdownMenuSeparator />
+        {archivedAt ? (
+          <DropdownMenuItem onClick={() => onUnarchive(invoice)}>
+            <ArchiveRestore className="w-4 h-4 mr-2" />
+            Restore
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onClick={() => onArchive(invoice)}>
+            <Archive className="w-4 h-4 mr-2" />
+            Archive
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem onClick={() => onDelete(invoice)} className="text-destructive focus:text-destructive">
+          <Trash2 className="w-4 h-4 mr-2" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
-    <Card
-      className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${archivedAt ? 'opacity-60 border-dashed' : ''}`}
+    <DocumentListCard
       onClick={() => onOpen(invoice)}
-    >
-      <CardContent className="p-4 sm:p-5">
-        {/* Mobile Layout */}
-        <div className="flex flex-col gap-2 sm:hidden">
-          {/* Row 1: Invoice Info + Total */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm">{invoice.invoice_number}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                <span className="truncate">{customerName}</span>
-                {customerEmail && (
-                  <>
-                    <span>•</span>
-                    <span className="truncate">{customerEmail}</span>
-                  </>
-                )}
-              </div>
-            </div>
-            <span className="text-sm font-semibold text-primary shrink-0">
-              ${displayTotal.toFixed(2)}
-            </span>
-          </div>
-
-          {/* Row 2: Metadata (creator, job, due date) */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-            {creatorName && (
-              <span className="flex items-center gap-1">
-                <UserCog className="w-3 h-3" />
-                {creatorName}
-              </span>
-            )}
-            {linkedJobNumber && (
-              <>
-                {creatorName && <span>•</span>}
-                <span className="flex items-center gap-1">
-                  <Briefcase className="w-3 h-3" />
-                  {linkedJobNumber}
-                </span>
-              </>
-            )}
-            {dueText && (
-              <>
-                {(creatorName || linkedJobNumber) && <span>•</span>}
-                <span className="shrink-0">Due {dueText}</span>
-              </>
-            )}
-          </div>
-
-          {invoice.notes && (
-            <p className="text-xs text-muted-foreground line-clamp-1">{invoice.notes}</p>
-          )}
-
-          {/* Row 3: Tags + Actions */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-              {archivedAt && (
-                <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
-              )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${invoiceStatusColors[invoice.status] || "bg-muted"}`}>
-                    {invoice.status}
-                  </span>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="bg-popover z-50">
-                  {["draft", "sent", "paid", "overdue"].map((status) => (
-                    <DropdownMenuItem
-                      key={status}
-                      onClick={() => onStatusChange(invoice.id, status)}
-                      disabled={invoice.status === status}
-                      className={invoice.status === status ? "bg-accent" : ""}
-                    >
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${invoiceStatusColors[status] || "bg-muted"}`}>
-                        {status}
-                      </span>
-                      {invoice.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
-                    </DropdownMenuItem>
-                  ))}
-                  {isInvoiceOverdue(invoice) && !invoice.late_fee_amount && lateFeePercentage > 0 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onApplyLateFee(invoice.id)} className="text-destructive">
-                        <AlertCircle className="w-4 h-4 mr-2" />
-                        Apply {lateFeePercentage}% Late Fee
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {signatureId && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success flex items-center gap-1">
-                  <PenTool className="w-3 h-3" />
-                  Signed
-                </span>
-              )}
-            </div>
-
-            {/* Action Menu */}
-            <div onClick={(e) => e.stopPropagation()}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7">
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover z-50">
-                  <DropdownMenuItem onClick={() => onEdit(invoice)}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDuplicate(invoice)}>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Duplicate
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDownload(invoice.id)}>
-                    <FileDown className="w-4 h-4 mr-2" />
-                    Download PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onEmail(invoice.id, invoice.customer_id)}>
-                    <Mail className="w-4 h-4 mr-2" />
-                    Email Invoice
-                  </DropdownMenuItem>
-                  {invoice.status !== "paid" && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onMarkPaid(invoice.id)}>
-                        <CheckCircle className="w-4 h-4 mr-2 text-success" />
-                        Mark as Paid
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  {signatureId ? (
-                    <DropdownMenuItem onClick={() => onViewSignature(signatureId)}>
-                      <Eye className="w-4 h-4 mr-2" />
-                      View Signature
-                    </DropdownMenuItem>
-                  ) : (
-                    invoice.status !== "paid" && (
-                      <>
-                        <DropdownMenuItem onClick={() => onOpenSignatureDialog(invoice)}>
-                          <PenTool className="w-4 h-4 mr-2" />
-                          Collect Signature
-                        </DropdownMenuItem>
-                        {customerEmail && (
-                          <DropdownMenuItem onClick={() => onSendSignatureRequest(invoice)}>
-                            <Send className="w-4 h-4 mr-2" />
-                            Send Signature Request
-                          </DropdownMenuItem>
-                        )}
-                      </>
-                    )
-                  )}
-                  <DropdownMenuSeparator />
-                  {archivedAt ? (
-                    <DropdownMenuItem onClick={() => onUnarchive(invoice)}>
-                      <ArchiveRestore className="w-4 h-4 mr-2" />
-                      Restore
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem onClick={() => onArchive(invoice)}>
-                      <Archive className="w-4 h-4 mr-2" />
-                      Archive
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => onDelete(invoice)} className="text-destructive focus:text-destructive">
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </div>
-
-        {/* Desktop Layout */}
-        <div className="hidden sm:flex flex-col gap-2">
-          {/* Row 1: Invoice Info + Total */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">{invoice.invoice_number}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
-                <span className="truncate">{customerName}</span>
-                {customerEmail && (
-                  <>
-                    <span>•</span>
-                    <span className="truncate">{customerEmail}</span>
-                  </>
-                )}
-              </div>
-            </div>
-            <span className="text-base font-semibold text-primary shrink-0">
-              ${displayTotal.toFixed(2)}
-            </span>
-          </div>
-
-          {/* Row 2: Metadata (creator, job, due date) */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-            {creatorName && (
-              <span className="flex items-center gap-1">
-                <UserCog className="w-3 h-3" />
-                {creatorName}
-              </span>
-            )}
-            {linkedJobNumber && (
-              <>
-                {creatorName && <span>•</span>}
-                <span className="flex items-center gap-1">
-                  <Briefcase className="w-3 h-3" />
-                  {linkedJobNumber}
-                </span>
-              </>
-            )}
-            {dueText && (
-              <>
-                {(creatorName || linkedJobNumber) && <span>•</span>}
-                <span className="shrink-0">Due {dueText}</span>
-              </>
-            )}
-          </div>
-
-          {invoice.notes && (
-            <p className="text-sm text-muted-foreground line-clamp-1">{invoice.notes}</p>
-          )}
-
-          {/* Row 3: Tags + Actions */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-              {archivedAt && (
-                <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
-              )}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${invoiceStatusColors[invoice.status] || "bg-muted"}`}>
-                    {invoice.status}
-                  </span>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="bg-popover z-50">
-                  {["draft", "sent", "paid", "overdue"].map((status) => (
-                    <DropdownMenuItem
-                      key={status}
-                      onClick={() => onStatusChange(invoice.id, status)}
-                      disabled={invoice.status === status}
-                      className={invoice.status === status ? "bg-accent" : ""}
-                    >
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${invoiceStatusColors[status] || "bg-muted"}`}>
-                        {status}
-                      </span>
-                      {invoice.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
-                    </DropdownMenuItem>
-                  ))}
-                  {isInvoiceOverdue(invoice) && !invoice.late_fee_amount && lateFeePercentage > 0 && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onApplyLateFee(invoice.id)} className="text-destructive">
-                        <AlertCircle className="w-4 h-4 mr-2" />
-                        Apply {lateFeePercentage}% Late Fee
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {signatureId && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success flex items-center gap-1">
-                  <PenTool className="w-3 h-3" />
-                  Signed
-                </span>
-              )}
-            </div>
-
-            {/* Action Menu */}
-            <div onClick={(e) => e.stopPropagation()}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover z-50">
-                  <DropdownMenuItem onClick={() => onEdit(invoice)}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDuplicate(invoice)}>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Duplicate
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDownload(invoice.id)}>
-                    <FileDown className="w-4 h-4 mr-2" />
-                    Download PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onEmail(invoice.id, invoice.customer_id)}>
-                    <Mail className="w-4 h-4 mr-2" />
-                    Email Invoice
-                  </DropdownMenuItem>
-                  {invoice.status !== "paid" && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onMarkPaid(invoice.id)}>
-                        <CheckCircle className="w-4 h-4 mr-2 text-success" />
-                        Mark as Paid
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  {signatureId ? (
-                    <DropdownMenuItem onClick={() => onViewSignature(signatureId)}>
-                      <Eye className="w-4 h-4 mr-2" />
-                      View Signature
-                    </DropdownMenuItem>
-                  ) : (
-                    invoice.status !== "paid" && (
-                      <>
-                        <DropdownMenuItem onClick={() => onOpenSignatureDialog(invoice)}>
-                          <PenTool className="w-4 h-4 mr-2" />
-                          Collect Signature
-                        </DropdownMenuItem>
-                        {customerEmail && (
-                          <DropdownMenuItem onClick={() => onSendSignatureRequest(invoice)}>
-                            <Send className="w-4 h-4 mr-2" />
-                            Send Signature Request
-                          </DropdownMenuItem>
-                        )}
-                      </>
-                    )
-                  )}
-                  <DropdownMenuSeparator />
-                  {archivedAt ? (
-                    <DropdownMenuItem onClick={() => onUnarchive(invoice)}>
-                      <ArchiveRestore className="w-4 h-4 mr-2" />
-                      Restore
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem onClick={() => onArchive(invoice)}>
-                      <Archive className="w-4 h-4 mr-2" />
-                      Archive
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem onClick={() => onDelete(invoice)} className="text-destructive focus:text-destructive">
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      isArchived={!!archivedAt}
+      documentNumber={invoice.invoice_number}
+      customerName={customerName}
+      customerEmail={customerEmail}
+      total={displayTotal}
+      metadataRow={metadataRow}
+      notes={invoice.notes}
+      tagsRow={tagsRow}
+      actionsMenu={actionsMenu}
+    />
   );
 }

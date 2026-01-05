@@ -51,6 +51,7 @@ import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { ConvertJobToInvoiceDialog } from '@/components/jobs/ConvertJobToInvoiceDialog';
+import { JobListCard } from '@/components/jobs/JobListCard';
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
@@ -1138,378 +1139,35 @@ const Jobs = () => {
               <CardContent className="py-8 text-center text-muted-foreground">
                 No jobs found
               </CardContent>
-            </Card> : visibleJobs.map(job => <Card key={job.id} className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${job.archived_at ? 'opacity-60 border-dashed' : ''}`} onClick={() => openViewingJob(job)}>
-                <CardContent className="p-4 sm:p-5">
-                  {/* Mobile Layout */}
-                  <div className="flex flex-col gap-2 sm:hidden">
-                    {/* Row 1: Job Info */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm">{job.job_number}</span>
-                          <span className="text-muted-foreground">•</span>
-                          <span className="font-medium text-sm truncate">{job.title}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                          <span className="truncate">{job.customer?.name}</span>
-                          {job.customer?.email && <>
-                              <span>•</span>
-                              <span className="truncate">{job.customer.email}</span>
-                            </>}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                          {job.assignee?.full_name && <span className="flex items-center gap-1">
-                              <UserCog className="w-3 h-3" />
-                              {job.assignee.full_name}
-                              {job.assignee.employment_status === 'on_leave' && <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-[10px] px-1 py-0 ml-1">
-                                  <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
-                                  On Leave
-                                </Badge>}
-                            </span>}
-                          {job.scheduled_start && <>
-                              {job.assignee?.full_name && <span>•</span>}
-                              <span className="flex items-center gap-1 shrink-0">
-                                <Calendar className="w-3 h-3" />
-                                {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
-                              </span>
-                            </>}
-                        </div>
-                        {job.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{job.notes}</p>}
-                      </div>
-                      {/* Total Price at top right */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        {(job.total ?? 0) > 0 && <span className="text-sm font-semibold text-primary">${Number(job.total).toFixed(2)}</span>}
-                        {/* Action Menu */}
-                        <div onClick={e => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-popover">
-                              {/* Quick Actions */}
-                              {['scheduled', 'in_progress'].includes(job.status) && (
-                                <>
-                                  <DropdownMenuItem onClick={() => sendJobNotification.mutate({ jobId: job.id, customerId: job.customer_id })}>
-                                    <Send className="w-4 h-4 mr-2" />
-                                    Send to Customer
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleOnMyWay(job, 15)}>
-                                    <Navigation className="w-4 h-4 mr-2" />
-                                    On My Way (~15 min)
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                              <DropdownMenuItem onClick={() => downloadDocument.mutate({ type: 'job', documentId: job.id })}>
-                                <Download className="w-4 h-4 mr-2" />
-                                Download PDF
-                              </DropdownMenuItem>
-                              {job.customer?.email && (
-                                <DropdownMenuItem onClick={() => emailDocument.mutate({ type: 'job', documentId: job.id, recipientEmail: job.customer.email! })}>
-                                  <Mail className="w-4 h-4 mr-2" />
-                                  Email PDF
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleEdit(job)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDuplicate(job)}>
-                                <Copy className="w-4 h-4 mr-2" />
-                                Duplicate
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setSaveAsTemplateJob(job)}>
-                                <Save className="w-4 h-4 mr-2" />
-                                Save as Template
-                              </DropdownMenuItem>
-                              {/* Signature Actions */}
-                              {(job as any).completion_signature_id ? (
-                                <DropdownMenuItem onClick={() => handleViewSignature((job as any).completion_signature_id)}>
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  View Signature
-                                </DropdownMenuItem>
-                              ) : (job.status === 'completed' || job.status === 'in_progress') && (
-                                <>
-                                  <DropdownMenuItem onClick={() => handleOpenSignatureDialog(job)}>
-                                    <PenTool className="w-4 h-4 mr-2" />
-                                    Collect Completion Signature
-                                  </DropdownMenuItem>
-                                  {job.customer?.email && (
-                                    <DropdownMenuItem onClick={() => handleSendSignatureRequest(job)}>
-                                      <Send className="w-4 h-4 mr-2" />
-                                      Send Signature Request
-                                    </DropdownMenuItem>
-                                  )}
-                                </>
-                              )}
-                              {job.archived_at ? (
-                                <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
-                                  <ArchiveRestore className="w-4 h-4 mr-2" />
-                                  Unarchive
-                                </DropdownMenuItem>
-                              ) : (
-                                <>
-                                  <DropdownMenuItem onClick={() => handleCreateInvoice(job)} disabled={convertToInvoice.isPending}>
-                                    <Receipt className="w-4 h-4 mr-2" />
-                                    Create Invoice
-                                  </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleCreateQuote(job)} disabled={convertToQuote.isPending}>
-                                <FileText className="w-4 h-4 mr-2" />
-                                Create Quote
-                              </DropdownMenuItem>
-                                  {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
-                                    <DropdownMenuItem onClick={() => setArchiveConfirmJob(job)}>
-                                      <Archive className="w-4 h-4 mr-2" />
-                                      Archive
-                                    </DropdownMenuItem>
-                                  )}
-                                </>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setDeleteConfirmJob(job)} className="text-destructive focus:text-destructive">
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Row 2: Tags */}
-                    <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
-                      {job.archived_at && <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Badge className={`${getPriorityColor(job.priority)} text-xs cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
-                            {job.priority}
-                            <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                          </Badge>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="bg-popover z-50">
-                          {JOB_PRIORITIES.map(priority => <DropdownMenuItem key={priority} onClick={() => handlePriorityChange(job.id, priority)} disabled={job.priority === priority} className={job.priority === priority ? 'bg-accent' : ''}>
-                              <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
-                                {priority}
-                              </Badge>
-                              {job.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                            </DropdownMenuItem>)}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
-                        {job.status.replace('_', ' ')}
-                      </span>
-                      {/* Signature Badge */}
-                      {(job as any).completion_signature_id && (
-                        <Badge variant="outline" className="bg-success/10 text-success border-success/30 gap-1 text-xs">
-                          <PenTool className="w-3 h-3" />
-                          Signed
-                        </Badge>
-                      )}
-                      {/* Notification sent indicator */}
-                      {(notificationCounts.get(job.id) || 0) > 0 && (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1 text-xs">
-                          <Bell className="w-3 h-3" />
-                          Notified
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Desktop Layout */}
-                  <div className="hidden sm:flex sm:flex-col gap-2">
-                    {/* Row 1: Job Info + Total + Actions */}
-                    <div className="flex items-start justify-between gap-4">
-                      {/* Left: Icon + Job Info */}
-                      <div className="flex items-start gap-4 min-w-0 flex-1">
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${job.archived_at ? 'bg-muted' : 'bg-primary/10'}`}>
-                          {job.archived_at ? <Archive className="w-5 h-5 text-muted-foreground" /> : <Briefcase className="w-5 h-5 text-primary" />}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold">{job.job_number}</h3>
-                            <span className="text-muted-foreground">•</span>
-                            <span className="font-medium truncate">{job.title}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
-                            <span className="truncate">{job.customer?.name}</span>
-                            {job.customer?.email && <>
-                                <span>•</span>
-                                <span className="truncate">{job.customer.email}</span>
-                              </>}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
-                            {job.assignee?.full_name && <span className="flex items-center gap-1">
-                                <UserCog className="w-3 h-3" />
-                                {job.assignee.full_name}
-                                {job.assignee.employment_status === 'on_leave' && <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-[10px] px-1 py-0 ml-1">
-                                    <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
-                                    On Leave
-                                  </Badge>}
-                              </span>}
-                            {job.scheduled_start && <>
-                                {job.assignee?.full_name && <span>•</span>}
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
-                                </span>
-                              </>}
-                            {job.photos && job.photos.length > 0 && <>
-                                {(job.assignee?.full_name || job.scheduled_start) && <span>•</span>}
-                                <span className="flex items-center gap-1">
-                                  <Image className="w-3 h-3" />
-                                  {job.photos.length}
-                                </span>
-                              </>}
-                          </div>
-                          {job.notes && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{job.notes}</p>}
-                        </div>
-                      </div>
-
-                      {/* Right: Total Price + Actions */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        {(job.total ?? 0) > 0 && <span className="text-base font-semibold text-primary">${Number(job.total).toFixed(2)}</span>}
-                        {/* Action Menu */}
-                        <div onClick={e => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="bg-popover">
-                              {/* Quick Actions */}
-                              {['scheduled', 'in_progress'].includes(job.status) && (
-                                <>
-                                  <DropdownMenuItem onClick={() => sendJobNotification.mutate({ jobId: job.id, customerId: job.customer_id })}>
-                                    <Send className="w-4 h-4 mr-2" />
-                                    Send to Customer
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleOnMyWay(job, 15)}>
-                                    <Navigation className="w-4 h-4 mr-2" />
-                                    On My Way (~15 min)
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                              <DropdownMenuItem onClick={() => downloadDocument.mutate({ type: 'job', documentId: job.id })}>
-                                <Download className="w-4 h-4 mr-2" />
-                                Download PDF
-                              </DropdownMenuItem>
-                              {job.customer?.email && (
-                                <DropdownMenuItem onClick={() => emailDocument.mutate({ type: 'job', documentId: job.id, recipientEmail: job.customer.email! })}>
-                                  <Mail className="w-4 h-4 mr-2" />
-                                  Email PDF
-                                </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleEdit(job)}>
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDuplicate(job)}>
-                                <Copy className="w-4 h-4 mr-2" />
-                                Duplicate
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setSaveAsTemplateJob(job)}>
-                                <Save className="w-4 h-4 mr-2" />
-                                Save as Template
-                              </DropdownMenuItem>
-                              {/* Signature Actions */}
-                              {(job as any).completion_signature_id ? (
-                                <DropdownMenuItem onClick={() => handleViewSignature((job as any).completion_signature_id)}>
-                                  <Eye className="w-4 h-4 mr-2" />
-                                  View Signature
-                                </DropdownMenuItem>
-                              ) : (job.status === 'completed' || job.status === 'in_progress') && (
-                                <>
-                                  <DropdownMenuItem onClick={() => handleOpenSignatureDialog(job)}>
-                                    <PenTool className="w-4 h-4 mr-2" />
-                                    Collect Completion Signature
-                                  </DropdownMenuItem>
-                                  {job.customer?.email && (
-                                    <DropdownMenuItem onClick={() => handleSendSignatureRequest(job)}>
-                                      <Send className="w-4 h-4 mr-2" />
-                                      Send Signature Request
-                                    </DropdownMenuItem>
-                                  )}
-                                </>
-                              )}
-                              {job.archived_at ? (
-                                <DropdownMenuItem onClick={() => unarchiveJob.mutate(job.id)} disabled={unarchiveJob.isPending}>
-                                  <ArchiveRestore className="w-4 h-4 mr-2" />
-                                  Unarchive
-                                </DropdownMenuItem>
-                              ) : (
-                                <>
-                                  <DropdownMenuItem onClick={() => handleCreateInvoice(job)} disabled={convertToInvoice.isPending}>
-                                    <Receipt className="w-4 h-4 mr-2" />
-                                    Create Invoice
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleCreateQuote(job)} disabled={convertToQuote.isPending}>
-                                    <FileText className="w-4 h-4 mr-2" />
-                                    Create Quote
-                                  </DropdownMenuItem>
-                                  {(job.status === 'paid' || job.status === 'completed' || job.status === 'invoiced') && (
-                                    <DropdownMenuItem onClick={() => setArchiveConfirmJob(job)}>
-                                      <Archive className="w-4 h-4 mr-2" />
-                                      Archive
-                                    </DropdownMenuItem>
-                                  )}
-                                </>
-                              )}
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => setDeleteConfirmJob(job)} className="text-destructive focus:text-destructive">
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Row 2: Tags */}
-                    <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
-                      {job.archived_at && <Badge variant="outline" className="text-muted-foreground">Archived</Badge>}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Badge className={`${getPriorityColor(job.priority)} cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
-                            {job.priority}
-                            <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                          </Badge>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="bg-popover z-50">
-                          {JOB_PRIORITIES.map(priority => <DropdownMenuItem key={priority} onClick={() => handlePriorityChange(job.id, priority)} disabled={job.priority === priority} className={job.priority === priority ? 'bg-accent' : ''}>
-                              <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
-                                {priority}
-                              </Badge>
-                              {job.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                            </DropdownMenuItem>)}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
-                        {job.status.replace('_', ' ')}
-                      </span>
-                      {/* Signature Badge */}
-                      {(job as any).completion_signature_id && (
-                        <Badge variant="outline" className="bg-success/10 text-success border-success/30 gap-1">
-                          <PenTool className="w-3 h-3" />
-                          Signed
-                        </Badge>
-                      )}
-                      {/* Notification sent indicator */}
-                      {(notificationCounts.get(job.id) || 0) > 0 && (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1">
-                          <Bell className="w-3 h-3" />
-                          Notified
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                </CardContent>
-              </Card>)}
+            </Card> : visibleJobs.map(job => (
+              <JobListCard
+                key={job.id}
+                job={job}
+                notificationCount={notificationCounts.get(job.id) || 0}
+                getPriorityColor={getPriorityColor}
+                getStatusColor={getStatusColor}
+                onView={openViewingJob}
+                onEdit={handleEdit}
+                onDuplicate={handleDuplicate}
+                onSaveAsTemplate={setSaveAsTemplateJob}
+                onPriorityChange={handlePriorityChange}
+                onDownload={(job) => downloadDocument.mutate({ type: 'job', documentId: job.id })}
+                onEmail={(job) => job.customer?.email && emailDocument.mutate({ type: 'job', documentId: job.id, recipientEmail: job.customer.email })}
+                onSendNotification={(job) => sendJobNotification.mutate({ jobId: job.id, customerId: job.customer_id })}
+                onOnMyWay={handleOnMyWay}
+                onViewSignature={handleViewSignature}
+                onOpenSignatureDialog={handleOpenSignatureDialog}
+                onSendSignatureRequest={handleSendSignatureRequest}
+                onCreateInvoice={handleCreateInvoice}
+                onCreateQuote={handleCreateQuote}
+                onArchive={setArchiveConfirmJob}
+                onUnarchive={(job) => unarchiveJob.mutate(job.id)}
+                onDelete={setDeleteConfirmJob}
+                convertToInvoiceIsPending={convertToInvoice.isPending}
+                convertToQuoteIsPending={convertToQuote.isPending}
+                unarchiveIsPending={unarchiveJob.isPending}
+              />
+            ))}
           {/* Infinite scroll trigger */}
           {hasMoreJobs && (
             <div ref={loadMoreJobsRef} className="py-4 flex flex-col items-center gap-2">
