@@ -55,6 +55,7 @@ import { JobListCard } from '@/components/jobs/JobListCard';
 import { useSwipeHint } from "@/components/ui/swipeable-card";
 
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
+const JOB_STATUSES_EDITABLE = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
 const Jobs = () => {
@@ -1002,7 +1003,7 @@ const Jobs = () => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {JOB_STATUSES.map(s => <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>)}
+                      {JOB_STATUSES_EDITABLE.map(s => <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -1219,7 +1220,7 @@ const Jobs = () => {
                         </Badge>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="start" className="bg-popover z-50">
-                        {JOB_STATUSES.map(status => (
+                        {JOB_STATUSES_EDITABLE.map(status => (
                           <DropdownMenuItem
                             key={status}
                             onClick={() => {
