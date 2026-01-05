@@ -200,91 +200,90 @@ export function InvoiceDetailDialog({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 sm:space-y-6">
-          {/* Customer & Dates - responsive grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
-              <p className="font-medium text-sm sm:text-base truncate">{customerName || 'Unknown'}</p>
+        {/* Tabs for Details, Linked Docs, Photos - at top like Job dialog */}
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="details" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+              <List className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Details</span>
+              {(invoice.items?.length || 0) > 0 && (
+                <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                  {invoice.items?.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+              <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Linked Docs</span>
+              {linkedDocsCount > 0 && (
+                <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                  {linkedDocsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+              <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Photos</span>
+              {invoicePhotos.length > 0 && (
+                <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                  {invoicePhotos.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Details Tab */}
+          <TabsContent value="details" className="mt-4 space-y-4">
+            {/* Customer & Dates - responsive grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div>
+                <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
+                <p className="font-medium text-sm sm:text-base truncate">{customerName || 'Unknown'}</p>
+              </div>
+              {creatorName && (
+                <div>
+                  <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                    <UserCog className="w-3 h-3" /> Created By
+                  </p>
+                  <p className="font-medium text-sm sm:text-base truncate">{creatorName}</p>
+                </div>
+              )}
+              {linkedJobNumber && (
+                <div>
+                  <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                    <Briefcase className="w-3 h-3" /> Linked Job
+                  </p>
+                  <p className="font-medium text-sm sm:text-base">{linkedJobNumber}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
+                <p className="font-medium text-sm sm:text-base">{format(new Date(invoice.created_at), 'MMM d, yyyy')}</p>
+              </div>
+              {invoice.due_date && (
+                <div>
+                  <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                    <Calendar className="w-3 h-3" /> Due Date
+                  </p>
+                  <p className="font-medium text-sm sm:text-base">{format(new Date(invoice.due_date), 'MMM d, yyyy')}</p>
+                </div>
+              )}
+              {invoice.paid_at && (
+                <div>
+                  <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" /> Paid
+                  </p>
+                  <p className="font-medium text-green-600 flex items-center gap-1 text-sm sm:text-base">
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                    {format(new Date(invoice.paid_at), 'MMM d, yyyy')}
+                  </p>
+                </div>
+              )}
             </div>
-            {creatorName && (
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                  <UserCog className="w-3 h-3" /> Created By
-                </p>
-                <p className="font-medium text-sm sm:text-base truncate">{creatorName}</p>
-              </div>
-            )}
-            {linkedJobNumber && (
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                  <Briefcase className="w-3 h-3" /> Linked Job
-                </p>
-                <p className="font-medium text-sm sm:text-base">{linkedJobNumber}</p>
-              </div>
-            )}
-            <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
-              <p className="font-medium text-sm sm:text-base">{format(new Date(invoice.created_at), 'MMM d, yyyy')}</p>
-            </div>
-            {invoice.due_date && (
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                  <Calendar className="w-3 h-3" /> Due Date
-                </p>
-                <p className="font-medium text-sm sm:text-base">{format(new Date(invoice.due_date), 'MMM d, yyyy')}</p>
-              </div>
-            )}
-            {invoice.paid_at && (
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" /> Paid
-                </p>
-                <p className="font-medium text-green-600 flex items-center gap-1 text-sm sm:text-base">
-                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                  {format(new Date(invoice.paid_at), 'MMM d, yyyy')}
-                </p>
-              </div>
-            )}
-          </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Tabs for Details, Linked Docs, Photos */}
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="details" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                <List className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Details</span>
-                {(invoice.items?.length || 0) > 0 && (
-                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {invoice.items?.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Linked Docs</span>
-                {linkedDocsCount > 0 && (
-                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {linkedDocsCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Photos</span>
-                {invoicePhotos.length > 0 && (
-                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {invoicePhotos.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Details Tab */}
-            <TabsContent value="details" className="mt-4 space-y-4">
-              {/* Line Items */}
+            {/* Line Items */}
               <div>
                 <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
                 <div className="space-y-2">
@@ -599,7 +598,6 @@ export function InvoiceDetailDialog({
               Edit
             </Button>
           </div>
-        </div>
       </DialogContent>
     </Dialog>
   );

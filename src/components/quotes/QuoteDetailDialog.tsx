@@ -171,83 +171,82 @@ export function QuoteDetailDialog({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 sm:space-y-6">
-          {/* Customer & Dates - responsive grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
-              <p className="font-medium text-sm sm:text-base truncate">{customerName || 'Unknown'}</p>
+        {/* Tabs for Details, Linked Docs, Photos - at top like Job dialog */}
+        <Tabs defaultValue="details" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="details" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+              <List className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Details</span>
+              {(quote.items?.length || 0) > 0 && (
+                <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                  {quote.items?.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+              <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Linked Docs</span>
+              {linkedDocsCount > 0 && (
+                <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                  {linkedDocsCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+              <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Photos</span>
+              {quotePhotos.length > 0 && (
+                <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                  {quotePhotos.length}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Details Tab */}
+          <TabsContent value="details" className="mt-4 space-y-4">
+            {/* Customer & Dates - responsive grid */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div>
+                <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
+                <p className="font-medium text-sm sm:text-base truncate">{customerName || 'Unknown'}</p>
+              </div>
+              {creatorName && (
+                <div>
+                  <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                    <UserCog className="w-3 h-3" /> Created By
+                  </p>
+                  <p className="font-medium text-sm sm:text-base truncate">{creatorName}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
+                <p className="font-medium text-sm sm:text-base">{format(new Date(quote.created_at), 'MMM d, yyyy')}</p>
+              </div>
+              {quote.valid_until && (
+                <div>
+                  <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                    <Calendar className="w-3 h-3" /> Valid Until
+                  </p>
+                  <p className="font-medium text-sm sm:text-base">{format(new Date(quote.valid_until), 'MMM d, yyyy')}</p>
+                </div>
+              )}
+              {quote.signed_at && (
+                <div>
+                  <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                    <PenTool className="w-3 h-3" /> Signed
+                  </p>
+                  <p className="font-medium text-green-600 flex items-center gap-1 text-sm sm:text-base">
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                    {format(new Date(quote.signed_at), 'MMM d, yyyy')}
+                  </p>
+                </div>
+              )}
             </div>
-            {creatorName && (
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                  <UserCog className="w-3 h-3" /> Created By
-                </p>
-                <p className="font-medium text-sm sm:text-base truncate">{creatorName}</p>
-              </div>
-            )}
-            <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
-              <p className="font-medium text-sm sm:text-base">{format(new Date(quote.created_at), 'MMM d, yyyy')}</p>
-            </div>
-            {quote.valid_until && (
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                  <Calendar className="w-3 h-3" /> Valid Until
-                </p>
-                <p className="font-medium text-sm sm:text-base">{format(new Date(quote.valid_until), 'MMM d, yyyy')}</p>
-              </div>
-            )}
-            {quote.signed_at && (
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                  <PenTool className="w-3 h-3" /> Signed
-                </p>
-                <p className="font-medium text-green-600 flex items-center gap-1 text-sm sm:text-base">
-                  <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                  {format(new Date(quote.signed_at), 'MMM d, yyyy')}
-                </p>
-              </div>
-            )}
-          </div>
 
-          <Separator />
+            <Separator />
 
-          {/* Tabs for Details, Linked Docs, Photos */}
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="details" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                <List className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Details</span>
-                {(quote.items?.length || 0) > 0 && (
-                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {quote.items?.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Linked Docs</span>
-                {linkedDocsCount > 0 && (
-                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {linkedDocsCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Photos</span>
-                {quotePhotos.length > 0 && (
-                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {quotePhotos.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Details Tab */}
-            <TabsContent value="details" className="mt-4 space-y-4">
-              {/* Line Items */}
+            {/* Line Items */}
               <div>
                 <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
                 <div className="space-y-2">
@@ -462,7 +461,6 @@ export function QuoteDetailDialog({
               <Edit className="w-4 h-4 mr-1" /> Edit
             </Button>
           </div>
-        </div>
       </DialogContent>
     </Dialog>
   );
