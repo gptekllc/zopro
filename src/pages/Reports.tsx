@@ -13,7 +13,7 @@ const Reports = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-3 lg:space-y-6 w-full max-w-7xl mx-auto px-1 lg:px-4">
+      <div className="space-y-3 lg:space-y-6 w-full max-w-7xl mx-auto -mx-3 px-2 lg:mx-auto lg:px-4">
         <div className="pt-0">
           <h1 className="text-2xl font-bold">Reports</h1>
           <p className="text-muted-foreground">
