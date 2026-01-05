@@ -719,6 +719,15 @@ const MonthlySummaryReport = () => {
                   dot={{ fill: 'hsl(var(--chart-3))' }}
                 />
               )}
+              <Line 
+                type="monotone" 
+                dataKey="revenue" 
+                name="Total Revenue"
+                stroke="hsl(var(--chart-5))" 
+                strokeWidth={3}
+                strokeDasharray="5 5"
+                dot={{ fill: 'hsl(var(--chart-5))' }}
+              />
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
