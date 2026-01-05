@@ -11,7 +11,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Package, Wrench, Loader2, Upload, Download, FileText, EyeOff, Search, X } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Plus, Edit, Trash2, Package, Wrench, Loader2, Upload, Download, FileText, EyeOff, Search, X, ChevronDown } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 import { toast } from 'sonner';
 
@@ -49,7 +51,7 @@ export const CatalogManager = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<'all' | 'product' | 'service'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  
+  const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -513,47 +515,52 @@ export const CatalogManager = () => {
         </CardContent>
       </Card>
 
-      {/* Import/Export Section */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Import / Export</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv"
-              onChange={handleSelectCSV}
-              className="hidden"
-            />
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importing}
-            >
-              {importing ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Upload className="w-4 h-4 mr-2" />
-              )}
-              Import CSV
-            </Button>
-            <Button variant="outline" onClick={handleExportCSV} disabled={items.length === 0}>
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button variant="ghost" onClick={handleDownloadTemplate}>
-              <FileText className="w-4 h-4 mr-2" />
-              Download Template
-            </Button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            CSV format: name, description, type (product/service), unit_price, is_active (true/false).
-            Duplicate items (by name) will be updated instead of creating duplicates.
-          </p>
-        </CardContent>
-      </Card>
+      {/* Import/Export Accordion */}
+      <Accordion type="single" collapsible className="w-full">
+        <AccordionItem value="import-export" className="border rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline py-3">
+            <span className="flex items-center gap-2 text-base font-semibold">
+              <Upload className="w-4 h-4" />
+              Import / Export
+            </span>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4">
+            <div className="flex flex-wrap gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleSelectCSV}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+              >
+                {importing ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Upload className="w-4 h-4 mr-2" />
+                )}
+                Import CSV
+              </Button>
+              <Button variant="outline" onClick={handleExportCSV} disabled={items.length === 0}>
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+              <Button variant="ghost" onClick={handleDownloadTemplate}>
+                <FileText className="w-4 h-4 mr-2" />
+                Download Template
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              CSV format: name, description, type (product/service), unit_price, is_active (true/false).
+              Duplicate items (by name) will be updated instead of creating duplicates.
+            </p>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
       {/* Bulk Actions */}
       {selectedItems.size > 0 && (
@@ -587,71 +594,85 @@ export const CatalogManager = () => {
         </Card>
       )}
 
-      {/* Products Section */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div className="flex items-center gap-3">
-            {products.length > 0 && (
-              <Checkbox
-                checked={products.every(p => selectedItems.has(p.id)) && products.length > 0}
-                onCheckedChange={() => toggleSelectAll(products)}
-              />
-            )}
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Package className="w-5 h-5" />
-              Products ({products.length})
-            </CardTitle>
-          </div>
-          <Button size="sm" onClick={() => openCreateDialog('product')}>
-            <Plus className="w-4 h-4 mr-1" />
-            Add Product
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {products.length > 0 ? (
-            <div className="space-y-2">
-              {products.map(item => renderItemCard(item, true))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-4">
-              No products added yet. Add products to quickly insert them into quotes, jobs, and invoices.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+      {/* Products/Services Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'products' | 'services')} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="products" className="flex items-center gap-2">
+            <Package className="w-4 h-4" />
+            Products ({products.length})
+          </TabsTrigger>
+          <TabsTrigger value="services" className="flex items-center gap-2">
+            <Wrench className="w-4 h-4" />
+            Services ({services.length})
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Services Section */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div className="flex items-center gap-3">
-            {services.length > 0 && (
-              <Checkbox
-                checked={services.every(s => selectedItems.has(s.id)) && services.length > 0}
-                onCheckedChange={() => toggleSelectAll(services)}
-              />
-            )}
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Wrench className="w-5 h-5" />
-              Services ({services.length})
-            </CardTitle>
-          </div>
-          <Button size="sm" onClick={() => openCreateDialog('service')}>
-            <Plus className="w-4 h-4 mr-1" />
-            Add Service
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {services.length > 0 ? (
-            <div className="space-y-2">
-              {services.map(item => renderItemCard(item, true))}
-            </div>
-          ) : (
-            <p className="text-center text-muted-foreground py-4">
-              No services added yet. Add services to quickly insert them into quotes, jobs, and invoices.
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="products" className="mt-0">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div className="flex items-center gap-3">
+                {products.length > 0 && (
+                  <Checkbox
+                    checked={products.every(p => selectedItems.has(p.id)) && products.length > 0}
+                    onCheckedChange={() => toggleSelectAll(products)}
+                  />
+                )}
+                <span className="text-sm text-muted-foreground">
+                  {products.length > 0 ? 'Select all' : 'No products'}
+                </span>
+              </div>
+              <Button size="sm" onClick={() => openCreateDialog('product')}>
+                <Plus className="w-4 h-4 mr-1" />
+                Add Product
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {products.length > 0 ? (
+                <div className="space-y-2">
+                  {products.map(item => renderItemCard(item, true))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-4">
+                  No products added yet. Add products to quickly insert them into quotes, jobs, and invoices.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="services" className="mt-0">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+              <div className="flex items-center gap-3">
+                {services.length > 0 && (
+                  <Checkbox
+                    checked={services.every(s => selectedItems.has(s.id)) && services.length > 0}
+                    onCheckedChange={() => toggleSelectAll(services)}
+                  />
+                )}
+                <span className="text-sm text-muted-foreground">
+                  {services.length > 0 ? 'Select all' : 'No services'}
+                </span>
+              </div>
+              <Button size="sm" onClick={() => openCreateDialog('service')}>
+                <Plus className="w-4 h-4 mr-1" />
+                Add Service
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {services.length > 0 ? (
+                <div className="space-y-2">
+                  {services.map(item => renderItemCard(item, true))}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-4">
+                  No services added yet. Add services to quickly insert them into quotes, jobs, and invoices.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
