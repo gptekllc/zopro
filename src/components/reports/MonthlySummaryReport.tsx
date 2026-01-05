@@ -567,8 +567,33 @@ const MonthlySummaryReport = () => {
           </DropdownMenu>
         </div>
 
+        {/* Tablet: Actions Dropdown */}
+        <div className="hidden sm:flex lg:hidden items-center justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-popover">
+              <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={monthlyData.length === 0}>
+                <Mail className="w-4 h-4 mr-2" />
+                Email
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={printReport} disabled={monthlyData.length === 0}>
+                <Printer className="w-4 h-4 mr-2" />
+                Print/PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToCSV} disabled={monthlyData.length === 0}>
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
         {/* Desktop Actions */}
-        <div className="hidden sm:flex items-center justify-end gap-2">
+        <div className="hidden lg:flex items-center justify-end gap-2">
           <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={monthlyData.length === 0}>
             <Mail className="w-4 h-4 mr-2" />
             Email
