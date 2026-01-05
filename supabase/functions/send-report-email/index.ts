@@ -18,10 +18,15 @@ interface TechnicianData {
 }
 
 interface ReportStats {
-  teamSize: number;
-  totalJobs: number;
-  totalHours: string;
-  totalRevenue: string;
+  teamSize?: number;
+  totalJobs?: number;
+  totalHours?: string;
+  totalRevenue?: string;
+  totalQuotes?: number;
+  totalInvoices?: number;
+  totalCustomers?: number;
+  avgRevenue?: string;
+  avgLTV?: string;
 }
 
 interface ReportData {
@@ -29,7 +34,9 @@ interface ReportData {
   timeRange: string;
   generatedAt: string;
   stats: ReportStats;
-  technicians: TechnicianData[];
+  technicians?: TechnicianData[];
+  months?: any[];
+  customers?: any[];
 }
 
 interface SendReportEmailRequest {
@@ -55,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (reportType === 'technician-performance') {
       subject = `Technician Performance Report - ${reportData.timeRange}`;
       
-      const technicianRows = reportData.technicians.map(t => `
+      const technicianRows = (reportData.technicians || []).map(t => `
         <tr>
           <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">${t.name}</td>
           <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: center;">${t.role}</td>
@@ -126,6 +133,138 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="margin: 0; color: #6b7280; font-size: 12px;">
                 Generated on ${reportData.generatedAt}
               </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+    } else if (reportType === 'monthly-summary') {
+      subject = `Monthly Summary Report - ${reportData.timeRange}`;
+      
+      const monthRows = (reportData as any).months?.map((m: any) => `
+        <tr>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">${m.month}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: right;">${m.completedJobs}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: right;">${m.sentQuotes}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: right;">${m.generatedInvoices}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; color: #16a34a; font-weight: 600;">$${m.revenue}</td>
+        </tr>
+      `).join('') || '';
+
+      html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f9fafb; margin: 0; padding: 20px;">
+          <div style="max-width: 800px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">${reportData.title}</h1>
+              <p style="color: rgba(255, 255, 255, 0.9); margin: 8px 0 0 0; font-size: 16px;">${reportData.timeRange}</p>
+            </div>
+            <div style="padding: 32px;">
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px;">
+                <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Jobs</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #1f2937;">${reportData.stats.totalJobs}</div>
+                </div>
+                <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Quotes</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #1f2937;">${reportData.stats.totalQuotes}</div>
+                </div>
+                <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Invoices</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #1f2937;">${reportData.stats.totalInvoices}</div>
+                </div>
+                <div style="background-color: #dcfce7; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #16a34a; text-transform: uppercase;">Revenue</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #16a34a;">$${reportData.stats.totalRevenue}</div>
+                </div>
+              </div>
+              <h2 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Monthly Breakdown</h2>
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                  <tr style="background-color: #f3f4f6;">
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left; font-weight: 600;">Month</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; font-weight: 600;">Jobs</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; font-weight: 600;">Quotes</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; font-weight: 600;">Invoices</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; font-weight: 600;">Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>${monthRows}</tbody>
+              </table>
+            </div>
+            <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">Generated on ${reportData.generatedAt}</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+    } else if (reportType === 'customer-revenue') {
+      subject = `Customer Revenue Report - ${reportData.timeRange}`;
+      
+      const customerRows = (reportData as any).customers?.map((c: any) => `
+        <tr>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">${c.name}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: right;">${c.jobCount}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; color: #16a34a; font-weight: 600;">$${c.totalRevenue}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: right;">$${c.avgJobValue}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: right;">$${c.ltv}</td>
+        </tr>
+      `).join('') || '';
+
+      html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f9fafb; margin: 0; padding: 20px;">
+          <div style="max-width: 800px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 32px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">${reportData.title}</h1>
+              <p style="color: rgba(255, 255, 255, 0.9); margin: 8px 0 0 0; font-size: 16px;">${reportData.timeRange}</p>
+            </div>
+            <div style="padding: 32px;">
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px;">
+                <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Customers</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #1f2937;">${reportData.stats.totalCustomers}</div>
+                </div>
+                <div style="background-color: #dcfce7; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #16a34a; text-transform: uppercase;">Total Revenue</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #16a34a;">$${reportData.stats.totalRevenue}</div>
+                </div>
+                <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Avg/Customer</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #1f2937;">$${reportData.stats.avgRevenue}</div>
+                </div>
+                <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Avg LTV</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #1f2937;">$${reportData.stats.avgLTV}</div>
+                </div>
+              </div>
+              <h2 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Top Customers</h2>
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                  <tr style="background-color: #f3f4f6;">
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left; font-weight: 600;">Customer</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; font-weight: 600;">Jobs</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; font-weight: 600;">Revenue</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; font-weight: 600;">Avg Job</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; font-weight: 600;">Est. LTV</th>
+                  </tr>
+                </thead>
+                <tbody>${customerRows}</tbody>
+              </table>
+            </div>
+            <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">Generated on ${reportData.generatedAt}</p>
             </div>
           </div>
         </body>
