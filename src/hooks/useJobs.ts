@@ -11,9 +11,11 @@ export interface JobItem {
   id: string;
   job_id: string;
   description: string;
+  item_description?: string | null;
   quantity: number;
   unit_price: number;
   total: number;
+  type?: 'product' | 'service';
   created_at: string;
 }
 
@@ -156,7 +158,7 @@ export function useCreateJob() {
       scheduled_start?: string | null;
       scheduled_end?: string | null;
       notes?: string | null;
-      items?: { description: string; quantity: number; unit_price: number }[];
+      items?: { description: string; item_description?: string | null; quantity: number; unit_price: number; type?: 'product' | 'service' }[];
     }) => {
       if (!profile?.company_id) throw new Error('No company ID');
       
@@ -214,9 +216,11 @@ export function useCreateJob() {
             items.map(item => ({
               job_id: data.id,
               description: item.description,
+              item_description: item.item_description || null,
               quantity: item.quantity,
               unit_price: item.unit_price,
               total: item.quantity * item.unit_price,
+              type: item.type || 'service',
             }))
           );
         
@@ -240,7 +244,7 @@ export function useUpdateJob() {
   
   return useMutation({
     // Note: items here is the simplified form for input, not the full JobItem type
-    mutationFn: async ({ id, items, ...updates }: Omit<Partial<Job>, 'items'> & { id: string; items?: { description: string; quantity: number; unit_price: number }[] }) => {
+    mutationFn: async ({ id, items, ...updates }: Omit<Partial<Job>, 'items'> & { id: string; items?: { description: string; item_description?: string | null; quantity: number; unit_price: number; type?: 'product' | 'service' }[] }) => {
       // Calculate totals if items are provided
       if (items !== undefined) {
         // Fetch job to get company_id, then fetch tax rate
@@ -281,9 +285,11 @@ export function useUpdateJob() {
               items.map(item => ({
                 job_id: id,
                 description: item.description,
+                item_description: item.item_description || null,
                 quantity: item.quantity,
                 unit_price: item.unit_price,
                 total: item.quantity * item.unit_price,
+                type: item.type || 'service',
               }))
             );
           
@@ -557,9 +563,11 @@ export function useImportQuoteToJob() {
             quoteItems.map((item: any) => ({
               job_id: job.id,
               description: item.description,
+              item_description: item.item_description || null,
               quantity: item.quantity,
               unit_price: item.unit_price,
               total: item.quantity * item.unit_price,
+              type: item.type || 'service',
             }))
           );
         
@@ -587,14 +595,16 @@ export function useConvertJobToInvoice() {
       if (!profile?.company_id) throw new Error('No company ID');
       
       // First, check for job items
-      let items: { description: string; quantity: number; unit_price: number }[] = [];
+      let items: { description: string; item_description?: string | null; quantity: number; unit_price: number; type?: 'product' | 'service' }[] = [];
       
       if (job.items && job.items.length > 0) {
         // Use job items
         items = job.items.map(item => ({
           description: item.description,
+          item_description: (item as any).item_description || null,
           quantity: item.quantity,
           unit_price: item.unit_price,
+          type: (item as any).type || 'service',
         }));
       } else if (job.quote_id) {
         // Fall back to quote items if job has no items but has a linked quote
@@ -606,8 +616,10 @@ export function useConvertJobToInvoice() {
         if (!quoteItemsError && quoteItems && quoteItems.length > 0) {
           items = quoteItems.map((item: any) => ({
             description: item.description,
+            item_description: item.item_description || null,
             quantity: item.quantity,
             unit_price: item.unit_price,
+            type: item.type || 'service',
           }));
         }
       }
@@ -616,8 +628,10 @@ export function useConvertJobToInvoice() {
       if (items.length === 0) {
         items = [{
           description: job.title,
+          item_description: null,
           quantity: 1,
           unit_price: 0,
+          type: 'service',
         }];
       }
       
@@ -671,9 +685,11 @@ export function useConvertJobToInvoice() {
             items.map(item => ({
               invoice_id: invoice.id,
               description: item.description,
+              item_description: item.item_description || null,
               quantity: item.quantity,
               unit_price: item.unit_price,
               total: item.quantity * item.unit_price,
+              type: item.type || 'service',
             }))
           );
         

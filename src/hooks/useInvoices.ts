@@ -9,9 +9,11 @@ export interface InvoiceItem {
   id: string;
   invoice_id: string;
   description: string;
+  item_description?: string | null;
   quantity: number;
   unit_price: number;
   total: number;
+  type?: 'product' | 'service';
   created_at: string;
 }
 
@@ -191,9 +193,11 @@ export function useCreateInvoice() {
             items.map(item => ({
               invoice_id: invoiceData.id,
               description: item.description,
+              item_description: (item as any).item_description || null,
               quantity: item.quantity,
               unit_price: item.unit_price,
               total: item.quantity * item.unit_price,
+              type: (item as any).type || 'service',
             }))
           );
         
@@ -241,9 +245,11 @@ export function useUpdateInvoice() {
               items.map(item => ({
                 invoice_id: id,
                 description: item.description,
+                item_description: (item as any).item_description || null,
                 quantity: item.quantity,
                 unit_price: item.unit_price,
                 total: item.quantity * item.unit_price,
+                type: (item as any).type || 'service',
               }))
             );
           
