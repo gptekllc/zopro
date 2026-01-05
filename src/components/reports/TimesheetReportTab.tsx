@@ -391,7 +391,7 @@ const TimesheetReportTab = () => {
               </SelectContent>
             </Select>
 
-            {/* Team Member Filter - Desktop */}
+            {/* Team Member Filter - Tablet & Desktop */}
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="outline" className="hidden sm:flex min-w-[140px] justify-start">
@@ -449,6 +449,29 @@ const TimesheetReportTab = () => {
                 </div>
               </PopoverContent>
             </Popover>
+
+            {/* Tablet Actions Dropdown - right of All Members */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="hidden sm:flex lg:hidden">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={timesheetData.length === 0}>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToPDF} disabled={isExportingPdf}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Print/PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToCSV}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Mobile: Team Member Filter + Actions on second row */}
@@ -521,10 +544,10 @@ const TimesheetReportTab = () => {
                 </div>
               </PopoverContent>
             </Popover>
-            {/* Mobile & Tablet Actions Dropdown */}
+            {/* Mobile Actions Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="lg:hidden">
+                <Button variant="outline" size="icon">
                   <MoreVertical className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
