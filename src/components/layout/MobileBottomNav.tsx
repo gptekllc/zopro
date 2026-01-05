@@ -42,7 +42,7 @@ const MobileBottomNav = () => {
 
   const moreNavItems = [
     { icon: Users, label: 'Customers', path: '/customers', showFor: 'all' },
-    { icon: Package, label: 'Catalog', path: '/catalog', showFor: 'all' },
+    { icon: Package, label: 'Items', path: '/items', showFor: 'all' },
     { icon: BookTemplate, label: 'Templates', path: '/templates', showFor: 'all' },
     { icon: Bell, label: 'Notifications', path: '/notifications', showFor: 'admin' },
     { icon: UserCog, label: 'Technicians', path: '/technicians', showFor: 'admin' },

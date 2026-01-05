@@ -6,12 +6,12 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Package, Wrench, BookOpen } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 
-interface CatalogPickerProps {
+interface ItemsPickerProps {
   type: 'product' | 'service';
   onSelect: (item: CatalogItem) => void;
 }
 
-export const CatalogPicker = ({ type, onSelect }: CatalogPickerProps) => {
+export const ItemsPicker = ({ type, onSelect }: ItemsPickerProps) => {
   const [open, setOpen] = useState(false);
   const { data: items = [] } = useActiveCatalogItems();
 
@@ -31,14 +31,14 @@ export const CatalogPicker = ({ type, onSelect }: CatalogPickerProps) => {
       <PopoverTrigger asChild>
         <Button variant="ghost" size="sm" className="h-8 text-xs">
           <BookOpen className="w-3 h-3 mr-1" />
-          Catalog
+          Items
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-0" align="end">
         <Command>
           <CommandInput placeholder={`Search ${type}s...`} />
           <CommandList>
-            <CommandEmpty>No {type}s found in catalog.</CommandEmpty>
+            <CommandEmpty>No {type}s found in items.</CommandEmpty>
             <CommandGroup heading={type === 'product' ? 'Products' : 'Services'}>
               {filteredItems.map((item) => (
                 <CommandItem
