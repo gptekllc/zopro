@@ -12,7 +12,7 @@ import {
 import { 
   FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, 
   DollarSign, FileText, CheckCircle, Send, UserCog, ChevronRight, CheckCircle2,
-  Briefcase, Receipt, Link2, List, Image
+  Briefcase, Receipt, Link2, List, Image as ImageIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
@@ -235,7 +235,7 @@ export function QuoteDetailDialog({
                 )}
               </TabsTrigger>
               <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                <Image className="w-3 h-3 sm:w-4 sm:h-4" />
+                <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Photos</span>
                 {quotePhotos.length > 0 && (
                   <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
