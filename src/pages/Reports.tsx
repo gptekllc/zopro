@@ -3,6 +3,8 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DollarSign, Clock, BarChart3 } from 'lucide-react';
 import TransactionsReport from '@/components/reports/TransactionsReport';
+import TimesheetReportTab from '@/components/reports/TimesheetReportTab';
+import MonthlySummaryReport from '@/components/reports/MonthlySummaryReport';
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('transactions');
@@ -38,23 +40,11 @@ const Reports = () => {
           </TabsContent>
 
           <TabsContent value="timesheets" className="mt-6">
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Clock className="w-12 h-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium">Timesheet Reports</h3>
-              <p className="text-muted-foreground mt-1">
-                Coming soon - View team timesheet summaries and exports
-              </p>
-            </div>
+            <TimesheetReportTab />
           </TabsContent>
 
           <TabsContent value="summary" className="mt-6">
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <BarChart3 className="w-12 h-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium">Monthly Summary</h3>
-              <p className="text-muted-foreground mt-1">
-                Coming soon - Jobs, quotes, and revenue analytics
-              </p>
-            </div>
+            <MonthlySummaryReport />
           </TabsContent>
         </Tabs>
       </div>

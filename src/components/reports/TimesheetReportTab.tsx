@@ -1,0 +1,360 @@
+import { useState, useMemo } from 'react';
+import { useTimeEntries } from '@/hooks/useTimeEntries';
+import { useProfiles } from '@/hooks/useProfiles';
+import { useCompany } from '@/hooks/useCompany';
+import { useAuth } from '@/hooks/useAuth';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, differenceInMinutes, isSameDay } from 'date-fns';
+
+const TimesheetReportTab = () => {
+  const { roles } = useAuth();
+  const { data: company } = useCompany();
+  const { data: timeEntries = [], isLoading: loadingEntries } = useTimeEntries();
+  const { data: profiles = [], isLoading: loadingProfiles } = useProfiles();
+  
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
+  const [numWeeks, setNumWeeks] = useState('1');
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  const canViewAll = roles.some(r => r.role === 'admin' || r.role === 'manager');
+
+  const weekEnd = endOfWeek(addWeeks(weekStart, parseInt(numWeeks) - 1), { weekStartsOn: 0 });
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+  // Group entries by user and day
+  const timesheetData = useMemo(() => {
+    const teamMembers = profiles.filter(p => p.company_id === company?.id);
+    
+    return teamMembers.map(member => {
+      const memberEntries = timeEntries.filter(e => e.user_id === member.id);
+      
+      const dailyHours = weekDays.map(day => {
+        const dayEntries = memberEntries.filter(e => 
+          isSameDay(new Date(e.clock_in), day)
+        );
+        
+        const totalMinutes = dayEntries.reduce((total, entry) => {
+          const clockOut = entry.clock_out ? new Date(entry.clock_out) : new Date();
+          const worked = differenceInMinutes(clockOut, new Date(entry.clock_in));
+          const breakMins = entry.break_minutes || 0;
+          return total + worked - breakMins;
+        }, 0);
+        
+        return {
+          date: day,
+          minutes: totalMinutes,
+          entries: dayEntries,
+        };
+      });
+
+      const weeklyTotal = dailyHours.reduce((sum, d) => sum + d.minutes, 0);
+
+      return {
+        member,
+        dailyHours,
+        weeklyTotal,
+      };
+    }).filter(row => row.weeklyTotal > 0 || row.dailyHours.some(d => d.entries.length > 0));
+  }, [profiles, timeEntries, weekDays, company?.id]);
+
+  const formatMinutes = (mins: number) => {
+    if (mins <= 0) return '-';
+    const hours = Math.floor(mins / 60);
+    const minutes = mins % 60;
+    return `${hours}:${String(minutes).padStart(2, '0')}`;
+  };
+
+  const exportToCSV = () => {
+    const headers = ['Team Member', ...weekDays.map(d => format(d, 'EEE MMM d')), 'Total'];
+    
+    const rows = timesheetData.map(row => [
+      row.member.full_name || row.member.email,
+      ...row.dailyHours.map(d => formatMinutes(d.minutes)),
+      formatMinutes(row.weeklyTotal),
+    ]);
+
+    const dailyTotals = weekDays.map((_, i) => 
+      timesheetData.reduce((sum, row) => sum + row.dailyHours[i].minutes, 0)
+    );
+    const grandTotal = timesheetData.reduce((sum, row) => sum + row.weeklyTotal, 0);
+    rows.push(['TOTAL', ...dailyTotals.map(formatMinutes), formatMinutes(grandTotal)]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `timesheet_${format(weekStart, 'yyyy-MM-dd')}_to_${format(weekEnd, 'yyyy-MM-dd')}.csv`;
+    link.click();
+  };
+
+  const exportToPDF = async () => {
+    setIsExportingPdf(true);
+    
+    try {
+      const dailyTotals = weekDays.map((_, i) => 
+        timesheetData.reduce((sum, row) => sum + row.dailyHours[i].minutes, 0)
+      );
+      const grandTotal = timesheetData.reduce((sum, row) => sum + row.weeklyTotal, 0);
+
+      const pdfContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Timesheet Report</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #6366f1; padding-bottom: 20px; }
+            .company-info { flex: 1; }
+            .company-name { font-size: 24px; font-weight: bold; color: #6366f1; margin-bottom: 5px; }
+            .company-details { font-size: 12px; color: #666; }
+            .logo { max-width: 120px; max-height: 60px; object-fit: contain; }
+            .report-title { font-size: 20px; font-weight: bold; margin-bottom: 5px; }
+            .date-range { font-size: 14px; color: #666; margin-bottom: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th { background: #6366f1; color: white; padding: 10px 8px; text-align: center; font-size: 11px; }
+            th:first-child { text-align: left; }
+            td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 12px; }
+            td:first-child { text-align: left; }
+            .member-name { font-weight: 500; }
+            .member-email { font-size: 10px; color: #666; }
+            .total-row { background: #f3f4f6; font-weight: bold; }
+            .grand-total { background: #6366f1; color: white; font-weight: bold; }
+            .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 10px; color: #666; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="company-info">
+              <div class="company-name">${company?.name || 'Company'}</div>
+              <div class="company-details">
+                ${company?.address ? `${company.address}<br>` : ''}
+                ${company?.city || ''}${company?.state ? `, ${company.state}` : ''} ${company?.zip || ''}<br>
+                ${company?.phone ? `Tel: ${company.phone}` : ''} ${company?.email ? `• ${company.email}` : ''}
+              </div>
+            </div>
+            ${company?.logo_url ? `<img src="${company.logo_url}" class="logo" alt="Company Logo" />` : ''}
+          </div>
+
+          <div class="report-title">Weekly Timesheet Report</div>
+          <div class="date-range">${format(weekStart, 'MMMM d, yyyy')} - ${format(weekEnd, 'MMMM d, yyyy')}</div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="text-align: left; width: 180px;">Team Member</th>
+                ${weekDays.map(day => `<th>${format(day, 'EEE')}<br>${format(day, 'd')}</th>`).join('')}
+                <th style="background: #4f46e5;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${timesheetData.length === 0 ? `
+                <tr>
+                  <td colspan="${weekDays.length + 2}" style="text-align: center; padding: 30px; color: #666;">
+                    No time entries for this period
+                  </td>
+                </tr>
+              ` : timesheetData.map(row => `
+                <tr>
+                  <td>
+                    <div class="member-name">${row.member.full_name || 'Unknown'}</div>
+                    <div class="member-email">${row.member.email}</div>
+                  </td>
+                  ${row.dailyHours.map(d => `<td>${formatMinutes(d.minutes)}</td>`).join('')}
+                  <td style="font-weight: bold; background: #f3f4f6;">${formatMinutes(row.weeklyTotal)}</td>
+                </tr>
+              `).join('')}
+              ${timesheetData.length > 0 ? `
+                <tr class="total-row">
+                  <td><strong>TOTAL</strong></td>
+                  ${dailyTotals.map(t => `<td>${formatMinutes(t)}</td>`).join('')}
+                  <td class="grand-total">${formatMinutes(grandTotal)}</td>
+                </tr>
+              ` : ''}
+            </tbody>
+          </table>
+
+          <div class="footer">
+            Generated on ${format(new Date(), 'MMMM d, yyyy \'at\' h:mm a')}
+            ${company?.timezone ? ` • Timezone: ${company.timezone}` : ''}
+          </div>
+        </body>
+        </html>
+      `;
+
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(pdfContent);
+        printWindow.document.close();
+        
+        printWindow.onload = () => {
+          setTimeout(() => {
+            printWindow.print();
+          }, 250);
+        };
+      }
+    } catch (error) {
+      console.error('PDF export error:', error);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const isLoading = loadingEntries || loadingProfiles;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-16 w-full" />
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
+
+  if (!canViewAll) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">You don't have permission to view this report.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => setWeekStart(subWeeks(weekStart, 1))}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <div className="flex items-center gap-2 px-4 py-2 border rounded-md">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <span className="font-medium text-sm">
+              {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+            </span>
+          </div>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => setWeekStart(addWeeks(weekStart, 1))}
+            disabled={weekStart >= startOfWeek(new Date(), { weekStartsOn: 0 })}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Select value={numWeeks} onValueChange={setNumWeeks}>
+            <SelectTrigger className="w-[120px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">1 Week</SelectItem>
+              <SelectItem value="2">2 Weeks</SelectItem>
+              <SelectItem value="4">4 Weeks</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={exportToCSV} variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            CSV
+          </Button>
+          <Button onClick={exportToPDF} variant="outline" size="sm" disabled={isExportingPdf}>
+            {isExportingPdf ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <FileText className="w-4 h-4 mr-2" />
+            )}
+            PDF
+          </Button>
+        </div>
+      </div>
+
+      {/* Timesheet Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Team Hours</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-4 font-semibold">Team Member</th>
+                  {weekDays.map(day => (
+                    <th key={day.toISOString()} className="text-center py-3 px-2 font-semibold min-w-[70px]">
+                      <div className="text-xs text-muted-foreground">{format(day, 'EEE')}</div>
+                      <div>{format(day, 'd')}</div>
+                    </th>
+                  ))}
+                  <th className="text-center py-3 px-4 font-semibold bg-muted/50">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {timesheetData.length === 0 ? (
+                  <tr>
+                    <td colSpan={weekDays.length + 2} className="text-center py-12 text-muted-foreground">
+                      No time entries for this period
+                    </td>
+                  </tr>
+                ) : (
+                  <>
+                    {timesheetData.map(row => (
+                      <tr key={row.member.id} className="border-b hover:bg-muted/30">
+                        <td className="py-3 px-4">
+                          <div className="font-medium">{row.member.full_name || 'Unknown'}</div>
+                          <div className="text-xs text-muted-foreground">{row.member.email}</div>
+                        </td>
+                        {row.dailyHours.map((day, i) => (
+                          <td key={i} className="text-center py-3 px-2">
+                            <span className={day.minutes > 0 ? 'font-medium' : 'text-muted-foreground'}>
+                              {formatMinutes(day.minutes)}
+                            </span>
+                          </td>
+                        ))}
+                        <td className="text-center py-3 px-4 font-bold bg-muted/50">
+                          {formatMinutes(row.weeklyTotal)}
+                        </td>
+                      </tr>
+                    ))}
+                    {/* Totals Row */}
+                    <tr className="bg-muted/30 font-semibold">
+                      <td className="py-3 px-4">TOTAL</td>
+                      {weekDays.map((_, i) => {
+                        const dayTotal = timesheetData.reduce((sum, row) => sum + row.dailyHours[i].minutes, 0);
+                        return (
+                          <td key={i} className="text-center py-3 px-2">
+                            {formatMinutes(dayTotal)}
+                          </td>
+                        );
+                      })}
+                      <td className="text-center py-3 px-4 bg-primary/10 text-primary">
+                        {formatMinutes(timesheetData.reduce((sum, row) => sum + row.weeklyTotal, 0))}
+                      </td>
+                    </tr>
+                  </>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
+export default TimesheetReportTab;
