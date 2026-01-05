@@ -23,8 +23,8 @@ import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto, useUpdateInvoicePhotoType } from '@/hooks/useInvoicePhotos';
-import { usePayments, useDeletePayment, useUpdatePayment, useRefundPayment, useVoidPayment, Payment } from '@/hooks/usePayments';
-import { PAYMENT_METHODS } from './RecordPaymentDialog';
+import { usePayments, useDeletePayment, useUpdatePayment, useRefundPayment, useVoidPayment, useCreatePayment, Payment } from '@/hooks/usePayments';
+import { PAYMENT_METHODS, RecordPaymentDialog, PaymentData } from './RecordPaymentDialog';
 import { EditPaymentDialog, EditPaymentData } from './EditPaymentDialog';
 import { RefundPaymentDialog } from './RefundPaymentDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -151,6 +151,7 @@ export function InvoiceDetailDialog({
   const updatePayment = useUpdatePayment();
   const refundPayment = useRefundPayment();
   const voidPayment = useVoidPayment();
+  const createPayment = useCreatePayment();
   
   // Edit payment dialog state
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
@@ -160,6 +161,9 @@ export function InvoiceDetailDialog({
   const [refundPayment_, setRefundPayment] = useState<Payment | null>(null);
   const [refundAction, setRefundAction] = useState<'refund' | 'void'>('refund');
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  
+  // Record payment dialog state
+  const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
   
   // Receipt loading state
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
@@ -257,6 +261,18 @@ export function InvoiceDetailDialog({
     }
     setRefundDialogOpen(false);
     setRefundPayment(null);
+  };
+
+  const handleRecordPayment = async (data: PaymentData) => {
+    await createPayment.mutateAsync({
+      invoiceId: invoice.id,
+      amount: data.amount,
+      method: data.method,
+      paymentDate: data.date,
+      notes: data.note,
+      sendNotification: data.sendNotification,
+    });
+    setRecordPaymentDialogOpen(false);
   };
 
   const handleDownloadReceipt = async (paymentId: string) => {
@@ -900,6 +916,16 @@ export function InvoiceDetailDialog({
                 {isSendingReminder ? 'Sending...' : 'Send Reminder'}
               </Button>
             )}
+            {invoice.status !== 'paid' && remainingBalance > 0 && (
+              <Button 
+                size="sm" 
+                onClick={() => setRecordPaymentDialogOpen(true)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <DollarSign className="w-4 h-4 mr-1" />
+                Record Payment
+              </Button>
+            )}
             {invoice.status !== 'paid' && (
               <Button variant="outline" size="sm" onClick={() => onMarkPaid?.(invoice.id)}>
                 <CheckCircle className="w-4 h-4 mr-1" />
@@ -937,6 +963,18 @@ export function InvoiceDetailDialog({
         onConfirm={handleConfirmRefund}
         isLoading={refundPayment.isPending || voidPayment.isPending}
         customerHasEmail={!!customerEmail}
+      />
+
+      {/* Record Payment Dialog */}
+      <RecordPaymentDialog
+        open={recordPaymentDialogOpen}
+        onOpenChange={setRecordPaymentDialogOpen}
+        invoiceTotal={totalDue}
+        remainingBalance={remainingBalance}
+        invoiceNumber={invoice.invoice_number}
+        customerEmail={customerEmail}
+        onConfirm={handleRecordPayment}
+        isLoading={createPayment.isPending}
       />
     </Dialog>
   );
