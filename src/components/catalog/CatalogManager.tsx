@@ -393,12 +393,12 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
               <span className="text-sm text-muted-foreground">
                 {products.length} product{products.length !== 1 ? 's' : ''}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2">
                 <Button size="sm" onClick={() => openCreateDialog('product')}>
                   <Plus className="w-4 h-4 mr-1" />
                   Add Product
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setImportExportOpen(true)} className="hidden sm:flex">
+                <Button size="sm" variant="outline" onClick={() => setImportExportOpen(true)}>
                   <ArrowUpDown className="w-4 h-4 mr-1" />
                   Import / Export
                 </Button>
@@ -424,12 +424,12 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
               <span className="text-sm text-muted-foreground">
                 {services.length} service{services.length !== 1 ? 's' : ''}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2">
                 <Button size="sm" onClick={() => openCreateDialog('service')}>
                   <Plus className="w-4 h-4 mr-1" />
                   Add Service
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setImportExportOpen(true)} className="hidden sm:flex">
+                <Button size="sm" variant="outline" onClick={() => setImportExportOpen(true)}>
                   <ArrowUpDown className="w-4 h-4 mr-1" />
                   Import / Export
                 </Button>
@@ -688,6 +688,27 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Mobile Floating Action Button */}
+      <div className="fixed bottom-20 right-4 z-50 sm:hidden">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="lg" className="h-14 w-14 rounded-full shadow-lg">
+              <Plus className="w-6 h-6" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="mb-2">
+            <DropdownMenuItem onClick={() => openCreateDialog('product')}>
+              <Package className="w-4 h-4 mr-2" />
+              New Product
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openCreateDialog('service')}>
+              <Wrench className="w-4 h-4 mr-2" />
+              New Service
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 };
