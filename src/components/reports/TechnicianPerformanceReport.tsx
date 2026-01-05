@@ -528,221 +528,170 @@ const TechnicianPerformanceReport = () => {
       {/* Header with filters and export */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
-            <div className="relative w-full sm:w-auto sm:min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search team members..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col sm:flex-row gap-2">
+            {/* Row 1: Search + All Members filter */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1 sm:flex-none sm:min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search team members..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              {/* Team Member Filter */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="min-w-[140px] justify-start">
+                    <User className="w-4 h-4 mr-2" />
+                    {selectedMemberIds.length === 0 ? (
+                      <span className="text-muted-foreground">All Members</span>
+                    ) : (
+                      <span>{selectedMemberIds.length} selected</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-2 bg-background" align="start">
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                    <span className="text-sm font-medium">Filter by Member</span>
+                    {selectedMemberIds.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={clearSelectedMembers} className="h-6 px-2 text-xs">
+                        Clear all
+                      </Button>
+                    )}
+                  </div>
+                  <div className="relative mb-2">
+                    <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search members..."
+                      value={memberFilterSearch}
+                      onChange={(e) => setMemberFilterSearch(e.target.value)}
+                      className="pl-8 h-8 text-sm"
+                    />
+                  </div>
+                  <div className="max-h-[200px] overflow-y-auto space-y-1">
+                    {filteredDropdownMembers.map(member => (
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                        onClick={() => toggleMember(member.id)}
+                      >
+                        <Checkbox
+                          checked={selectedMemberIds.includes(member.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          onCheckedChange={() => toggleMember(member.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm truncate">{member.full_name || member.email}</div>
+                          {member.full_name && (
+                            <div className="text-xs text-muted-foreground truncate">{member.email}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {filteredDropdownMembers.length === 0 && (
+                      <div className="text-sm text-muted-foreground text-center py-4">
+                        {allTeamMembers.length === 0 ? 'No team members' : 'No matches found'}
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
-            {/* Team Member Filter - Desktop: next to search */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="hidden sm:flex min-w-[140px] justify-start">
-                  <User className="w-4 h-4 mr-2" />
-                  {selectedMemberIds.length === 0 ? (
-                    <span className="text-muted-foreground">All Members</span>
-                  ) : (
-                    <span>{selectedMemberIds.length} selected</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-2 bg-background" align="start">
-                <div className="flex items-center justify-between mb-2 pb-2 border-b">
-                  <span className="text-sm font-medium">Filter by Member</span>
-                  {selectedMemberIds.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearSelectedMembers} className="h-6 px-2 text-xs">
-                      Clear all
-                    </Button>
-                  )}
-                </div>
-                <div className="relative mb-2">
-                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Search members..."
-                    value={memberFilterSearch}
-                    onChange={(e) => setMemberFilterSearch(e.target.value)}
-                    className="pl-8 h-8 text-sm"
-                  />
-                </div>
-                <div className="max-h-[200px] overflow-y-auto space-y-1">
-                  {filteredDropdownMembers.map(member => (
-                    <div
-                      key={member.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
-                      onClick={() => toggleMember(member.id)}
-                    >
-                      <Checkbox
-                        checked={selectedMemberIds.includes(member.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        onCheckedChange={() => toggleMember(member.id)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm truncate">{member.full_name || member.email}</div>
-                        {member.full_name && (
-                          <div className="text-xs text-muted-foreground truncate">{member.email}</div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {filteredDropdownMembers.length === 0 && (
-                    <div className="text-sm text-muted-foreground text-center py-4">
-                      {allTeamMembers.length === 0 ? 'No team members' : 'No matches found'}
-                    </div>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Select value={timeRange} onValueChange={setTimeRange}>
-              <SelectTrigger className="w-[160px]">
-                <SelectValue placeholder="Time range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Time</SelectItem>
-                <SelectItem value="1">Last Month</SelectItem>
-                <SelectItem value="3">Last 3 Months</SelectItem>
-                <SelectItem value="6">Last 6 Months</SelectItem>
-                <SelectItem value="12">Last 12 Months</SelectItem>
-                <SelectItem value="ytd">Year to Date</SelectItem>
-                <SelectItem value="lastyear">Last Year</SelectItem>
-                <SelectItem value="custom">Custom Range</SelectItem>
-              </SelectContent>
-            </Select>
 
-            {/* Team Member Filter - Mobile only */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="sm:hidden min-w-[140px] justify-start">
-                  <User className="w-4 h-4 mr-2" />
-                  {selectedMemberIds.length === 0 ? (
-                    <span className="text-muted-foreground">All Members</span>
-                  ) : (
-                    <span>{selectedMemberIds.length} selected</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 p-2 bg-background" align="end">
-                <div className="flex items-center justify-between mb-2 pb-2 border-b">
-                  <span className="text-sm font-medium">Filter by Member</span>
-                  {selectedMemberIds.length > 0 && (
-                    <Button variant="ghost" size="sm" onClick={clearSelectedMembers} className="h-6 px-2 text-xs">
-                      Clear all
-                    </Button>
-                  )}
-                </div>
-                <div className="relative mb-2">
-                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Search members..."
-                    value={memberFilterSearch}
-                    onChange={(e) => setMemberFilterSearch(e.target.value)}
-                    className="pl-8 h-8 text-sm"
-                  />
-                </div>
-                <div className="max-h-[200px] overflow-y-auto space-y-1">
-                  {filteredDropdownMembers.map(member => (
-                    <div
-                      key={member.id}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
-                      onClick={() => toggleMember(member.id)}
-                    >
-                      <Checkbox
-                        checked={selectedMemberIds.includes(member.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        onCheckedChange={() => toggleMember(member.id)}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm truncate">{member.full_name || member.email}</div>
-                        {member.full_name && (
-                          <div className="text-xs text-muted-foreground truncate">{member.email}</div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {filteredDropdownMembers.length === 0 && (
-                    <div className="text-sm text-muted-foreground text-center py-4">
-                      {allTeamMembers.length === 0 ? 'No team members' : 'No matches found'}
-                    </div>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-            {timeRange === 'custom' && (
-              <>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[130px] justify-start text-left font-normal",
-                        !customStartDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {customStartDate ? format(customStartDate, "MMM yyyy") : "Start"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-popover" align="end">
-                    <Calendar
-                      mode="single"
-                      selected={customStartDate}
-                      onSelect={setCustomStartDate}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[130px] justify-start text-left font-normal",
-                        !customEndDate && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {customEndDate ? format(customEndDate, "MMM yyyy") : "End"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-popover" align="end">
-                    <Calendar
-                      mode="single"
-                      selected={customEndDate}
-                      onSelect={setCustomEndDate}
-                      initialFocus
-                      className="p-3 pointer-events-auto"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </>
-            )}
+            {/* Row 2: Time Range + Mobile Actions Dropdown */}
+            <div className="flex items-center gap-2">
+              <Select value={timeRange} onValueChange={setTimeRange}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Time range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Time</SelectItem>
+                  <SelectItem value="1">Last Month</SelectItem>
+                  <SelectItem value="3">Last 3 Months</SelectItem>
+                  <SelectItem value="6">Last 6 Months</SelectItem>
+                  <SelectItem value="12">Last 12 Months</SelectItem>
+                  <SelectItem value="ytd">Year to Date</SelectItem>
+                  <SelectItem value="lastyear">Last Year</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {/* Mobile Actions Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="sm:hidden">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={filteredData.length === 0}>
-                  <Mail className="w-4 h-4 mr-2" />
-                  Email
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={printReport} disabled={filteredData.length === 0}>
-                  <Printer className="w-4 h-4 mr-2" />
-                  Print/PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={exportToCSV} disabled={filteredData.length === 0}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Export CSV
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              {/* Mobile Actions Dropdown - next to time range */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="sm:hidden">
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover">
+                  <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={filteredData.length === 0}>
+                    <Mail className="w-4 h-4 mr-2" />
+                    Email
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={printReport} disabled={filteredData.length === 0}>
+                    <Printer className="w-4 h-4 mr-2" />
+                    Print/PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportToCSV} disabled={filteredData.length === 0}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Export CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {timeRange === 'custom' && (
+                <>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[130px] justify-start text-left font-normal",
+                          !customStartDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customStartDate ? format(customStartDate, "MMM yyyy") : "Start"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-popover" align="end">
+                      <Calendar
+                        mode="single"
+                        selected={customStartDate}
+                        onSelect={setCustomStartDate}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-[130px] justify-start text-left font-normal",
+                          !customEndDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customEndDate ? format(customEndDate, "MMM yyyy") : "End"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-popover" align="end">
+                      <Calendar
+                        mode="single"
+                        selected={customEndDate}
+                        onSelect={setCustomEndDate}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Desktop Actions */}
