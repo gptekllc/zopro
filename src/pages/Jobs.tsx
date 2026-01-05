@@ -402,8 +402,10 @@ const Jobs = () => {
       discount_value: formData.discountValue > 0 ? formData.discountValue : 0,
       items: lineItems.map(item => ({
         description: item.description,
+        item_description: item.itemDescription || null,
         quantity: item.quantity,
-        unit_price: item.unitPrice
+        unit_price: item.unitPrice,
+        type: item.type || 'service'
       }))
     };
     try {
@@ -475,6 +477,7 @@ const Jobs = () => {
       setLineItems(job.items.map(item => ({
         id: item.id,
         description: item.description,
+        itemDescription: (item as any).item_description || '',
         quantity: item.quantity,
         unitPrice: item.unit_price,
         type: (item as any).type || 'service'

@@ -271,9 +271,11 @@ const Invoices = () => {
     try {
       const itemsData = formData.items.map(item => ({
         description: item.description,
+        item_description: item.itemDescription || null,
         quantity: item.quantity,
         unit_price: item.unitPrice,
-        total: item.quantity * item.unitPrice
+        total: item.quantity * item.unitPrice,
+        type: item.type || 'service'
       }));
       if (editingInvoice) {
         await updateInvoice.mutateAsync({
@@ -302,12 +304,14 @@ const Invoices = () => {
       items: invoice.items?.map((item: any) => ({
         id: item.id,
         description: item.description,
+        itemDescription: item.item_description || '',
         quantity: item.quantity,
         unitPrice: Number(item.unit_price),
         type: item.type || 'service'
       })) || [{
         id: "1",
         description: "",
+        itemDescription: "",
         quantity: 1,
         unitPrice: 0,
         type: 'service' as const

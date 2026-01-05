@@ -9,9 +9,11 @@ export interface QuoteItem {
   id: string;
   quote_id: string;
   description: string;
+  item_description?: string | null;
   quantity: number;
   unit_price: number;
   total: number;
+  type?: 'product' | 'service';
   created_at: string;
 }
 
@@ -143,9 +145,11 @@ export function useCreateQuote() {
             items.map(item => ({
               quote_id: quoteData.id,
               description: item.description,
+              item_description: (item as any).item_description || null,
               quantity: item.quantity,
               unit_price: item.unit_price,
               total: item.quantity * item.unit_price,
+              type: (item as any).type || 'service',
             }))
           );
         
@@ -193,9 +197,11 @@ export function useUpdateQuote() {
               items.map(item => ({
                 quote_id: id,
                 description: item.description,
+                item_description: (item as any).item_description || null,
                 quantity: item.quantity,
                 unit_price: item.unit_price,
                 total: item.quantity * item.unit_price,
+                type: (item as any).type || 'service',
               }))
             );
           
