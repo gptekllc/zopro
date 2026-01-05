@@ -43,7 +43,9 @@ import {
   Printer,
   CalendarIcon,
   Mail,
+  User,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { formatAmount } from '@/lib/formatAmount';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -63,6 +65,7 @@ const CustomerRevenueReport = () => {
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,6 +77,24 @@ const CustomerRevenueReport = () => {
   const { data: jobs, isLoading: loadingJobs } = useJobs();
 
   const isLoading = loadingCustomers || loadingPayments || loadingInvoices || loadingJobs;
+
+  // Toggle customer selection for filter
+  const toggleCustomer = (customerId: string) => {
+    setSelectedCustomerIds(prev => 
+      prev.includes(customerId) 
+        ? prev.filter(id => id !== customerId)
+        : [...prev, customerId]
+    );
+  };
+
+  const clearSelectedCustomers = () => {
+    setSelectedCustomerIds([]);
+  };
+
+  // Get all customers for filter dropdown
+  const allCustomers = useMemo(() => {
+    return customers || [];
+  }, [customers]);
 
   // Calculate date range
   const dateRange = useMemo(() => {
@@ -185,10 +206,15 @@ const CustomerRevenueReport = () => {
 
   // Filter and sort
   const filteredData = useMemo(() => {
-    let result = customerData.filter(c =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.email && c.email.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    let result = customerData.filter(c => {
+      // Apply customer filter if any selected
+      if (selectedCustomerIds.length > 0 && !selectedCustomerIds.includes(c.id)) {
+        return false;
+      }
+      // Apply search filter
+      return c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.email && c.email.toLowerCase().includes(searchQuery.toLowerCase()));
+    });
 
     result.sort((a, b) => {
       let aVal = a[sortField];
@@ -203,12 +229,22 @@ const CustomerRevenueReport = () => {
     });
 
     return result;
-  }, [customerData, searchQuery, sortField, sortDirection]);
+  }, [customerData, searchQuery, sortField, sortDirection, selectedCustomerIds]);
+
+  // Get selected customer names for display
+  const getSelectedCustomerNames = () => {
+    if (selectedCustomerIds.length === 0) return null;
+    return selectedCustomerIds
+      .map(id => allCustomers.find(c => c.id === id))
+      .filter(Boolean)
+      .map(c => c!.name)
+      .join(', ');
+  };
 
   // Reset to first page when filters change
   useMemo(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortField, sortDirection, timeRange, customStartDate, customEndDate, pageSize]);
+  }, [searchQuery, sortField, sortDirection, timeRange, customStartDate, customEndDate, pageSize, selectedCustomerIds]);
 
   // Paginated data
   const paginatedData = useMemo(() => {
@@ -530,6 +566,54 @@ const CustomerRevenueReport = () => {
                 <SelectItem value="custom">Custom Range</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Customer Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="min-w-[140px] justify-start">
+                  <User className="w-4 h-4 mr-2" />
+                  {selectedCustomerIds.length === 0 ? (
+                    <span className="text-muted-foreground">All Customers</span>
+                  ) : (
+                    <span>{selectedCustomerIds.length} selected</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2 bg-background" align="start">
+                <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                  <span className="text-sm font-medium">Filter by Customer</span>
+                  {selectedCustomerIds.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearSelectedCustomers} className="h-6 px-2 text-xs">
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+                <div className="max-h-[250px] overflow-y-auto space-y-1">
+                  {allCustomers.map(customer => (
+                    <div
+                      key={customer.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                      onClick={() => toggleCustomer(customer.id)}
+                    >
+                      <Checkbox
+                        checked={selectedCustomerIds.includes(customer.id)}
+                        onCheckedChange={() => toggleCustomer(customer.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm truncate">{customer.name}</div>
+                        {customer.email && (
+                          <div className="text-xs text-muted-foreground truncate">{customer.email}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {allCustomers.length === 0 && (
+                    <div className="text-sm text-muted-foreground text-center py-4">No customers</div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
             {timeRange === 'custom' && (
               <>
                 <Popover>

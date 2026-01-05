@@ -43,7 +43,9 @@ import {
   Printer,
   CalendarIcon,
   Mail,
+  User,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { formatAmount } from '@/lib/formatAmount';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -63,6 +65,7 @@ const TechnicianPerformanceReport = () => {
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -75,6 +78,28 @@ const TechnicianPerformanceReport = () => {
   const { data: invoices, isLoading: loadingInvoices } = useInvoices();
 
   const isLoading = loadingProfiles || loadingTimeEntries || loadingJobs || loadingPayments || loadingInvoices;
+
+  // Toggle member selection for filter
+  const toggleMember = (memberId: string) => {
+    setSelectedMemberIds(prev => 
+      prev.includes(memberId) 
+        ? prev.filter(id => id !== memberId)
+        : [...prev, memberId]
+    );
+  };
+
+  const clearSelectedMembers = () => {
+    setSelectedMemberIds([]);
+  };
+
+  // Get all team members for filter dropdown
+  const allTeamMembers = useMemo(() => {
+    if (!profiles) return [];
+    return profiles.filter(p => 
+      ['technician', 'manager', 'admin'].includes(p.role) && 
+      p.employment_status !== 'terminated'
+    );
+  }, [profiles]);
 
   // Calculate date range
   const dateRange = useMemo(() => {
@@ -175,10 +200,15 @@ const TechnicianPerformanceReport = () => {
 
   // Filter and sort
   const filteredData = useMemo(() => {
-    let result = technicianData.filter(t =>
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    let result = technicianData.filter(t => {
+      // Apply member filter if any selected
+      if (selectedMemberIds.length > 0 && !selectedMemberIds.includes(t.id)) {
+        return false;
+      }
+      // Apply search filter
+      return t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.email.toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
     result.sort((a, b) => {
       let aVal = a[sortField];
@@ -193,12 +223,22 @@ const TechnicianPerformanceReport = () => {
     });
 
     return result;
-  }, [technicianData, searchQuery, sortField, sortDirection]);
+  }, [technicianData, searchQuery, sortField, sortDirection, selectedMemberIds]);
+
+  // Get selected member names for display
+  const getSelectedMemberNames = () => {
+    if (selectedMemberIds.length === 0) return null;
+    return selectedMemberIds
+      .map(id => allTeamMembers.find(m => m.id === id))
+      .filter(Boolean)
+      .map(m => m!.full_name || m!.email)
+      .join(', ');
+  };
 
   // Reset to first page when filters change
   useMemo(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortField, sortDirection, timeRange, customStartDate, customEndDate, pageSize]);
+  }, [searchQuery, sortField, sortDirection, timeRange, customStartDate, customEndDate, pageSize, selectedMemberIds]);
 
   // Paginated data
   const paginatedData = useMemo(() => {
@@ -489,6 +529,53 @@ const TechnicianPerformanceReport = () => {
                 <SelectItem value="custom">Custom Range</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Team Member Filter */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="min-w-[140px] justify-start">
+                  <User className="w-4 h-4 mr-2" />
+                  {selectedMemberIds.length === 0 ? (
+                    <span className="text-muted-foreground">All Members</span>
+                  ) : (
+                    <span>{selectedMemberIds.length} selected</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2 bg-background" align="start">
+                <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                  <span className="text-sm font-medium">Filter by Member</span>
+                  {selectedMemberIds.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearSelectedMembers} className="h-6 px-2 text-xs">
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+                <div className="max-h-[250px] overflow-y-auto space-y-1">
+                  {allTeamMembers.map(member => (
+                    <div
+                      key={member.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                      onClick={() => toggleMember(member.id)}
+                    >
+                      <Checkbox
+                        checked={selectedMemberIds.includes(member.id)}
+                        onCheckedChange={() => toggleMember(member.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm truncate">{member.full_name || member.email}</div>
+                        {member.full_name && (
+                          <div className="text-xs text-muted-foreground truncate">{member.email}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {allTeamMembers.length === 0 && (
+                    <div className="text-sm text-muted-foreground text-center py-4">No team members</div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
             {timeRange === 'custom' && (
               <>
                 <Popover>
