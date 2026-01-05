@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
+export type PaymentStatus = 'completed' | 'refunded' | 'voided';
+
 export interface Payment {
   id: string;
   invoice_id: string;
@@ -13,7 +15,12 @@ export interface Payment {
   notes: string | null;
   recorded_by: string | null;
   created_at: string;
+  status: PaymentStatus;
+  refunded_at: string | null;
+  refunded_by: string | null;
+  refund_reason: string | null;
   recorded_by_profile?: { full_name: string | null } | null;
+  refunded_by_profile?: { full_name: string | null } | null;
 }
 
 export function usePayments(invoiceId: string | null) {
@@ -26,7 +33,8 @@ export function usePayments(invoiceId: string | null) {
         .from('payments')
         .select(`
           *,
-          recorded_by_profile:profiles!payments_recorded_by_fkey(full_name)
+          recorded_by_profile:profiles!payments_recorded_by_fkey(full_name),
+          refunded_by_profile:profiles!payments_refunded_by_fkey(full_name)
         `)
         .eq('invoice_id', invoiceId)
         .order('payment_date', { ascending: false });
@@ -295,6 +303,132 @@ export function useDeletePayment() {
   });
 }
 
+export function useRefundPayment() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      paymentId,
+      invoiceId,
+      reason,
+    }: { 
+      paymentId: string;
+      invoiceId: string;
+      reason?: string;
+    }) => {
+      // Mark payment as refunded
+      const { error: paymentError } = await (supabase as any)
+        .from('payments')
+        .update({
+          status: 'refunded',
+          refunded_at: new Date().toISOString(),
+          refunded_by: user?.id,
+          refund_reason: reason || null,
+        })
+        .eq('id', paymentId);
+      
+      if (paymentError) throw paymentError;
+      
+      // Recalculate invoice status
+      await recalculateInvoiceStatus(invoiceId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success('Payment refunded');
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error('Failed to refund payment: ' + message);
+    },
+  });
+}
+
+export function useVoidPayment() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      paymentId,
+      invoiceId,
+      reason,
+    }: { 
+      paymentId: string;
+      invoiceId: string;
+      reason?: string;
+    }) => {
+      // Mark payment as voided
+      const { error: paymentError } = await (supabase as any)
+        .from('payments')
+        .update({
+          status: 'voided',
+          refunded_at: new Date().toISOString(),
+          refunded_by: user?.id,
+          refund_reason: reason || null,
+        })
+        .eq('id', paymentId);
+      
+      if (paymentError) throw paymentError;
+      
+      // Recalculate invoice status
+      await recalculateInvoiceStatus(invoiceId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success('Payment voided');
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      toast.error('Failed to void payment: ' + message);
+    },
+  });
+}
+
+// Helper function to recalculate invoice status based on payments
+async function recalculateInvoiceStatus(invoiceId: string) {
+  // Get all completed payments for this invoice
+  const { data: payments } = await (supabase as any)
+    .from('payments')
+    .select('amount, status')
+    .eq('invoice_id', invoiceId);
+  
+  const { data: invoice } = await (supabase as any)
+    .from('invoices')
+    .select('total, late_fee_amount, status')
+    .eq('id', invoiceId)
+    .single();
+  
+  if (!invoice) return;
+  
+  // Only count completed payments
+  const completedPayments = (payments || []).filter((p: { status: string }) => p.status === 'completed');
+  const totalPaid = completedPayments.reduce((sum: number, p: { amount: number }) => sum + Number(p.amount), 0);
+  const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
+  const isFullyPaid = totalPaid >= totalDue;
+  
+  // Update invoice status
+  if (isFullyPaid && invoice.status !== 'paid') {
+    await (supabase as any)
+      .from('invoices')
+      .update({ 
+        status: 'paid',
+        paid_at: new Date().toISOString()
+      })
+      .eq('id', invoiceId);
+  } else if (!isFullyPaid && invoice.status === 'paid') {
+    await (supabase as any)
+      .from('invoices')
+      .update({ 
+        status: 'sent',
+        paid_at: null
+      })
+      .eq('id', invoiceId);
+  }
+}
+
 // Get remaining balance for an invoice
 export function useInvoiceBalance(invoiceId: string | null) {
   const { data: payments = [] } = usePayments(invoiceId);
@@ -313,7 +447,9 @@ export function useInvoiceBalance(invoiceId: string | null) {
       if (!invoice) return { totalDue: 0, totalPaid: 0, remaining: 0 };
       
       const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
-      const totalPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+      // Only count completed payments
+      const completedPayments = payments.filter(p => p.status === 'completed');
+      const totalPaid = completedPayments.reduce((sum, p) => sum + Number(p.amount), 0);
       const remaining = Math.max(0, totalDue - totalPaid);
       
       return { totalDue, totalPaid, remaining };
