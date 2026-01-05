@@ -416,45 +416,76 @@ const TransactionsReport = () => {
             </DropdownMenu>
           </div>
 
-          {/* Tablet/Desktop: Search field + Record Payment + Actions Dropdown */}
-          <div className="hidden sm:flex items-center gap-2 w-full lg:w-auto">
-            <div className="relative flex-1 lg:w-64 lg:flex-none">
+          {/* Tablet/Desktop: Search + Customer filter + Record Payment + Actions */}
+          <div className="hidden sm:flex items-center gap-2 w-full justify-end">
+            <div className="relative lg:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
             </div>
-            <div className="flex items-center gap-2 sm:ml-auto">
-              {/* Desktop: Show full buttons */}
-              <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredPayments.length === 0} className="hidden lg:flex">
-                <Mail className="w-4 h-4 mr-2" />
-                Email
-              </Button>
-              <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredPayments.length === 0} className="hidden lg:flex">
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </Button>
-              <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Record Payment
-              </Button>
-              {/* Tablet: Actions in dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="shrink-0 lg:hidden">
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover">
-                  <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={filteredPayments.length === 0}>
-                    <Mail className="w-4 h-4 mr-2" />
-                    Email
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={exportToCSV} disabled={filteredPayments.length === 0}>
-                    <Download className="w-4 h-4 mr-2" />
-                    Export CSV
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            {/* Customer filter - tablet/desktop only in header */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="justify-start lg:hidden">
+                  <User className="w-4 h-4 mr-2" />
+                  {selectedCustomerIds.length === 0 ? <span className="text-muted-foreground">All Customers</span> : <span className="truncate">{selectedCustomerIds.length} selected</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2 bg-background" align="end">
+                <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                  <span className="text-sm font-medium">Filter by Customer</span>
+                  {selectedCustomerIds.length > 0 && <Button variant="ghost" size="sm" onClick={clearSelectedCustomers} className="h-6 px-2 text-xs">
+                      Clear all
+                    </Button>}
+                </div>
+                <div className="relative mb-2">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input placeholder="Search customers..." value={customerFilterSearch} onChange={e => setCustomerFilterSearch(e.target.value)} className="pl-8 h-8 text-sm" />
+                </div>
+                <div className="max-h-[200px] overflow-y-auto space-y-1">
+                  {filteredDropdownCustomers.map(customer => <div key={customer.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer" onClick={() => toggleCustomer(customer.id)}>
+                      <Checkbox checked={selectedCustomerIds.includes(customer.id)} onClick={e => e.stopPropagation()} onCheckedChange={() => toggleCustomer(customer.id)} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm truncate">{customer.name}</div>
+                        {customer.email && <div className="text-xs text-muted-foreground truncate">{customer.email}</div>}
+                      </div>
+                    </div>)}
+                  {filteredDropdownCustomers.length === 0 && <div className="text-sm text-muted-foreground text-center py-4">
+                      {customers?.length === 0 ? 'No customers' : 'No matches found'}
+                    </div>}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Record Payment
+            </Button>
+            {/* Desktop: Show full buttons */}
+            <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredPayments.length === 0} className="hidden lg:flex">
+              <Mail className="w-4 h-4 mr-2" />
+              Email
+            </Button>
+            <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredPayments.length === 0} className="hidden lg:flex">
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+            {/* Tablet: Actions in dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="shrink-0 lg:hidden">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={filteredPayments.length === 0}>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToCSV} disabled={filteredPayments.length === 0}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
