@@ -521,12 +521,12 @@ const TechnicianPerformanceReport = () => {
               </>
             )}
             <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredData.length === 0}>
-              <Mail className="w-4 h-4 mr-2" />
-              Email
+              <Mail className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Email</span>
             </Button>
             <Button onClick={printReport} variant="outline" size="sm" disabled={filteredData.length === 0}>
-              <Printer className="w-4 h-4 mr-2" />
-              Print/PDF
+              <Printer className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Print/PDF</span>
             </Button>
             <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredData.length === 0} className="hidden sm:inline-flex">
               <Download className="w-4 h-4 mr-2" />
