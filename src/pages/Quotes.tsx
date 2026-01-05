@@ -1211,59 +1211,68 @@ const Quotes = () => {
             </DialogHeader>
 
             {(() => {
-              const quotePhotos = [];  // Will be populated with actual photos
               const linkedDocsCount = safeJobs.filter((j: any) => j?.quote_id === viewingQuote.id).length +
                 safeInvoices.filter((inv: any) => inv?.quote_id === viewingQuote.id).length;
               
               return (
-                <Tabs defaultValue="details" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="details" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                      <List className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">Details</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                      <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">Linked Docs</span>
-                      {linkedDocsCount > 0 && (
-                        <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                          {linkedDocsCount}
-                        </Badge>
-                      )}
-                    </TabsTrigger>
-                    <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                      <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="hidden sm:inline">Photos</span>
-                    </TabsTrigger>
-                  </TabsList>
-
-              <TabsContent value="details" className="mt-4">
                 <div className="space-y-4 sm:space-y-6">
-              {/* Customer & Dates - responsive grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
-                  <p className="font-medium text-sm sm:text-base truncate">{getCustomerName(viewingQuote.customer_id)}</p>
-                </div>
-                {(viewingQuote as any).creator?.full_name && <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                      <UserCog className="w-3 h-3" /> Created By
-                    </p>
-                    <p className="font-medium text-sm sm:text-base truncate">{(viewingQuote as any).creator.full_name}</p>
-                  </div>}
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
-                  <p className="font-medium text-sm sm:text-base">{format(new Date(viewingQuote.created_at), 'MMM d, yyyy')}</p>
-                </div>
-                {viewingQuote.valid_until && <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Valid Until</p>
-                    <p className="font-medium text-sm sm:text-base">{format(new Date(viewingQuote.valid_until), 'MMM d, yyyy')}</p>
-                  </div>}
-              </div>
+                  {/* Customer & Dates - responsive grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                    <div>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
+                      <p className="font-medium text-sm sm:text-base truncate">{getCustomerName(viewingQuote.customer_id)}</p>
+                    </div>
+                    {(viewingQuote as any).creator?.full_name && <div>
+                        <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
+                          <UserCog className="w-3 h-3" /> Created By
+                        </p>
+                        <p className="font-medium text-sm sm:text-base truncate">{(viewingQuote as any).creator.full_name}</p>
+                      </div>}
+                    <div>
+                      <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
+                      <p className="font-medium text-sm sm:text-base">{format(new Date(viewingQuote.created_at), 'MMM d, yyyy')}</p>
+                    </div>
+                    {viewingQuote.valid_until && <div>
+                        <p className="text-xs sm:text-sm text-muted-foreground">Valid Until</p>
+                        <p className="font-medium text-sm sm:text-base">{format(new Date(viewingQuote.valid_until), 'MMM d, yyyy')}</p>
+                      </div>}
+                  </div>
 
-              {/* Line Items */}
-              <div>
-                <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
+                  <Separator />
+
+                  {/* Tabs for Items, Linked Docs, Photos */}
+                  <Tabs defaultValue="items" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="items" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                        <List className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Items</span>
+                        {(viewingQuote.items?.length || 0) > 0 && (
+                          <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                            {viewingQuote.items?.length}
+                          </Badge>
+                        )}
+                      </TabsTrigger>
+                      <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                        <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Linked Docs</span>
+                        {linkedDocsCount > 0 && (
+                          <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                            {linkedDocsCount}
+                          </Badge>
+                        )}
+                      </TabsTrigger>
+                      <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                        <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline">Photos</span>
+                      </TabsTrigger>
+                    </TabsList>
+
+                    {/* Items Tab */}
+                    <TabsContent value="items" className="mt-4">
+                      <div className="space-y-4">
+                        {/* Line Items */}
+                        <div>
+                          <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
                 <div className="space-y-2">
                   {viewingQuote.items && viewingQuote.items.length > 0 ? <>
                       {/* Desktop header - hidden on mobile */}
@@ -1416,9 +1425,9 @@ const Quotes = () => {
                     Convert to Invoice
                   </Button>
                 )}
-              </div>
-                </div>
-              </TabsContent>
+                      </div>
+                      </div>
+                    </TabsContent>
 
               <TabsContent value="linked" className="mt-4">
                 <div className="space-y-3">
@@ -1507,8 +1516,9 @@ const Quotes = () => {
                   <p className="text-sm">Photo management available in full quote detail view.</p>
                   <p className="text-xs mt-1">Open from the customer's quotes history to manage photos.</p>
                 </div>
-              </TabsContent>
-            </Tabs>
+                    </TabsContent>
+                  </Tabs>
+                </div>
               );
             })()}
           </DialogContent>
