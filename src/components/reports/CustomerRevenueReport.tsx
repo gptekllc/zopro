@@ -44,7 +44,14 @@ import {
   CalendarIcon,
   Mail,
   User,
+  MoreVertical,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatAmount } from '@/lib/formatAmount';
 import { supabase } from '@/integrations/supabase/client';
@@ -693,17 +700,42 @@ const CustomerRevenueReport = () => {
                 </Popover>
               </>
             )}
+
+            {/* Mobile Actions Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="sm:hidden">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={filteredData.length === 0}>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={printReport} disabled={filteredData.length === 0}>
+                  <Printer className="w-4 h-4 mr-2" />
+                  Print/PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToCSV} disabled={filteredData.length === 0}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-          <div className="flex items-center justify-center lg:justify-end gap-2">
+
+          {/* Desktop Actions */}
+          <div className="hidden sm:flex items-center justify-end gap-2">
             <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredData.length === 0}>
-              <Mail className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Email</span>
+              <Mail className="w-4 h-4 mr-2" />
+              Email
             </Button>
             <Button onClick={printReport} variant="outline" size="sm" disabled={filteredData.length === 0}>
-              <Printer className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Print/PDF</span>
+              <Printer className="w-4 h-4 mr-2" />
+              Print/PDF
             </Button>
-            <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredData.length === 0} className="hidden sm:inline-flex">
+            <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredData.length === 0}>
               <Download className="w-4 h-4 mr-2" />
               Export CSV
             </Button>
