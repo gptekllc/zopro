@@ -87,9 +87,61 @@ export function useAutoArchiveOldJobs() {
 
 export function useJobs(includeArchived: boolean = false) {
   const { profile } = useAuth();
+  const queryClient = useQueryClient();
   
   // Auto-archive old jobs on mount
   useAutoArchiveOldJobs();
+
+  // Set up real-time subscription for jobs
+  useEffect(() => {
+    if (!profile?.company_id) return;
+
+    const channel = supabase
+      .channel('jobs-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'jobs',
+          filter: `company_id=eq.${profile.company_id}`,
+        },
+        () => {
+          // Invalidate queries to refresh data
+          queryClient.invalidateQueries({ queryKey: ['jobs'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'job_items',
+        },
+        () => {
+          // Also refresh jobs when items change
+          queryClient.invalidateQueries({ queryKey: ['jobs'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'job_photos',
+        },
+        () => {
+          // Also refresh jobs when photos change
+          queryClient.invalidateQueries({ queryKey: ['jobs'] });
+          queryClient.invalidateQueries({ queryKey: ['job'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [profile?.company_id, queryClient]);
   
   return useQuery({
     queryKey: ['jobs', profile?.company_id, includeArchived],
