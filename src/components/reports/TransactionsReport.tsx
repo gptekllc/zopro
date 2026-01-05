@@ -338,6 +338,32 @@ const TransactionsReport = () => {
 
   return (
     <div className="space-y-6">
+      {/* Action Buttons */}
+      <div className="flex items-center justify-end gap-2">
+        <Button 
+          onClick={() => setEmailDialogOpen(true)} 
+          variant="outline" 
+          size="sm"
+          disabled={filteredPayments.length === 0}
+        >
+          <Mail className="w-4 h-4 mr-2" />
+          Email
+        </Button>
+        <Button 
+          onClick={exportToCSV} 
+          variant="outline" 
+          size="sm"
+          disabled={filteredPayments.length === 0}
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Export CSV
+        </Button>
+        <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Record Payment
+        </Button>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -397,36 +423,10 @@ const TransactionsReport = () => {
         </Card>
       </div>
 
-      {/* Filters and Actions */}
+      {/* Filters */}
       <Card>
         <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <CardTitle>Payment History</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button 
-                onClick={() => setEmailDialogOpen(true)} 
-                variant="outline" 
-                size="sm"
-                disabled={filteredPayments.length === 0}
-              >
-                <Mail className="w-4 h-4 mr-2" />
-                Email
-              </Button>
-              <Button 
-                onClick={exportToCSV} 
-                variant="outline" 
-                size="sm"
-                disabled={filteredPayments.length === 0}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </Button>
-              <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Record Payment
-              </Button>
-            </div>
-          </div>
+          <CardTitle>Payment History</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Search */}
