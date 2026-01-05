@@ -352,7 +352,7 @@ const TransactionsReport = () => {
               className="pl-9"
             />
           </div>
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-center lg:justify-end gap-2 lg:ml-auto">
             <Button 
               onClick={() => setEmailDialogOpen(true)} 
               variant="outline" 
