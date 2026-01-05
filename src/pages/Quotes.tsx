@@ -14,6 +14,7 @@ import { useInvoices } from '@/hooks/useInvoices';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useApproveQuoteWithSignature } from '@/hooks/useSignatures';
 import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
+import { useQuotePhotos, useUploadQuotePhoto, useDeleteQuotePhoto } from '@/hooks/useQuotePhotos';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore, PenTool, Eye, UserCog, ChevronRight, CheckCircle2, Receipt, Link2 } from 'lucide-react';
+import { Plus, Search, FileText, Trash2, Edit, DollarSign, Loader2, FileDown, Mail, ArrowRight, Send, CheckCircle, XCircle, MoreVertical, Briefcase, Copy, BookTemplate, Filter, Archive, ArchiveRestore, PenTool, Eye, UserCog, ChevronRight, CheckCircle2, Receipt, Link2, Image as ImageIcon, List } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
@@ -30,6 +31,8 @@ import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { Separator } from '@/components/ui/separator';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
@@ -1207,16 +1210,32 @@ const Quotes = () => {
               </div>
             </DialogHeader>
 
-            <Tabs defaultValue="details" className="w-full">
-              <TabsList className="flex-wrap h-auto gap-1 p-1">
-                <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-3">Details</TabsTrigger>
-                <TabsTrigger value="linked" className="text-xs sm:text-sm px-2 sm:px-3">
-                  Linked Documents ({
-                    safeJobs.filter((j: any) => j?.quote_id === viewingQuote.id).length +
-                    safeInvoices.filter((inv: any) => inv?.quote_id === viewingQuote.id).length
-                  })
-                </TabsTrigger>
-              </TabsList>
+            {(() => {
+              const quotePhotos = [];  // Will be populated with actual photos
+              const linkedDocsCount = safeJobs.filter((j: any) => j?.quote_id === viewingQuote.id).length +
+                safeInvoices.filter((inv: any) => inv?.quote_id === viewingQuote.id).length;
+              
+              return (
+                <Tabs defaultValue="details" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="details" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                      <List className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Details</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                      <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Linked Docs</span>
+                      {linkedDocsCount > 0 && (
+                        <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                          {linkedDocsCount}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                      <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                      <span className="hidden sm:inline">Photos</span>
+                    </TabsTrigger>
+                  </TabsList>
 
               <TabsContent value="details" className="mt-4">
                 <div className="space-y-4 sm:space-y-6">
@@ -1480,7 +1499,18 @@ const Quotes = () => {
                   })()}
                 </div>
               </TabsContent>
+
+              {/* Photos Tab */}
+              <TabsContent value="photos" className="mt-4">
+                <div className="p-4 text-center text-muted-foreground bg-muted/50 rounded-lg">
+                  <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Photo management available in full quote detail view.</p>
+                  <p className="text-xs mt-1">Open from the customer's quotes history to manage photos.</p>
+                </div>
+              </TabsContent>
             </Tabs>
+              );
+            })()}
           </DialogContent>
         </Dialog>}
 

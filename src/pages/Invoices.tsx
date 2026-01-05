@@ -21,7 +21,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send, Bell, UserCog, Wrench, ChevronRight, CheckCircle2, Briefcase, Link2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, FileDown, Mail, FileText, AlertCircle, MoreVertical, Copy, Filter, Archive, ArchiveRestore, PenTool, Eye, Send, Bell, UserCog, Wrench, ChevronRight, CheckCircle2, Briefcase, Link2, Image as ImageIcon, List } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { SignatureDialog } from "@/components/signatures/SignatureDialog";
 import { ViewSignatureDialog } from "@/components/signatures/ViewSignatureDialog";
@@ -1107,9 +1109,32 @@ const Invoices = () => {
               </div>
             </DialogHeader>
 
-            <div className="space-y-4 sm:space-y-6">
-              {/* Customer & Dates - responsive grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {/* Tabs for Details, Linked Docs, Photos - at top like Job dialog */}
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="details" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                  <List className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Details</span>
+                </TabsTrigger>
+                <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                  <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Linked Docs</span>
+                  {(viewingInvoice.quote_id || (viewingInvoice as any).job_id) && (
+                    <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                      {(viewingInvoice.quote_id ? 1 : 0) + ((viewingInvoice as any).job_id || (viewingInvoice as any).quote?.job ? 1 : 0)}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                  <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Photos</span>
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Details Tab */}
+              <TabsContent value="details" className="mt-4 space-y-4 sm:space-y-6">
+                {/* Customer & Dates - responsive grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
                   <p className="font-medium text-sm sm:text-base truncate">
@@ -1272,75 +1297,6 @@ const Invoices = () => {
                 <SignatureSection signatureId={(viewingInvoice as any).signature_id} title="Customer Signature" onCollectSignature={() => handleOpenSignatureDialog(viewingInvoice as Invoice)} showCollectButton={viewingInvoice.status !== "paid"} collectButtonText="Collect Signature" isCollecting={signInvoice.isPending} />
               </ConstrainedPanel>
 
-              {/* Linked Docs */}
-              {(viewingInvoice.quote_id || (viewingInvoice as any).job_id) && (
-                <div>
-                  <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
-                    <Link2 className="w-4 h-4" />
-                    Linked Documents
-                  </h4>
-                  <div className="space-y-2">
-                    {/* Linked Quote */}
-                    {viewingInvoice.quote_id && (viewingInvoice as any).quote && (
-                      <div
-                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
-                        onClick={() => {
-                          openViewingInvoice(null);
-                          navigate(`/quotes?view=${viewingInvoice.quote_id}`);
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium text-sm">{(viewingInvoice as any).quote.quote_number}</span>
-                          <span className="text-xs text-muted-foreground">Quote</span>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                          (viewingInvoice as any).quote.status === 'approved' || (viewingInvoice as any).quote.status === 'accepted' 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : (viewingInvoice as any).quote.status === 'sent'
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                              : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {(viewingInvoice as any).quote.status}
-                        </span>
-                      </div>
-                    )}
-                    {/* Linked Job - from direct job_id or via quote */}
-                    {((viewingInvoice as any).job || (viewingInvoice as any).quote?.job) && (
-                      <div
-                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
-                        onClick={() => {
-                          const job = (viewingInvoice as any).job || (viewingInvoice as any).quote?.job;
-                          openViewingInvoice(null);
-                          navigate(`/jobs?view=${job.id}`);
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium text-sm">
-                            {(viewingInvoice as any).job?.job_number || (viewingInvoice as any).quote?.job?.job_number}
-                          </span>
-                          <span className="text-xs text-muted-foreground truncate max-w-[150px]">
-                            {(viewingInvoice as any).job?.title || (viewingInvoice as any).quote?.job?.title}
-                          </span>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                          ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'completed'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'in_progress'
-                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                              : ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'scheduled'
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status || '').replace('_', ' ')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
               {/* Notes */}
               {viewingInvoice.notes && <div>
                   <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
@@ -1408,7 +1364,92 @@ const Invoices = () => {
                   </>
                 )}
               </div>
-            </div>
+              </TabsContent>
+
+              {/* Linked Docs Tab */}
+              <TabsContent value="linked" className="mt-4">
+                <div>
+                  <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
+                    <Link2 className="w-4 h-4" />
+                    Linked Documents
+                  </h4>
+                  {(viewingInvoice.quote_id || (viewingInvoice as any).job_id || (viewingInvoice as any).quote?.job) ? (
+                    <div className="space-y-2">
+                      {/* Linked Quote */}
+                      {viewingInvoice.quote_id && (viewingInvoice as any).quote && (
+                        <div
+                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                          onClick={() => {
+                            openViewingInvoice(null);
+                            navigate(`/quotes?view=${viewingInvoice.quote_id}`);
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium text-sm">{(viewingInvoice as any).quote.quote_number}</span>
+                            <span className="text-xs text-muted-foreground">Quote</span>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                            (viewingInvoice as any).quote.status === 'approved' || (viewingInvoice as any).quote.status === 'accepted' 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : (viewingInvoice as any).quote.status === 'sent'
+                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {(viewingInvoice as any).quote.status}
+                          </span>
+                        </div>
+                      )}
+                      {/* Linked Job - from direct job_id or via quote */}
+                      {((viewingInvoice as any).job || (viewingInvoice as any).quote?.job) && (
+                        <div
+                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                          onClick={() => {
+                            const job = (viewingInvoice as any).job || (viewingInvoice as any).quote?.job;
+                            openViewingInvoice(null);
+                            navigate(`/jobs?view=${job.id}`);
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium text-sm">
+                              {(viewingInvoice as any).job?.job_number || (viewingInvoice as any).quote?.job?.job_number}
+                            </span>
+                            <span className="text-xs text-muted-foreground truncate max-w-[150px]">
+                              {(viewingInvoice as any).job?.title || (viewingInvoice as any).quote?.job?.title}
+                            </span>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                            ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'completed'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                              : ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'in_progress'
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                : ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'scheduled'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                  : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status || '').replace('_', ' ')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs sm:text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                      No linked quotes or jobs
+                    </p>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* Photos Tab */}
+              <TabsContent value="photos" className="mt-4">
+                <div className="p-4 text-center text-muted-foreground bg-muted/50 rounded-lg">
+                  <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Photo management available in full invoice detail view.</p>
+                  <p className="text-xs mt-1">Open from the customer's invoices history to manage photos.</p>
+                </div>
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>}
 
