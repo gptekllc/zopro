@@ -407,6 +407,7 @@ export type Database = {
           description: string
           id: string
           invoice_id: string
+          item_description: string | null
           quantity: number
           total: number
           type: string
@@ -417,6 +418,7 @@ export type Database = {
           description: string
           id?: string
           invoice_id: string
+          item_description?: string | null
           quantity?: number
           total?: number
           type?: string
@@ -427,6 +429,7 @@ export type Database = {
           description?: string
           id?: string
           invoice_id?: string
+          item_description?: string | null
           quantity?: number
           total?: number
           type?: string
@@ -733,6 +736,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          item_description: string | null
           job_id: string
           quantity: number
           total: number
@@ -743,6 +747,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          item_description?: string | null
           job_id: string
           quantity?: number
           total?: number
@@ -753,6 +758,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          item_description?: string | null
           job_id?: string
           quantity?: number
           total?: number
@@ -883,6 +889,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          item_description: string | null
           quantity: number
           template_id: string
           total: number
@@ -893,6 +900,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          item_description?: string | null
           quantity?: number
           template_id: string
           total?: number
@@ -903,6 +911,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          item_description?: string | null
           quantity?: number
           template_id?: string
           total?: number
@@ -1254,6 +1263,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          item_description: string | null
           quantity: number
           quote_id: string
           total: number
@@ -1264,6 +1274,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          item_description?: string | null
           quantity?: number
           quote_id: string
           total?: number
@@ -1274,6 +1285,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          item_description?: string | null
           quantity?: number
           quote_id?: string
           total?: number
@@ -1343,6 +1355,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          item_description: string | null
           quantity: number
           template_id: string
           total: number
@@ -1353,6 +1366,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          item_description?: string | null
           quantity?: number
           template_id: string
           total?: number
@@ -1363,6 +1377,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          item_description?: string | null
           quantity?: number
           template_id?: string
           total?: number
