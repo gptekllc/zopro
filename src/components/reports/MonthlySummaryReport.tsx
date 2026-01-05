@@ -114,18 +114,22 @@ const MonthlySummaryReport = () => {
       const monthEnd = endOfMonth(month);
 
       // Jobs completed this month
-      const completedJobs = jobs.filter(j => {
+      const completedJobsList = jobs.filter(j => {
         if (j.status !== 'completed' && j.status !== 'invoiced' && j.status !== 'paid') return false;
         const date = j.actual_end ? parseISO(j.actual_end) : parseISO(j.updated_at);
         return date >= monthStart && date <= monthEnd;
-      }).length;
+      });
+      const completedJobs = completedJobsList.length;
+      const jobsValue = completedJobsList.reduce((sum, j) => sum + Number(j.total || 0), 0);
 
       // Quotes sent this month
-      const sentQuotes = quotes.filter(q => {
+      const sentQuotesList = quotes.filter(q => {
         if (q.status === 'draft') return false;
         const date = parseISO(q.created_at);
         return date >= monthStart && date <= monthEnd;
-      }).length;
+      });
+      const sentQuotes = sentQuotesList.length;
+      const quotesValue = sentQuotesList.reduce((sum, q) => sum + Number(q.total || 0), 0);
 
       // Quotes accepted this month
       const acceptedQuotes = quotes.filter(q => {
@@ -137,10 +141,12 @@ const MonthlySummaryReport = () => {
       }).length;
 
       // Invoices generated this month
-      const generatedInvoices = invoices.filter(i => {
+      const generatedInvoicesList = invoices.filter(i => {
         const date = parseISO(i.created_at);
         return date >= monthStart && date <= monthEnd;
-      }).length;
+      });
+      const generatedInvoices = generatedInvoicesList.length;
+      const invoicesValue = generatedInvoicesList.reduce((sum, i) => sum + Number(i.total), 0);
 
       // Revenue collected this month (completed payments only)
       const monthlyRevenue = payments
@@ -151,14 +157,6 @@ const MonthlySummaryReport = () => {
         })
         .reduce((sum, p) => sum + Number(p.amount), 0);
 
-      // Invoice total generated this month
-      const invoicedAmount = invoices
-        .filter(i => {
-          const date = parseISO(i.created_at);
-          return date >= monthStart && date <= monthEnd;
-        })
-        .reduce((sum, i) => sum + Number(i.total), 0);
-
       return {
         month: format(month, 'MMM yyyy'),
         shortMonth: format(month, 'MMM'),
@@ -167,7 +165,10 @@ const MonthlySummaryReport = () => {
         acceptedQuotes,
         generatedInvoices,
         revenue: monthlyRevenue,
-        invoiced: invoicedAmount,
+        invoiced: invoicesValue,
+        jobsValue,
+        quotesValue,
+        invoicesValue,
       };
     });
   }, [months, jobs, quotes, invoices, payments]);
@@ -668,7 +669,7 @@ const MonthlySummaryReport = () => {
       {/* Revenue Chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Revenue Over Time</CardTitle>
+          <CardTitle>Value Over Time</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -680,20 +681,44 @@ const MonthlySummaryReport = () => {
                 tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
               />
               <Tooltip 
-                formatter={(value: number) => [`$${formatAmount(value)}`, 'Revenue']}
+                formatter={(value: number, name: string) => [`$${formatAmount(value)}`, name]}
                 contentStyle={{ 
                   backgroundColor: 'hsl(var(--card))',
                   border: '1px solid hsl(var(--border))',
                   borderRadius: '8px'
                 }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="revenue" 
-                stroke="hsl(var(--primary))" 
-                strokeWidth={2}
-                dot={{ fill: 'hsl(var(--primary))' }}
-              />
+              <Legend />
+              {selectedTypes.includes('jobs') && (
+                <Line 
+                  type="monotone" 
+                  dataKey="jobsValue" 
+                  name="Jobs Value"
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--primary))' }}
+                />
+              )}
+              {selectedTypes.includes('quotes') && (
+                <Line 
+                  type="monotone" 
+                  dataKey="quotesValue" 
+                  name="Quotes Value"
+                  stroke="hsl(var(--chart-2))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--chart-2))' }}
+                />
+              )}
+              {selectedTypes.includes('invoices') && (
+                <Line 
+                  type="monotone" 
+                  dataKey="invoicesValue" 
+                  name="Invoices Value"
+                  stroke="hsl(var(--chart-3))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--chart-3))' }}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
