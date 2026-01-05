@@ -361,115 +361,178 @@ const TimesheetReportTab = () => {
     <div className="space-y-6">
       {/* Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center lg:justify-between gap-4">
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="outline" size="icon" onClick={() => setWeekStart(subWeeks(weekStart, 1))}>
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <div className="flex items-center gap-2 px-4 py-2 border rounded-md">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span className="font-medium text-sm">
-              {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
-            </span>
-          </div>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={() => setWeekStart(addWeeks(weekStart, 1))}
-            disabled={weekStart >= startOfWeek(new Date(), { weekStartsOn: 0 })}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-          <Select value={numWeeks} onValueChange={setNumWeeks}>
-            <SelectTrigger className="w-[100px] sm:w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">1 Week</SelectItem>
-              <SelectItem value="2">2 Weeks</SelectItem>
-              <SelectItem value="4">4 Weeks</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col sm:flex-row items-center gap-2">
+          <div className="flex items-center justify-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => setWeekStart(subWeeks(weekStart, 1))}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <div className="flex items-center gap-2 px-4 py-2 border rounded-md">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-sm">
+                {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+              </span>
+            </div>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => setWeekStart(addWeeks(weekStart, 1))}
+              disabled={weekStart >= startOfWeek(new Date(), { weekStartsOn: 0 })}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            <Select value={numWeeks} onValueChange={setNumWeeks}>
+              <SelectTrigger className="w-[100px] sm:w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 Week</SelectItem>
+                <SelectItem value="2">2 Weeks</SelectItem>
+                <SelectItem value="4">4 Weeks</SelectItem>
+              </SelectContent>
+            </Select>
 
-          {/* Team Member Filter */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="min-w-[140px] justify-start">
-                <Users className="w-4 h-4 mr-2" />
-                {selectedMemberIds.length === 0 ? (
-                  <span className="text-muted-foreground">All Members</span>
-                ) : (
-                  <span>{selectedMemberIds.length} selected</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-2 bg-background" align="start">
-              <div className="flex items-center justify-between mb-2 pb-2 border-b">
-                <span className="text-sm font-medium">Filter by Member</span>
-                {selectedMemberIds.length > 0 && (
-                  <Button variant="ghost" size="sm" onClick={clearSelectedMembers} className="h-6 px-2 text-xs">
-                    Clear all
-                  </Button>
-                )}
-              </div>
-              <div className="relative mb-2">
-                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search members..."
-                  value={memberFilterSearch}
-                  onChange={(e) => setMemberFilterSearch(e.target.value)}
-                  className="pl-8 h-8 text-sm"
-                />
-              </div>
-              <div className="max-h-[200px] overflow-y-auto space-y-1">
-                {filteredDropdownMembers.map(member => (
-                  <div
-                    key={member.id}
-                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
-                    onClick={() => toggleMember(member.id)}
-                  >
-                    <Checkbox
-                      checked={selectedMemberIds.includes(member.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      onCheckedChange={() => toggleMember(member.id)}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm truncate">{member.full_name || member.email}</div>
-                      {member.full_name && (
-                        <div className="text-xs text-muted-foreground truncate">{member.email}</div>
-                      )}
+            {/* Team Member Filter - Desktop */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="hidden sm:flex min-w-[140px] justify-start">
+                  <Users className="w-4 h-4 mr-2" />
+                  {selectedMemberIds.length === 0 ? (
+                    <span className="text-muted-foreground">All Members</span>
+                  ) : (
+                    <span>{selectedMemberIds.length} selected</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2 bg-background" align="start">
+                <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                  <span className="text-sm font-medium">Filter by Member</span>
+                  {selectedMemberIds.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearSelectedMembers} className="h-6 px-2 text-xs">
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+                <div className="relative mb-2">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search members..."
+                    value={memberFilterSearch}
+                    onChange={(e) => setMemberFilterSearch(e.target.value)}
+                    className="pl-8 h-8 text-sm"
+                  />
+                </div>
+                <div className="max-h-[200px] overflow-y-auto space-y-1">
+                  {filteredDropdownMembers.map(member => (
+                    <div
+                      key={member.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                      onClick={() => toggleMember(member.id)}
+                    >
+                      <Checkbox
+                        checked={selectedMemberIds.includes(member.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onCheckedChange={() => toggleMember(member.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm truncate">{member.full_name || member.email}</div>
+                        {member.full_name && (
+                          <div className="text-xs text-muted-foreground truncate">{member.email}</div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {filteredDropdownMembers.length === 0 && (
-                  <div className="text-sm text-muted-foreground text-center py-4">
-                    {allTeamMembers.length === 0 ? 'No team members' : 'No matches found'}
-                  </div>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
-          {/* Mobile Actions Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="sm:hidden">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-popover">
-              <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={timesheetData.length === 0}>
-                <Mail className="w-4 h-4 mr-2" />
-                Email
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToPDF} disabled={isExportingPdf}>
-                <FileText className="w-4 h-4 mr-2" />
-                Print/PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToCSV}>
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  ))}
+                  {filteredDropdownMembers.length === 0 && (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      {allTeamMembers.length === 0 ? 'No team members' : 'No matches found'}
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Mobile: Team Member Filter + Actions on second row */}
+          <div className="flex sm:hidden items-center justify-center gap-2 w-full">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="flex-1 justify-start">
+                  <Users className="w-4 h-4 mr-2" />
+                  {selectedMemberIds.length === 0 ? (
+                    <span className="text-muted-foreground">All Members</span>
+                  ) : (
+                    <span>{selectedMemberIds.length} selected</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2 bg-background" align="start">
+                <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                  <span className="text-sm font-medium">Filter by Member</span>
+                  {selectedMemberIds.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearSelectedMembers} className="h-6 px-2 text-xs">
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+                <div className="relative mb-2">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search members..."
+                    value={memberFilterSearch}
+                    onChange={(e) => setMemberFilterSearch(e.target.value)}
+                    className="pl-8 h-8 text-sm"
+                  />
+                </div>
+                <div className="max-h-[200px] overflow-y-auto space-y-1">
+                  {filteredDropdownMembers.map(member => (
+                    <div
+                      key={member.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                      onClick={() => toggleMember(member.id)}
+                    >
+                      <Checkbox
+                        checked={selectedMemberIds.includes(member.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onCheckedChange={() => toggleMember(member.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm truncate">{member.full_name || member.email}</div>
+                        {member.full_name && (
+                          <div className="text-xs text-muted-foreground truncate">{member.email}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {filteredDropdownMembers.length === 0 && (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      {allTeamMembers.length === 0 ? 'No team members' : 'No matches found'}
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+            {/* Mobile Actions Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={timesheetData.length === 0}>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToPDF} disabled={isExportingPdf}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Print/PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToCSV}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         
         {/* Desktop Actions */}
