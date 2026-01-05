@@ -398,10 +398,9 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
                   <Plus className="w-4 h-4 mr-1" />
                   Add Product
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setImportExportOpen(true)}>
+                <Button size="sm" variant="outline" onClick={() => setImportExportOpen(true)} className="hidden sm:flex">
                   <ArrowUpDown className="w-4 h-4 mr-1" />
-                  <span className="hidden sm:inline">Import / Export</span>
-                  <span className="sm:hidden">I/E</span>
+                  Import / Export
                 </Button>
               </div>
             </CardHeader>
@@ -430,10 +429,9 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
                   <Plus className="w-4 h-4 mr-1" />
                   Add Service
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => setImportExportOpen(true)}>
+                <Button size="sm" variant="outline" onClick={() => setImportExportOpen(true)} className="hidden sm:flex">
                   <ArrowUpDown className="w-4 h-4 mr-1" />
-                  <span className="hidden sm:inline">Import / Export</span>
-                  <span className="sm:hidden">I/E</span>
+                  Import / Export
                 </Button>
               </div>
             </CardHeader>
