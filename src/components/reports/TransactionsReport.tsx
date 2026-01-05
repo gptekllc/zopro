@@ -50,6 +50,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatAmount } from '@/lib/formatAmount';
 import { ReportEmailDialog } from './ReportEmailDialog';
+import { ScrollableTable } from '@/components/ui/scrollable-table';
 
 const formatCurrency = (amount: number) => `$${formatAmount(amount)}`;
 
@@ -519,7 +520,7 @@ const TransactionsReport = () => {
           )}
 
           {/* Transactions Table */}
-          <div className="rounded-md border overflow-x-auto">
+          <ScrollableTable className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -604,7 +605,7 @@ const TransactionsReport = () => {
                 )}
               </TableBody>
             </Table>
-          </div>
+          </ScrollableTable>
         </CardContent>
       </Card>
 
