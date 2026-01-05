@@ -7,12 +7,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Package, Wrench, Loader2, EyeOff, Search, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, Wrench, Loader2, Search, X, MoreVertical, Eye, EyeOff } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 import { toast } from 'sonner';
 
@@ -25,11 +25,6 @@ export const CatalogManager = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<CatalogItem | null>(null);
-  
-  // Bulk selection state
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [bulkDeactivateOpen, setBulkDeactivateOpen] = useState(false);
-  const [bulkProcessing, setBulkProcessing] = useState(false);
   
   // Search/filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,93 +104,65 @@ export const CatalogManager = () => {
     }
   };
 
-  // Bulk selection handlers
-  const toggleItemSelection = (itemId: string) => {
-    setSelectedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId);
-      } else {
-        newSet.add(itemId);
-      }
-      return newSet;
-    });
+  const handleToggleActive = async (item: CatalogItem) => {
+    await updateItem.mutateAsync({ id: item.id, is_active: !item.is_active });
   };
 
-  const toggleSelectAll = (itemList: CatalogItem[]) => {
-    const allSelected = itemList.every(item => selectedItems.has(item.id));
-    setSelectedItems(prev => {
-      const newSet = new Set(prev);
-      if (allSelected) {
-        itemList.forEach(item => newSet.delete(item.id));
-      } else {
-        itemList.forEach(item => newSet.add(item.id));
-      }
-      return newSet;
-    });
-  };
-
-  const handleBulkDeactivate = async () => {
-    setBulkProcessing(true);
-    try {
-      const promises = Array.from(selectedItems).map(id =>
-        updateItem.mutateAsync({ id, is_active: false })
-      );
-      await Promise.all(promises);
-      toast.success(`Deactivated ${selectedItems.size} items`);
-      setSelectedItems(new Set());
-      setBulkDeactivateOpen(false);
-    } catch (error) {
-      toast.error('Failed to deactivate some items');
-    } finally {
-      setBulkProcessing(false);
-    }
-  };
-
-
-  const renderItemCard = (item: CatalogItem, showCheckbox: boolean = false) => (
+  const renderItemCard = (item: CatalogItem) => (
     <div
       key={item.id}
       className={`flex items-center justify-between p-3 rounded-lg border ${
         item.is_active ? 'bg-background' : 'bg-muted/50 opacity-60'
       }`}
     >
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        {showCheckbox && (
-          <Checkbox
-            checked={selectedItems.has(item.id)}
-            onCheckedChange={() => toggleItemSelection(item.id)}
-          />
-        )}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{item.name}</span>
-            {!item.is_active && (
-              <Badge variant="secondary" className="text-xs">Inactive</Badge>
-            )}
-          </div>
-          {item.description && (
-            <p className="text-sm text-muted-foreground truncate">{item.description}</p>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium truncate">{item.name}</span>
+          {!item.is_active && (
+            <Badge variant="secondary" className="text-xs">Inactive</Badge>
           )}
         </div>
+        {item.description && (
+          <p className="text-sm text-muted-foreground truncate">{item.description}</p>
+        )}
       </div>
       <div className="flex items-center gap-3">
         <span className="font-semibold text-primary">
           ${formatAmount(item.unit_price)}
         </span>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" onClick={() => openEditDialog(item)}>
-            <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setDeleteConfirmItem(item)}
-            className="text-destructive hover:text-destructive"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-popover">
+            <DropdownMenuItem onClick={() => openEditDialog(item)}>
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleToggleActive(item)}>
+              {item.is_active ? (
+                <>
+                  <EyeOff className="w-4 h-4 mr-2" />
+                  Deactivate
+                </>
+              ) : (
+                <>
+                  <Eye className="w-4 h-4 mr-2" />
+                  Reactivate
+                </>
+              )}
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={() => setDeleteConfirmItem(item)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -207,10 +174,6 @@ export const CatalogManager = () => {
       </div>
     );
   }
-
-  const activeSelectedCount = Array.from(selectedItems).filter(id => 
-    items.find(i => i.id === id)?.is_active
-  ).length;
 
   return (
     <div className="space-y-6">
@@ -264,38 +227,6 @@ export const CatalogManager = () => {
         </CardContent>
       </Card>
 
-      {/* Bulk Actions */}
-      {selectedItems.size > 0 && (
-        <Card className="border-primary">
-          <CardContent className="py-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">
-                {selectedItems.size} item{selectedItems.size > 1 ? 's' : ''} selected
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setSelectedItems(new Set())}
-                >
-                  Clear Selection
-                </Button>
-                {activeSelectedCount > 0 && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setBulkDeactivateOpen(true)}
-                  >
-                    <EyeOff className="w-4 h-4 mr-1" />
-                    Deactivate ({activeSelectedCount})
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Products/Services Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'products' | 'services')} className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-4">
@@ -312,17 +243,9 @@ export const CatalogManager = () => {
         <TabsContent value="products" className="mt-0">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <div className="flex items-center gap-3">
-                {products.length > 0 && (
-                  <Checkbox
-                    checked={products.every(p => selectedItems.has(p.id)) && products.length > 0}
-                    onCheckedChange={() => toggleSelectAll(products)}
-                  />
-                )}
-                <span className="text-sm text-muted-foreground">
-                  {products.length > 0 ? 'Select all' : 'No products'}
-                </span>
-              </div>
+              <span className="text-sm text-muted-foreground">
+                {products.length} product{products.length !== 1 ? 's' : ''}
+              </span>
               <Button size="sm" onClick={() => openCreateDialog('product')}>
                 <Plus className="w-4 h-4 mr-1" />
                 Add Product
@@ -331,7 +254,7 @@ export const CatalogManager = () => {
             <CardContent>
               {products.length > 0 ? (
                 <div className="space-y-2">
-                  {products.map(item => renderItemCard(item, true))}
+                  {products.map(item => renderItemCard(item))}
                 </div>
               ) : (
                 <p className="text-center text-muted-foreground py-4">
@@ -345,17 +268,9 @@ export const CatalogManager = () => {
         <TabsContent value="services" className="mt-0">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <div className="flex items-center gap-3">
-                {services.length > 0 && (
-                  <Checkbox
-                    checked={services.every(s => selectedItems.has(s.id)) && services.length > 0}
-                    onCheckedChange={() => toggleSelectAll(services)}
-                  />
-                )}
-                <span className="text-sm text-muted-foreground">
-                  {services.length > 0 ? 'Select all' : 'No services'}
-                </span>
-              </div>
+              <span className="text-sm text-muted-foreground">
+                {services.length} service{services.length !== 1 ? 's' : ''}
+              </span>
               <Button size="sm" onClick={() => openCreateDialog('service')}>
                 <Plus className="w-4 h-4 mr-1" />
                 Add Service
@@ -364,7 +279,7 @@ export const CatalogManager = () => {
             <CardContent>
               {services.length > 0 ? (
                 <div className="space-y-2">
-                  {services.map(item => renderItemCard(item, true))}
+                  {services.map(item => renderItemCard(item))}
                 </div>
               ) : (
                 <p className="text-center text-muted-foreground py-4">
@@ -464,26 +379,6 @@ export const CatalogManager = () => {
           </form>
         </DialogContent>
       </Dialog>
-
-      {/* Bulk Deactivate Confirmation */}
-      <AlertDialog open={bulkDeactivateOpen} onOpenChange={setBulkDeactivateOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate Items</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to deactivate {activeSelectedCount} item{activeSelectedCount > 1 ? 's' : ''}? 
-              Inactive items won't appear in the catalog picker but can be reactivated later.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={bulkProcessing}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBulkDeactivate} disabled={bulkProcessing}>
-              {bulkProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Deactivate
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirmItem} onOpenChange={() => setDeleteConfirmItem(null)}>
