@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, startOfYear, subYears } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Mail } from 'lucide-react';
+import { CalendarIcon, Mail, Filter, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useJobs } from '@/hooks/useJobs';
 import { useQuotes } from '@/hooks/useQuotes';
@@ -11,6 +11,7 @@ import { useAllPayments } from '@/hooks/usePayments';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -50,12 +51,21 @@ import { ReportEmailDialog } from './ReportEmailDialog';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
+type ActivityType = 'jobs' | 'quotes' | 'invoices';
+
+const ACTIVITY_TYPES: { value: ActivityType; label: string }[] = [
+  { value: 'jobs', label: 'Jobs' },
+  { value: 'quotes', label: 'Quotes' },
+  { value: 'invoices', label: 'Invoices' },
+];
+
 const MonthlySummaryReport = () => {
   const [timeRange, setTimeRange] = useState('6');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [selectedTypes, setSelectedTypes] = useState<ActivityType[]>(['jobs', 'quotes', 'invoices']);
   
   const { data: jobs, isLoading: loadingJobs } = useJobs();
   const { data: quotes, isLoading: loadingQuotes } = useQuotes();
@@ -447,20 +457,81 @@ const MonthlySummaryReport = () => {
     <div className="space-y-6">
       {/* Time Range Selector and Export */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center lg:justify-between gap-4 flex-wrap">
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[140px] sm:w-[180px]">
-            <SelectValue placeholder="Select range" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1">Last Month</SelectItem>
-            <SelectItem value="3">Last 3 months</SelectItem>
-            <SelectItem value="6">Last 6 months</SelectItem>
-            <SelectItem value="12">Last 12 months</SelectItem>
-            <SelectItem value="ytd">Year to Date</SelectItem>
-            <SelectItem value="lastyear">Last Year</SelectItem>
-            <SelectItem value="custom">Custom Range</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={timeRange} onValueChange={setTimeRange}>
+            <SelectTrigger className="w-[140px] sm:w-[180px]">
+              <SelectValue placeholder="Select range" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Last Month</SelectItem>
+              <SelectItem value="3">Last 3 months</SelectItem>
+              <SelectItem value="6">Last 6 months</SelectItem>
+              <SelectItem value="12">Last 12 months</SelectItem>
+              <SelectItem value="ytd">Year to Date</SelectItem>
+              <SelectItem value="lastyear">Last Year</SelectItem>
+              <SelectItem value="custom">Custom Range</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Type Filter */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="min-w-[120px] justify-start">
+                <Filter className="w-4 h-4 mr-2" />
+                {selectedTypes.length === 3 ? (
+                  <span className="text-muted-foreground">All Types</span>
+                ) : selectedTypes.length === 0 ? (
+                  <span className="text-muted-foreground">None</span>
+                ) : (
+                  <span>{selectedTypes.length} selected</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2 bg-background" align="start">
+              <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                <span className="text-sm font-medium">Filter by Type</span>
+                {selectedTypes.length < 3 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setSelectedTypes(['jobs', 'quotes', 'invoices'])} 
+                    className="h-6 px-2 text-xs"
+                  >
+                    Select all
+                  </Button>
+                )}
+              </div>
+              <div className="space-y-1">
+                {ACTIVITY_TYPES.map(type => (
+                  <div
+                    key={type.value}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                    onClick={() => {
+                      setSelectedTypes(prev => 
+                        prev.includes(type.value)
+                          ? prev.filter(t => t !== type.value)
+                          : [...prev, type.value]
+                      );
+                    }}
+                  >
+                    <Checkbox
+                      checked={selectedTypes.includes(type.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onCheckedChange={() => {
+                        setSelectedTypes(prev => 
+                          prev.includes(type.value)
+                            ? prev.filter(t => t !== type.value)
+                            : [...prev, type.value]
+                        );
+                      }}
+                    />
+                    <span className="text-sm">{type.label}</span>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
         <div className="flex items-center justify-center lg:justify-end gap-2">
           <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={monthlyData.length === 0}>
             <Mail className="w-4 h-4 sm:mr-2" />
@@ -647,9 +718,15 @@ const MonthlySummaryReport = () => {
                 }}
               />
               <Legend />
-              <Bar dataKey="completedJobs" name="Jobs Completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="sentQuotes" name="Quotes Sent" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="generatedInvoices" name="Invoices" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+              {selectedTypes.includes('jobs') && (
+                <Bar dataKey="completedJobs" name="Jobs Completed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              )}
+              {selectedTypes.includes('quotes') && (
+                <Bar dataKey="sentQuotes" name="Quotes Sent" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+              )}
+              {selectedTypes.includes('invoices') && (
+                <Bar dataKey="generatedInvoices" name="Invoices" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+              )}
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
