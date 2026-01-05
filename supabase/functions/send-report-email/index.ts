@@ -458,7 +458,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const email of validEmails) {
       try {
         const emailResponse = await resend.emails.send({
-          from: "Reports <onboarding@resend.dev>",
+          from: "Reports <noreply@email.zopro.app>",
           to: [email],
           subject,
           html,
