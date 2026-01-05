@@ -12,9 +12,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Checkbox } from '@/components/ui/checkbox';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { SortableTableHeader } from '@/components/ui/sortable-table-header';
-import { DollarSign, TrendingDown, Hash, Calculator, Plus, MoreHorizontal, FileText, Download, Mail, Search, X, Loader2 } from 'lucide-react';
+import { DollarSign, TrendingDown, Hash, Calculator, Plus, MoreHorizontal, FileText, Download, Mail, Search, X, Loader2, User } from 'lucide-react';
 import { PAYMENT_METHODS, RecordPaymentDialog, PaymentData } from '@/components/invoices/RecordPaymentDialog';
 import SelectInvoiceDialog from '@/components/reports/SelectInvoiceDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,11 +38,43 @@ const TransactionsReport = () => {
   // Filters
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [customerId, setCustomerId] = useState<string>('all');
+  const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
+  const [customerFilterSearch, setCustomerFilterSearch] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<string>('all');
   const [paymentStatus, setPaymentStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Filter customers in dropdown by search
+  const filteredDropdownCustomers = useMemo(() => {
+    if (!customers) return [];
+    if (!customerFilterSearch.trim()) return customers;
+    const search = customerFilterSearch.toLowerCase();
+    return customers.filter(c => 
+      c.name.toLowerCase().includes(search) ||
+      (c.email && c.email.toLowerCase().includes(search))
+    );
+  }, [customers, customerFilterSearch]);
+
+  const toggleCustomer = (customerId: string) => {
+    setSelectedCustomerIds(prev => 
+      prev.includes(customerId) 
+        ? prev.filter(id => id !== customerId)
+        : [...prev, customerId]
+    );
+  };
+
+  const clearSelectedCustomers = () => {
+    setSelectedCustomerIds([]);
+  };
+
+  const getSelectedCustomerNames = () => {
+    if (selectedCustomerIds.length === 0) return null;
+    return selectedCustomerIds
+      .map(id => customers?.find(c => c.id === id))
+      .filter(Boolean)
+      .map(c => c!.name)
+      .join(', ');
+  };
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -74,7 +108,7 @@ const TransactionsReport = () => {
       if (endDate && new Date(payment.payment_date) > new Date(endDate + 'T23:59:59')) return false;
 
       // Customer filter
-      if (customerId !== 'all' && payment.invoice?.customer?.id !== customerId) return false;
+      if (selectedCustomerIds.length > 0 && !selectedCustomerIds.includes(payment.invoice?.customer?.id || '')) return false;
 
       // Payment method filter
       if (paymentMethod !== 'all' && payment.method !== paymentMethod) return false;
@@ -91,7 +125,7 @@ const TransactionsReport = () => {
       }
       return true;
     });
-  }, [payments, startDate, endDate, customerId, paymentMethod, paymentStatus, searchQuery]);
+  }, [payments, startDate, endDate, selectedCustomerIds, paymentMethod, paymentStatus, searchQuery]);
 
   // Sorted payments
   const sortedPayments = useMemo(() => {
@@ -121,7 +155,7 @@ const TransactionsReport = () => {
   // Reset to first page when filters change
   useMemo(() => {
     setCurrentPage(1);
-  }, [startDate, endDate, customerId, paymentMethod, paymentStatus, searchQuery, sortColumn, sortDirection, pageSize]);
+  }, [startDate, endDate, selectedCustomerIds, paymentMethod, paymentStatus, searchQuery, sortColumn, sortDirection, pageSize]);
 
   // Paginated payments
   const paginatedPayments = useMemo(() => {
@@ -159,12 +193,13 @@ const TransactionsReport = () => {
   const clearFilters = () => {
     setStartDate('');
     setEndDate('');
-    setCustomerId('all');
+    setSelectedCustomerIds([]);
+    setCustomerFilterSearch('');
     setPaymentMethod('all');
     setPaymentStatus('all');
     setSearchQuery('');
   };
-  const hasActiveFilters = startDate || endDate || customerId !== 'all' || paymentMethod !== 'all' || paymentStatus !== 'all' || searchQuery;
+  const hasActiveFilters = startDate || endDate || selectedCustomerIds.length > 0 || paymentMethod !== 'all' || paymentStatus !== 'all' || searchQuery;
 
   // Export to CSV
   const exportToCSV = () => {
@@ -452,17 +487,62 @@ const TransactionsReport = () => {
 
             <div className="space-y-2">
               <Label>Customer</Label>
-              <Select value={customerId} onValueChange={setCustomerId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All customers" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Customers</SelectItem>
-                  {customers?.map(c => <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start">
+                    <User className="w-4 h-4 mr-2" />
+                    {selectedCustomerIds.length === 0 ? (
+                      <span className="text-muted-foreground">All Customers</span>
+                    ) : (
+                      <span className="truncate">{selectedCustomerIds.length} selected</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-2 bg-background" align="start">
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                    <span className="text-sm font-medium">Filter by Customer</span>
+                    {selectedCustomerIds.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={clearSelectedCustomers} className="h-6 px-2 text-xs">
+                        Clear all
+                      </Button>
+                    )}
+                  </div>
+                  <div className="relative mb-2">
+                    <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search customers..."
+                      value={customerFilterSearch}
+                      onChange={(e) => setCustomerFilterSearch(e.target.value)}
+                      className="pl-8 h-8 text-sm"
+                    />
+                  </div>
+                  <div className="max-h-[200px] overflow-y-auto space-y-1">
+                    {filteredDropdownCustomers.map(customer => (
+                      <div
+                        key={customer.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                        onClick={() => toggleCustomer(customer.id)}
+                      >
+                        <Checkbox
+                          checked={selectedCustomerIds.includes(customer.id)}
+                          onCheckedChange={() => toggleCustomer(customer.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm truncate">{customer.name}</div>
+                          {customer.email && (
+                            <div className="text-xs text-muted-foreground truncate">{customer.email}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {filteredDropdownCustomers.length === 0 && (
+                      <div className="text-sm text-muted-foreground text-center py-4">
+                        {customers?.length === 0 ? 'No customers' : 'No matches found'}
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
