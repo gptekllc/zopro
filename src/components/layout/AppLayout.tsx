@@ -28,6 +28,7 @@ import {
   Briefcase,
   Bell,
   Loader2,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -46,6 +47,7 @@ const navItems = [
   { icon: Briefcase, label: 'Jobs', path: '/jobs', roles: ['admin', 'technician'] },
   { icon: FileText, label: 'Quotes', path: '/quotes', roles: ['admin', 'technician'] },
   { icon: Receipt, label: 'Invoices', path: '/invoices', roles: ['admin', 'technician', 'customer'] },
+  { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['admin', 'manager'] },
   { icon: BookTemplate, label: 'Templates', path: '/templates', roles: ['admin', 'technician'] },
   { icon: Package, label: 'Items', path: '/items', roles: ['admin', 'technician'] },
   { icon: Bell, label: 'Notifications', path: '/notifications', roles: ['admin', 'manager'] },
