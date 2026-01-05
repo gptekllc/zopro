@@ -767,7 +767,8 @@ const Quotes = () => {
                         ...formData,
                         items: [...formData.items, {
                           id: Date.now().toString(),
-                          description: catalogItem.name + (catalogItem.description ? ` - ${catalogItem.description}` : ''),
+                          description: catalogItem.name,
+                          itemDescription: catalogItem.description || '',
                           quantity: 1,
                           unitPrice: Number(catalogItem.unit_price),
                           type: catalogItem.type

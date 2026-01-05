@@ -3,12 +3,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { CatalogPicker } from './CatalogPicker';
 import { CatalogItem } from '@/hooks/useCatalog';
 
 export interface LineItem {
   id: string;
   description: string;
+  itemDescription?: string; // Additional description/notes for the item
   quantity: number;
   unitPrice: number;
   type?: 'product' | 'service';
@@ -32,7 +34,7 @@ export const LineItemsEditor = ({
   onRemoveItem,
   onUpdateItem,
   showTypeColumn = false,
-  quantityLabel = 'Qty',
+  quantityLabel = 'Quantity',
   minItems = 0,
 }: LineItemsEditorProps) => {
   const products = items.filter(item => item.type === 'product');
@@ -48,46 +50,25 @@ export const LineItemsEditor = ({
     const isAutoLabor = item.description.toLowerCase() === 'labor';
     
     return (
-      <div key={item.id} className="space-y-2 sm:space-y-0">
+      <div key={item.id} className="space-y-2">
         {/* Mobile layout */}
         <div className={`sm:hidden space-y-2 p-3 rounded-lg ${isAutoLabor ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : 'bg-muted/50'}`}>
           <div className="flex items-center gap-2">
-            <Input
-              placeholder="Description"
-              value={item.description}
-              onChange={e => onUpdateItem(item.id, 'description', e.target.value)}
-              className="flex-1"
-            />
+            <div className="flex-1">
+              <Label className="text-xs text-muted-foreground">Name</Label>
+              <Input
+                placeholder="Item name"
+                value={item.description}
+                onChange={e => onUpdateItem(item.id, 'description', e.target.value)}
+              />
+            </div>
             {isAutoLabor && (
-              <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700 whitespace-nowrap">
+              <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700 whitespace-nowrap mt-4">
                 <Clock className="w-3 h-3 mr-1" />
                 Auto
               </Badge>
             )}
-          </div>
-          <div className="flex gap-2">
-            <div className="w-20">
-              <Label className="text-xs text-muted-foreground">{quantityLabel}</Label>
-              <Input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={item.quantity}
-                onChange={e => onUpdateItem(item.id, 'quantity', parseFloat(e.target.value) || 1)}
-              />
-            </div>
-            <div className="flex-1">
-              <Label className="text-xs text-muted-foreground">Price</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="0"
-                value={item.unitPrice === 0 ? '' : item.unitPrice}
-                onChange={e => onUpdateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-              />
-            </div>
-            <div className="flex items-end">
+            <div className="mt-4">
               <Button
                 type="button"
                 variant="ghost"
@@ -100,62 +81,107 @@ export const LineItemsEditor = ({
               </Button>
             </div>
           </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Description (optional)</Label>
+            <Textarea
+              placeholder="Additional details..."
+              value={item.itemDescription || ''}
+              onChange={e => onUpdateItem(item.id, 'itemDescription', e.target.value)}
+              className="min-h-[60px] resize-none"
+            />
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Label className="text-xs text-muted-foreground">{quantityLabel}</Label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={item.quantity}
+                onChange={e => onUpdateItem(item.id, 'quantity', parseFloat(e.target.value) || 1)}
+              />
+            </div>
+            <div className="flex-1">
+              <Label className="text-xs text-muted-foreground">Unit Price</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0"
+                value={item.unitPrice === 0 ? '' : item.unitPrice}
+                onChange={e => onUpdateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+              />
+            </div>
+          </div>
           <div className="flex justify-end text-sm font-medium">
             Total: ${(item.quantity * item.unitPrice).toLocaleString()}
           </div>
         </div>
         
         {/* Desktop layout */}
-        <div className={`hidden sm:grid grid-cols-12 gap-2 items-start ${isAutoLabor ? 'p-2 -mx-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : ''}`}>
-          <div className={isAutoLabor ? 'col-span-4' : 'col-span-5'}>
-            <Input
-              placeholder="Description"
-              value={item.description}
-              onChange={e => onUpdateItem(item.id, 'description', e.target.value)}
-            />
-          </div>
-          {isAutoLabor && (
-            <div className="col-span-1 flex items-center justify-center pt-2">
-              <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
-                <Clock className="w-3 h-3 mr-1" />
-                Auto
-              </Badge>
+        <div className={`hidden sm:block space-y-2 p-3 rounded-lg ${isAutoLabor ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' : 'bg-muted/30 border'}`}>
+          <div className="grid grid-cols-12 gap-2 items-start">
+            <div className={isAutoLabor ? 'col-span-4' : 'col-span-5'}>
+              <Label className="text-xs text-muted-foreground">Name</Label>
+              <Input
+                placeholder="Item name"
+                value={item.description}
+                onChange={e => onUpdateItem(item.id, 'description', e.target.value)}
+              />
             </div>
-          )}
-          <div className="col-span-2">
-            <Input
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder={quantityLabel}
-              value={item.quantity}
-              onChange={e => onUpdateItem(item.id, 'quantity', parseFloat(e.target.value) || 1)}
+            {isAutoLabor && (
+              <div className="col-span-1 flex items-center justify-center pt-6">
+                <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                  <Clock className="w-3 h-3 mr-1" />
+                  Auto
+                </Badge>
+              </div>
+            )}
+            <div className="col-span-2">
+              <Label className="text-xs text-muted-foreground">{quantityLabel}</Label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={item.quantity}
+                onChange={e => onUpdateItem(item.id, 'quantity', parseFloat(e.target.value) || 1)}
+              />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs text-muted-foreground">Unit Price</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0"
+                value={item.unitPrice === 0 ? '' : item.unitPrice}
+                onChange={e => onUpdateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+              />
+            </div>
+            <div className="col-span-2 pt-6 text-right text-sm font-medium">
+              ${(item.quantity * item.unitPrice).toLocaleString()}
+            </div>
+            <div className="col-span-1 pt-5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => onRemoveItem(item.id)}
+                disabled={!canRemove}
+                className="text-destructive"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Description (optional)</Label>
+            <Textarea
+              placeholder="Additional details about this item..."
+              value={item.itemDescription || ''}
+              onChange={e => onUpdateItem(item.id, 'itemDescription', e.target.value)}
+              className="min-h-[50px] resize-none"
             />
-          </div>
-          <div className="col-span-3">
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0"
-              value={item.unitPrice === 0 ? '' : item.unitPrice}
-              onChange={e => onUpdateItem(item.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-            />
-          </div>
-          <div className="col-span-1 text-right pt-2 text-sm font-medium">
-            ${(item.quantity * item.unitPrice).toLocaleString()}
-          </div>
-          <div className="col-span-1">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onRemoveItem(item.id)}
-              disabled={!canRemove}
-              className="text-destructive"
-            >
-              <X className="w-4 h-4" />
-            </Button>
           </div>
         </div>
       </div>

@@ -412,6 +412,13 @@ export function JobDetailDialog({
             <TabsContent value="items" className="mt-4">
               {job.items && job.items.length > 0 ? (
                 <div className="space-y-3">
+                  {/* Desktop header */}
+                  <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-3">
+                    <div className="col-span-5">Name</div>
+                    <div className="col-span-2 text-right">Quantity</div>
+                    <div className="col-span-3 text-right">Unit Price</div>
+                    <div className="col-span-2 text-right">Total</div>
+                  </div>
                   {/* Items List */}
                   <div className="space-y-2">
                     {job.items.map((item) => {
@@ -439,49 +446,72 @@ export function JobDetailDialog({
                               : 'bg-muted/50'
                           }`}
                         >
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-sm font-medium">{item.description}</span>
-                                {isLaborItem && (
-                                  <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
-                                    <Clock className="w-3 h-3 mr-1" />
-                                    Auto
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {item.quantity.toFixed(2)} × {formatAmount(item.unit_price)}
-                              </p>
-                              
-                              {/* Labor breakdown showing time contributions per technician */}
-                              {isLaborItem && laborBreakdown && Object.keys(laborBreakdown).length > 0 && (
-                                <div className="mt-2 pt-2 border-t border-blue-200/50 dark:border-blue-700/50">
-                                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                    <User className="w-3 h-3" />
-                                    Time breakdown:
-                                  </p>
-                                  <div className="flex flex-wrap gap-2">
-                                    {Object.entries(laborBreakdown).map(([name, minutes]) => {
-                                      const hours = Math.floor(minutes / 60);
-                                      const mins = Math.round(minutes % 60);
-                                      return (
-                                        <span 
-                                          key={name} 
-                                          className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full"
-                                        >
-                                          {name}: {hours > 0 ? `${hours}h ` : ''}{mins}m
-                                        </span>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
+                          {/* Mobile layout */}
+                          <div className="sm:hidden space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-medium">{item.description}</span>
+                              {isLaborItem && (
+                                <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  Auto
+                                </Badge>
                               )}
                             </div>
-                            <span className="font-medium text-sm whitespace-nowrap">
-                              {formatAmount(item.total)}
-                            </span>
+                            {(item as any).item_description && (
+                              <p className="text-xs text-muted-foreground">{(item as any).item_description}</p>
+                            )}
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>Qty: {item.quantity.toFixed(2)} × Unit: {formatAmount(item.unit_price)}</span>
+                              <span className="font-medium text-foreground">{formatAmount(item.total)}</span>
+                            </div>
                           </div>
+                          
+                          {/* Desktop layout */}
+                          <div className="hidden sm:block">
+                            <div className="grid grid-cols-12 items-center">
+                              <div className="col-span-5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium">{item.description}</span>
+                                  {isLaborItem && (
+                                    <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
+                                      <Clock className="w-3 h-3 mr-1" />
+                                      Auto
+                                    </Badge>
+                                  )}
+                                </div>
+                                {(item as any).item_description && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">{(item as any).item_description}</p>
+                                )}
+                              </div>
+                              <div className="col-span-2 text-right text-sm">{item.quantity.toFixed(2)}</div>
+                              <div className="col-span-3 text-right text-sm">{formatAmount(item.unit_price)}</div>
+                              <div className="col-span-2 text-right font-medium text-sm">{formatAmount(item.total)}</div>
+                            </div>
+                          </div>
+                          
+                          {/* Labor breakdown showing time contributions per technician */}
+                          {isLaborItem && laborBreakdown && Object.keys(laborBreakdown).length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-blue-200/50 dark:border-blue-700/50">
+                              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                Time breakdown:
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {Object.entries(laborBreakdown).map(([name, minutes]) => {
+                                  const hours = Math.floor(minutes / 60);
+                                  const mins = Math.round(minutes % 60);
+                                  return (
+                                    <span 
+                                      key={name} 
+                                      className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full"
+                                    >
+                                      {name}: {hours > 0 ? `${hours}h ` : ''}{mins}m
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

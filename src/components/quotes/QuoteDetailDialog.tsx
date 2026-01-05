@@ -254,9 +254,9 @@ export function QuoteDetailDialog({
                     <>
                       {/* Desktop header - hidden on mobile */}
                       <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
-                        <div className="col-span-6">Description</div>
-                        <div className="col-span-2 text-right">Qty</div>
-                        <div className="col-span-2 text-right">Price</div>
+                        <div className="col-span-5">Name</div>
+                        <div className="col-span-2 text-right">Quantity</div>
+                        <div className="col-span-3 text-right">Unit Price</div>
                         <div className="col-span-2 text-right">Total</div>
                       </div>
                       {quote.items.map((item) => (
@@ -264,17 +264,27 @@ export function QuoteDetailDialog({
                           {/* Mobile layout */}
                           <div className="sm:hidden space-y-1">
                             <p className="font-medium">{item.description}</p>
+                            {(item as any).item_description && (
+                              <p className="text-xs text-muted-foreground">{(item as any).item_description}</p>
+                            )}
                             <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>{item.quantity} × ${Number(item.unit_price).toLocaleString()}</span>
+                              <span>Qty: {item.quantity} × Unit: ${Number(item.unit_price).toLocaleString()}</span>
                               <span className="font-medium text-foreground">${Number(item.total).toLocaleString()}</span>
                             </div>
                           </div>
                           {/* Desktop layout */}
-                          <div className="hidden sm:grid grid-cols-12">
-                            <div className="col-span-6">{item.description}</div>
-                            <div className="col-span-2 text-right">{item.quantity}</div>
-                            <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
-                            <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
+                          <div className="hidden sm:block">
+                            <div className="grid grid-cols-12 items-start">
+                              <div className="col-span-5">
+                                <span>{item.description}</span>
+                                {(item as any).item_description && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">{(item as any).item_description}</p>
+                                )}
+                              </div>
+                              <div className="col-span-2 text-right">{item.quantity}</div>
+                              <div className="col-span-3 text-right">${Number(item.unit_price).toLocaleString()}</div>
+                              <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
+                            </div>
                           </div>
                         </div>
                       ))}
