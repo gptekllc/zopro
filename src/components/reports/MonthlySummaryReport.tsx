@@ -446,7 +446,7 @@ const MonthlySummaryReport = () => {
   return (
     <div className="space-y-6">
       {/* Time Range Selector and Export */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-center gap-2">
         <Select value={timeRange} onValueChange={setTimeRange}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Select range" />

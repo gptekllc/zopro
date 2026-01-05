@@ -339,7 +339,7 @@ const TransactionsReport = () => {
   return (
     <div className="space-y-6">
       {/* Header with Title, Search, and Actions */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-center gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <h2 className="text-xl font-semibold whitespace-nowrap">Payment History</h2>
           <div className="relative w-full sm:w-64">
