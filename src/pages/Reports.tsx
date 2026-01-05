@@ -13,7 +13,7 @@ const Reports = () => {
   return (
     <div className="space-y-6 lg:space-y-8 animate-fade-in">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="sticky top-0 lg:top-0 z-10 bg-background pb-4 -mx-3 px-3 lg:-mx-6 lg:px-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <header>
             <h1 className="text-2xl sm:text-3xl font-bold">Reports</h1>
             <p className="text-muted-foreground mt-1 text-sm sm:text-base">
