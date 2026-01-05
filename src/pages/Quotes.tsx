@@ -37,6 +37,7 @@ import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 import { CreateJobFromQuoteDialog, AddQuoteItemsToJobDialog } from '@/components/quotes/QuoteToJobDialogs';
+import { ConvertToInvoiceDialog } from '@/components/quotes/ConvertToInvoiceDialog';
 import { SaveAsQuoteTemplateDialog } from '@/components/quotes/SaveAsQuoteTemplateDialog';
 import { SelectQuoteTemplateDialog } from '@/components/quotes/SelectQuoteTemplateDialog';
 import { QuoteTemplate } from '@/hooks/useQuoteTemplates';
@@ -151,6 +152,10 @@ const Quotes = () => {
   
   // Loading states for convert operations
   const [convertingQuoteId, setConvertingQuoteId] = useState<string | null>(null);
+  
+  // Convert to invoice dialog
+  const [convertToInvoiceDialogOpen, setConvertToInvoiceDialogOpen] = useState(false);
+  const [selectedQuoteForInvoice, setSelectedQuoteForInvoice] = useState<Quote | null>(null);
   const [viewSignatureId, setViewSignatureId] = useState<string | null>(null);
   const [viewSignatureOpen, setViewSignatureOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -449,33 +454,36 @@ const Quotes = () => {
     setSelectedQuoteForEmail(null);
     setEmailRecipient('');
   };
-  const handleConvertToInvoice = async (quote: Quote) => {
+  const handleConvertToInvoice = (quote: Quote) => {
     const existingInvoices = invoicesPerQuote.get(quote.id) || 0;
     if (existingInvoices > 0) {
       setCreateInvoiceConfirmQuote(quote);
     } else {
-      setConvertingQuoteId(quote.id);
-      try {
-        const invoice = await convertToInvoice.mutateAsync({ quoteId: quote.id });
-        if (invoice?.id) {
-          window.location.href = `/invoices?edit=${invoice.id}`;
-        }
-      } finally {
-        setConvertingQuoteId(null);
-      }
+      setSelectedQuoteForInvoice(quote);
+      setConvertToInvoiceDialogOpen(true);
     }
   };
   
-  const handleConvertToInvoiceConfirmed = async (quoteId: string) => {
+  const handleConvertToInvoiceConfirmed = (quoteId: string) => {
+    const quote = quotes.find(q => q.id === quoteId);
+    if (quote) {
+      setSelectedQuoteForInvoice(quote);
+      setConvertToInvoiceDialogOpen(true);
+      setCreateInvoiceConfirmQuote(null);
+    }
+  };
+
+  const handleConvertToInvoiceWithPhotos = async (quoteId: string, copyPhotos: boolean) => {
     setConvertingQuoteId(quoteId);
     try {
-      const invoice = await convertToInvoice.mutateAsync({ quoteId });
-      setCreateInvoiceConfirmQuote(null);
+      const invoice = await convertToInvoice.mutateAsync({ quoteId, copyPhotos });
       if (invoice?.id) {
         window.location.href = `/invoices?edit=${invoice.id}`;
       }
     } finally {
       setConvertingQuoteId(null);
+      setConvertToInvoiceDialogOpen(false);
+      setSelectedQuoteForInvoice(null);
     }
   };
   const handleStatusChange = async (quoteId: string, newStatus: string) => {
@@ -1521,6 +1529,14 @@ const Quotes = () => {
       {/* Add Items to Existing Job Dialog */}
       <AddQuoteItemsToJobDialog quote={selectedQuoteForJob} jobs={jobs as any[]} open={addToJobDialogOpen} onOpenChange={setAddToJobDialogOpen} onConfirm={handleAddItemsToJob} isPending={addItemsToJob.isPending} />
 
+      {/* Convert to Invoice Dialog */}
+      <ConvertToInvoiceDialog 
+        quote={selectedQuoteForInvoice} 
+        open={convertToInvoiceDialogOpen} 
+        onOpenChange={setConvertToInvoiceDialogOpen} 
+        onConfirm={handleConvertToInvoiceWithPhotos} 
+        isPending={convertToInvoice.isPending} 
+      />
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!quoteToDelete} onOpenChange={open => !open && setQuoteToDelete(null)}>
         <AlertDialogContent>
