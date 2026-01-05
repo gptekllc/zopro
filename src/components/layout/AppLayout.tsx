@@ -270,7 +270,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
       {/* Main content */}
       <main className="lg:ml-64 pt-16 lg:pt-0 pb-20 lg:pb-0 min-h-screen">
-        <div className="p-3 lg:p-4">
+        <div className="mx-auto w-full max-w-7xl p-3 lg:p-6">
           {children}
         </div>
       </main>
