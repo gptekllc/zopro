@@ -7,8 +7,8 @@ import { useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentAction
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useSignInvoice } from '@/hooks/useSignatures';
 import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
-import { useDeleteInvoice, useArchiveInvoice, useUnarchiveInvoice, useApplyLateFee, isInvoiceOverdue, getTotalWithLateFee, Invoice, useSendPaymentReminder, useInvoiceReminders, useUpdateInvoice } from '@/hooks/useInvoices';
-import { useCreatePayment, useInvoiceBalance } from '@/hooks/usePayments';
+import { useDeleteInvoice, useArchiveInvoice, useUnarchiveInvoice, useApplyLateFee, isInvoiceOverdue, getTotalWithLateFee, Invoice, useSendPaymentReminder, useInvoiceReminders, useUpdateInvoice, getInvoiceStatusLabel } from '@/hooks/useInvoices';
+import { useCreatePayment, useInvoiceBalance, useAllPayments } from '@/hooks/usePayments';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -85,6 +85,9 @@ export function InvoiceListManager({
   const sendPaymentReminder = useSendPaymentReminder();
   const createPayment = useCreatePayment();
   const updateInvoice = useUpdateInvoice();
+  
+  // Fetch all payments for calculating totals per invoice
+  const { data: allPayments = [] } = useAllPayments();
 
   // Undo-able delete
   const { scheduleDelete: scheduleInvoiceDelete, filterPendingDeletes: filterPendingInvoiceDeletes } = useUndoableDelete(
@@ -175,6 +178,12 @@ export function InvoiceListManager({
   const getCustomerName = (customerId: string) => customers.find(c => c.id === customerId)?.name || 'Unknown';
   const getCustomerEmail = (customerId: string) => customers.find(c => c.id === customerId)?.email || '';
   const lateFeePercentage = company?.late_fee_percentage ?? 0;
+  
+  // Calculate total paid per invoice from all payments
+  const getInvoiceTotalPaid = (invoiceId: string): number => {
+    const invoicePayments = allPayments.filter(p => p.invoice_id === invoiceId && p.status === 'completed');
+    return invoicePayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  };
 
   // Handlers
   const handleStatusChange = async (invoiceId: string, newStatus: string) => {
@@ -371,21 +380,15 @@ export function InvoiceListManager({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
-                  All Status
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('draft')} className={statusFilter === 'draft' ? 'bg-accent' : ''}>
-                  Draft
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('sent')} className={statusFilter === 'sent' ? 'bg-accent' : ''}>
-                  Sent
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('paid')} className={statusFilter === 'paid' ? 'bg-accent' : ''}>
-                  Paid
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('overdue')} className={statusFilter === 'overdue' ? 'bg-accent' : ''}>
-                  Overdue
-                </DropdownMenuItem>
+                {['all', 'draft', 'sent', 'partially_paid', 'paid', 'overdue', 'voided'].map((status) => (
+                  <DropdownMenuItem 
+                    key={status}
+                    onClick={() => handleStatusFilterChange(status)} 
+                    className={statusFilter === status ? 'bg-accent' : ''}
+                  >
+                    {status === 'all' ? 'All Status' : getInvoiceStatusLabel(status)}
+                  </DropdownMenuItem>
+                ))}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleStatusFilterChange('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
                   <Archive className="w-4 h-4 mr-2" />
@@ -423,6 +426,7 @@ export function InvoiceListManager({
               onDelete={handleDeleteClick}
               showSwipeHint={index === 0 && showSwipeHint}
               onSwipeHintDismiss={dismissSwipeHint}
+              totalPaid={getInvoiceTotalPaid(invoice.id)}
             />
           ))}
           {filteredInvoices.length === 0 && (

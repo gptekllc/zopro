@@ -25,7 +25,7 @@ export interface Invoice {
   quote_id: string | null;
   job_id: string | null;
   invoice_number: string;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  status: 'draft' | 'sent' | 'paid' | 'partially_paid' | 'overdue' | 'voided' | 'cancelled';
   subtotal: number;
   tax: number;
   total: number;
@@ -60,9 +60,19 @@ export interface Invoice {
 
 // Helper to check if invoice is overdue
 export function isInvoiceOverdue(invoice: Invoice): boolean {
-  if (invoice.status === 'paid' || invoice.status === 'cancelled') return false;
+  if (invoice.status === 'paid' || invoice.status === 'voided' || invoice.status === 'cancelled') return false;
   if (!invoice.due_date) return false;
   return new Date(invoice.due_date) < new Date();
+}
+
+// Get display label for invoice status
+export function getInvoiceStatusLabel(status: string): string {
+  switch (status) {
+    case 'paid': return 'Paid in Full';
+    case 'partially_paid': return 'Partially Paid';
+    case 'voided': return 'Voided';
+    default: return status.charAt(0).toUpperCase() + status.slice(1);
+  }
 }
 
 // Calculate late fee for an invoice

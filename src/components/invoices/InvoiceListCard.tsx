@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import type { Invoice } from "@/hooks/useInvoices";
+import { getInvoiceStatusLabel } from "@/hooks/useInvoices";
 import { DocumentListCard } from "@/components/documents/DocumentListCard";
 import type { SwipeAction } from "@/components/ui/swipeable-card";
 
@@ -57,13 +58,18 @@ type Props = {
 
   showSwipeHint?: boolean;
   onSwipeHintDismiss?: () => void;
+  
+  // Payment info for showing remaining balance
+  totalPaid?: number;
 };
 
 const invoiceStatusColors: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
   sent: "bg-primary/10 text-primary",
   paid: "bg-success/10 text-success",
+  partially_paid: "bg-warning/10 text-warning",
   overdue: "bg-destructive/10 text-destructive",
+  voided: "bg-muted text-muted-foreground line-through",
 };
 
 export function InvoiceListCard({
@@ -87,13 +93,22 @@ export function InvoiceListCard({
   onDelete,
   showSwipeHint = false,
   onSwipeHintDismiss,
+  totalPaid = 0,
 }: Props) {
   const signatureId = (invoice as any).signature_id as string | undefined;
   const archivedAt = (invoice as any).archived_at as string | undefined;
 
   const total = typeof invoice.total === "string" ? Number(invoice.total) : invoice.total ?? 0;
-  const hasLateFee = invoice.late_fee_amount && invoice.late_fee_amount > 0 && lateFeePercentage > 0;
-  const displayTotal = hasLateFee ? getTotalWithLateFee(invoice) : total;
+  const lateFee = invoice.late_fee_amount && invoice.late_fee_amount > 0 ? Number(invoice.late_fee_amount) : 0;
+  const hasLateFee = lateFee > 0 && lateFeePercentage > 0;
+  const totalDue = hasLateFee ? getTotalWithLateFee(invoice) : total;
+  
+  // Calculate remaining balance for partial payments
+  const remainingBalance = Math.max(0, totalDue - totalPaid);
+  const hasPartialPayment = totalPaid > 0 && totalPaid < totalDue;
+  
+  // Show remaining balance if partially paid, otherwise show total
+  const displayTotal = hasPartialPayment ? remainingBalance : totalDue;
 
   const customerName = invoice.customer?.name || "Unknown";
   const customerEmail = invoice.customer?.email || null;
@@ -129,27 +144,34 @@ export function InvoiceListCard({
     </>
   );
 
+  const allStatuses = ['draft', 'sent', 'partially_paid', 'paid', 'overdue', 'voided'];
+
   const tagsRow = (
     <>
       {archivedAt && (
         <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
       )}
+      {hasPartialPayment && (
+        <Badge variant="outline" className="text-warning text-xs">
+          Balance: ${remainingBalance.toFixed(2)}
+        </Badge>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${invoiceStatusColors[invoice.status] || "bg-muted"}`}>
-            {invoice.status}
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${invoiceStatusColors[invoice.status] || "bg-muted"}`}>
+            {getInvoiceStatusLabel(invoice.status)}
           </span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="bg-popover z-50">
-          {["draft", "sent", "paid", "overdue"].map((status) => (
+          {allStatuses.map((status) => (
             <DropdownMenuItem
               key={status}
               onClick={() => onStatusChange(invoice.id, status)}
               disabled={invoice.status === status}
               className={invoice.status === status ? "bg-accent" : ""}
             >
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${invoiceStatusColors[status] || "bg-muted"}`}>
-                {status}
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium mr-2 ${invoiceStatusColors[status] || "bg-muted"}`}>
+                {getInvoiceStatusLabel(status)}
               </span>
               {invoice.status === status && <CheckCircle className="w-4 h-4 ml-auto" />}
             </DropdownMenuItem>
@@ -198,12 +220,12 @@ export function InvoiceListCard({
           <Mail className="w-4 h-4 mr-2" />
           Email Invoice
         </DropdownMenuItem>
-        {invoice.status !== "paid" && (
+        {invoice.status !== "paid" && invoice.status !== "voided" && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onMarkPaid(invoice.id)}>
               <CheckCircle className="w-4 h-4 mr-2 text-success" />
-              Mark as Paid
+              Mark as Paid in Full
             </DropdownMenuItem>
           </>
         )}
@@ -213,7 +235,7 @@ export function InvoiceListCard({
             View Signature
           </DropdownMenuItem>
         ) : (
-          invoice.status !== "paid" && (
+          invoice.status !== "paid" && invoice.status !== "voided" && (
             <>
               <DropdownMenuItem onClick={() => onOpenSignatureDialog(invoice)}>
                 <PenTool className="w-4 h-4 mr-2" />

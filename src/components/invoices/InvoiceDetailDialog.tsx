@@ -31,7 +31,7 @@ import { RefundPaymentDialog } from './RefundPaymentDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const INVOICE_STATUSES = ['draft', 'sent', 'paid'] as const;
+const INVOICE_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue', 'voided'] as const;
 
 interface ReminderHistory {
   id: string;
@@ -89,7 +89,9 @@ const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
   sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
   paid: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+  partially_paid: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
   overdue: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  voided: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
 };
 
 const quoteStatusColors: Record<string, string> = {
@@ -357,7 +359,10 @@ export function InvoiceDetailDialog({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Badge className={`${statusColors[invoice.status] || 'bg-muted'} shrink-0 text-xs cursor-pointer hover:opacity-80 transition-opacity`}>
-                    {invoice.status}
+                    {invoice.status === 'paid' ? 'Paid in Full' : 
+                     invoice.status === 'partially_paid' ? 'Partially Paid' :
+                     invoice.status === 'voided' ? 'Voided' :
+                     invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
                     <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
                   </Badge>
                 </DropdownMenuTrigger>
@@ -370,7 +375,10 @@ export function InvoiceDetailDialog({
                       className={invoice.status === status ? 'bg-accent' : ''}
                     >
                       <Badge className={`${statusColors[status] || 'bg-muted'} mr-2`} variant="outline">
-                        {status}
+                        {status === 'paid' ? 'Paid in Full' : 
+                         status === 'partially_paid' ? 'Partially Paid' :
+                         status === 'voided' ? 'Voided' :
+                         status.charAt(0).toUpperCase() + status.slice(1)}
                       </Badge>
                       {invoice.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
                     </DropdownMenuItem>
@@ -379,7 +387,10 @@ export function InvoiceDetailDialog({
               </DropdownMenu>
             ) : (
               <Badge className={`${statusColors[invoice.status] || 'bg-muted'} shrink-0 text-xs`}>
-                {invoice.status}
+                {invoice.status === 'paid' ? 'Paid in Full' : 
+                 invoice.status === 'partially_paid' ? 'Partially Paid' :
+                 invoice.status === 'voided' ? 'Voided' :
+                 invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
               </Badge>
             )}
           </div>
