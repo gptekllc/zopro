@@ -11,11 +11,13 @@ const Reports = () => {
   const [activeTab, setActiveTab] = useState('transactions');
 
   return (
-    <div className="space-y-3 lg:space-y-6 w-full">
-      <div className="pt-0">
-        <h1 className="text-2xl font-bold">Reports</h1>
-        <p className="text-muted-foreground">View and analyze your business data</p>
-      </div>
+    <div className="space-y-6 lg:space-y-8 animate-fade-in">
+      <header>
+        <h1 className="text-2xl sm:text-3xl font-bold">Reports</h1>
+        <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+          View and analyze your business data
+        </p>
+      </header>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
