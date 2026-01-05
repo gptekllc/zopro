@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, startOfYear, subYears } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useJobs } from '@/hooks/useJobs';
 import { useQuotes } from '@/hooks/useQuotes';
@@ -11,6 +11,9 @@ import { useAllPayments } from '@/hooks/usePayments';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -44,6 +47,8 @@ import {
   Printer,
 } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
@@ -51,6 +56,9 @@ const MonthlySummaryReport = () => {
   const [timeRange, setTimeRange] = useState('6');
   const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailAddress, setEmailAddress] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   
   const { data: jobs, isLoading: loadingJobs } = useJobs();
   const { data: quotes, isLoading: loadingQuotes } = useQuotes();
@@ -348,6 +356,66 @@ const MonthlySummaryReport = () => {
     printWindow.print();
   };
 
+  const getTimeRangeLabel = () => {
+    if (timeRange === 'custom' && customStartDate && customEndDate) {
+      return `${format(customStartDate, 'MMM yyyy')} - ${format(customEndDate, 'MMM yyyy')}`;
+    }
+    if (timeRange === 'ytd') return 'Year to Date';
+    if (timeRange === 'lastyear') return 'Last Year';
+    if (timeRange === '1') return 'Last Month';
+    return `Last ${timeRange} Months`;
+  };
+
+  // Send email
+  const sendReportEmail = async () => {
+    if (!emailAddress) {
+      toast.error('Please enter an email address');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      const reportData = {
+        title: 'Monthly Summary Report',
+        timeRange: getTimeRangeLabel(),
+        generatedAt: format(new Date(), 'MMMM d, yyyy'),
+        stats: {
+          totalJobs: stats?.totalJobs || 0,
+          totalQuotes: stats?.totalQuotes || 0,
+          totalInvoices: stats?.totalInvoices || 0,
+          totalRevenue: formatAmount(stats?.totalRevenue || 0),
+        },
+        months: monthlyData.map(m => ({
+          month: m.month,
+          completedJobs: m.completedJobs,
+          sentQuotes: m.sentQuotes,
+          generatedInvoices: m.generatedInvoices,
+          revenue: formatAmount(m.revenue),
+          invoiced: formatAmount(m.invoiced),
+        })),
+      };
+
+      const { error } = await supabase.functions.invoke('send-report-email', {
+        body: { 
+          to: emailAddress, 
+          reportType: 'monthly-summary',
+          reportData 
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Report sent to ${emailAddress}`);
+      setEmailDialogOpen(false);
+      setEmailAddress('');
+    } catch (error: any) {
+      console.error('Failed to send email:', error);
+      toast.error('Failed to send email: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -379,6 +447,10 @@ const MonthlySummaryReport = () => {
     <div className="space-y-6">
       {/* Time Range Selector and Export */}
       <div className="flex flex-wrap justify-end gap-2">
+        <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={monthlyData.length === 0}>
+          <Mail className="w-4 h-4 mr-2" />
+          Email
+        </Button>
         <Button onClick={printReport} variant="outline" size="sm" disabled={monthlyData.length === 0}>
           <Printer className="w-4 h-4 mr-2" />
           Print/PDF
@@ -649,6 +721,41 @@ const MonthlySummaryReport = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Email Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Email Report</DialogTitle>
+            <DialogDescription>
+              Send the Monthly Summary Report to an email address.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="recipient@example.com"
+                value={emailAddress}
+                onChange={(e) => setEmailAddress(e.target.value)}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Report includes: {stats?.totalJobs || 0} jobs, {stats?.totalQuotes || 0} quotes, ${formatAmount(stats?.totalRevenue || 0)} revenue
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={sendReportEmail} disabled={isSendingEmail}>
+              {isSendingEmail ? 'Sending...' : 'Send Report'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
