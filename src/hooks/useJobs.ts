@@ -845,7 +845,7 @@ export function useCreateJobFromQuoteItems() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ quoteId, selectedItemIds }: { quoteId: string; selectedItemIds: string[] }) => {
+    mutationFn: async ({ quoteId, selectedItemIds, copyPhotos = true }: { quoteId: string; selectedItemIds: string[]; copyPhotos?: boolean }) => {
       if (!profile?.company_id) throw new Error('No company ID');
       
       // Get quote details with items
@@ -923,52 +923,54 @@ export function useCreateJobFromQuoteItems() {
         if (itemsError) throw itemsError;
       }
       
-      // Copy quote photos to job photos
-      const { data: quotePhotos } = await (supabase as any)
-        .from('quote_photos')
-        .select('*')
-        .eq('quote_id', quoteId);
-      
-      if (quotePhotos && quotePhotos.length > 0) {
-        for (const photo of quotePhotos) {
-          try {
-            // Download the photo from quote-photos bucket
-            const { data: fileData, error: downloadError } = await supabase.storage
-              .from('quote-photos')
-              .download(photo.photo_url);
-            
-            if (downloadError || !fileData) {
-              console.warn('Failed to download quote photo:', downloadError);
-              continue;
+      // Copy quote photos to job photos (only if copyPhotos is true)
+      if (copyPhotos) {
+        const { data: quotePhotos } = await (supabase as any)
+          .from('quote_photos')
+          .select('*')
+          .eq('quote_id', quoteId);
+        
+        if (quotePhotos && quotePhotos.length > 0) {
+          for (const photo of quotePhotos) {
+            try {
+              // Download the photo from quote-photos bucket
+              const { data: fileData, error: downloadError } = await supabase.storage
+                .from('quote-photos')
+                .download(photo.photo_url);
+              
+              if (downloadError || !fileData) {
+                console.warn('Failed to download quote photo:', downloadError);
+                continue;
+              }
+              
+              // Generate new filename for job-photos bucket
+              const fileExt = photo.photo_url.split('.').pop() || 'jpg';
+              const newFileName = `${job.id}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+              
+              // Upload to job-photos bucket
+              const { error: uploadError } = await supabase.storage
+                .from('job-photos')
+                .upload(newFileName, fileData);
+              
+              if (uploadError) {
+                console.warn('Failed to upload photo to job-photos:', uploadError);
+                continue;
+              }
+              
+              // Create job_photos record
+              await (supabase as any)
+                .from('job_photos')
+                .insert({
+                  job_id: job.id,
+                  photo_url: newFileName,
+                  photo_type: photo.photo_type,
+                  caption: photo.caption,
+                  display_order: photo.display_order,
+                  uploaded_by: user?.id || null,
+                });
+            } catch (err) {
+              console.warn('Error copying photo:', err);
             }
-            
-            // Generate new filename for job-photos bucket
-            const fileExt = photo.photo_url.split('.').pop() || 'jpg';
-            const newFileName = `${job.id}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-            
-            // Upload to job-photos bucket
-            const { error: uploadError } = await supabase.storage
-              .from('job-photos')
-              .upload(newFileName, fileData);
-            
-            if (uploadError) {
-              console.warn('Failed to upload photo to job-photos:', uploadError);
-              continue;
-            }
-            
-            // Create job_photos record
-            await (supabase as any)
-              .from('job_photos')
-              .insert({
-                job_id: job.id,
-                photo_url: newFileName,
-                photo_type: photo.photo_type,
-                caption: photo.caption,
-                display_order: photo.display_order,
-                uploaded_by: user?.id || null,
-              });
-          } catch (err) {
-            console.warn('Error copying photo:', err);
           }
         }
       }
