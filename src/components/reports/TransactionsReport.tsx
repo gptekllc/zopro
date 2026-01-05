@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { DollarSign, TrendingDown, Hash, Calculator, Plus, MoreHorizontal, FileText, Download, Mail, Search, X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { DollarSign, TrendingDown, Hash, Calculator, Plus, MoreHorizontal, FileText, Download, Mail, Search, X, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { PAYMENT_METHODS, RecordPaymentDialog, PaymentData } from '@/components/invoices/RecordPaymentDialog';
 import SelectInvoiceDialog from '@/components/reports/SelectInvoiceDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -42,7 +42,11 @@ const TransactionsReport = () => {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 15;
+  const [pageSize, setPageSize] = useState(25);
+
+  // Sorting
+  const [sortColumn, setSortColumn] = useState<'date' | 'customer' | 'amount' | null>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Dialogs
   const [selectInvoiceOpen, setSelectInvoiceOpen] = useState(false);
@@ -88,18 +92,62 @@ const TransactionsReport = () => {
     });
   }, [payments, startDate, endDate, customerId, paymentMethod, paymentStatus, searchQuery]);
 
+  // Sorted payments
+  const sortedPayments = useMemo(() => {
+    if (!sortColumn) return filteredPayments;
+    
+    return [...filteredPayments].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortColumn) {
+        case 'date':
+          comparison = new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime();
+          break;
+        case 'customer':
+          const nameA = a.invoice?.customer?.name || '';
+          const nameB = b.invoice?.customer?.name || '';
+          comparison = nameA.localeCompare(nameB);
+          break;
+        case 'amount':
+          comparison = Number(a.amount) - Number(b.amount);
+          break;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+  }, [filteredPayments, sortColumn, sortDirection]);
+
   // Reset to first page when filters change
   useMemo(() => {
     setCurrentPage(1);
-  }, [startDate, endDate, customerId, paymentMethod, paymentStatus, searchQuery]);
+  }, [startDate, endDate, customerId, paymentMethod, paymentStatus, searchQuery, sortColumn, sortDirection, pageSize]);
 
   // Paginated payments
   const paginatedPayments = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
-    return filteredPayments.slice(startIndex, startIndex + pageSize);
-  }, [filteredPayments, currentPage, pageSize]);
+    return sortedPayments.slice(startIndex, startIndex + pageSize);
+  }, [sortedPayments, currentPage, pageSize]);
 
-  const totalPages = Math.ceil(filteredPayments.length / pageSize);
+  const totalPages = Math.ceil(sortedPayments.length / pageSize);
+
+  // Handle sorting
+  const handleSort = (column: 'date' | 'customer' | 'amount') => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('desc');
+    }
+  };
+
+  const getSortIcon = (column: 'date' | 'customer' | 'amount') => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-4 h-4 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="w-4 h-4 ml-1" />
+      : <ArrowDown className="w-4 h-4 ml-1" />;
+  };
 
   // Calculate summary stats
   const stats = useMemo(() => {
@@ -468,11 +516,26 @@ const TransactionsReport = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Date</TableHead>
+                  <TableHead>
+                    <Button variant="ghost" size="sm" className="h-8 -ml-3 font-medium" onClick={() => handleSort('date')}>
+                      Date
+                      {getSortIcon('date')}
+                    </Button>
+                  </TableHead>
                   <TableHead>Invoice #</TableHead>
-                  <TableHead>Customer</TableHead>
+                  <TableHead>
+                    <Button variant="ghost" size="sm" className="h-8 -ml-3 font-medium" onClick={() => handleSort('customer')}>
+                      Customer
+                      {getSortIcon('customer')}
+                    </Button>
+                  </TableHead>
                   <TableHead>Method</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">
+                    <Button variant="ghost" size="sm" className="h-8 -mr-3 font-medium" onClick={() => handleSort('amount')}>
+                      Amount
+                      {getSortIcon('amount')}
+                    </Button>
+                  </TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-10"></TableHead>
                 </TableRow>
@@ -532,56 +595,71 @@ const TransactionsReport = () => {
           </ScrollableTable>
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4">
-              <p className="text-sm text-muted-foreground">
-                Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredPayments.length)} of {filteredPayments.length} payments
-              </p>
+          {sortedPayments.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="w-4 h-4 mr-1" />
-                  Previous
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    let pageNum: number;
-                    if (totalPages <= 5) {
-                      pageNum = i + 1;
-                    } else if (currentPage <= 3) {
-                      pageNum = i + 1;
-                    } else if (currentPage >= totalPages - 2) {
-                      pageNum = totalPages - 4 + i;
-                    } else {
-                      pageNum = currentPage - 2 + i;
-                    }
-                    return (
-                      <Button
-                        key={pageNum}
-                        variant={currentPage === pageNum ? "default" : "outline"}
-                        size="sm"
-                        className="w-8 h-8 p-0"
-                        onClick={() => setCurrentPage(pageNum)}
-                      >
-                        {pageNum}
-                      </Button>
-                    );
-                  })}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                  <ChevronRight className="w-4 h-4 ml-1" />
-                </Button>
+                <p className="text-sm text-muted-foreground">
+                  Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, sortedPayments.length)} of {sortedPayments.length} payments
+                </p>
+                <Select value={pageSize.toString()} onValueChange={(value) => setPageSize(Number(value))}>
+                  <SelectTrigger className="w-20 h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-sm text-muted-foreground">per page</span>
               </div>
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum: number;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          className="w-8 h-8 p-0"
+                          onClick={() => setCurrentPage(pageNum)}
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
