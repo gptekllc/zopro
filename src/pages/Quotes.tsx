@@ -158,6 +158,9 @@ const Quotes = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
   const [viewingQuote, setViewingQuote] = useState<typeof quotes[0] | null>(null);
+  
+  // Fetch photos for the currently viewed quote
+  const { data: viewingQuotePhotos = [] } = useQuotePhotos(viewingQuote?.id || null);
   const [quoteToDelete, setQuoteToDelete] = useState<typeof quotes[0] | null>(null);
   
   // Duplicate prevention confirmation dialogs
@@ -1250,7 +1253,7 @@ const Quotes = () => {
                         Linked Docs ({linkedDocsCount})
                       </TabsTrigger>
                       <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">
-                        Photos
+                        Photos {viewingQuotePhotos.length > 0 && `(${viewingQuotePhotos.length})`}
                       </TabsTrigger>
                     </TabsList>
 

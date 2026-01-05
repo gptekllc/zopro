@@ -12,6 +12,7 @@ import { useEmailDocument, useDownloadDocument } from "@/hooks/useDocumentAction
 import { useUndoableDelete } from "@/hooks/useUndoableDelete";
 import { useSignInvoice } from "@/hooks/useSignatures";
 import { useSendSignatureRequest } from "@/hooks/useSendSignatureRequest";
+import { useInvoicePhotos } from "@/hooks/useInvoicePhotos";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +118,9 @@ const Invoices = () => {
   const {
     data: invoiceReminders = []
   } = useInvoiceReminders(viewingInvoice?.id || null);
+  
+  // Fetch photos for the currently viewed invoice
+  const { data: viewingInvoicePhotos = [] } = useInvoicePhotos(viewingInvoice?.id || null);
   // Wrapped setters for scroll restoration
   const openViewingInvoice = useCallback((invoice: (typeof invoices)[0] | null) => {
     if (invoice) saveScrollPosition();
@@ -1176,7 +1180,7 @@ const Invoices = () => {
                     Linked Docs ({(viewingInvoice.quote_id ? 1 : 0) + ((viewingInvoice as any).job_id || (viewingInvoice as any).quote?.job ? 1 : 0)})
                   </TabsTrigger>
                   <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">
-                    Photos
+                    Photos {viewingInvoicePhotos.length > 0 && `(${viewingInvoicePhotos.length})`}
                   </TabsTrigger>
                 </TabsList>
 
