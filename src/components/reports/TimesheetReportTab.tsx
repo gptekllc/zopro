@@ -324,7 +324,7 @@ const TimesheetReportTab = () => {
         
         <div className="flex items-center gap-2">
           <Select value={numWeeks} onValueChange={setNumWeeks}>
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-[100px] sm:w-[120px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -339,20 +339,20 @@ const TimesheetReportTab = () => {
             size="sm"
             disabled={timesheetData.length === 0}
           >
-            <Mail className="w-4 h-4 mr-2" />
-            Email
+            <Mail className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Email</span>
           </Button>
-          <Button onClick={exportToCSV} variant="outline" size="sm">
+          <Button onClick={exportToCSV} variant="outline" size="sm" className="hidden sm:inline-flex">
             <Download className="w-4 h-4 mr-2" />
             CSV
           </Button>
           <Button onClick={exportToPDF} variant="outline" size="sm" disabled={isExportingPdf}>
             {isExportingPdf ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="w-4 h-4 sm:mr-2 animate-spin" />
             ) : (
-              <FileText className="w-4 h-4 mr-2" />
+              <FileText className="w-4 h-4 sm:mr-2" />
             )}
-            PDF
+            <span className="hidden sm:inline">PDF</span>
           </Button>
         </div>
       </div>
