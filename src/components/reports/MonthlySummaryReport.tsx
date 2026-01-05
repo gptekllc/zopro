@@ -66,6 +66,7 @@ const MonthlySummaryReport = () => {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<ActivityType[]>(['jobs', 'quotes', 'invoices']);
+  const [showTotalRevenue, setShowTotalRevenue] = useState(true);
   
   const { data: jobs, isLoading: loadingJobs } = useJobs();
   const { data: quotes, isLoading: loadingQuotes } = useQuotes();
@@ -668,8 +669,18 @@ const MonthlySummaryReport = () => {
 
       {/* Revenue Chart */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Value Over Time</CardTitle>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="showRevenue"
+              checked={showTotalRevenue}
+              onCheckedChange={(checked) => setShowTotalRevenue(checked === true)}
+            />
+            <label htmlFor="showRevenue" className="text-sm text-muted-foreground cursor-pointer">
+              Show Total Revenue
+            </label>
+          </div>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={300}>
@@ -719,15 +730,17 @@ const MonthlySummaryReport = () => {
                   dot={{ fill: 'hsl(var(--chart-3))' }}
                 />
               )}
-              <Line 
-                type="monotone" 
-                dataKey="revenue" 
-                name="Total Revenue"
-                stroke="hsl(var(--chart-5))" 
-                strokeWidth={3}
-                strokeDasharray="5 5"
-                dot={{ fill: 'hsl(var(--chart-5))' }}
-              />
+              {showTotalRevenue && (
+                <Line 
+                  type="monotone" 
+                  dataKey="revenue" 
+                  name="Total Revenue"
+                  stroke="hsl(var(--chart-5))" 
+                  strokeWidth={3}
+                  strokeDasharray="5 5"
+                  dot={{ fill: 'hsl(var(--chart-5))' }}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </CardContent>
