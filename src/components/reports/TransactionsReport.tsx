@@ -340,9 +340,10 @@ const TransactionsReport = () => {
     <div className="space-y-6">
       {/* Header with Title, Search, and Actions */}
       <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-4">
-          <h2 className="text-xl font-semibold whitespace-nowrap">Payment History</h2>
-          <div className="relative w-full sm:w-64">
+        <h2 className="text-xl font-semibold text-center lg:hidden">Payment History</h2>
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-center gap-4">
+          <h2 className="text-xl font-semibold whitespace-nowrap hidden lg:block">Payment History</h2>
+          <div className="relative w-full lg:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search..."
@@ -351,31 +352,31 @@ const TransactionsReport = () => {
               className="pl-9"
             />
           </div>
-        </div>
-        <div className="flex items-center justify-center gap-2">
-          <Button 
-            onClick={() => setEmailDialogOpen(true)} 
-            variant="outline" 
-            size="sm"
-            disabled={filteredPayments.length === 0}
-          >
-            <Mail className="w-4 h-4 mr-2" />
-            Email
-          </Button>
-          <Button 
-            onClick={exportToCSV} 
-            variant="outline" 
-            size="sm"
-            disabled={filteredPayments.length === 0}
-            className="hidden sm:inline-flex"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-          <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
-            Record Payment
-          </Button>
+          <div className="flex items-center justify-center gap-2">
+            <Button 
+              onClick={() => setEmailDialogOpen(true)} 
+              variant="outline" 
+              size="sm"
+              disabled={filteredPayments.length === 0}
+            >
+              <Mail className="w-4 h-4 mr-2" />
+              Email
+            </Button>
+            <Button 
+              onClick={exportToCSV} 
+              variant="outline" 
+              size="sm"
+              disabled={filteredPayments.length === 0}
+              className="hidden sm:inline-flex"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Record Payment
+            </Button>
+          </div>
         </div>
       </div>
 
