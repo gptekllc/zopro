@@ -50,6 +50,7 @@ import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
+import { ConvertJobToInvoiceDialog } from '@/components/jobs/ConvertJobToInvoiceDialog';
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 interface LineItem {
@@ -752,17 +753,18 @@ const Jobs = () => {
     }
   };
 
-  // Handle Create Invoice with duplicate confirmation - opens edit form after creation
-  const handleCreateInvoice = async (job: Job) => {
-    const existingInvoices = invoicesPerJob.get(job.id) || 0;
-    if (existingInvoices > 0) {
-      setCreateInvoiceConfirmJob(job);
-    } else {
-      const invoice = await convertToInvoice.mutateAsync(job);
-      if (invoice?.id) {
-        // Navigate to invoices page with edit mode
-        window.location.href = `/invoices?edit=${invoice.id}`;
-      }
+  // Handle Create Invoice - opens dialog with photo toggle
+  const handleCreateInvoice = (job: Job) => {
+    setCreateInvoiceConfirmJob(job);
+  };
+  
+  const handleCreateInvoiceWithPhotos = async (copyPhotos: boolean) => {
+    if (!createInvoiceConfirmJob) return;
+    const invoice = await convertToInvoice.mutateAsync({ job: createInvoiceConfirmJob, copyPhotos });
+    setCreateInvoiceConfirmJob(null);
+    openViewingJob(null);
+    if (invoice?.id) {
+      window.location.href = `/invoices?edit=${invoice.id}`;
     }
   };
   const getStatusColor = (status: Job['status']) => {
@@ -2297,40 +2299,14 @@ const Jobs = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Create Invoice Confirmation Dialog */}
-      <AlertDialog open={!!createInvoiceConfirmJob} onOpenChange={(open) => !open && setCreateInvoiceConfirmJob(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <Receipt className="w-5 h-5 text-orange-500" />
-              Invoice Already Exists
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This job already has {invoicesPerJob.get(createInvoiceConfirmJob?.id || '') || 0} invoice(s) created from it. 
-              Are you sure you want to create another invoice? This may result in duplicate invoices.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={async () => {
-                if (createInvoiceConfirmJob) {
-                  const invoice = await convertToInvoice.mutateAsync(createInvoiceConfirmJob);
-                  setCreateInvoiceConfirmJob(null);
-                  openViewingJob(null);
-                  if (invoice?.id) {
-                    window.location.href = `/invoices?edit=${invoice.id}`;
-                  }
-                }
-              }}
-              disabled={convertToInvoice.isPending}
-            >
-              {convertToInvoice.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Create Anyway
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Create Invoice Dialog with Photo Toggle */}
+      <ConvertJobToInvoiceDialog
+        open={!!createInvoiceConfirmJob}
+        onOpenChange={(open) => !open && setCreateInvoiceConfirmJob(null)}
+        onConfirm={handleCreateInvoiceWithPhotos}
+        isProcessing={convertToInvoice.isPending}
+        jobNumber={createInvoiceConfirmJob?.job_number}
+      />
 
 
       {/* Signature Dialog */}

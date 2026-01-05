@@ -583,7 +583,7 @@ export function useConvertJobToInvoice() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (job: Job) => {
+    mutationFn: async ({ job, copyPhotos = true }: { job: Job; copyPhotos?: boolean }) => {
       if (!profile?.company_id) throw new Error('No company ID');
       
       // First, check for job items
@@ -680,13 +680,14 @@ export function useConvertJobToInvoice() {
         if (itemsError) throw itemsError;
       }
       
-      // Copy job photos to invoice photos
-      const { data: jobPhotos } = await (supabase as any)
-        .from('job_photos')
-        .select('*')
-        .eq('job_id', job.id);
-      
-      if (jobPhotos && jobPhotos.length > 0) {
+      // Copy job photos to invoice photos if enabled
+      if (copyPhotos) {
+        const { data: jobPhotos } = await (supabase as any)
+          .from('job_photos')
+          .select('*')
+          .eq('job_id', job.id);
+        
+        if (jobPhotos && jobPhotos.length > 0) {
         for (const photo of jobPhotos) {
           try {
             // Download the photo from job-photos bucket
@@ -727,6 +728,7 @@ export function useConvertJobToInvoice() {
           } catch (err) {
             console.warn('Error copying photo:', err);
           }
+        }
         }
       }
       

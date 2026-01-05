@@ -31,6 +31,7 @@ import { useSendJobNotification } from '@/hooks/useSendJobNotification';
 import { useJobNotifications } from '@/hooks/useJobNotifications';
 import { useJobFeedbacks, JobFeedback } from '@/hooks/useJobFeedbacks';
 import { useJobTimeEntries } from '@/hooks/useTimeEntries';
+import { ConvertJobToInvoiceDialog } from '@/components/jobs/ConvertJobToInvoiceDialog';
 
 interface JobDetailDialogProps {
   job: CustomerJob | null;
@@ -181,7 +182,13 @@ export function JobDetailDialog({
     }
   };
 
-  const handleCreateInvoice = async () => {
+  const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  
+  const handleCreateInvoice = () => {
+    setShowInvoiceDialog(true);
+  };
+  
+  const handleCreateInvoiceWithPhotos = async (copyPhotos: boolean) => {
     const jobForConversion: Job = {
       id: job.id,
       job_number: job.job_number,
@@ -209,7 +216,8 @@ export function JobDetailDialog({
       discount_value: null,
       items: [],
     };
-    const invoice = await convertJobToInvoice.mutateAsync(jobForConversion);
+    const invoice = await convertJobToInvoice.mutateAsync({ job: jobForConversion, copyPhotos });
+    setShowInvoiceDialog(false);
     if (invoice?.id) {
       onOpenChange(false);
       window.location.href = `/invoices?edit=${invoice.id}`;
@@ -965,6 +973,15 @@ export function JobDetailDialog({
           </div>
         </div>
       </DialogContent>
+      
+      {/* Convert to Invoice Dialog */}
+      <ConvertJobToInvoiceDialog
+        open={showInvoiceDialog}
+        onOpenChange={setShowInvoiceDialog}
+        onConfirm={handleCreateInvoiceWithPhotos}
+        isProcessing={convertJobToInvoice.isPending}
+        jobNumber={job.job_number}
+      />
     </Dialog>
   );
 }

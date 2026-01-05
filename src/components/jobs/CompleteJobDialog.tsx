@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Loader2, CheckCircle2, FileText, Mail, AlertTriangle } from 'lucide-react';
+import { Loader2, CheckCircle2, FileText, Mail, AlertTriangle, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CompleteJobDialogProps {
@@ -31,6 +31,7 @@ export function CompleteJobDialog({ job, open, onOpenChange, onComplete }: Compl
 
   const [generateInvoice, setGenerateInvoice] = useState(true);
   const [emailCustomer, setEmailCustomer] = useState(true);
+  const [copyPhotos, setCopyPhotos] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const updateJob = useUpdateJob();
@@ -62,7 +63,7 @@ export function CompleteJobDialog({ job, open, onOpenChange, onComplete }: Compl
       
       // Step 2: Generate invoice if selected
       if (generateInvoice) {
-        const invoice = await convertToInvoice.mutateAsync(job);
+        const invoice = await convertToInvoice.mutateAsync({ job, copyPhotos });
         invoiceId = invoice.id;
         
         // Step 3: Email customer if selected and has email
@@ -165,6 +166,27 @@ export function CompleteJobDialog({ job, open, onOpenChange, onComplete }: Compl
                         </p>
                       </div>
                     </div>
+                    
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id="copy-photos"
+                        checked={copyPhotos}
+                        disabled={!generateInvoice}
+                        onCheckedChange={(checked) => setCopyPhotos(checked as boolean)}
+                      />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label
+                          htmlFor="copy-photos"
+                          className={`flex items-center gap-2 cursor-pointer font-medium ${!generateInvoice ? 'text-muted-foreground' : ''}`}
+                        >
+                          <ImageIcon className="w-4 h-4" />
+                          Copy Photos to Invoice
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Include all job photos in the new invoice
+                        </p>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="text-sm text-muted-foreground border-l-2 border-primary pl-3">
@@ -174,6 +196,9 @@ export function CompleteJobDialog({ job, open, onOpenChange, onComplete }: Compl
                       <li>✓ Actual end time will be recorded</li>
                       {hasSignature && <li>✓ Customer signature already collected</li>}
                       {generateInvoice && <li>✓ Invoice will be created from job</li>}
+                      {generateInvoice && copyPhotos && (
+                        <li>✓ Job photos will be copied to invoice</li>
+                      )}
                       {generateInvoice && emailCustomer && customerEmail && (
                         <li>✓ Invoice will be emailed to customer</li>
                       )}
