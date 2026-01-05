@@ -416,26 +416,45 @@ const TransactionsReport = () => {
             </DropdownMenu>
           </div>
 
-          {/* Desktop: Search field */}
-          <div className="relative w-full lg:w-64 hidden sm:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
-          </div>
-
-          {/* Desktop Actions */}
-          <div className="hidden sm:flex items-center justify-end gap-2 lg:ml-auto">
-            <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredPayments.length === 0}>
-              <Mail className="w-4 h-4 mr-2" />
-              Email
-            </Button>
-            <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredPayments.length === 0}>
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
-            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Record Payment
-            </Button>
+          {/* Tablet/Desktop: Search field + Record Payment + Actions Dropdown */}
+          <div className="hidden sm:flex items-center gap-2 w-full lg:w-auto">
+            <div className="relative flex-1 lg:w-64 lg:flex-none">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
+            </div>
+            <div className="flex items-center gap-2 sm:ml-auto">
+              {/* Desktop: Show full buttons */}
+              <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredPayments.length === 0} className="hidden lg:flex">
+                <Mail className="w-4 h-4 mr-2" />
+                Email
+              </Button>
+              <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredPayments.length === 0} className="hidden lg:flex">
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+              <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Record Payment
+              </Button>
+              {/* Tablet: Actions in dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon" className="shrink-0 lg:hidden">
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover">
+                  <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={filteredPayments.length === 0}>
+                    <Mail className="w-4 h-4 mr-2" />
+                    Email
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportToCSV} disabled={filteredPayments.length === 0}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Export CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
 
