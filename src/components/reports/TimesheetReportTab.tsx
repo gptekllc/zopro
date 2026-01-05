@@ -15,7 +15,8 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, FileText, Mail, Users, X } from 'lucide-react';
+import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, FileText, Mail, Users, X, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, differenceInMinutes, isSameDay } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
@@ -35,6 +36,7 @@ const TimesheetReportTab = () => {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [memberFilterSearch, setMemberFilterSearch] = useState('');
 
   const canViewAll = roles.some(r => r.role === 'admin' || r.role === 'manager');
 
@@ -42,6 +44,16 @@ const TimesheetReportTab = () => {
   const allTeamMembers = useMemo(() => {
     return profiles.filter(p => p.company_id === company?.id);
   }, [profiles, company?.id]);
+
+  // Filter members in dropdown by search
+  const filteredDropdownMembers = useMemo(() => {
+    if (!memberFilterSearch.trim()) return allTeamMembers;
+    const search = memberFilterSearch.toLowerCase();
+    return allTeamMembers.filter(m => 
+      (m.full_name && m.full_name.toLowerCase().includes(search)) ||
+      m.email.toLowerCase().includes(search)
+    );
+  }, [allTeamMembers, memberFilterSearch]);
 
   const toggleMember = (memberId: string) => {
     setSelectedMemberIds(prev => 
@@ -393,8 +405,17 @@ const TimesheetReportTab = () => {
                   </Button>
                 )}
               </div>
-              <div className="max-h-[250px] overflow-y-auto space-y-1">
-                {allTeamMembers.map(member => (
+              <div className="relative mb-2">
+                <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search members..."
+                  value={memberFilterSearch}
+                  onChange={(e) => setMemberFilterSearch(e.target.value)}
+                  className="pl-8 h-8 text-sm"
+                />
+              </div>
+              <div className="max-h-[200px] overflow-y-auto space-y-1">
+                {filteredDropdownMembers.map(member => (
                   <div
                     key={member.id}
                     className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
@@ -412,8 +433,10 @@ const TimesheetReportTab = () => {
                     </div>
                   </div>
                 ))}
-                {allTeamMembers.length === 0 && (
-                  <div className="text-sm text-muted-foreground text-center py-4">No team members</div>
+                {filteredDropdownMembers.length === 0 && (
+                  <div className="text-sm text-muted-foreground text-center py-4">
+                    {allTeamMembers.length === 0 ? 'No team members' : 'No matches found'}
+                  </div>
                 )}
               </div>
             </PopoverContent>
