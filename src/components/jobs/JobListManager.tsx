@@ -47,6 +47,11 @@ interface JobListManagerProps {
   customerId?: string;
   showFilters?: boolean;
   showSearch?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  statusFilter?: string;
+  onStatusFilterChange?: (status: string) => void;
+  hideInlineControls?: boolean;
   onEditJob?: (job: Job) => void;
   onCreateJob?: () => void;
   onRefetch?: () => Promise<void>;
@@ -60,6 +65,11 @@ export function JobListManager({
   customerId,
   showFilters = true,
   showSearch = true,
+  searchQuery: externalSearchQuery,
+  onSearchChange,
+  statusFilter: externalStatusFilter,
+  onStatusFilterChange,
+  hideInlineControls = false,
   onEditJob,
   onCreateJob,
   onRefetch,
@@ -126,9 +136,28 @@ export function JobListManager({
     { itemLabel: 'job', timeout: 5000 }
   );
 
-  // State
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  // State - use external values if provided, otherwise use internal state
+  const [internalStatusFilter, setInternalStatusFilter] = useState('all');
+  const [internalSearchQuery, setInternalSearchQuery] = useState('');
+  
+  const statusFilter = externalStatusFilter ?? internalStatusFilter;
+  const searchQuery = externalSearchQuery ?? internalSearchQuery;
+  
+  const handleSearchChange = (query: string) => {
+    if (onSearchChange) {
+      onSearchChange(query);
+    } else {
+      setInternalSearchQuery(query);
+    }
+  };
+  
+  const handleStatusFilterChange = (status: string) => {
+    if (onStatusFilterChange) {
+      onStatusFilterChange(status);
+    } else {
+      setInternalStatusFilter(status);
+    }
+  };
   const [viewingJob, setViewingJob] = useState<Job | null>(null);
   const [deleteConfirmJob, setDeleteConfirmJob] = useState<Job | null>(null);
   const [archiveConfirmJob, setArchiveConfirmJob] = useState<Job | null>(null);
@@ -394,8 +423,8 @@ export function JobListManager({
 
   return (
     <div className="space-y-3">
-      {/* Optional Header with Search and Filters */}
-      {(showSearch || showFilters) && (
+      {/* Optional Header with Search and Filters - only show if not hidden */}
+      {!hideInlineControls && (showSearch || showFilters) && (
         <div className="flex items-center gap-2">
           {showSearch && (
             <div className="relative flex-1 max-w-xs">
@@ -403,7 +432,7 @@ export function JobListManager({
               <Input
                 placeholder="Search..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-8 h-9"
               />
             </div>
@@ -416,16 +445,16 @@ export function JobListManager({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
                   All Status
                 </DropdownMenuItem>
                 {JOB_STATUSES_EDITABLE.map(s => (
-                  <DropdownMenuItem key={s} onClick={() => setStatusFilter(s)} className={`capitalize ${statusFilter === s ? 'bg-accent' : ''}`}>
+                  <DropdownMenuItem key={s} onClick={() => handleStatusFilterChange(s)} className={`capitalize ${statusFilter === s ? 'bg-accent' : ''}`}>
                     {s.replace('_', ' ')}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setStatusFilter('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
                   <Archive className="w-4 h-4 mr-2" />
                   Archived
                 </DropdownMenuItem>
