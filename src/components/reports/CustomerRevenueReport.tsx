@@ -565,8 +565,8 @@ const CustomerRevenueReport = () => {
       {/* Header with filters and export */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
-            <div className="relative w-full sm:w-auto sm:min-w-[200px]">
+          <div className="flex flex-wrap items-center justify-end sm:justify-start gap-2">
+            <div className="relative flex-1 sm:flex-none sm:min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search customers..."
@@ -575,6 +575,64 @@ const CustomerRevenueReport = () => {
                 className="pl-10"
               />
             </div>
+            {/* Customer Filter - next to search on mobile */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="min-w-[140px] justify-start sm:hidden">
+                  <User className="w-4 h-4 mr-2" />
+                  {selectedCustomerIds.length === 0 ? (
+                    <span className="text-muted-foreground">All Customers</span>
+                  ) : (
+                    <span>{selectedCustomerIds.length} selected</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2 bg-background" align="end">
+                <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                  <span className="text-sm font-medium">Filter by Customer</span>
+                  {selectedCustomerIds.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={clearSelectedCustomers} className="h-6 px-2 text-xs">
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+                <div className="relative mb-2">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search customers..."
+                    value={customerFilterSearch}
+                    onChange={(e) => setCustomerFilterSearch(e.target.value)}
+                    className="pl-8 h-8 text-sm"
+                  />
+                </div>
+                <div className="max-h-[200px] overflow-y-auto space-y-1">
+                  {filteredDropdownCustomers.map(customer => (
+                    <div
+                      key={customer.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                      onClick={() => toggleCustomer(customer.id)}
+                    >
+                      <Checkbox
+                        checked={selectedCustomerIds.includes(customer.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onCheckedChange={() => toggleCustomer(customer.id)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm truncate">{customer.name}</div>
+                        {customer.email && (
+                          <div className="text-xs text-muted-foreground truncate">{customer.email}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  {filteredDropdownCustomers.length === 0 && (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      {allCustomers.length === 0 ? 'No customers' : 'No matches found'}
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
             <Select value={timeRange} onValueChange={setTimeRange}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Time range" />
@@ -591,10 +649,10 @@ const CustomerRevenueReport = () => {
               </SelectContent>
             </Select>
 
-            {/* Customer Filter */}
+            {/* Customer Filter - Desktop only */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="min-w-[140px] justify-start">
+                <Button variant="outline" className="hidden sm:flex min-w-[140px] justify-start">
                   <User className="w-4 h-4 mr-2" />
                   {selectedCustomerIds.length === 0 ? (
                     <span className="text-muted-foreground">All Customers</span>
