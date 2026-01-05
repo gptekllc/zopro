@@ -691,7 +691,7 @@ const MonthlySummaryReport = () => {
                 checked={showQuotesLine}
                 onCheckedChange={(checked) => setShowQuotesLine(checked === true)}
               />
-              <label htmlFor="showQuotes" className="text-sm cursor-pointer" style={{ color: 'hsl(var(--chart-2))' }}>
+              <label htmlFor="showQuotes" className="text-sm cursor-pointer text-orange-500">
                 Quotes
               </label>
             </div>
@@ -701,7 +701,7 @@ const MonthlySummaryReport = () => {
                 checked={showInvoicesLine}
                 onCheckedChange={(checked) => setShowInvoicesLine(checked === true)}
               />
-              <label htmlFor="showInvoices" className="text-sm cursor-pointer" style={{ color: 'hsl(var(--chart-3))' }}>
+              <label htmlFor="showInvoices" className="text-sm cursor-pointer text-green-500">
                 Invoices
               </label>
             </div>
@@ -750,9 +750,9 @@ const MonthlySummaryReport = () => {
                   type="monotone" 
                   dataKey="quotesValue" 
                   name="Quotes Value"
-                  stroke="hsl(var(--chart-2))" 
+                  stroke="#f97316" 
                   strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--chart-2))' }}
+                  dot={{ fill: '#f97316' }}
                 />
               )}
               {showInvoicesLine && (
@@ -760,9 +760,9 @@ const MonthlySummaryReport = () => {
                   type="monotone" 
                   dataKey="invoicesValue" 
                   name="Invoices Value"
-                  stroke="hsl(var(--chart-3))" 
+                  stroke="#22c55e" 
                   strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--chart-3))' }}
+                  dot={{ fill: '#22c55e' }}
                 />
               )}
               {showTotalRevenue && (
