@@ -8,14 +8,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, X, Users, Mail, AlertCircle } from 'lucide-react';
-import { useCustomers } from '@/hooks/useCustomers';
 import { useProfiles } from '@/hooks/useProfiles';
 
 interface Recipient {
   id: string;
   name: string;
   email: string;
-  type: 'customer' | 'technician' | 'manual';
+  type: 'technician' | 'manual';
 }
 
 interface ReportEmailDialogProps {
@@ -35,26 +34,10 @@ export const ReportEmailDialog = ({
 }: ReportEmailDialogProps) => {
   const [manualEmails, setManualEmails] = useState('');
   const [selectedRecipients, setSelectedRecipients] = useState<Recipient[]>([]);
-  const [searchCustomers, setSearchCustomers] = useState('');
   const [searchTeam, setSearchTeam] = useState('');
   const [sendResult, setSendResult] = useState<{ successful: string[]; failed: { email: string; reason: string }[] } | null>(null);
 
-  const { data: customers = [] } = useCustomers();
   const { data: profiles = [] } = useProfiles();
-
-  // Filter customers with valid emails
-  const customersWithEmail = useMemo(() => {
-    return customers
-      .filter(c => c.email && c.email.trim() !== '')
-      .filter(c => c.name.toLowerCase().includes(searchCustomers.toLowerCase()) ||
-                   c.email?.toLowerCase().includes(searchCustomers.toLowerCase()))
-      .map(c => ({
-        id: c.id,
-        name: c.name,
-        email: c.email!,
-        type: 'customer' as const,
-      }));
-  }, [customers, searchCustomers]);
 
   // Filter team members with valid emails
   const teamWithEmail = useMemo(() => {
@@ -144,7 +127,6 @@ export const ReportEmailDialog = ({
   const handleClose = () => {
     setManualEmails('');
     setSelectedRecipients([]);
-    setSearchCustomers('');
     setSearchTeam('');
     setSendResult(null);
     onOpenChange(false);
@@ -222,11 +204,8 @@ export const ReportEmailDialog = ({
         )}
 
         <Tabs defaultValue="manual" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="manual">Manual Entry</TabsTrigger>
-            <TabsTrigger value="customers">
-              Customers ({customersWithEmail.length})
-            </TabsTrigger>
             <TabsTrigger value="team">
               Team ({teamWithEmail.length})
             </TabsTrigger>
@@ -246,44 +225,6 @@ export const ReportEmailDialog = ({
                 Separate multiple emails with commas, semicolons, or spaces
               </p>
             </div>
-          </TabsContent>
-
-          <TabsContent value="customers" className="flex-1 overflow-hidden flex flex-col mt-4">
-            <div className="space-y-2">
-              <Input
-                placeholder="Search customers..."
-                value={searchCustomers}
-                onChange={(e) => setSearchCustomers(e.target.value)}
-                disabled={isSending}
-              />
-            </div>
-            <ScrollArea className="flex-1 mt-3 border rounded-lg">
-              {customersWithEmail.length === 0 ? (
-                <div className="p-4 text-center text-muted-foreground text-sm">
-                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  {customers.length === 0 ? 'No customers found' : 'No customers with email addresses'}
-                </div>
-              ) : (
-                <div className="p-2 space-y-1">
-                  {customersWithEmail.map(customer => (
-                    <label
-                      key={customer.id}
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={isSelected(customer.id)}
-                        onCheckedChange={() => toggleRecipient(customer)}
-                        disabled={isSending}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{customer.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{customer.email}</p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
           </TabsContent>
 
           <TabsContent value="team" className="flex-1 overflow-hidden flex flex-col mt-4">
