@@ -35,6 +35,8 @@ import { QuoteDetailDialog } from '@/components/quotes/QuoteDetailDialog';
 import { InvoiceDetailDialog } from '@/components/invoices/InvoiceDetailDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
+import { RecordPaymentDialog, PaymentData } from '@/components/invoices/RecordPaymentDialog';
+import { getTotalWithLateFee } from '@/hooks/useInvoices';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -73,6 +75,10 @@ const CustomerDetail = () => {
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
   const [signatureInvoice, setSignatureInvoice] = useState<CustomerInvoice | null>(null);
   const [signatureQuote, setSignatureQuote] = useState<CustomerQuote | null>(null);
+
+  // Record Payment dialog
+  const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
+  const [pendingPaymentInvoice, setPendingPaymentInvoice] = useState<CustomerInvoice | null>(null);
 
   // Wrapped setters for scroll restoration
   const openSelectedJob = useCallback((job: CustomerJob | null) => {
@@ -250,30 +256,56 @@ const CustomerDetail = () => {
     }
   };
 
-  const handleMarkInvoicePaid = async (invoiceId: string) => {
+  // Helper to initiate payment recording
+  const initiateRecordPayment = (invoice: CustomerInvoice) => {
+    setPendingPaymentInvoice(invoice);
+    setRecordPaymentDialogOpen(true);
+  };
+
+  // Callback when payment is recorded
+  const handleRecordPayment = async (paymentData: PaymentData) => {
+    if (!pendingPaymentInvoice) return;
     try {
       await updateInvoice.mutateAsync({
-        id: invoiceId,
+        id: pendingPaymentInvoice.id,
         status: 'paid',
-        paid_at: new Date().toISOString(),
+        paid_at: paymentData.date.toISOString(),
+        notes: (pendingPaymentInvoice as any).notes 
+          ? `${(pendingPaymentInvoice as any).notes}\n\nPayment: ${paymentData.method} - $${paymentData.amount.toFixed(2)}${paymentData.note ? ` - ${paymentData.note}` : ''}`
+          : `Payment: ${paymentData.method} - $${paymentData.amount.toFixed(2)}${paymentData.note ? ` - ${paymentData.note}` : ''}`
       });
+      toast.success('Payment recorded successfully');
       openSelectedInvoice(null);
-      toast.success('Invoice marked as paid');
+      setRecordPaymentDialogOpen(false);
+      setPendingPaymentInvoice(null);
     } catch {
-      toast.error('Failed to update invoice');
+      toast.error('Failed to record payment');
+    }
+  };
+
+  const handleMarkInvoicePaid = async (invoiceId: string) => {
+    const invoice = invoices.find(i => i.id === invoiceId);
+    if (invoice) {
+      initiateRecordPayment(invoice);
     }
   };
 
   const handleInvoiceStatusChange = async (invoiceId: string, status: string) => {
+    // If changing to paid, show the record payment dialog
+    if (status === 'paid') {
+      const invoice = invoices.find(i => i.id === invoiceId);
+      if (invoice) {
+        initiateRecordPayment(invoice);
+        return;
+      }
+    }
+    
     try {
-      const updateData: { id: string; status: string; paid_at?: string } = {
+      await updateInvoice.mutateAsync({
         id: invoiceId,
         status,
-      };
-      if (status === 'paid') {
-        updateData.paid_at = new Date().toISOString();
-      }
-      await updateInvoice.mutateAsync(updateData as any);
+        paid_at: null,
+      } as any);
       toast.success(`Invoice marked as ${status}`);
     } catch {
       toast.error('Failed to update invoice status');
@@ -1015,6 +1047,19 @@ const CustomerDetail = () => {
           ? "Please sign below to approve this quote" 
           : "Please sign below to confirm receipt and payment"}
         isSubmitting={signatureQuote ? signQuote.isPending : signInvoice.isPending}
+      />
+
+      {/* Record Payment Dialog */}
+      <RecordPaymentDialog
+        open={recordPaymentDialogOpen}
+        onOpenChange={(open) => {
+          setRecordPaymentDialogOpen(open);
+          if (!open) setPendingPaymentInvoice(null);
+        }}
+        invoiceTotal={pendingPaymentInvoice ? getTotalWithLateFee(pendingPaymentInvoice as any) : 0}
+        invoiceNumber={pendingPaymentInvoice?.invoice_number || ""}
+        onConfirm={handleRecordPayment}
+        isLoading={updateInvoice.isPending}
       />
     </div>
   );

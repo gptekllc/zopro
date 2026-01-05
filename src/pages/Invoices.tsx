@@ -29,6 +29,7 @@ import { Plus, Search, Receipt, Trash2, Edit, DollarSign, CheckCircle, Loader2, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { SignatureDialog } from "@/components/signatures/SignatureDialog";
 import { ViewSignatureDialog } from "@/components/signatures/ViewSignatureDialog";
+import { RecordPaymentDialog, PaymentData } from "@/components/invoices/RecordPaymentDialog";
 import { format, addDays } from "date-fns";
 import { toast } from "sonner";
 import { InlineCustomerForm } from "@/components/customers/InlineCustomerForm";
@@ -111,6 +112,10 @@ const Invoices = () => {
   const [signatureInvoice, setSignatureInvoice] = useState<Invoice | null>(null);
   const [viewSignatureId, setViewSignatureId] = useState<string | null>(null);
   const [viewSignatureOpen, setViewSignatureOpen] = useState(false);
+
+  // Record Payment dialog
+  const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
+  const [pendingPaymentInvoice, setPendingPaymentInvoice] = useState<Invoice | null>(null);
 
   // Fetch reminders for the currently viewed invoice
   const {
@@ -356,19 +361,57 @@ const Invoices = () => {
       setInvoiceToDelete(null);
     }
   };
-  const handleMarkPaid = async (id: string) => {
+
+  // Helper to initiate payment recording
+  const initiateRecordPayment = (invoice: Invoice) => {
+    setPendingPaymentInvoice(invoice);
+    setRecordPaymentDialogOpen(true);
+  };
+
+  // Callback when payment is recorded
+  const handleRecordPayment = async (paymentData: PaymentData) => {
+    if (!pendingPaymentInvoice) return;
     try {
       await updateInvoice.mutateAsync({
-        id,
+        id: pendingPaymentInvoice.id,
         status: "paid",
-        paid_at: new Date().toISOString()
+        paid_at: paymentData.date.toISOString(),
+        notes: pendingPaymentInvoice.notes 
+          ? `${pendingPaymentInvoice.notes}\n\nPayment: ${paymentData.method} - $${paymentData.amount.toFixed(2)}${paymentData.note ? ` - ${paymentData.note}` : ''}`
+          : `Payment: ${paymentData.method} - $${paymentData.amount.toFixed(2)}${paymentData.note ? ` - ${paymentData.note}` : ''}`
       });
-      toast.success("Invoice marked as paid");
+      toast.success("Payment recorded successfully");
+      // Update viewing invoice if it's open
+      if (viewingInvoice?.id === pendingPaymentInvoice.id) {
+        setViewingInvoice({
+          ...viewingInvoice,
+          status: "paid",
+          paid_at: paymentData.date.toISOString()
+        } as any);
+      }
+      setRecordPaymentDialogOpen(false);
+      setPendingPaymentInvoice(null);
     } catch (error) {
-      toast.error("Failed to update invoice");
+      toast.error("Failed to record payment");
+    }
+  };
+
+  const handleMarkPaid = async (id: string) => {
+    const invoice = invoices.find(inv => inv.id === id);
+    if (invoice) {
+      initiateRecordPayment(invoice);
     }
   };
   const handleStatusChange = async (invoiceId: string, newStatus: string) => {
+    // If changing to paid, show the record payment dialog
+    if (newStatus === "paid") {
+      const invoice = invoices.find(inv => inv.id === invoiceId);
+      if (invoice) {
+        initiateRecordPayment(invoice);
+        return;
+      }
+    }
+    
     try {
       const updateData: {
         id: string;
@@ -378,12 +421,8 @@ const Invoices = () => {
         id: invoiceId,
         status: newStatus
       };
-      // Set or clear paid_at based on status
-      if (newStatus === "paid") {
-        updateData.paid_at = new Date().toISOString();
-      } else {
-        updateData.paid_at = null;
-      }
+      // Clear paid_at when changing away from paid
+      updateData.paid_at = null;
       await updateInvoice.mutateAsync(updateData as any);
       toast.success(`Invoice marked as ${newStatus}`);
     } catch (error) {
@@ -799,8 +838,13 @@ const Invoices = () => {
                       <DropdownMenuItem
                         key={status}
                         onClick={() => {
-                          handleStatusChange(viewingInvoice.id, status);
-                          setViewingInvoice(prev => prev ? { ...prev, status: status as Invoice['status'] } : null);
+                          if (status === "paid") {
+                            // Use handleStatusChange which will show the payment dialog
+                            handleStatusChange(viewingInvoice.id, status);
+                          } else {
+                            handleStatusChange(viewingInvoice.id, status);
+                            setViewingInvoice(prev => prev ? { ...prev, status: status as Invoice['status'] } : null);
+                          }
                         }}
                         disabled={viewingInvoice.status === status}
                         className={viewingInvoice.status === status ? "bg-accent" : ""}
@@ -1185,6 +1229,19 @@ const Invoices = () => {
       setViewSignatureOpen(open);
       if (!open) setViewSignatureId(null);
     }} />
+
+      {/* Record Payment Dialog */}
+      <RecordPaymentDialog
+        open={recordPaymentDialogOpen}
+        onOpenChange={(open) => {
+          setRecordPaymentDialogOpen(open);
+          if (!open) setPendingPaymentInvoice(null);
+        }}
+        invoiceTotal={pendingPaymentInvoice ? getTotalWithLateFee(pendingPaymentInvoice) : 0}
+        invoiceNumber={pendingPaymentInvoice?.invoice_number || ""}
+        onConfirm={handleRecordPayment}
+        isLoading={updateInvoice.isPending}
+      />
 
       <Button className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50" onClick={() => openEditDialog(true)}>
         <Plus className="w-6 h-6" />
