@@ -14,7 +14,7 @@ const logStep = (step: string, details?: any) => {
 };
 
 interface NotificationRequest {
-  type: "invoice_paid" | "quote_approved" | "payment_failed" | "late_fee_applied" | "payment_reminder";
+  type: "invoice_paid" | "quote_approved" | "payment_failed" | "late_fee_applied" | "payment_reminder" | "payment_recorded";
   invoiceNumber?: string;
   quoteNumber?: string;
   customerName: string;
@@ -28,6 +28,12 @@ interface NotificationRequest {
   dueDate?: string;
   errorMessage?: string;
   paymentLink?: string;
+  paymentAmount?: number;
+  paymentMethod?: string;
+  totalPaid?: number;
+  totalDue?: number;
+  remainingBalance?: number;
+  isFullyPaid?: boolean;
 }
 
 serve(async (req) => {
@@ -228,6 +234,95 @@ serve(async (req) => {
         `,
       });
       logStep("Payment reminder email sent to customer", { response: customerEmailResponse });
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    if (payload.type === "payment_recorded") {
+      const formatMethod = (method: string) => {
+        const methodLabels: Record<string, string> = {
+          'cash': 'Cash',
+          'check': 'Check',
+          'credit_debit': 'Credit/Debit Card',
+          'bank_payment': 'Bank Payment',
+          'zelle': 'Zelle',
+          'venmo': 'Venmo',
+          'paypal': 'PayPal',
+          'other': 'Other',
+        };
+        return methodLabels[method] || method;
+      };
+      
+      // Email to customer confirming payment
+      const customerEmailResponse = await resend.emails.send({
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
+        to: [payload.customerEmail],
+        reply_to: payload.companyEmail || undefined,
+        subject: payload.isFullyPaid 
+          ? `Payment Confirmed - Invoice #${payload.invoiceNumber} Paid in Full`
+          : `Payment Received - Invoice #${payload.invoiceNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #16a34a;">${payload.isFullyPaid ? 'Payment Confirmed - Paid in Full!' : 'Payment Received!'}</h1>
+            <p>Hello ${payload.customerName},</p>
+            <p>Thank you for your payment to <strong>${payload.companyName}</strong>.</p>
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Payment Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
+              ${!payload.isFullyPaid ? `
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                  <p style="margin: 0;"><strong>Total Invoice Amount:</strong> $${payload.totalDue?.toFixed(2)}</p>
+                  <p style="margin: 10px 0 0 0;"><strong>Total Paid:</strong> $${payload.totalPaid?.toFixed(2)}</p>
+                  <p style="margin: 10px 0 0 0; color: #dc2626;"><strong>Remaining Balance:</strong> $${payload.remainingBalance?.toFixed(2)}</p>
+                </div>
+              ` : ''}
+            </div>
+            ${payload.isFullyPaid 
+              ? '<p style="color: #16a34a; font-weight: bold;">Your invoice has been paid in full. Thank you!</p>'
+              : '<p>Please remit the remaining balance at your earliest convenience.</p>'
+            }
+            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Thank you for your business!<br>${payload.companyName}</p>
+          </div>
+        `,
+      });
+      logStep("Payment recorded email sent to customer", { response: customerEmailResponse });
+
+      // Email to company about payment received
+      const companyEmailResponse = await resend.emails.send({
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
+        to: [payload.companyEmail],
+        subject: payload.isFullyPaid 
+          ? `Payment Received - Invoice #${payload.invoiceNumber} Paid in Full`
+          : `Partial Payment Received - Invoice #${payload.invoiceNumber}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #16a34a;">${payload.isFullyPaid ? 'Invoice Paid in Full!' : 'Partial Payment Received'}</h1>
+            <p><strong>${payload.customerName}</strong> has made a payment on Invoice #${payload.invoiceNumber}.</p>
+            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p style="margin: 0;"><strong>Payment Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
+              <p style="margin: 10px 0 0 0;"><strong>Customer:</strong> ${payload.customerName}</p>
+              ${!payload.isFullyPaid ? `
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                  <p style="margin: 0;"><strong>Total Due:</strong> $${payload.totalDue?.toFixed(2)}</p>
+                  <p style="margin: 10px 0 0 0;"><strong>Total Paid:</strong> $${payload.totalPaid?.toFixed(2)}</p>
+                  <p style="margin: 10px 0 0 0; color: #f59e0b;"><strong>Remaining Balance:</strong> $${payload.remainingBalance?.toFixed(2)}</p>
+                </div>
+              ` : ''}
+            </div>
+            ${payload.isFullyPaid 
+              ? '<p>The invoice has been automatically marked as paid in your system.</p>'
+              : '<p>The customer still has an outstanding balance.</p>'
+            }
+            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
+          </div>
+        `,
+      });
+      logStep("Payment recorded email sent to company", { response: companyEmailResponse });
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

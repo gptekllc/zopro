@@ -37,6 +37,7 @@ import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { RecordPaymentDialog, PaymentData } from '@/components/invoices/RecordPaymentDialog';
 import { getTotalWithLateFee } from '@/hooks/useInvoices';
+import { useCreatePayment, useInvoiceBalance } from '@/hooks/usePayments';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -147,6 +148,8 @@ const CustomerDetail = () => {
   const signQuote = useApproveQuoteWithSignature();
   const sendSignatureRequest = useSendSignatureRequest();
   const { data: company } = useCompany();
+  const createPayment = useCreatePayment();
+  const { data: pendingInvoiceBalance } = useInvoiceBalance(pendingPaymentInvoice?.id || null);
 
   const handleSendPortalLink = async () => {
     if (!customer?.email) {
@@ -266,20 +269,20 @@ const CustomerDetail = () => {
   const handleRecordPayment = async (paymentData: PaymentData) => {
     if (!pendingPaymentInvoice) return;
     try {
-      await updateInvoice.mutateAsync({
-        id: pendingPaymentInvoice.id,
-        status: 'paid',
-        paid_at: paymentData.date.toISOString(),
-        notes: (pendingPaymentInvoice as any).notes 
-          ? `${(pendingPaymentInvoice as any).notes}\n\nPayment: ${paymentData.method} - $${paymentData.amount.toFixed(2)}${paymentData.note ? ` - ${paymentData.note}` : ''}`
-          : `Payment: ${paymentData.method} - $${paymentData.amount.toFixed(2)}${paymentData.note ? ` - ${paymentData.note}` : ''}`
+      await createPayment.mutateAsync({
+        invoiceId: pendingPaymentInvoice.id,
+        amount: paymentData.amount,
+        method: paymentData.method,
+        paymentDate: paymentData.date,
+        notes: paymentData.note || undefined,
+        sendNotification: paymentData.sendNotification,
       });
-      toast.success('Payment recorded successfully');
+      
       openSelectedInvoice(null);
       setRecordPaymentDialogOpen(false);
       setPendingPaymentInvoice(null);
     } catch {
-      toast.error('Failed to record payment');
+      // Error is handled by the hook
     }
   };
 
@@ -1057,9 +1060,11 @@ const CustomerDetail = () => {
           if (!open) setPendingPaymentInvoice(null);
         }}
         invoiceTotal={pendingPaymentInvoice ? getTotalWithLateFee(pendingPaymentInvoice as any) : 0}
+        remainingBalance={pendingInvoiceBalance?.remaining}
         invoiceNumber={pendingPaymentInvoice?.invoice_number || ""}
+        customerEmail={customer?.email}
         onConfirm={handleRecordPayment}
-        isLoading={updateInvoice.isPending}
+        isLoading={createPayment.isPending}
       />
     </div>
   );

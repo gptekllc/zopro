@@ -22,8 +22,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
 
-const PAYMENT_METHODS = [
+export const PAYMENT_METHODS = [
   { value: 'cash', label: 'Cash' },
   { value: 'check', label: 'Check' },
   { value: 'credit_debit', label: 'Credit/Debit' },
@@ -41,13 +42,16 @@ export interface PaymentData {
   amount: number;
   date: Date;
   note: string;
+  sendNotification: boolean;
 }
 
 interface RecordPaymentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   invoiceTotal: number;
+  remainingBalance?: number;
   invoiceNumber: string;
+  customerEmail?: string | null;
   onConfirm: (data: PaymentData) => void;
   isLoading?: boolean;
 }
@@ -56,7 +60,9 @@ export function RecordPaymentDialog({
   open,
   onOpenChange,
   invoiceTotal,
+  remainingBalance,
   invoiceNumber,
+  customerEmail,
   onConfirm,
   isLoading = false,
 }: RecordPaymentDialogProps) {
@@ -64,16 +70,21 @@ export function RecordPaymentDialog({
   const [amount, setAmount] = useState<string>('');
   const [date, setDate] = useState<Date>(new Date());
   const [note, setNote] = useState('');
+  const [sendNotification, setSendNotification] = useState(true);
+
+  // Use remaining balance if available, otherwise invoice total
+  const defaultAmount = remainingBalance !== undefined ? remainingBalance : invoiceTotal;
 
   // Reset form when dialog opens with pre-filled amount
   useEffect(() => {
     if (open) {
       setMethod('cash');
-      setAmount(invoiceTotal.toFixed(2));
+      setAmount(defaultAmount.toFixed(2));
       setDate(new Date());
       setNote('');
+      setSendNotification(!!customerEmail);
     }
-  }, [open, invoiceTotal]);
+  }, [open, defaultAmount, customerEmail]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,6 +93,7 @@ export function RecordPaymentDialog({
       amount: parseFloat(amount) || 0,
       date,
       note,
+      sendNotification,
     });
   };
 
@@ -161,6 +173,19 @@ export function RecordPaymentDialog({
               rows={3}
             />
           </div>
+
+          {customerEmail && (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="sendNotification"
+                checked={sendNotification}
+                onCheckedChange={(checked) => setSendNotification(checked === true)}
+              />
+              <Label htmlFor="sendNotification" className="text-sm font-normal cursor-pointer">
+                Send payment confirmation email to customer
+              </Label>
+            </div>
+          )}
 
           <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
             <Button
