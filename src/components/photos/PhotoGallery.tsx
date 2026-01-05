@@ -49,6 +49,7 @@ export function PhotoGallery({ photos, className, onReorder, onDelete, onUpdateT
   // Drag and drop state
   const [draggedPhoto, setDraggedPhoto] = useState<JobPhoto | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [dragOverCategory, setDragOverCategory] = useState<'before' | 'after' | 'other' | null>(null);
   const [orderedPhotos, setOrderedPhotos] = useState<JobPhoto[]>([]);
 
   // Sort photos by display_order when photos prop changes
@@ -96,11 +97,16 @@ export function PhotoGallery({ photos, className, onReorder, onDelete, onUpdateT
   const afterPhotos = orderedPhotos.filter(p => p.photo_type === 'after');
   const otherPhotos = orderedPhotos.filter(p => p.photo_type === 'other');
 
-  const photosByType = [
+  const allCategories = [
     { type: 'before', label: 'Before', photos: beforePhotos, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
     { type: 'after', label: 'After', photos: afterPhotos, color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
     { type: 'other', label: 'Other', photos: otherPhotos, color: 'bg-muted text-muted-foreground' },
-  ].filter(g => g.photos.length > 0);
+  ];
+
+  // Show only non-empty categories, but show all when dragging to allow dropping in empty categories
+  const photosByType = draggedPhoto 
+    ? allCategories 
+    : allCategories.filter(g => g.photos.length > 0);
 
   const allPhotosFlat = [...beforePhotos, ...afterPhotos, ...otherPhotos];
 
@@ -192,37 +198,77 @@ export function PhotoGallery({ photos, className, onReorder, onDelete, onUpdateT
   };
 
   // Drag and drop handlers for reordering
-  const handleDragStart = (e: React.DragEvent, photo: JobPhoto, groupPhotos: JobPhoto[]) => {
+  const handleDragStart = (e: React.DragEvent, photo: JobPhoto) => {
     e.dataTransfer.effectAllowed = 'move';
     setDraggedPhoto(photo);
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: React.DragEvent, index: number, category: 'before' | 'after' | 'other') => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     setDragOverIndex(index);
+    setDragOverCategory(category);
+  };
+
+  const handleCategoryDragOver = (e: React.DragEvent, category: 'before' | 'after' | 'other') => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverCategory(category);
+    setDragOverIndex(null);
   };
 
   const handleDragLeave = () => {
     setDragOverIndex(null);
+    setDragOverCategory(null);
+  };
+
+  const handleCategoryDrop = async (e: React.DragEvent, targetCategory: 'before' | 'after' | 'other') => {
+    e.preventDefault();
+    setDragOverIndex(null);
+    setDragOverCategory(null);
+    
+    if (!draggedPhoto) {
+      return;
+    }
+
+    // If dropping on a different category, change the photo type
+    if (draggedPhoto.photo_type !== targetCategory && onUpdateType) {
+      onUpdateType(draggedPhoto.id, targetCategory);
+      // Update local state immediately for better UX
+      setOrderedPhotos(prev => prev.map(p => 
+        p.id === draggedPhoto.id ? { ...p, photo_type: targetCategory } : p
+      ));
+      toast.success(`Photo moved to ${targetCategory}`);
+    }
+
+    setDraggedPhoto(null);
   };
 
   const handleDrop = async (e: React.DragEvent, targetPhoto: JobPhoto, groupPhotos: JobPhoto[]) => {
     e.preventDefault();
     setDragOverIndex(null);
+    setDragOverCategory(null);
     
     if (!draggedPhoto || draggedPhoto.id === targetPhoto.id) {
       setDraggedPhoto(null);
       return;
     }
 
-    // Only allow reordering within the same photo type
+    // If dropping on a different category, change the photo type first
     if (draggedPhoto.photo_type !== targetPhoto.photo_type) {
-      toast.error('Can only reorder within the same category');
+      if (onUpdateType) {
+        onUpdateType(draggedPhoto.id, targetPhoto.photo_type);
+        // Update local state immediately for better UX
+        setOrderedPhotos(prev => prev.map(p => 
+          p.id === draggedPhoto.id ? { ...p, photo_type: targetPhoto.photo_type } : p
+        ));
+        toast.success(`Photo moved to ${targetPhoto.photo_type}`);
+      }
       setDraggedPhoto(null);
       return;
     }
 
+    // Same category - reorder
     const fromIndex = groupPhotos.findIndex(p => p.id === draggedPhoto.id);
     const toIndex = groupPhotos.findIndex(p => p.id === targetPhoto.id);
 
@@ -277,6 +323,7 @@ export function PhotoGallery({ photos, className, onReorder, onDelete, onUpdateT
   const handleDragEnd = () => {
     setDraggedPhoto(null);
     setDragOverIndex(null);
+    setDragOverCategory(null);
   };
 
   // Keyboard navigation
@@ -321,31 +368,39 @@ export function PhotoGallery({ photos, className, onReorder, onDelete, onUpdateT
           <Camera className="w-4 h-4 text-muted-foreground" />
           <span className="font-medium text-sm">Photos ({photos.length})</span>
         </div>
-        {editable && photos.length > 1 && (
-          <span className="text-xs text-muted-foreground">Drag to reorder</span>
+        {editable && (onUpdateType || photos.length > 1) && (
+          <span className="text-xs text-muted-foreground">Drag to reorder{onUpdateType && ' or move between categories'}</span>
         )}
       </div>
 
       <div className="space-y-4">
         {photosByType.map((group) => (
-          <div key={group.type}>
-            <Badge className={`mb-2 ${group.color}`} variant="secondary">
+          <div 
+            key={group.type}
+            onDragOver={(e) => handleCategoryDragOver(e, group.type as 'before' | 'after' | 'other')}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleCategoryDrop(e, group.type as 'before' | 'after' | 'other')}
+          >
+            <Badge 
+              className={`mb-2 ${group.color} ${draggedPhoto && dragOverCategory === group.type && draggedPhoto.photo_type !== group.type ? 'ring-2 ring-primary ring-offset-2' : ''}`} 
+              variant="secondary"
+            >
               {group.label} ({group.photos.length})
             </Badge>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {group.photos.map((photo, index) => (
                 <div
                   key={photo.id}
-                  draggable={editable && group.photos.length > 1}
-                  onDragStart={(e) => handleDragStart(e, photo, group.photos)}
-                  onDragOver={(e) => handleDragOver(e, index)}
+                  draggable={editable && (!!onUpdateType || group.photos.length > 1)}
+                  onDragStart={(e) => handleDragStart(e, photo)}
+                  onDragOver={(e) => handleDragOver(e, index, group.type as 'before' | 'after' | 'other')}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, photo, group.photos)}
                   onDragEnd={handleDragEnd}
                   className={`relative group ${
                     draggedPhoto?.id === photo.id ? 'opacity-50' : ''
                   } ${
-                    dragOverIndex === index && draggedPhoto?.photo_type === photo.photo_type && draggedPhoto?.id !== photo.id
+                    dragOverIndex === index && dragOverCategory === group.type && draggedPhoto?.id !== photo.id
                       ? 'ring-2 ring-primary ring-offset-2'
                       : ''
                   }`}
@@ -402,6 +457,16 @@ export function PhotoGallery({ photos, className, onReorder, onDelete, onUpdateT
                   </button>
                 </div>
               ))}
+              {/* Empty category drop zone */}
+              {group.photos.length === 0 && draggedPhoto && draggedPhoto.photo_type !== group.type && (
+                <div 
+                  className={`aspect-square rounded-lg border-2 border-dashed flex items-center justify-center text-muted-foreground ${
+                    dragOverCategory === group.type ? 'border-primary bg-primary/10' : 'border-muted-foreground/30'
+                  }`}
+                >
+                  <span className="text-xs">Drop here</span>
+                </div>
+              )}
             </div>
           </div>
         ))}
