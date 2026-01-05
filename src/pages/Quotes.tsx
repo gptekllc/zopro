@@ -871,7 +871,7 @@ const Quotes = () => {
                     </div>
                     {quote.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{quote.notes}</p>}
                   </div>
-                  <span className="text-sm font-medium text-primary shrink-0">${Number(quote.total).toLocaleString()}</span>
+                  <span className="text-sm font-semibold text-primary shrink-0">${Number(quote.total).toFixed(2)}</span>
                 </div>
                 
                 {/* Row 2: Tags + Actions */}
@@ -1002,7 +1002,7 @@ const Quotes = () => {
                     </div>
                     {quote.notes && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{quote.notes}</p>}
                   </div>
-                  <span className="text-base font-semibold text-primary shrink-0">${Number(quote.total).toLocaleString()}</span>
+                  <span className="text-base font-semibold text-primary shrink-0">${Number(quote.total).toFixed(2)}</span>
                 </div>
                 
                 {/* Row 2: Tags + Actions */}
