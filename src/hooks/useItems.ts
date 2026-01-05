@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
-export interface CatalogItem {
+export interface Item {
   id: string;
   company_id: string;
   name: string;
@@ -15,7 +15,7 @@ export interface CatalogItem {
   updated_at: string;
 }
 
-export const useCatalogItems = () => {
+export const useItems = () => {
   const { profile } = useAuth();
   
   return useQuery({
@@ -31,13 +31,13 @@ export const useCatalogItems = () => {
         .order('name', { ascending: true });
       
       if (error) throw error;
-      return data as CatalogItem[];
+      return data as Item[];
     },
     enabled: !!profile?.company_id,
   });
 };
 
-export const useActiveCatalogItems = () => {
+export const useActiveItems = () => {
   const { profile } = useAuth();
   
   return useQuery({
@@ -54,18 +54,18 @@ export const useActiveCatalogItems = () => {
         .order('name', { ascending: true });
       
       if (error) throw error;
-      return data as CatalogItem[];
+      return data as Item[];
     },
     enabled: !!profile?.company_id,
   });
 };
 
-export const useCreateCatalogItem = () => {
+export const useCreateItem = () => {
   const queryClient = useQueryClient();
   const { profile } = useAuth();
   
   return useMutation({
-    mutationFn: async (item: Omit<CatalogItem, 'id' | 'company_id' | 'created_at' | 'updated_at'>) => {
+    mutationFn: async (item: Omit<Item, 'id' | 'company_id' | 'created_at' | 'updated_at'>) => {
       if (!profile?.company_id) throw new Error('No company ID');
       
       const { data, error } = await supabase
@@ -90,11 +90,11 @@ export const useCreateCatalogItem = () => {
   });
 };
 
-export const useUpdateCatalogItem = () => {
+export const useUpdateItem = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<CatalogItem> & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: Partial<Item> & { id: string }) => {
       const { data, error } = await supabase
         .from('catalog_items')
         .update(updates)
@@ -115,7 +115,7 @@ export const useUpdateCatalogItem = () => {
   });
 };
 
-export const useDeleteCatalogItem = () => {
+export const useDeleteItem = () => {
   const queryClient = useQueryClient();
   
   return useMutation({

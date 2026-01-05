@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ItemsPicker } from './ItemsPicker';
-import { CatalogItem } from '@/hooks/useCatalog';
+import { Item } from '@/hooks/useItems';
 
 export interface LineItem {
   id: string;
@@ -19,7 +19,7 @@ export interface LineItem {
 interface LineItemsEditorProps {
   items: LineItem[];
   onAddItem: (type: 'product' | 'service') => void;
-  onAddFromCatalog?: (item: CatalogItem) => void;
+  onAddFromCatalog?: (item: Item) => void;
   onRemoveItem: (id: string) => void;
   onUpdateItem: (id: string, field: keyof LineItem, value: string | number) => void;
   showTypeColumn?: boolean;
@@ -40,7 +40,7 @@ export const LineItemsEditor = ({
   const products = items.filter(item => item.type === 'product');
   const services = items.filter(item => item.type === 'service');
 
-  const handleCatalogSelect = (catalogItem: CatalogItem) => {
+  const handleCatalogSelect = (catalogItem: Item) => {
     if (onAddFromCatalog) {
       onAddFromCatalog(catalogItem);
     }
