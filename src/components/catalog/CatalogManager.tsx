@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useCatalogItems, useCreateCatalogItem, useUpdateCatalogItem, useDeleteCatalogItem, CatalogItem } from '@/hooks/useCatalog';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,18 +7,30 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Trash2, Package, Wrench, Loader2, Search, X, MoreVertical, Eye, EyeOff, Copy } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Plus, Edit, Trash2, Package, Wrench, Loader2, MoreVertical, Eye, EyeOff, Copy, ArrowUpDown, Download, Upload, FileDown, Check, X } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 import { toast } from 'sonner';
 
 interface CatalogManagerProps {
   searchQuery?: string;
   statusFilter?: 'all' | 'active' | 'inactive';
+}
+
+interface ImportPreviewItem {
+  name: string;
+  description: string | null;
+  type: 'product' | 'service';
+  unit_price: number;
+  is_active: boolean;
+  isValid: boolean;
+  error?: string;
 }
 
 export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: CatalogManagerProps) => {
@@ -31,6 +43,14 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
   const [editingItem, setEditingItem] = useState<CatalogItem | null>(null);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<CatalogItem | null>(null);
   const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
+  
+  // Import/Export state
+  const [importExportOpen, setImportExportOpen] = useState(false);
+  const [exportType, setExportType] = useState<'products' | 'services' | 'both'>('both');
+  const [importPreview, setImportPreview] = useState<ImportPreviewItem[]>([]);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -119,6 +139,156 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
     });
   };
 
+  // Import/Export functions
+  const downloadSampleCSV = () => {
+    const headers = ['name', 'description', 'type', 'unit_price', 'is_active'];
+    const sampleData = [
+      ['AC Filter 16x25', 'Standard HVAC filter', 'product', '24.99', 'true'],
+      ['Furnace Tune-Up', 'Annual maintenance service', 'service', '129.00', 'true'],
+    ];
+    const csvContent = [headers.join(','), ...sampleData.map(row => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'catalog_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      if (lines.length < 2) {
+        toast.error('CSV file must have headers and at least one data row');
+        return;
+      }
+
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      const nameIdx = headers.indexOf('name');
+      const descIdx = headers.indexOf('description');
+      const typeIdx = headers.indexOf('type');
+      const priceIdx = headers.indexOf('unit_price');
+      const activeIdx = headers.indexOf('is_active');
+
+      if (nameIdx === -1) {
+        toast.error('CSV must have a "name" column');
+        return;
+      }
+
+      const previewItems: ImportPreviewItem[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        const name = values[nameIdx];
+        
+        if (!name) {
+          previewItems.push({
+            name: '',
+            description: null,
+            type: 'service',
+            unit_price: 0,
+            is_active: true,
+            isValid: false,
+            error: 'Name is required',
+          });
+          continue;
+        }
+
+        const type = typeIdx !== -1 && ['product', 'service'].includes(values[typeIdx]?.toLowerCase())
+          ? (values[typeIdx].toLowerCase() as 'product' | 'service')
+          : 'service';
+
+        const unitPrice = priceIdx !== -1 ? parseFloat(values[priceIdx]) || 0 : 0;
+
+        previewItems.push({
+          name,
+          description: descIdx !== -1 ? values[descIdx] || null : null,
+          type,
+          unit_price: unitPrice,
+          is_active: activeIdx !== -1 ? values[activeIdx]?.toLowerCase() !== 'false' : true,
+          isValid: true,
+        });
+      }
+
+      setImportPreview(previewItems);
+      setImportExportOpen(false);
+      setPreviewDialogOpen(true);
+    } catch (error) {
+      toast.error('Failed to parse CSV file');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const confirmImport = async () => {
+    const validItems = importPreview.filter(item => item.isValid);
+    if (validItems.length === 0) {
+      toast.error('No valid items to import');
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      for (const item of validItems) {
+        await createItem.mutateAsync({
+          name: item.name,
+          description: item.description,
+          type: item.type,
+          unit_price: item.unit_price,
+          is_active: item.is_active,
+        });
+      }
+      toast.success(`Imported ${validItems.length} item${validItems.length !== 1 ? 's' : ''}`);
+      setPreviewDialogOpen(false);
+      setImportPreview([]);
+    } catch (error) {
+      toast.error('Failed to import items');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const handleExport = () => {
+    let exportItems = items;
+    if (exportType === 'products') {
+      exportItems = items.filter(i => i.type === 'product');
+    } else if (exportType === 'services') {
+      exportItems = items.filter(i => i.type === 'service');
+    }
+
+    if (exportItems.length === 0) {
+      toast.error('No items to export');
+      return;
+    }
+
+    const headers = ['name', 'description', 'type', 'unit_price', 'is_active'];
+    const rows = exportItems.map(item => [
+      `"${item.name.replace(/"/g, '""')}"`,
+      `"${(item.description || '').replace(/"/g, '""')}"`,
+      item.type,
+      item.unit_price.toString(),
+      item.is_active.toString(),
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `catalog_${exportType}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${exportItems.length} item${exportItems.length !== 1 ? 's' : ''}`);
+    setImportExportOpen(false);
+  };
+
   const renderItemCard = (item: CatalogItem) => (
     <div
       key={item.id}
@@ -190,8 +360,20 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
     );
   }
 
+  const validImportCount = importPreview.filter(i => i.isValid).length;
+  const invalidImportCount = importPreview.filter(i => !i.isValid).length;
+
   return (
     <div className="space-y-4">
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        accept=".csv"
+        onChange={handleFileChange}
+        className="hidden"
+      />
+
       {/* Products/Services Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'products' | 'services')} className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-4">
@@ -211,10 +393,17 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
               <span className="text-sm text-muted-foreground">
                 {products.length} product{products.length !== 1 ? 's' : ''}
               </span>
-              <Button size="sm" onClick={() => openCreateDialog('product')}>
-                <Plus className="w-4 h-4 mr-1" />
-                Add Product
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => openCreateDialog('product')}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Product
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setImportExportOpen(true)}>
+                  <ArrowUpDown className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">Import / Export</span>
+                  <span className="sm:hidden">I/E</span>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {products.length > 0 ? (
@@ -236,10 +425,17 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
               <span className="text-sm text-muted-foreground">
                 {services.length} service{services.length !== 1 ? 's' : ''}
               </span>
-              <Button size="sm" onClick={() => openCreateDialog('service')}>
-                <Plus className="w-4 h-4 mr-1" />
-                Add Service
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button size="sm" onClick={() => openCreateDialog('service')}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Service
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setImportExportOpen(true)}>
+                  <ArrowUpDown className="w-4 h-4 mr-1" />
+                  <span className="hidden sm:inline">Import / Export</span>
+                  <span className="sm:hidden">I/E</span>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {services.length > 0 ? (
@@ -342,6 +538,138 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import/Export Dialog */}
+      <Dialog open={importExportOpen} onOpenChange={setImportExportOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Import / Export Catalog</DialogTitle>
+            <DialogDescription>
+              Import items from a CSV file or export your catalog.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Sample Download */}
+            <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+              <div>
+                <p className="font-medium text-sm">CSV Template</p>
+                <p className="text-xs text-muted-foreground">Download sample format</p>
+              </div>
+              <Button variant="outline" size="sm" onClick={downloadSampleCSV}>
+                <FileDown className="w-4 h-4 mr-1" />
+                Download
+              </Button>
+            </div>
+
+            {/* Import Section */}
+            <div className="space-y-2">
+              <Label className="text-base font-medium">Import</Label>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={handleImportClick}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Select CSV File
+              </Button>
+            </div>
+
+            {/* Export Section */}
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Export</Label>
+              <RadioGroup value={exportType} onValueChange={(v) => setExportType(v as 'products' | 'services' | 'both')}>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="products" id="products" />
+                  <Label htmlFor="products" className="font-normal">Products only</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="services" id="services" />
+                  <Label htmlFor="services" className="font-normal">Services only</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="both" id="both" />
+                  <Label htmlFor="both" className="font-normal">Both (all items)</Label>
+                </div>
+              </RadioGroup>
+              <Button variant="outline" className="w-full" onClick={handleExport}>
+                <Download className="w-4 h-4 mr-2" />
+                Export as CSV
+              </Button>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setImportExportOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Preview Dialog */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Import Preview</DialogTitle>
+            <DialogDescription>
+              Review the items before importing. {validImportCount} valid, {invalidImportCount} invalid.
+            </DialogDescription>
+          </DialogHeader>
+
+          <ScrollArea className="max-h-[400px] pr-4">
+            <div className="space-y-2">
+              {importPreview.map((item, index) => (
+                <div
+                  key={index}
+                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                    item.isValid ? 'bg-background' : 'bg-destructive/10 border-destructive/30'
+                  }`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      {item.isValid ? (
+                        <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                      ) : (
+                        <X className="w-4 h-4 text-destructive flex-shrink-0" />
+                      )}
+                      <span className={`font-medium truncate ${!item.isValid ? 'text-destructive' : ''}`}>
+                        {item.name || '(empty name)'}
+                      </span>
+                      <Badge variant="secondary" className="text-xs capitalize">
+                        {item.type}
+                      </Badge>
+                    </div>
+                    {item.description && (
+                      <p className="text-sm text-muted-foreground truncate ml-6">{item.description}</p>
+                    )}
+                    {item.error && (
+                      <p className="text-xs text-destructive ml-6">{item.error}</p>
+                    )}
+                  </div>
+                  <span className="font-semibold text-primary ml-4">
+                    ${formatAmount(item.unit_price)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setPreviewDialogOpen(false); setImportPreview([]); }}>
+              Cancel
+            </Button>
+            <Button onClick={confirmImport} disabled={isImporting || validImportCount === 0}>
+              {isImporting ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4 mr-2" />
+              )}
+              Import {validImportCount} Item{validImportCount !== 1 ? 's' : ''}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
