@@ -445,8 +445,8 @@ const TransactionsReport = () => {
             </DropdownMenu>
           </div>
 
-          {/* Desktop: Search + Record Payment + Actions */}
-          <div className="hidden lg:flex items-center gap-2 w-full">
+          {/* Desktop: Search + Record Payment + Actions - all aligned right */}
+          <div className="hidden lg:flex items-center gap-2 w-full justify-end">
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
@@ -455,16 +455,14 @@ const TransactionsReport = () => {
               <Plus className="w-4 h-4" />
               Record Payment
             </Button>
-            <div className="flex items-center gap-2 ml-auto">
-              <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredPayments.length === 0}>
-                <Mail className="w-4 h-4 mr-2" />
-                Email
-              </Button>
-              <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredPayments.length === 0}>
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </Button>
-            </div>
+            <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredPayments.length === 0}>
+              <Mail className="w-4 h-4 mr-2" />
+              Email
+            </Button>
+            <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredPayments.length === 0}>
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
           </div>
         </div>
 
