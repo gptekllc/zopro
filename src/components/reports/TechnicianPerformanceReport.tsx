@@ -527,10 +527,10 @@ const TechnicianPerformanceReport = () => {
                 </SelectContent>
               </Select>
 
-              {/* Mobile Actions Dropdown - next to time range */}
+              {/* Mobile & Tablet Actions Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="sm:hidden">
+                  <Button variant="outline" size="icon" className="lg:hidden">
                     <MoreVertical className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -575,31 +575,6 @@ const TechnicianPerformanceReport = () => {
                   </Popover>
                 </>}
             </div>
-          </div>
-
-          {/* Tablet: Actions Dropdown */}
-          <div className="hidden sm:flex lg:hidden items-center justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={filteredData.length === 0}>
-                  <Mail className="w-4 h-4 mr-2" />
-                  Email
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={printReport} disabled={filteredData.length === 0}>
-                  <Printer className="w-4 h-4 mr-2" />
-                  Print/PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={exportToCSV} disabled={filteredData.length === 0}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Export CSV
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
 
           {/* Desktop Actions */}
