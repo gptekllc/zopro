@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { format, subMonths, startOfMonth, endOfMonth, eachMonthOfInterval, parseISO, startOfYear, subYears } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Mail, Filter, X } from 'lucide-react';
+import { CalendarIcon, Mail, Filter, X, MoreVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useJobs } from '@/hooks/useJobs';
 import { useQuotes } from '@/hooks/useQuotes';
@@ -19,6 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   BarChart,
   Bar,
@@ -536,17 +542,42 @@ const MonthlySummaryReport = () => {
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Mobile Actions Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="sm:hidden">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-popover">
+              <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={monthlyData.length === 0}>
+                <Mail className="w-4 h-4 mr-2" />
+                Email
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={printReport} disabled={monthlyData.length === 0}>
+                <Printer className="w-4 h-4 mr-2" />
+                Print/PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToCSV} disabled={monthlyData.length === 0}>
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <div className="flex items-center justify-center lg:justify-end gap-2">
+
+        {/* Desktop Actions */}
+        <div className="hidden sm:flex items-center justify-end gap-2">
           <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={monthlyData.length === 0}>
-            <Mail className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Email</span>
+            <Mail className="w-4 h-4 mr-2" />
+            Email
           </Button>
           <Button onClick={printReport} variant="outline" size="sm" disabled={monthlyData.length === 0}>
-            <Printer className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Print/PDF</span>
+            <Printer className="w-4 h-4 mr-2" />
+            Print/PDF
           </Button>
-          <Button onClick={exportToCSV} variant="outline" size="sm" disabled={monthlyData.length === 0} className="hidden sm:inline-flex">
+          <Button onClick={exportToCSV} variant="outline" size="sm" disabled={monthlyData.length === 0}>
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
