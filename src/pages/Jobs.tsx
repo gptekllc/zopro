@@ -1176,52 +1176,17 @@ const Jobs = () => {
                         </div>
                         {job.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{job.notes}</p>}
                       </div>
-                      {/* Total moved to row 2 after status */}
-                    </div>
-                    
-                    {/* Row 2: Tags + Actions */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1 flex-wrap">
-                        {job.archived_at && <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>}
+                      {/* Total Price at top right */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {(job.total ?? 0) > 0 && <span className="text-sm font-semibold text-primary">${Number(job.total).toFixed(2)}</span>}
+                        {/* Action Menu */}
                         <div onClick={e => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Badge className={`${getPriorityColor(job.priority)} text-xs cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
-                                {job.priority}
-                                <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                              </Badge>
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="bg-popover z-50">
-                              {JOB_PRIORITIES.map(priority => <DropdownMenuItem key={priority} onClick={() => handlePriorityChange(job.id, priority)} disabled={job.priority === priority} className={job.priority === priority ? 'bg-accent' : ''}>
-                                  <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
-                                    {priority}
-                                  </Badge>
-                                  {job.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                                </DropdownMenuItem>)}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
-                          {job.status.replace('_', ' ')}
-                        </span>
-                        {(job.total ?? 0) > 0 && <span className="text-sm font-semibold text-primary">${Number(job.total).toFixed(2)}</span>}
-                        {/* Notification sent indicator */}
-                        {(notificationCounts.get(job.id) || 0) > 0 && (
-                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1 text-xs">
-                            <Bell className="w-3 h-3" />
-                            Notified
-                          </Badge>
-                        )}
-                      </div>
-                      
-                      {/* Action Menu */}
-                      <div onClick={e => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="bg-popover">
                               {/* Quick Actions */}
                               {['scheduled', 'in_progress'].includes(job.status) && (
@@ -1308,14 +1273,53 @@ const Jobs = () => {
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
-                        </DropdownMenu>
+                          </DropdownMenu>
+                        </div>
                       </div>
+                    </div>
+                    
+                    {/* Row 2: Tags */}
+                    <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
+                      {job.archived_at && <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Badge className={`${getPriorityColor(job.priority)} text-xs cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
+                            {job.priority}
+                            <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                          </Badge>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="bg-popover z-50">
+                          {JOB_PRIORITIES.map(priority => <DropdownMenuItem key={priority} onClick={() => handlePriorityChange(job.id, priority)} disabled={job.priority === priority} className={job.priority === priority ? 'bg-accent' : ''}>
+                              <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
+                                {priority}
+                              </Badge>
+                              {job.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                            </DropdownMenuItem>)}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
+                        {job.status.replace('_', ' ')}
+                      </span>
+                      {/* Signature Badge */}
+                      {(job as any).completion_signature_id && (
+                        <Badge variant="outline" className="bg-success/10 text-success border-success/30 gap-1 text-xs">
+                          <PenTool className="w-3 h-3" />
+                          Signed
+                        </Badge>
+                      )}
+                      {/* Notification sent indicator */}
+                      {(notificationCounts.get(job.id) || 0) > 0 && (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1 text-xs">
+                          <Bell className="w-3 h-3" />
+                          Notified
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
                   {/* Desktop Layout */}
                   <div className="hidden sm:flex sm:flex-col gap-2">
-                    {/* Row 1: Job Info + Tags */}
+                    {/* Row 1: Job Info + Total + Actions */}
                     <div className="flex items-start justify-between gap-4">
                       {/* Left: Icon + Job Info */}
                       <div className="flex items-start gap-4 min-w-0 flex-1">
@@ -1363,48 +1367,9 @@ const Jobs = () => {
                         </div>
                       </div>
 
-                      {/* Right: Tags + Actions */}
-                      <div className="flex flex-col items-end gap-2 shrink-0">
-                        <div className="flex items-center gap-2">
-                          {job.archived_at && <Badge variant="outline" className="text-muted-foreground">Archived</Badge>}
-                          <div onClick={e => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Badge className={`${getPriorityColor(job.priority)} cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
-                                  {job.priority}
-                                  <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
-                                </Badge>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="bg-popover z-50">
-                                {JOB_PRIORITIES.map(priority => <DropdownMenuItem key={priority} onClick={() => handlePriorityChange(job.id, priority)} disabled={job.priority === priority} className={job.priority === priority ? 'bg-accent' : ''}>
-                                    <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
-                                      {priority}
-                                    </Badge>
-                                    {job.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                                  </DropdownMenuItem>)}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                          {/* Signature Badge */}
-                          {(job as any).completion_signature_id && (
-                            <Badge variant="outline" className="bg-success/10 text-success border-success/30 gap-1">
-                              <PenTool className="w-3 h-3" />
-                              Signed
-                            </Badge>
-                          )}
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
-                            {job.status.replace('_', ' ')}
-                          </span>
-                          {/* Notification sent indicator */}
-                          {(notificationCounts.get(job.id) || 0) > 0 && (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1">
-                              <Bell className="w-3 h-3" />
-                              Notified
-                            </Badge>
-                          )}
-                          {(job.total ?? 0) > 0 && <span className="text-base font-semibold text-primary">${Number(job.total).toFixed(2)}</span>}
-                        </div>
-                        
+                      {/* Right: Total Price + Actions */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {(job.total ?? 0) > 0 && <span className="text-base font-semibold text-primary">${Number(job.total).toFixed(2)}</span>}
                         {/* Action Menu */}
                         <div onClick={e => e.stopPropagation()}>
                           <DropdownMenu>
@@ -1503,7 +1468,46 @@ const Jobs = () => {
                         </div>
                       </div>
                     </div>
+
+                    {/* Row 2: Tags */}
+                    <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
+                      {job.archived_at && <Badge variant="outline" className="text-muted-foreground">Archived</Badge>}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Badge className={`${getPriorityColor(job.priority)} cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
+                            {job.priority}
+                            <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                          </Badge>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="bg-popover z-50">
+                          {JOB_PRIORITIES.map(priority => <DropdownMenuItem key={priority} onClick={() => handlePriorityChange(job.id, priority)} disabled={job.priority === priority} className={job.priority === priority ? 'bg-accent' : ''}>
+                              <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
+                                {priority}
+                              </Badge>
+                              {job.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
+                            </DropdownMenuItem>)}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${getStatusColor(job.status)}`}>
+                        {job.status.replace('_', ' ')}
+                      </span>
+                      {/* Signature Badge */}
+                      {(job as any).completion_signature_id && (
+                        <Badge variant="outline" className="bg-success/10 text-success border-success/30 gap-1">
+                          <PenTool className="w-3 h-3" />
+                          Signed
+                        </Badge>
+                      )}
+                      {/* Notification sent indicator */}
+                      {(notificationCounts.get(job.id) || 0) > 0 && (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800 gap-1">
+                          <Bell className="w-3 h-3" />
+                          Notified
+                        </Badge>
+                      )}
+                    </div>
                   </div>
+
                 </CardContent>
               </Card>)}
           {/* Infinite scroll trigger */}
