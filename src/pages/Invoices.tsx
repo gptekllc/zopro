@@ -31,6 +31,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { SignatureDialog } from "@/components/signatures/SignatureDialog";
 import { ViewSignatureDialog } from "@/components/signatures/ViewSignatureDialog";
 import { RecordPaymentDialog, PaymentData } from "@/components/invoices/RecordPaymentDialog";
+import { InvoiceDetailDialog } from "@/components/invoices/InvoiceDetailDialog";
 import { format, addDays } from "date-fns";
 import { toast } from "sonner";
 import { InlineCustomerForm } from "@/components/customers/InlineCustomerForm";
@@ -823,367 +824,99 @@ const Invoices = () => {
       </Dialog>
 
       {/* Invoice Detail Dialog for viewing from URL */}
-      {viewingInvoice && <Dialog open={!!viewingInvoice} onOpenChange={open => !open && openViewingInvoice(null)}>
-          <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <div className="flex items-center justify-between pr-8">
-                <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
-                  <Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
-                  <span className="truncate">{viewingInvoice.invoice_number}</span>
-                </DialogTitle>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize shrink-0 cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(viewingInvoice.status)}`}>
-                      {viewingInvoice.status}
-                      <ChevronRight className="w-3 h-3 rotate-90" />
-                    </span>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-popover z-50">
-                    {["draft", "sent", "paid"].map(status => (
-                      <DropdownMenuItem
-                        key={status}
-                        onClick={() => {
-                          if (status === "paid") {
-                            // Use handleStatusChange which will show the payment dialog
-                            handleStatusChange(viewingInvoice.id, status);
-                          } else {
-                            handleStatusChange(viewingInvoice.id, status);
-                            setViewingInvoice(prev => prev ? { ...prev, status: status as Invoice['status'] } : null);
-                          }
-                        }}
-                        disabled={viewingInvoice.status === status}
-                        className={viewingInvoice.status === status ? "bg-accent" : ""}
-                      >
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(status)}`}>
-                          {status}
-                        </span>
-                        {viewingInvoice.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </DialogHeader>
-
-            <div className="space-y-4 sm:space-y-6">
-              {/* Basic Info - responsive grid */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                <div>
-                  <Label className="text-muted-foreground text-xs sm:text-sm">Customer</Label>
-                  <p className="font-medium text-sm sm:text-base truncate">
-                    {getCustomerName(viewingInvoice.customer_id)}
-                  </p>
-                </div>
-                {(viewingInvoice as any).creator?.full_name && <div>
-                    <Label className="text-muted-foreground text-xs sm:text-sm">Created By</Label>
-                    <p className="font-medium text-sm sm:text-base truncate">
-                      {(viewingInvoice as any).creator.full_name}
-                    </p>
-                  </div>}
-                {/* Linked Job */}
-                {((viewingInvoice as any).job?.job_number || (viewingInvoice as any).quote?.job?.job_number) && <div>
-                    <Label className="text-muted-foreground text-xs sm:text-sm">Linked Job</Label>
-                    <p className="font-medium text-sm sm:text-base">
-                      {(viewingInvoice as any).job?.job_number || (viewingInvoice as any).quote?.job?.job_number}
-                    </p>
-                  </div>}
-                {((viewingInvoice as any).assigned_technician?.full_name || (viewingInvoice as any).quote?.job?.assigned_technician?.full_name) && <div>
-                    <Label className="text-muted-foreground text-xs sm:text-sm">Assigned Technician</Label>
-                    <p className="font-medium text-sm sm:text-base truncate">
-                      {(viewingInvoice as any).assigned_technician?.full_name || (viewingInvoice as any).quote?.job?.assigned_technician?.full_name}
-                    </p>
-                  </div>}
-                <div>
-                  <Label className="text-muted-foreground text-xs sm:text-sm">Created</Label>
-                  <p className="font-medium text-sm sm:text-base">
-                    {format(new Date(viewingInvoice.created_at), "MMM d, yyyy")}
-                  </p>
-                </div>
-                {viewingInvoice.due_date && <div>
-                    <Label className="text-muted-foreground text-xs sm:text-sm">Due Date</Label>
-                    <p className="font-medium text-sm sm:text-base">
-                      {format(new Date(viewingInvoice.due_date), "MMM d, yyyy")}
-                    </p>
-                  </div>}
-                {viewingInvoice.paid_at && <div>
-                    <Label className="text-muted-foreground text-xs sm:text-sm">Paid</Label>
-                    <p className="font-medium text-green-600 flex items-center gap-1 text-sm sm:text-base">
-                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                      {format(new Date(viewingInvoice.paid_at), "MMM d, yyyy")}
-                    </p>
-                  </div>}
-              </div>
-
-              {/* Tabs for Items, Linked Docs, Photos */}
-              <Tabs defaultValue="items" className="mt-4">
-                <TabsList className="flex-wrap h-auto gap-1 p-1">
-                  <TabsTrigger value="items" className="text-xs sm:text-sm px-2 sm:px-3">
-                    Details
-                  </TabsTrigger>
-                  <TabsTrigger value="linked" className="text-xs sm:text-sm px-2 sm:px-3">
-                    Linked Docs ({(viewingInvoice.quote_id ? 1 : 0) + ((viewingInvoice as any).job_id || (viewingInvoice as any).quote?.job ? 1 : 0)})
-                  </TabsTrigger>
-                  <TabsTrigger value="photos" className="text-xs sm:text-sm px-2 sm:px-3">
-                    Photos {viewingInvoicePhotos.length > 0 && `(${viewingInvoicePhotos.length})`}
-                  </TabsTrigger>
-                </TabsList>
-
-                {/* Items Tab */}
-                <TabsContent value="items" className="space-y-6 mt-4">
-                  {/* Line Items Section */}
-                  <div className="space-y-3">
-                    <Label className="text-muted-foreground text-xs sm:text-sm font-medium">Line Items</Label>
-                    {viewingInvoice.items && viewingInvoice.items.length > 0 ? <>
-                        <div className="rounded-lg border">
-                          {/* Desktop header - hidden on mobile */}
-                          <div className="hidden sm:grid grid-cols-12 gap-2 p-3 bg-muted/50 font-medium text-sm">
-                            <div className="col-span-6">Description</div>
-                            <div className="col-span-2 text-center">Qty</div>
-                            <div className="col-span-2 text-right">Unit Price</div>
-                            <div className="col-span-2 text-right">Total</div>
-                          </div>
-                          {viewingInvoice.items.map((item: any) => <div key={item.id} className="p-3 border-t text-sm">
-                              {/* Mobile layout */}
-                              <div className="sm:hidden space-y-1">
-                                <p className="font-medium">{item.description}</p>
-                                <div className="flex justify-between text-xs text-muted-foreground">
-                                  <span>{item.quantity} × ${Number(item.unit_price).toFixed(2)}</span>
-                                  <span className="font-medium text-foreground">${Number(item.total).toFixed(2)}</span>
-                                </div>
-                              </div>
-                              {/* Desktop layout */}
-                              <div className="hidden sm:grid grid-cols-12 gap-2">
-                                <div className="col-span-6">{item.description}</div>
-                                <div className="col-span-2 text-center">{item.quantity}</div>
-                                <div className="col-span-2 text-right">${Number(item.unit_price).toFixed(2)}</div>
-                                <div className="col-span-2 text-right">${Number(item.total).toFixed(2)}</div>
-                              </div>
-                            </div>)}
-                        </div>
-                        <div className="flex flex-col items-end gap-1 text-sm">
-                          <div className="flex justify-between w-full sm:w-56">
-                            <span className="text-muted-foreground">Subtotal:</span>
-                            <span>${Number(viewingInvoice.subtotal).toFixed(2)}</span>
-                          </div>
-                          {Number(viewingInvoice.discount_value) > 0 && (
-                            <div className="flex justify-between w-full sm:w-56 text-success">
-                              <span>Discount ({formatDiscount(viewingInvoice.discount_type, Number(viewingInvoice.discount_value))}):</span>
-                              <span>-${calculateDiscountAmount(Number(viewingInvoice.subtotal), viewingInvoice.discount_type, Number(viewingInvoice.discount_value)).toFixed(2)}</span>
-                            </div>
-                          )}
-                          <div className="flex justify-between w-full sm:w-56">
-                            <span className="text-muted-foreground">Tax:</span>
-                            <span>${Number(viewingInvoice.tax).toFixed(2)}</span>
-                          </div>
-                          {Number(viewingInvoice.late_fee_amount) > 0 ? <>
-                              <div className="flex justify-between w-full sm:w-56 font-semibold pt-1 border-t">
-                                <span>Invoice Total:</span>
-                                <span>${formatAmount(viewingInvoice.total)}</span>
-                              </div>
-                              <div className="flex justify-between w-full sm:w-56 text-destructive">
-                                <span className="flex items-center gap-1">
-                                  <AlertCircle className="w-3 h-3" />
-                                  Late Fee {lateFeePercentage > 0 && `(${lateFeePercentage}%)`}:
-                                </span>
-                                <span>+${Number(viewingInvoice.late_fee_amount).toFixed(2)}</span>
-                              </div>
-                              <div className="flex justify-between w-full sm:w-56 font-semibold text-base pt-1 border-t border-destructive/30">
-                                <span className="text-destructive">Total Due:</span>
-                                <span className="text-destructive">
-                                  ${(Number(viewingInvoice.total) + Number(viewingInvoice.late_fee_amount)).toFixed(2)}
-                                </span>
-                              </div>
-                            </> : <div className="flex justify-between w-full sm:w-56 font-semibold text-base pt-1 border-t">
-                              <span>Total:</span>
-                              <span>${formatAmount(viewingInvoice.total)}</span>
-                            </div>}
-                        </div>
-                        {viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date() && viewingInvoice.status !== "paid" && (!viewingInvoice.late_fee_amount || Number(viewingInvoice.late_fee_amount) === 0) && lateFeePercentage > 0 && (
-                          <div className="flex justify-end">
-                            <Button variant="destructive" size="sm" onClick={() => handleApplyLateFee(viewingInvoice.id)} disabled={applyLateFee.isPending}>
-                              <AlertCircle className="w-4 h-4 mr-2" />
-                              Apply {lateFeePercentage}% Late Fee
-                            </Button>
-                          </div>
-                        )}
-                      </> : <div className="text-center py-6 text-muted-foreground border rounded-lg">
-                        <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">No line items added</p>
-                        <Button variant="outline" size="sm" className="mt-2" onClick={() => {
-                          handleEdit(viewingInvoice);
-                          openViewingInvoice(null);
-                        }}>
-                          <Plus className="w-4 h-4 mr-1" />
-                          Add Items
-                        </Button>
-                      </div>}
-                  </div>
-
-                  {/* Payment Status */}
-                  {viewingInvoice.status === "paid" ? <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-700 dark:text-green-400">
-                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                      <span className="font-medium text-xs sm:text-sm">
-                        Payment received on {format(new Date(viewingInvoice.paid_at!), "MMM d, yyyy")}
-                      </span>
-                    </div> : viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date() ? <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-700 dark:text-red-400">
-                      <span className="font-medium text-xs sm:text-sm">
-                        Overdue - was due on {format(new Date(viewingInvoice.due_date), "MMM d, yyyy")}
-                      </span>
-                    </div> : null}
-
-                  {/* Notes Section */}
-                  <div className="space-y-2">
-                    <Label className="text-muted-foreground text-xs sm:text-sm font-medium">Notes</Label>
-                    {viewingInvoice.notes ? (
-                      <p className="text-sm whitespace-pre-wrap">{viewingInvoice.notes}</p>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No notes</p>
-                    )}
-                  </div>
-
-                  {/* Signature Section */}
-                  <ConstrainedPanel>
-                    <SignatureSection signatureId={(viewingInvoice as any).signature_id} title="Customer Signature" onCollectSignature={() => handleOpenSignatureDialog(viewingInvoice as Invoice)} showCollectButton={viewingInvoice.status !== "paid"} collectButtonText="Collect Signature" isCollecting={signInvoice.isPending} />
-                  </ConstrainedPanel>
-
-                  {/* Reminder History */}
-                  {invoiceReminders.length > 0 && <div className="space-y-2">
-                      <Label className="text-muted-foreground text-xs sm:text-sm font-medium flex items-center gap-2">
-                        <Bell className="w-4 h-4" />
-                        Payment Reminders Sent ({invoiceReminders.length})
-                      </Label>
-                      <div className="space-y-2">
-                        {invoiceReminders.map(reminder => <div key={reminder.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 px-3 bg-muted/50 rounded text-sm">
-                            <div className="flex items-center gap-2">
-                              <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
-                              <span className="text-muted-foreground">{reminder.recipient_email}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                              {reminder.sent_by_profile?.full_name && <span>by {reminder.sent_by_profile.full_name}</span>}
-                              <span>{format(new Date(reminder.sent_at), 'MMM d, yyyy h:mm a')}</span>
-                            </div>
-                          </div>)}
-                      </div>
-                    </div>}
-                </TabsContent>
-
-                {/* Linked Docs Tab */}
-                <TabsContent value="linked" className="mt-4">
-                <div>
-                  <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
-                    <Link2 className="w-4 h-4" />
-                    Linked Documents
-                  </h4>
-                  {(viewingInvoice.quote_id || (viewingInvoice as any).job_id || (viewingInvoice as any).quote?.job) ? (
-                    <div className="space-y-2">
-                      {/* Linked Quote */}
-                      {viewingInvoice.quote_id && (viewingInvoice as any).quote && (
-                        <div
-                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
-                          onClick={() => {
-                            openViewingInvoice(null);
-                            navigate(`/quotes?view=${viewingInvoice.quote_id}`);
-                          }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-medium text-sm">{(viewingInvoice as any).quote.quote_number}</span>
-                            <span className="text-xs text-muted-foreground">Quote</span>
-                          </div>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                            (viewingInvoice as any).quote.status === 'approved' || (viewingInvoice as any).quote.status === 'accepted' 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : (viewingInvoice as any).quote.status === 'sent'
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {(viewingInvoice as any).quote.status}
-                          </span>
-                        </div>
-                      )}
-                      {/* Linked Job - from direct job_id or via quote */}
-                      {((viewingInvoice as any).job || (viewingInvoice as any).quote?.job) && (
-                        <div
-                          className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted transition-colors"
-                          onClick={() => {
-                            const job = (viewingInvoice as any).job || (viewingInvoice as any).quote?.job;
-                            openViewingInvoice(null);
-                            navigate(`/jobs?view=${job.id}`);
-                          }}
-                        >
-                          <div className="flex items-center gap-2">
-                            <Briefcase className="w-4 h-4 text-muted-foreground" />
-                            <span className="font-medium text-sm">
-                              {(viewingInvoice as any).job?.job_number || (viewingInvoice as any).quote?.job?.job_number}
-                            </span>
-                            <span className="text-xs text-muted-foreground truncate max-w-[150px]">
-                              {(viewingInvoice as any).job?.title || (viewingInvoice as any).quote?.job?.title}
-                            </span>
-                          </div>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
-                            ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'completed'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'in_progress'
-                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                                : ((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status) === 'scheduled'
-                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                  : 'bg-muted text-muted-foreground'
-                          }`}>
-                            {((viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status || '').replace('_', ' ')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-xs sm:text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
-                      No linked quotes or jobs
-                    </p>
-                  )}
-                </div>
-              </TabsContent>
-
-              {/* Photos Tab */}
-              <TabsContent value="photos" className="mt-4">
-                <DocumentPhotoGallery
-                  photos={viewingInvoicePhotos.map(p => ({
-                    id: p.id,
-                    photo_url: p.photo_url,
-                    photo_type: p.photo_type,
-                    caption: p.caption,
-                    created_at: p.created_at,
-                    display_order: p.display_order ?? 0,
-                  }))}
-                  bucketName="invoice-photos"
-                  documentId={viewingInvoice.id}
-                  onUpload={async (file, photoType) => {
-                    await uploadInvoicePhoto.mutateAsync({
-                      invoiceId: viewingInvoice.id,
-                      file,
-                      photoType,
-                    });
-                  }}
-                  onDelete={async (photoId, photoUrl) => {
-                    await deleteInvoicePhoto.mutateAsync({
-                      photoId,
-                      photoUrl,
-                      invoiceId: viewingInvoice.id,
-                    });
-                  }}
-                  onUpdateType={(photoId, photoType) => {
-                    updateInvoicePhotoType.mutate({
-                      photoId,
-                      photoType,
-                      invoiceId: viewingInvoice.id,
-                    });
-                  }}
-                  isUploading={uploadInvoicePhoto.isPending}
-                  editable={true}
-                />
-              </TabsContent>
-              </Tabs>
-            </div>
-          </DialogContent>
-        </Dialog>}
+      {/* Invoice Detail Dialog */}
+      {viewingInvoice && (
+        <InvoiceDetailDialog
+          invoice={{
+            id: viewingInvoice.id,
+            invoice_number: viewingInvoice.invoice_number,
+            status: viewingInvoice.status as 'draft' | 'sent' | 'paid',
+            created_at: viewingInvoice.created_at,
+            due_date: viewingInvoice.due_date,
+            paid_at: viewingInvoice.paid_at,
+            subtotal: Number(viewingInvoice.subtotal),
+            tax: Number(viewingInvoice.tax),
+            total: Number(viewingInvoice.total),
+            notes: viewingInvoice.notes,
+            items: viewingInvoice.items,
+            signature_id: (viewingInvoice as any).signature_id,
+            signed_at: (viewingInvoice as any).signed_at,
+            late_fee_amount: viewingInvoice.late_fee_amount,
+            late_fee_applied_at: (viewingInvoice as any).late_fee_applied_at,
+            job: (viewingInvoice as any).job,
+            quote: (viewingInvoice as any).quote,
+          }}
+          customerName={getCustomerName(viewingInvoice.customer_id)}
+          customerEmail={customers.find(c => c.id === viewingInvoice.customer_id)?.email}
+          creatorName={(viewingInvoice as any)?.creator?.full_name}
+          linkedJobNumber={(viewingInvoice as any)?.job?.job_number || (viewingInvoice as any)?.quote?.job?.job_number}
+          linkedQuote={viewingInvoice.quote_id && (viewingInvoice as any).quote ? {
+            id: viewingInvoice.quote_id,
+            quote_number: (viewingInvoice as any).quote.quote_number,
+            status: (viewingInvoice as any).quote.status,
+          } : null}
+          linkedJob={(viewingInvoice as any)?.job || (viewingInvoice as any)?.quote?.job ? {
+            id: (viewingInvoice as any).job?.id || (viewingInvoice as any).quote?.job?.id,
+            job_number: (viewingInvoice as any).job?.job_number || (viewingInvoice as any).quote?.job?.job_number,
+            title: (viewingInvoice as any).job?.title || (viewingInvoice as any).quote?.job?.title,
+            status: (viewingInvoice as any).job?.status || (viewingInvoice as any).quote?.job?.status,
+          } : null}
+          lateFeePercentage={lateFeePercentage}
+          open={!!viewingInvoice}
+          onOpenChange={(open) => !open && openViewingInvoice(null)}
+          onDownload={(id) => handleDownload(id)}
+          onEmail={(id) => handleOpenEmailDialog(id, viewingInvoice.customer_id)}
+          onEmailCustom={(id) => handleOpenEmailDialog(id, viewingInvoice.customer_id)}
+          onMarkPaid={(id) => handleMarkPaid(id)}
+          onEdit={(id) => {
+            const inv = invoices.find(i => i.id === id);
+            if (inv) {
+              handleEdit(inv);
+              openViewingInvoice(null);
+            }
+          }}
+          onDuplicate={(id) => {
+            const inv = invoices.find(i => i.id === id);
+            if (inv) {
+              handleDuplicateInvoice(inv);
+              openViewingInvoice(null);
+            }
+          }}
+          onStatusChange={(id, status) => {
+            handleStatusChange(id, status);
+            if (status !== 'paid') {
+              setViewingInvoice(prev => prev ? { ...prev, status: status as Invoice['status'] } : null);
+            }
+          }}
+          onViewSignature={(sigId) => handleViewSignature(sigId)}
+          onCollectSignature={(id) => {
+            const inv = invoices.find(i => i.id === id);
+            if (inv) handleOpenSignatureDialog(inv);
+          }}
+          onSendSignatureRequest={(id) => {
+            const inv = invoices.find(i => i.id === id);
+            if (inv) handleSendSignatureRequest(inv);
+          }}
+          isCollectingSignature={signInvoice.isPending}
+          onApplyLateFee={(id) => handleApplyLateFee(id)}
+          isApplyingLateFee={applyLateFee.isPending}
+          onSendReminder={(id) => {
+            const inv = invoices.find(i => i.id === id);
+            if (inv) handleSendPaymentReminder(inv);
+          }}
+          isSendingReminder={sendPaymentReminder.isPending}
+          isSendingEmail={emailDocument.isPending}
+          reminders={invoiceReminders}
+          onViewQuote={(quoteId) => {
+            openViewingInvoice(null);
+            navigate(`/quotes?view=${quoteId}`);
+          }}
+          onViewJob={(jobId) => {
+            openViewingInvoice(null);
+            navigate(`/jobs?view=${jobId}`);
+          }}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!invoiceToDelete} onOpenChange={open => !open && setInvoiceToDelete(null)}>
