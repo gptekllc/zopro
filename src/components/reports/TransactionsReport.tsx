@@ -547,8 +547,87 @@ const TransactionsReport = () => {
             </div>
           </div>
 
+          {/* Tablet: 2 rows - dates row + 3 filters row */}
+          <div className="hidden sm:block lg:hidden space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Customer</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start">
+                      <User className="w-4 h-4 mr-2" />
+                      {selectedCustomerIds.length === 0 ? <span className="text-muted-foreground">All Customers</span> : <span className="truncate">{selectedCustomerIds.length} selected</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-2 bg-background" align="start">
+                    <div className="flex items-center justify-between mb-2 pb-2 border-b">
+                      <span className="text-sm font-medium">Filter by Customer</span>
+                      {selectedCustomerIds.length > 0 && <Button variant="ghost" size="sm" onClick={clearSelectedCustomers} className="h-6 px-2 text-xs">
+                          Clear all
+                        </Button>}
+                    </div>
+                    <div className="relative mb-2">
+                      <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input placeholder="Search customers..." value={customerFilterSearch} onChange={e => setCustomerFilterSearch(e.target.value)} className="pl-8 h-8 text-sm" />
+                    </div>
+                    <div className="max-h-[200px] overflow-y-auto space-y-1">
+                      {filteredDropdownCustomers.map(customer => <div key={customer.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer" onClick={() => toggleCustomer(customer.id)}>
+                          <Checkbox checked={selectedCustomerIds.includes(customer.id)} onClick={e => e.stopPropagation()} onCheckedChange={() => toggleCustomer(customer.id)} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm truncate">{customer.name}</div>
+                            {customer.email && <div className="text-xs text-muted-foreground truncate">{customer.email}</div>}
+                          </div>
+                        </div>)}
+                      {filteredDropdownCustomers.length === 0 && <div className="text-sm text-muted-foreground text-center py-4">
+                          {customers?.length === 0 ? 'No customers' : 'No matches found'}
+                        </div>}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All methods" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Methods</SelectItem>
+                    {PAYMENT_METHODS.map(m => <SelectItem key={m.value} value={m.value}>
+                        {m.label}
+                      </SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="refunded">Refunded</SelectItem>
+                    <SelectItem value="voided">Voided</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
           {/* Desktop: 5-column grid */}
-          <div className="hidden sm:grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="hidden lg:grid lg:grid-cols-5 gap-4">
             <div className="space-y-2">
               <Label>Start Date</Label>
               <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
