@@ -66,6 +66,9 @@ const MonthlySummaryReport = () => {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<ActivityType[]>(['jobs', 'quotes', 'invoices']);
+  const [showJobsLine, setShowJobsLine] = useState(true);
+  const [showQuotesLine, setShowQuotesLine] = useState(true);
+  const [showInvoicesLine, setShowInvoicesLine] = useState(true);
   const [showTotalRevenue, setShowTotalRevenue] = useState(true);
   
   const { data: jobs, isLoading: loadingJobs } = useJobs();
@@ -669,17 +672,49 @@ const MonthlySummaryReport = () => {
 
       {/* Revenue Chart */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <CardTitle>Value Over Time</CardTitle>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="showRevenue"
-              checked={showTotalRevenue}
-              onCheckedChange={(checked) => setShowTotalRevenue(checked === true)}
-            />
-            <label htmlFor="showRevenue" className="text-sm text-muted-foreground cursor-pointer">
-              Show Total Revenue
-            </label>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="showJobs"
+                checked={showJobsLine}
+                onCheckedChange={(checked) => setShowJobsLine(checked === true)}
+              />
+              <label htmlFor="showJobs" className="text-sm cursor-pointer" style={{ color: 'hsl(var(--primary))' }}>
+                Jobs
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="showQuotes"
+                checked={showQuotesLine}
+                onCheckedChange={(checked) => setShowQuotesLine(checked === true)}
+              />
+              <label htmlFor="showQuotes" className="text-sm cursor-pointer" style={{ color: 'hsl(var(--chart-2))' }}>
+                Quotes
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="showInvoices"
+                checked={showInvoicesLine}
+                onCheckedChange={(checked) => setShowInvoicesLine(checked === true)}
+              />
+              <label htmlFor="showInvoices" className="text-sm cursor-pointer" style={{ color: 'hsl(var(--chart-3))' }}>
+                Invoices
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="showRevenue"
+                checked={showTotalRevenue}
+                onCheckedChange={(checked) => setShowTotalRevenue(checked === true)}
+              />
+              <label htmlFor="showRevenue" className="text-sm cursor-pointer" style={{ color: 'hsl(var(--chart-5))' }}>
+                Total Revenue
+              </label>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -700,30 +735,36 @@ const MonthlySummaryReport = () => {
                 }}
               />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="jobsValue" 
-                name="Jobs Value"
-                stroke="hsl(var(--primary))" 
-                strokeWidth={2}
-                dot={{ fill: 'hsl(var(--primary))' }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="quotesValue" 
-                name="Quotes Value"
-                stroke="hsl(var(--chart-2))" 
-                strokeWidth={2}
-                dot={{ fill: 'hsl(var(--chart-2))' }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey="invoicesValue" 
-                name="Invoices Value"
-                stroke="hsl(var(--chart-3))" 
-                strokeWidth={2}
-                dot={{ fill: 'hsl(var(--chart-3))' }}
-              />
+              {showJobsLine && (
+                <Line 
+                  type="monotone" 
+                  dataKey="jobsValue" 
+                  name="Jobs Value"
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--primary))' }}
+                />
+              )}
+              {showQuotesLine && (
+                <Line 
+                  type="monotone" 
+                  dataKey="quotesValue" 
+                  name="Quotes Value"
+                  stroke="hsl(var(--chart-2))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--chart-2))' }}
+                />
+              )}
+              {showInvoicesLine && (
+                <Line 
+                  type="monotone" 
+                  dataKey="invoicesValue" 
+                  name="Invoices Value"
+                  stroke="hsl(var(--chart-3))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--chart-3))' }}
+                />
+              )}
               {showTotalRevenue && (
                 <Line 
                   type="monotone" 
