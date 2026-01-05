@@ -41,6 +41,11 @@ interface InvoiceListManagerProps {
   showFilters?: boolean;
   showSearch?: boolean;
   showHeader?: boolean;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+  statusFilter?: string;
+  onStatusFilterChange?: (status: string) => void;
+  hideInlineControls?: boolean;
   onEditInvoice?: (invoice: Invoice) => void;
   onCreateInvoice?: () => void;
   onRefetch?: () => Promise<void>;
@@ -55,6 +60,11 @@ export function InvoiceListManager({
   showFilters = true,
   showSearch = true,
   showHeader = false,
+  searchQuery: externalSearchQuery,
+  onSearchChange,
+  statusFilter: externalStatusFilter,
+  onStatusFilterChange,
+  hideInlineControls = false,
   onEditInvoice,
   onCreateInvoice,
   onRefetch,
@@ -82,9 +92,28 @@ export function InvoiceListManager({
     { itemLabel: 'invoice', timeout: 5000 }
   );
 
-  // State
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  // State - use external values if provided, otherwise use internal state
+  const [internalStatusFilter, setInternalStatusFilter] = useState('all');
+  const [internalSearchQuery, setInternalSearchQuery] = useState('');
+  
+  const statusFilter = externalStatusFilter ?? internalStatusFilter;
+  const searchQuery = externalSearchQuery ?? internalSearchQuery;
+  
+  const handleSearchChange = (query: string) => {
+    if (onSearchChange) {
+      onSearchChange(query);
+    } else {
+      setInternalSearchQuery(query);
+    }
+  };
+  
+  const handleStatusFilterChange = (status: string) => {
+    if (onStatusFilterChange) {
+      onStatusFilterChange(status);
+    } else {
+      setInternalStatusFilter(status);
+    }
+  };
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const [archiveConfirmInvoice, setArchiveConfirmInvoice] = useState<Invoice | null>(null);
@@ -320,8 +349,8 @@ export function InvoiceListManager({
 
   return (
     <div className="space-y-3">
-      {/* Optional Header with Search and Filters */}
-      {(showSearch || showFilters) && (
+      {/* Optional Header with Search and Filters - only show if not hidden */}
+      {!hideInlineControls && (showSearch || showFilters) && (
         <div className="flex items-center gap-2">
           {showSearch && (
             <div className="relative flex-1 max-w-xs">
@@ -329,7 +358,7 @@ export function InvoiceListManager({
               <Input
                 placeholder="Search..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-8 h-9"
               />
             </div>
@@ -342,23 +371,23 @@ export function InvoiceListManager({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => setStatusFilter('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
                   All Status
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('draft')} className={statusFilter === 'draft' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('draft')} className={statusFilter === 'draft' ? 'bg-accent' : ''}>
                   Draft
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('sent')} className={statusFilter === 'sent' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('sent')} className={statusFilter === 'sent' ? 'bg-accent' : ''}>
                   Sent
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('paid')} className={statusFilter === 'paid' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('paid')} className={statusFilter === 'paid' ? 'bg-accent' : ''}>
                   Paid
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter('overdue')} className={statusFilter === 'overdue' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('overdue')} className={statusFilter === 'overdue' ? 'bg-accent' : ''}>
                   Overdue
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setStatusFilter('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
                   <Archive className="w-4 h-4 mr-2" />
                   Archived
                 </DropdownMenuItem>
