@@ -333,18 +333,9 @@ const TimesheetReportTab = () => {
         </div>
         
         <div className="flex items-center justify-center lg:justify-end gap-2">
-          <Button 
-            onClick={() => setEmailDialogOpen(true)} 
-            variant="outline" 
-            size="sm"
-            disabled={timesheetData.length === 0}
-          >
+          <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={timesheetData.length === 0}>
             <Mail className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Email</span>
-          </Button>
-          <Button onClick={exportToCSV} variant="outline" size="sm" className="hidden sm:inline-flex">
-            <Download className="w-4 h-4 mr-2" />
-            CSV
           </Button>
           <Button onClick={exportToPDF} variant="outline" size="sm" disabled={isExportingPdf}>
             {isExportingPdf ? (
@@ -352,7 +343,11 @@ const TimesheetReportTab = () => {
             ) : (
               <FileText className="w-4 h-4 sm:mr-2" />
             )}
-            <span className="hidden sm:inline">PDF</span>
+            <span className="hidden sm:inline">Print/PDF</span>
+          </Button>
+          <Button onClick={exportToCSV} variant="outline" size="sm" className="hidden sm:inline-flex">
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
           </Button>
         </div>
       </div>
