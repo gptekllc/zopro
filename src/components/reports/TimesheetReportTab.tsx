@@ -361,7 +361,7 @@ const TimesheetReportTab = () => {
     <div className="space-y-6">
       {/* Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center lg:justify-between gap-4">
-        <div className="flex flex-col sm:flex-row items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:ml-auto">
           <div className="flex items-center justify-center gap-2">
             <Button variant="outline" size="icon" onClick={() => setWeekStart(subWeeks(weekStart, 1))}>
               <ChevronLeft className="w-4 h-4" />
@@ -521,10 +521,10 @@ const TimesheetReportTab = () => {
                 </div>
               </PopoverContent>
             </Popover>
-            {/* Mobile Actions Dropdown */}
+            {/* Mobile & Tablet Actions Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" className="lg:hidden">
                   <MoreVertical className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -544,31 +544,6 @@ const TimesheetReportTab = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
-        
-        {/* Tablet: Actions Dropdown */}
-        <div className="hidden sm:flex lg:hidden items-center justify-end">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-popover">
-              <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={timesheetData.length === 0}>
-                <Mail className="w-4 h-4 mr-2" />
-                Email
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToPDF} disabled={isExportingPdf}>
-                <FileText className="w-4 h-4 mr-2" />
-                Print/PDF
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportToCSV}>
-                <Download className="w-4 h-4 mr-2" />
-                Export CSV
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
         {/* Desktop Actions */}

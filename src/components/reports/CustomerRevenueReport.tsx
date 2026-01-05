@@ -565,7 +565,7 @@ const CustomerRevenueReport = () => {
       {/* Header with filters and export */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex flex-wrap items-center justify-end sm:justify-start gap-2">
+          <div className="flex flex-wrap items-center justify-end sm:ml-auto gap-2">
             <div className="relative flex-1 sm:flex-none sm:min-w-[200px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
