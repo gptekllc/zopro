@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 interface ConvertToInvoiceParams {
   quoteId: string;
   dueDate?: string;
+  copyPhotos?: boolean;
 }
 
 export function useConvertQuoteToInvoice() {
@@ -13,7 +14,7 @@ export function useConvertQuoteToInvoice() {
   const { profile, user } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ quoteId, dueDate }: ConvertToInvoiceParams) => {
+    mutationFn: async ({ quoteId, dueDate, copyPhotos = true }: ConvertToInvoiceParams) => {
       if (!profile?.company_id) throw new Error('No company associated');
 
       // Fetch the quote with items
@@ -74,52 +75,54 @@ export function useConvertQuoteToInvoice() {
         if (itemsError) throw itemsError;
       }
 
-      // Copy quote photos to invoice photos
-      const { data: quotePhotos } = await (supabase as any)
-        .from('quote_photos')
-        .select('*')
-        .eq('quote_id', quoteId);
-      
-      if (quotePhotos && quotePhotos.length > 0) {
-        for (const photo of quotePhotos) {
-          try {
-            // Download the photo from quote-photos bucket
-            const { data: fileData, error: downloadError } = await supabase.storage
-              .from('quote-photos')
-              .download(photo.photo_url);
-            
-            if (downloadError || !fileData) {
-              console.warn('Failed to download quote photo:', downloadError);
-              continue;
+      // Copy quote photos to invoice photos (only if copyPhotos is true)
+      if (copyPhotos) {
+        const { data: quotePhotos } = await (supabase as any)
+          .from('quote_photos')
+          .select('*')
+          .eq('quote_id', quoteId);
+        
+        if (quotePhotos && quotePhotos.length > 0) {
+          for (const photo of quotePhotos) {
+            try {
+              // Download the photo from quote-photos bucket
+              const { data: fileData, error: downloadError } = await supabase.storage
+                .from('quote-photos')
+                .download(photo.photo_url);
+              
+              if (downloadError || !fileData) {
+                console.warn('Failed to download quote photo:', downloadError);
+                continue;
+              }
+              
+              // Generate new filename for invoice-photos bucket
+              const fileExt = photo.photo_url.split('.').pop() || 'jpg';
+              const newFileName = `${invoice.id}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+              
+              // Upload to invoice-photos bucket
+              const { error: uploadError } = await supabase.storage
+                .from('invoice-photos')
+                .upload(newFileName, fileData);
+              
+              if (uploadError) {
+                console.warn('Failed to upload photo to invoice-photos:', uploadError);
+                continue;
+              }
+              
+              // Create invoice_photos record
+              await (supabase as any)
+                .from('invoice_photos')
+                .insert({
+                  invoice_id: invoice.id,
+                  photo_url: newFileName,
+                  photo_type: photo.photo_type,
+                  caption: photo.caption,
+                  display_order: photo.display_order,
+                  uploaded_by: user?.id || null,
+                });
+            } catch (err) {
+              console.warn('Error copying photo:', err);
             }
-            
-            // Generate new filename for invoice-photos bucket
-            const fileExt = photo.photo_url.split('.').pop() || 'jpg';
-            const newFileName = `${invoice.id}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-            
-            // Upload to invoice-photos bucket
-            const { error: uploadError } = await supabase.storage
-              .from('invoice-photos')
-              .upload(newFileName, fileData);
-            
-            if (uploadError) {
-              console.warn('Failed to upload photo to invoice-photos:', uploadError);
-              continue;
-            }
-            
-            // Create invoice_photos record
-            await (supabase as any)
-              .from('invoice_photos')
-              .insert({
-                invoice_id: invoice.id,
-                photo_url: newFileName,
-                photo_type: photo.photo_type,
-                caption: photo.caption,
-                display_order: photo.display_order,
-                uploaded_by: user?.id || null,
-              });
-          } catch (err) {
-            console.warn('Error copying photo:', err);
           }
         }
       }
