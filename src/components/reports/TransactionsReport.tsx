@@ -359,8 +359,8 @@ const TransactionsReport = () => {
             size="sm"
             disabled={filteredPayments.length === 0}
           >
-            <Mail className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Email</span>
+            <Mail className="w-4 h-4 mr-2" />
+            Email
           </Button>
           <Button 
             onClick={exportToCSV} 
@@ -372,9 +372,9 @@ const TransactionsReport = () => {
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
-          <Button onClick={() => setSelectInvoiceOpen(true)} size="sm">
-            <Plus className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Record Payment</span>
+          <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Record Payment
           </Button>
         </div>
       </div>
