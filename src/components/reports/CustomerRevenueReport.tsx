@@ -66,6 +66,7 @@ const CustomerRevenueReport = () => {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [selectedCustomerIds, setSelectedCustomerIds] = useState<string[]>([]);
+  const [customerFilterSearch, setCustomerFilterSearch] = useState('');
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -95,6 +96,16 @@ const CustomerRevenueReport = () => {
   const allCustomers = useMemo(() => {
     return customers || [];
   }, [customers]);
+
+  // Filter customers in dropdown by search
+  const filteredDropdownCustomers = useMemo(() => {
+    if (!customerFilterSearch.trim()) return allCustomers;
+    const search = customerFilterSearch.toLowerCase();
+    return allCustomers.filter(c => 
+      c.name.toLowerCase().includes(search) ||
+      (c.email && c.email.toLowerCase().includes(search))
+    );
+  }, [allCustomers, customerFilterSearch]);
 
   // Calculate date range
   const dateRange = useMemo(() => {
@@ -594,8 +605,17 @@ const CustomerRevenueReport = () => {
                     </Button>
                   )}
                 </div>
-                <div className="max-h-[250px] overflow-y-auto space-y-1">
-                  {allCustomers.map(customer => (
+                <div className="relative mb-2">
+                  <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search customers..."
+                    value={customerFilterSearch}
+                    onChange={(e) => setCustomerFilterSearch(e.target.value)}
+                    className="pl-8 h-8 text-sm"
+                  />
+                </div>
+                <div className="max-h-[200px] overflow-y-auto space-y-1">
+                  {filteredDropdownCustomers.map(customer => (
                     <div
                       key={customer.id}
                       className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
@@ -613,8 +633,10 @@ const CustomerRevenueReport = () => {
                       </div>
                     </div>
                   ))}
-                  {allCustomers.length === 0 && (
-                    <div className="text-sm text-muted-foreground text-center py-4">No customers</div>
+                  {filteredDropdownCustomers.length === 0 && (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      {allCustomers.length === 0 ? 'No customers' : 'No matches found'}
+                    </div>
                   )}
                 </div>
               </PopoverContent>
