@@ -45,10 +45,22 @@ interface ReportData {
 }
 
 interface SendReportEmailRequest {
-  to: string;
-  reportType: 'technician-performance' | 'monthly-summary' | 'customer-revenue';
+  to: string | string[];
+  reportType: 'technician-performance' | 'monthly-summary' | 'customer-revenue' | 'transactions';
   reportData: ReportData;
 }
+
+interface EmailResult {
+  email: string;
+  success: boolean;
+  error?: string;
+}
+
+// Simple email validation
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email.trim());
+};
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
@@ -59,7 +71,36 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { to, reportType, reportData }: SendReportEmailRequest = await req.json();
 
-    console.log(`Sending ${reportType} report to ${to}`);
+    // Normalize recipients to array
+    const recipients = Array.isArray(to) ? to : [to];
+    
+    // Filter and validate emails
+    const validEmails: string[] = [];
+    const invalidEmails: { email: string; reason: string }[] = [];
+    
+    for (const email of recipients) {
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) continue;
+      
+      if (!isValidEmail(trimmedEmail)) {
+        invalidEmails.push({ email: trimmedEmail, reason: 'Invalid email format' });
+      } else {
+        validEmails.push(trimmedEmail);
+      }
+    }
+
+    if (validEmails.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'No valid email addresses provided',
+          successful: [],
+          failed: invalidEmails.length > 0 ? invalidEmails : [{ email: '', reason: 'No email addresses provided' }]
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`Sending ${reportType} report to ${validEmails.length} recipient(s): ${validEmails.join(', ')}`);
 
     let subject = '';
     let html = '';
@@ -354,26 +395,58 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     }
 
-    const emailResponse = await resend.emails.send({
-      from: "Reports <onboarding@resend.dev>",
-      to: [to],
-      subject,
-      html,
-    });
+    // Send emails to all valid recipients
+    const successful: string[] = [];
+    const failed: { email: string; reason: string }[] = [...invalidEmails];
 
-    console.log("Email sent successfully:", emailResponse);
+    // Send to each recipient individually for better error tracking
+    for (const email of validEmails) {
+      try {
+        const emailResponse = await resend.emails.send({
+          from: "Reports <onboarding@resend.dev>",
+          to: [email],
+          subject,
+          html,
+        });
 
-    return new Response(JSON.stringify(emailResponse), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders,
-      },
-    });
+        if (emailResponse.error) {
+          console.error(`Failed to send to ${email}:`, emailResponse.error);
+          failed.push({ email, reason: emailResponse.error.message || 'Send failed' });
+        } else {
+          console.log(`Email sent successfully to ${email}:`, emailResponse);
+          successful.push(email);
+        }
+      } catch (sendError: any) {
+        console.error(`Error sending to ${email}:`, sendError);
+        failed.push({ email, reason: sendError.message || 'Unknown error' });
+      }
+    }
+
+    console.log(`Email sending complete: ${successful.length} successful, ${failed.length} failed`);
+
+    return new Response(
+      JSON.stringify({ 
+        successful, 
+        failed,
+        totalSent: successful.length,
+        totalFailed: failed.length
+      }), 
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          ...corsHeaders,
+        },
+      }
+    );
   } catch (error: any) {
     console.error("Error in send-report-email function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        successful: [],
+        failed: [{ email: '', reason: error.message || 'Unknown error' }]
+      }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
