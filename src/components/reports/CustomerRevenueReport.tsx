@@ -623,6 +623,7 @@ const CustomerRevenueReport = () => {
                     >
                       <Checkbox
                         checked={selectedCustomerIds.includes(customer.id)}
+                        onClick={(e) => e.stopPropagation()}
                         onCheckedChange={() => toggleCustomer(customer.id)}
                       />
                       <div className="flex-1 min-w-0">
