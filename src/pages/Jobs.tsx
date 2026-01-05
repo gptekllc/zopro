@@ -17,6 +17,7 @@ import { useSignJobCompletion } from '@/hooks/useSignatures';
 import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
 import { useSendJobNotification } from '@/hooks/useSendJobNotification';
 import { useJobNotificationCounts } from '@/hooks/useJobNotifications';
+import { useJobTimeEntries } from '@/hooks/useTimeEntries';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,11 +30,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter, PenTool, Send, Bell, Navigation, Download, Mail } from 'lucide-react';
+import { Plus, Search, Briefcase, Trash2, Edit, Loader2, Camera, Upload, UserCog, Calendar, ChevronRight, FileText, X, Image, List, CalendarDays, Receipt, CheckCircle2, Clock, Archive, ArchiveRestore, Eye, MoreVertical, DollarSign, ArrowDown, ArrowUp, Users, AlertTriangle, Copy, Save, BookTemplate, Filter, PenTool, Send, Bell, Navigation, Download, Mail, Play, Pause, Timer } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
-import { format } from 'date-fns';
+import { format, differenceInMinutes } from 'date-fns';
 import { toast } from 'sonner';
 import JobCalendar from '@/components/jobs/JobCalendar';
 import SchedulerView from '@/components/jobs/SchedulerView';
@@ -44,6 +45,7 @@ import { QuoteDetailDialog } from '@/components/quotes/QuoteDetailDialog';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { SaveAsTemplateDialog } from '@/components/jobs/SaveAsTemplateDialog';
+import { JobTimeSummary } from '@/components/jobs/JobTimeSummary';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
@@ -1594,6 +1596,86 @@ const Jobs = () => {
                   <span className="truncate">{viewingJob.job_number} - {viewingJob.title}</span>
                 </DialogTitle>
               </DialogHeader>
+
+              {/* Quick Status Buttons */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                {viewingJob.status === 'draft' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      handleStatusChange(viewingJob.id, 'scheduled');
+                      setViewingJob(prev => prev ? { ...prev, status: 'scheduled' } : null);
+                    }}
+                    className="gap-1.5"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    Schedule
+                  </Button>
+                )}
+                {viewingJob.status === 'scheduled' && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      handleStatusChange(viewingJob.id, 'in_progress');
+                      setViewingJob(prev => prev ? { ...prev, status: 'in_progress' } : null);
+                    }}
+                    className="gap-1.5"
+                  >
+                    <Play className="w-3.5 h-3.5" />
+                    Start Job
+                  </Button>
+                )}
+                {viewingJob.status === 'in_progress' && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        handleStatusChange(viewingJob.id, 'scheduled');
+                        setViewingJob(prev => prev ? { ...prev, status: 'scheduled' } : null);
+                      }}
+                      className="gap-1.5"
+                    >
+                      <Pause className="w-3.5 h-3.5" />
+                      Pause
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => setCompletingJob(viewingJob)}
+                      className="gap-1.5"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Complete
+                    </Button>
+                  </>
+                )}
+                {viewingJob.status === 'completed' && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      handleCreateInvoice(viewingJob);
+                      openViewingJob(null);
+                    }}
+                    disabled={convertToInvoice.isPending}
+                    className="gap-1.5"
+                  >
+                    <Receipt className="w-3.5 h-3.5" />
+                    Create Invoice
+                  </Button>
+                )}
+                {(viewingJob.status === 'invoiced' || viewingJob.status === 'paid') && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setArchiveConfirmJob(viewingJob)}
+                    className="gap-1.5"
+                  >
+                    <Archive className="w-3.5 h-3.5" />
+                    Archive
+                  </Button>
+                )}
+              </div>
               
               {/* Basic Info - responsive grid */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 mt-4">
@@ -1685,6 +1767,10 @@ const Jobs = () => {
                <Tabs defaultValue="details" className="mt-4">
                  <TabsList className="flex-wrap h-auto gap-1 p-1">
                    <TabsTrigger value="details" className="text-xs sm:text-sm px-2 sm:px-3">Details</TabsTrigger>
+                   <TabsTrigger value="time" className="text-xs sm:text-sm px-2 sm:px-3">
+                     <Timer className="w-3 h-3 mr-1" />
+                     Time
+                   </TabsTrigger>
                    <TabsTrigger value="linked" className="text-xs sm:text-sm px-2 sm:px-3">
                      Linked Docs ({(quotesPerJob.get(viewingJob.id) || 0) + viewingJobInvoices.length + (viewingJob.quote_id ? 1 : 0)})
                    </TabsTrigger>
@@ -1772,6 +1858,18 @@ const Jobs = () => {
                       isCollecting={signJobCompletion.isPending}
                     />
                   </ConstrainedPanel>
+                </TabsContent>
+
+                <TabsContent value="time" className="mt-4">
+                  <div className="space-y-4">
+                    <h4 className="font-medium">Time Tracking</h4>
+                    <JobTimeSummary jobId={viewingJob.id} />
+                    <JobTimeTracker 
+                      jobId={viewingJob.id} 
+                      jobNumber={viewingJob.job_number} 
+                      laborHourlyRate={(viewingJob as any).labor_hourly_rate}
+                    />
+                  </div>
                 </TabsContent>
                 
                 <TabsContent value="photos" className="mt-4">
