@@ -27,6 +27,10 @@ interface ReportStats {
   totalCustomers?: number;
   avgRevenue?: string;
   avgLTV?: string;
+  totalCollected?: string;
+  totalRefunded?: string;
+  transactionCount?: number;
+  avgAmount?: string;
 }
 
 interface ReportData {
@@ -37,6 +41,7 @@ interface ReportData {
   technicians?: TechnicianData[];
   months?: any[];
   customers?: any[];
+  transactions?: any[];
 }
 
 interface SendReportEmailRequest {
@@ -261,6 +266,74 @@ const handler = async (req: Request): Promise<Response> => {
                   </tr>
                 </thead>
                 <tbody>${customerRows}</tbody>
+              </table>
+            </div>
+            <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">Generated on ${reportData.generatedAt}</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+    } else if (reportType === 'transactions') {
+      subject = `Transactions Report - ${reportData.timeRange}`;
+      
+      const transactionRows = (reportData as any).transactions?.map((t: any) => `
+        <tr>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">${t.date}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">${t.invoiceNumber}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: left;">${t.customer}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: center;">${t.method}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; color: #16a34a; font-weight: 600;">$${t.amount}</td>
+          <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: center;">${t.status}</td>
+        </tr>
+      `).join('') || '';
+
+      html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #1f2937; background-color: #f9fafb; margin: 0; padding: 20px;">
+          <div style="max-width: 800px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); overflow: hidden;">
+            <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 32px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">${reportData.title}</h1>
+              <p style="color: rgba(255, 255, 255, 0.9); margin: 8px 0 0 0; font-size: 16px;">${reportData.timeRange}</p>
+            </div>
+            <div style="padding: 32px;">
+              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px;">
+                <div style="background-color: #dcfce7; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #16a34a; text-transform: uppercase;">Collected</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #16a34a;">$${reportData.stats.totalCollected}</div>
+                </div>
+                <div style="background-color: #fee2e2; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #dc2626; text-transform: uppercase;">Refunded</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #dc2626;">$${reportData.stats.totalRefunded}</div>
+                </div>
+                <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Transactions</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #1f2937;">${reportData.stats.transactionCount}</div>
+                </div>
+                <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; text-align: center;">
+                  <div style="font-size: 12px; color: #6b7280; text-transform: uppercase;">Avg Amount</div>
+                  <div style="font-size: 28px; font-weight: 700; color: #1f2937;">$${reportData.stats.avgAmount}</div>
+                </div>
+              </div>
+              <h2 style="font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 16px;">Recent Transactions</h2>
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                  <tr style="background-color: #f3f4f6;">
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left; font-weight: 600;">Date</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left; font-weight: 600;">Invoice</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: left; font-weight: 600;">Customer</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: center; font-weight: 600;">Method</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; font-weight: 600;">Amount</th>
+                    <th style="border: 1px solid #e5e7eb; padding: 12px; text-align: center; font-weight: 600;">Status</th>
+                  </tr>
+                </thead>
+                <tbody>${transactionRows}</tbody>
               </table>
             </div>
             <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
