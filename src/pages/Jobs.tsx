@@ -27,6 +27,7 @@ import { SaveAsTemplateDialog } from '@/components/jobs/SaveAsTemplateDialog';
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
 import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
 import { JobListManager } from '@/components/jobs/JobListManager';
+import { JobListControls } from '@/components/jobs/JobListControls';
 
 const JOB_STATUSES_EDITABLE = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -63,6 +64,10 @@ const Jobs = () => {
   // View mode state
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'scheduler'>('list');
   const [viewingJob, setViewingJob] = useState<Job | null>(null);
+  
+  // Search and filter state (lifted for header placement)
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -419,6 +424,16 @@ const Jobs = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Search and Filter - only show for list view */}
+            {viewMode === 'list' && (
+              <JobListControls
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
+              />
+            )}
+            
             {/* View Mode Toggle */}
             <div className="hidden sm:flex gap-1 border rounded-md p-1">
               <Button variant={viewMode === 'list' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('list')} title="List View">
@@ -663,8 +678,11 @@ const Jobs = () => {
             jobs={safeJobs}
             customers={safeCustomers}
             profiles={safeProfiles}
-            showFilters={true}
-            showSearch={true}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            hideInlineControls={true}
             onEditJob={handleEdit}
             onCreateJob={() => openEditDialog(true)}
             onRefetch={async () => { await refetchJobs(); }}
