@@ -416,15 +416,13 @@ const TransactionsReport = () => {
             </DropdownMenu>
           </div>
 
-          {/* Desktop: Search field */}
-          <div className="relative w-full lg:w-64 hidden sm:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
-          </div>
-
-          {/* Tablet: Record Payment + Dropdown */}
-          <div className="hidden sm:flex lg:hidden items-center justify-end gap-2 sm:ml-auto">
-            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
+          {/* Tablet: Search + Record Payment + Dropdown */}
+          <div className="hidden sm:flex lg:hidden items-center gap-2 w-full">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
+            </div>
+            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2 shrink-0">
               <Plus className="w-4 h-4" />
               Record Payment
             </Button>
@@ -445,6 +443,12 @@ const TransactionsReport = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          </div>
+
+          {/* Desktop: Search field */}
+          <div className="relative w-full lg:w-64 hidden lg:block">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
           </div>
 
           {/* Desktop Actions */}
