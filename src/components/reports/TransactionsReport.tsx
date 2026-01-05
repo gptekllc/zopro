@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Checkbox } from '@/components/ui/checkbox';
 import { TablePagination } from '@/components/ui/table-pagination';
 import { SortableTableHeader } from '@/components/ui/sortable-table-header';
-import { DollarSign, TrendingDown, Hash, Calculator, Plus, MoreHorizontal, FileText, Download, Mail, Search, X, Loader2, User } from 'lucide-react';
+import { DollarSign, TrendingDown, Hash, Calculator, Plus, MoreHorizontal, FileText, Download, Mail, Search, X, Loader2, User, MoreVertical } from 'lucide-react';
 import { PAYMENT_METHODS, RecordPaymentDialog, PaymentData } from '@/components/invoices/RecordPaymentDialog';
 import SelectInvoiceDialog from '@/components/reports/SelectInvoiceDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -409,12 +409,38 @@ const TransactionsReport = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
           </div>
-          <div className="flex items-center justify-center lg:justify-end gap-2 lg:ml-auto">
+          {/* Mobile Actions Dropdown */}
+          <div className="flex items-center gap-2 sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem onClick={() => setEmailDialogOpen(true)} disabled={filteredPayments.length === 0}>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToCSV} disabled={filteredPayments.length === 0}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              Record Payment
+            </Button>
+          </div>
+
+          {/* Desktop Actions */}
+          <div className="hidden sm:flex items-center justify-end gap-2 lg:ml-auto">
             <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredPayments.length === 0}>
               <Mail className="w-4 h-4 mr-2" />
               Email
             </Button>
-            <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredPayments.length === 0} className="hidden sm:inline-flex">
+            <Button onClick={exportToCSV} variant="outline" size="sm" disabled={filteredPayments.length === 0}>
               <Download className="w-4 h-4 mr-2" />
               Export CSV
             </Button>
