@@ -467,7 +467,7 @@ const TechnicianPerformanceReport = () => {
       {/* Header with filters and export */}
       <div className="flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 sm:ml-auto">
             {/* Row 1: Search + All Members filter */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1 sm:flex-none sm:min-w-[200px]">
