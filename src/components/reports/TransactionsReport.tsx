@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,6 +69,9 @@ const TransactionsReport = () => {
   // Dialogs
   const [selectInvoiceOpen, setSelectInvoiceOpen] = useState(false);
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailAddress, setEmailAddress] = useState('');
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<{
     id: string;
     invoice_number: string;
@@ -270,6 +274,65 @@ const TransactionsReport = () => {
     }
   };
 
+  const getDateRangeLabel = () => {
+    if (startDate && endDate) {
+      return `${format(new Date(startDate), 'MMM d, yyyy')} - ${format(new Date(endDate), 'MMM d, yyyy')}`;
+    }
+    if (startDate) return `From ${format(new Date(startDate), 'MMM d, yyyy')}`;
+    if (endDate) return `Until ${format(new Date(endDate), 'MMM d, yyyy')}`;
+    return 'All Time';
+  };
+
+  // Send email report
+  const sendReportEmail = async () => {
+    if (!emailAddress) {
+      toast.error('Please enter an email address');
+      return;
+    }
+
+    setIsSendingEmail(true);
+    try {
+      const reportData = {
+        title: 'Transactions Report',
+        timeRange: getDateRangeLabel(),
+        generatedAt: format(new Date(), 'MMMM d, yyyy'),
+        stats: {
+          totalCollected: formatAmount(stats.totalCollected),
+          totalRefunded: formatAmount(stats.totalRefunded),
+          transactionCount: stats.count,
+          avgAmount: formatAmount(stats.avgAmount),
+        },
+        transactions: filteredPayments.slice(0, 30).map(p => ({
+          date: format(new Date(p.payment_date), 'MMM d, yyyy'),
+          invoiceNumber: p.invoice?.invoice_number || '-',
+          customer: p.invoice?.customer?.name || '-',
+          method: getMethodLabel(p.method),
+          amount: formatAmount(p.amount),
+          status: p.status,
+        })),
+      };
+
+      const { error } = await supabase.functions.invoke('send-report-email', {
+        body: { 
+          to: emailAddress, 
+          reportType: 'transactions',
+          reportData 
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Report sent to ${emailAddress}`);
+      setEmailDialogOpen(false);
+      setEmailAddress('');
+    } catch (error: any) {
+      console.error('Failed to send email:', error);
+      toast.error('Failed to send email: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
@@ -337,6 +400,15 @@ const TransactionsReport = () => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle>Payment History</CardTitle>
             <div className="flex items-center gap-2">
+              <Button 
+                onClick={() => setEmailDialogOpen(true)} 
+                variant="outline" 
+                size="sm"
+                disabled={filteredPayments.length === 0}
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Email
+              </Button>
               <Button 
                 onClick={exportToCSV} 
                 variant="outline" 
@@ -554,6 +626,41 @@ const TransactionsReport = () => {
           isLoading={createPayment.isPending}
         />
       )}
+
+      {/* Email Dialog */}
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Email Report</DialogTitle>
+            <DialogDescription>
+              Send the Transactions Report to an email address.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="recipient@example.com"
+                value={emailAddress}
+                onChange={(e) => setEmailAddress(e.target.value)}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Report includes: {stats.count} transactions, ${formatAmount(stats.totalCollected)} collected
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={sendReportEmail} disabled={isSendingEmail}>
+              {isSendingEmail ? 'Sending...' : 'Send Report'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
