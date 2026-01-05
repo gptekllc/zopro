@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Package, Wrench, Loader2, Upload, Download } from 'lucide-react';
+import { Plus, Edit, Trash2, Package, Wrench, Loader2, Upload, Download, FileText } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
 import { toast } from 'sonner';
 
@@ -118,7 +118,33 @@ export const CatalogManager = () => {
     toast.success(`Exported ${items.length} items`);
   };
 
-  // CSV Import
+  // Download sample CSV template
+  const handleDownloadTemplate = () => {
+    const headers = ['name', 'description', 'type', 'unit_price', 'is_active'];
+    const sampleRows = [
+      ['HVAC Filter 16x20', 'High-efficiency MERV 13 filter', 'product', '24.99', 'true'],
+      ['AC Tune-Up', 'Complete system inspection and cleaning', 'service', '129.00', 'true'],
+      ['Thermostat Installation', 'Install and configure new thermostat', 'service', '89.00', 'true'],
+    ];
+
+    const csvContent = [
+      headers.join(','),
+      ...sampleRows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'catalog-import-template.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success('Template downloaded');
+  };
+
+  // CSV Import with duplicate detection
   const handleImportCSV = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -172,7 +198,14 @@ export const CatalogManager = () => {
         return result;
       };
 
-      let imported = 0;
+      // Build a map of existing items by name (case-insensitive)
+      const existingByName = new Map<string, CatalogItem>();
+      items.forEach(item => {
+        existingByName.set(item.name.toLowerCase().trim(), item);
+      });
+
+      let created = 0;
+      let updated = 0;
       let skipped = 0;
 
       for (let i = 1; i < lines.length; i++) {
@@ -190,22 +223,42 @@ export const CatalogManager = () => {
         const unit_price = priceIdx !== -1 ? parseFloat(values[priceIdx]) || 0 : 0;
         const is_active = activeIdx !== -1 ? values[activeIdx]?.trim().toLowerCase() !== 'false' : true;
 
+        const existingItem = existingByName.get(name.toLowerCase().trim());
+
         try {
-          await createItem.mutateAsync({
-            name,
-            description: description || null,
-            type,
-            unit_price,
-            is_active,
-          });
-          imported++;
+          if (existingItem) {
+            // Update existing item
+            await updateItem.mutateAsync({
+              id: existingItem.id,
+              name,
+              description: description || null,
+              type,
+              unit_price,
+              is_active,
+            });
+            updated++;
+          } else {
+            // Create new item
+            await createItem.mutateAsync({
+              name,
+              description: description || null,
+              type,
+              unit_price,
+              is_active,
+            });
+            created++;
+          }
         } catch (error) {
           console.error('Failed to import item:', name, error);
           skipped++;
         }
       }
 
-      toast.success(`Imported ${imported} items${skipped > 0 ? `, skipped ${skipped}` : ''}`);
+      const messages: string[] = [];
+      if (created > 0) messages.push(`${created} created`);
+      if (updated > 0) messages.push(`${updated} updated`);
+      if (skipped > 0) messages.push(`${skipped} skipped`);
+      toast.success(`Import complete: ${messages.join(', ')}`);
     } catch (error) {
       console.error('CSV import error:', error);
       toast.error('Failed to parse CSV file');
@@ -296,9 +349,14 @@ export const CatalogManager = () => {
               <Download className="w-4 h-4 mr-2" />
               Export CSV
             </Button>
+            <Button variant="ghost" onClick={handleDownloadTemplate}>
+              <FileText className="w-4 h-4 mr-2" />
+              Download Template
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            CSV format: name, description, type (product/service), unit_price, is_active (true/false)
+            CSV format: name, description, type (product/service), unit_price, is_active (true/false).
+            Duplicate items (by name) will be updated instead of creating duplicates.
           </p>
         </CardContent>
       </Card>
