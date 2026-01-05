@@ -23,6 +23,49 @@ export interface Payment {
   refunded_by_profile?: { full_name: string | null } | null;
 }
 
+export interface PaymentWithDetails extends Payment {
+  invoice?: {
+    id: string;
+    invoice_number: string;
+    customer?: {
+      id: string;
+      name: string;
+      email: string | null;
+    } | null;
+  } | null;
+}
+
+// Fetch all payments for the company (for reports)
+export function useAllPayments() {
+  const { profile } = useAuth();
+
+  return useQuery({
+    queryKey: ['all-payments', profile?.company_id],
+    queryFn: async () => {
+      if (!profile?.company_id) return [];
+
+      const { data, error } = await (supabase as any)
+        .from('payments')
+        .select(`
+          *,
+          recorded_by_profile:profiles!payments_recorded_by_fkey(full_name),
+          refunded_by_profile:profiles!payments_refunded_by_fkey(full_name),
+          invoice:invoices(
+            id,
+            invoice_number,
+            customer:customers(id, name, email)
+          )
+        `)
+        .eq('company_id', profile.company_id)
+        .order('payment_date', { ascending: false });
+
+      if (error) throw error;
+      return data as PaymentWithDetails[];
+    },
+    enabled: !!profile?.company_id,
+  });
+}
+
 export function usePayments(invoiceId: string | null) {
   return useQuery({
     queryKey: ['payments', invoiceId],
