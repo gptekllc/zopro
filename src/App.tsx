@@ -12,7 +12,7 @@ import CustomerDetail from "./pages/CustomerDetail";
 import Jobs from "./pages/Jobs";
 import JobTemplates from "./pages/JobTemplates";
 import Templates from "./pages/Templates";
-import Catalog from "./pages/Catalog";
+import Items from "./pages/Items";
 import Quotes from "./pages/Quotes";
 import Invoices from "./pages/Invoices";
 import TimeClock from "./pages/TimeClock";
@@ -50,7 +50,7 @@ const App = () => (
               <Route path="/jobs" element={<Jobs />} />
               <Route path="/jobs/templates" element={<JobTemplates />} />
               <Route path="/templates" element={<Templates />} />
-              <Route path="/catalog" element={<Catalog />} />
+              <Route path="/items" element={<Items />} />
               <Route path="/quotes" element={<Quotes />} />
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/timeclock" element={<TimeClock />} />

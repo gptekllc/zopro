@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { CatalogPicker } from './CatalogPicker';
+import { ItemsPicker } from './ItemsPicker';
 import { CatalogItem } from '@/hooks/useCatalog';
 
 export interface LineItem {
@@ -200,7 +200,7 @@ export const LineItemsEditor = ({
             Products
           </Label>
           <div className="flex items-center gap-1">
-            {onAddFromCatalog && <CatalogPicker type="product" onSelect={handleCatalogSelect} />}
+            {onAddFromCatalog && <ItemsPicker type="product" onSelect={handleCatalogSelect} />}
             <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('product')}>
               <Plus className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Add Product</span>
@@ -228,7 +228,7 @@ export const LineItemsEditor = ({
             Services
           </Label>
           <div className="flex items-center gap-1">
-            {onAddFromCatalog && <CatalogPicker type="service" onSelect={handleCatalogSelect} />}
+            {onAddFromCatalog && <ItemsPicker type="service" onSelect={handleCatalogSelect} />}
             <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('service')}>
               <Plus className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Add Service</span>

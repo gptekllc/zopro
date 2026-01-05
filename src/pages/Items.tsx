@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Package, Search, X } from 'lucide-react';
-import { CatalogManager } from '@/components/catalog/CatalogManager';
+import { ItemsManager } from '@/components/items/ItemsManager';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const Catalog = () => {
+const Items = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
@@ -15,7 +15,7 @@ const Catalog = () => {
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Package className="w-6 h-6" />
-            Catalog
+            Items
           </h1>
           <p className="text-muted-foreground">Manage your products and services</p>
         </div>
@@ -53,9 +53,9 @@ const Catalog = () => {
         </div>
       </div>
 
-      <CatalogManager searchQuery={searchQuery} statusFilter={statusFilter} />
+      <ItemsManager searchQuery={searchQuery} statusFilter={statusFilter} />
     </div>
   );
 };
 
-export default Catalog;
+export default Items;

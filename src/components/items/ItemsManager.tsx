@@ -18,7 +18,7 @@ import { Plus, Edit, Trash2, Package, Wrench, Loader2, MoreVertical, Eye, EyeOff
 import { formatAmount } from '@/lib/formatAmount';
 import { toast } from 'sonner';
 
-interface CatalogManagerProps {
+interface ItemsManagerProps {
   searchQuery?: string;
   statusFilter?: 'all' | 'active' | 'inactive';
 }
@@ -33,7 +33,7 @@ interface ImportPreviewItem {
   error?: string;
 }
 
-export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: CatalogManagerProps) => {
+export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsManagerProps) => {
   const { data: items = [], isLoading } = useCatalogItems();
   const createItem = useCreateCatalogItem();
   const updateItem = useUpdateCatalogItem();
@@ -151,7 +151,7 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'catalog_template.csv';
+    a.download = 'items_template.csv';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -282,7 +282,7 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `catalog_${exportType}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `items_${exportType}_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success(`Exported ${exportItems.length} item${exportItems.length !== 1 ? 's' : ''}`);
@@ -521,7 +521,7 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
                 checked={formData.is_active}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
               />
-              <Label>Active (visible in catalog picker)</Label>
+              <Label>Active (visible in items picker)</Label>
             </div>
 
             <DialogFooter>
@@ -543,9 +543,9 @@ export const CatalogManager = ({ searchQuery = '', statusFilter = 'all' }: Catal
       <Dialog open={importExportOpen} onOpenChange={setImportExportOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Import / Export Catalog</DialogTitle>
+            <DialogTitle>Import / Export Items</DialogTitle>
             <DialogDescription>
-              Import items from a CSV file or export your catalog.
+              Import items from a CSV file or export your items.
             </DialogDescription>
           </DialogHeader>
 
