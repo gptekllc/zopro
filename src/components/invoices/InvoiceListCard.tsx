@@ -105,7 +105,7 @@ export function InvoiceListCard({
       <CardContent className="p-4 sm:p-5">
         {/* Mobile Layout */}
         <div className="flex flex-col gap-2 sm:hidden">
-          {/* Row 1: Invoice Info */}
+          {/* Row 1: Invoice Info + Total */}
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -120,39 +120,42 @@ export function InvoiceListCard({
                   </>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                {creatorName && (
-                  <span className="flex items-center gap-1">
-                    <UserCog className="w-3 h-3" />
-                    {creatorName}
-                  </span>
-                )}
-                {linkedJobNumber && (
-                  <>
-                    {creatorName && <span>•</span>}
-                    <span className="flex items-center gap-1">
-                      <Briefcase className="w-3 h-3" />
-                      {linkedJobNumber}
-                    </span>
-                  </>
-                )}
-                {dueText && (
-                  <>
-                    {(creatorName || linkedJobNumber) && <span>•</span>}
-                    <span className="shrink-0">Due {dueText}</span>
-                  </>
-                )}
-              </div>
-              {invoice.notes && (
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{invoice.notes}</p>
-              )}
             </div>
             <span className="text-sm font-semibold text-primary shrink-0">
               ${displayTotal.toFixed(2)}
             </span>
           </div>
 
-          {/* Row 2: Tags + Actions */}
+          {/* Row 2: Metadata (creator, job, due date) */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+            {creatorName && (
+              <span className="flex items-center gap-1">
+                <UserCog className="w-3 h-3" />
+                {creatorName}
+              </span>
+            )}
+            {linkedJobNumber && (
+              <>
+                {creatorName && <span>•</span>}
+                <span className="flex items-center gap-1">
+                  <Briefcase className="w-3 h-3" />
+                  {linkedJobNumber}
+                </span>
+              </>
+            )}
+            {dueText && (
+              <>
+                {(creatorName || linkedJobNumber) && <span>•</span>}
+                <span className="shrink-0">Due {dueText}</span>
+              </>
+            )}
+          </div>
+
+          {invoice.notes && (
+            <p className="text-xs text-muted-foreground line-clamp-1">{invoice.notes}</p>
+          )}
+
+          {/* Row 3: Tags + Actions */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
               {archivedAt && (
@@ -276,7 +279,7 @@ export function InvoiceListCard({
 
         {/* Desktop Layout */}
         <div className="hidden sm:flex flex-col gap-2">
-          {/* Row 1: Invoice Info + Amount */}
+          {/* Row 1: Invoice Info + Total */}
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -291,39 +294,42 @@ export function InvoiceListCard({
                   </>
                 )}
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
-                {creatorName && (
-                  <span className="flex items-center gap-1">
-                    <UserCog className="w-3 h-3" />
-                    {creatorName}
-                  </span>
-                )}
-                {linkedJobNumber && (
-                  <>
-                    {creatorName && <span>•</span>}
-                    <span className="flex items-center gap-1">
-                      <Briefcase className="w-3 h-3" />
-                      {linkedJobNumber}
-                    </span>
-                  </>
-                )}
-                {dueText && (
-                  <>
-                    {(creatorName || linkedJobNumber) && <span>•</span>}
-                    <span className="shrink-0">Due {dueText}</span>
-                  </>
-                )}
-              </div>
-              {invoice.notes && (
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{invoice.notes}</p>
-              )}
             </div>
             <span className="text-base font-semibold text-primary shrink-0">
               ${displayTotal.toFixed(2)}
             </span>
           </div>
 
-          {/* Row 2: Tags + Actions */}
+          {/* Row 2: Metadata (creator, job, due date) */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+            {creatorName && (
+              <span className="flex items-center gap-1">
+                <UserCog className="w-3 h-3" />
+                {creatorName}
+              </span>
+            )}
+            {linkedJobNumber && (
+              <>
+                {creatorName && <span>•</span>}
+                <span className="flex items-center gap-1">
+                  <Briefcase className="w-3 h-3" />
+                  {linkedJobNumber}
+                </span>
+              </>
+            )}
+            {dueText && (
+              <>
+                {(creatorName || linkedJobNumber) && <span>•</span>}
+                <span className="shrink-0">Due {dueText}</span>
+              </>
+            )}
+          </div>
+
+          {invoice.notes && (
+            <p className="text-sm text-muted-foreground line-clamp-1">{invoice.notes}</p>
+          )}
+
+          {/* Row 3: Tags + Actions */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
               {archivedAt && (
