@@ -1,5 +1,6 @@
 import { useState, useRef, ReactNode, TouchEvent, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { ChevronLeft } from "lucide-react";
 
 export interface SwipeAction {
   icon: ReactNode;
@@ -44,7 +45,7 @@ export function SwipeableCard({
 }: SwipeableCardProps) {
   const [translateX, setTranslateX] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isHintAnimating, setIsHintAnimating] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
   const startXRef = useRef(0);
   const currentXRef = useRef(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -54,27 +55,28 @@ export function SwipeableCard({
   const maxLeftSwipe = leftActions.length * ACTION_WIDTH;
   const maxRightSwipe = rightActions.length * ACTION_WIDTH;
 
-  // Show hint animation on first render if showHint is true
+  // Show tooltip hint on first render if showHint is true
   useEffect(() => {
     if (showHint && rightActions.length > 0) {
       const timer = setTimeout(() => {
-        setIsHintAnimating(true);
-        setTranslateX(-40);
-        
-        setTimeout(() => {
-          setIsAnimating(true);
-          setTranslateX(0);
-          setIsHintAnimating(false);
-          onHintDismiss?.();
-        }, 600);
+        setShowTooltip(true);
       }, 500);
 
       return () => clearTimeout(timer);
     }
-  }, [showHint, rightActions.length, onHintDismiss]);
+  }, [showHint, rightActions.length]);
+
+  const dismissTooltip = () => {
+    setShowTooltip(false);
+    onHintDismiss?.();
+  };
 
   const handleTouchStart = (e: TouchEvent) => {
     if (disabled) return;
+    // Dismiss tooltip on any touch
+    if (showTooltip) {
+      dismissTooltip();
+    }
     setIsAnimating(false);
     startXRef.current = e.touches[0].clientX;
     currentXRef.current = translateX;
@@ -185,7 +187,7 @@ export function SwipeableCard({
       <div
         className={cn(
           "relative bg-background",
-          (isAnimating || isHintAnimating) && "transition-transform duration-200 ease-out"
+          isAnimating && "transition-transform duration-200 ease-out"
         )}
         style={{ transform: `translateX(${translateX}px)` }}
         onTouchStart={handleTouchStart}
@@ -194,6 +196,22 @@ export function SwipeableCard({
         onClick={translateX !== 0 ? resetSwipe : undefined}
       >
         {children}
+
+        {/* Swipe Hint Tooltip */}
+        {showTooltip && (
+          <div 
+            className="absolute inset-0 flex items-center justify-end pointer-events-none sm:hidden animate-fade-in"
+            onClick={(e) => {
+              e.stopPropagation();
+              dismissTooltip();
+            }}
+          >
+            <div className="pointer-events-auto mr-3 flex items-center gap-1.5 bg-foreground/90 text-background px-3 py-1.5 rounded-full text-xs font-medium shadow-lg animate-[pulse_2s_ease-in-out_infinite]">
+              <ChevronLeft className="w-3.5 h-3.5 animate-[slide-hint_1s_ease-in-out_infinite]" />
+              <span>Swipe left for actions</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
