@@ -405,15 +405,19 @@ const TransactionsReport = () => {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-center gap-4">
           
-          <div className="relative w-full lg:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
-          </div>
-          {/* Mobile Actions Dropdown */}
-          <div className="flex items-center gap-2 sm:hidden">
+          {/* Mobile: Search + Record Payment + Actions Dropdown in same row */}
+          <div className="flex sm:hidden items-center gap-2 w-full">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
+            </div>
+            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2 shrink-0">
+              <Plus className="w-4 h-4" />
+              Record Payment
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="icon" className="shrink-0">
                   <MoreVertical className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -428,10 +432,12 @@ const TransactionsReport = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Record Payment
-            </Button>
+          </div>
+
+          {/* Desktop: Search field */}
+          <div className="relative w-full lg:w-64 hidden sm:block">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
           </div>
 
           {/* Desktop Actions */}
