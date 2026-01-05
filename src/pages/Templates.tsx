@@ -58,9 +58,6 @@ interface LineItem {
   unitPrice: number;
 }
 
-import { CatalogManager } from '@/components/catalog/CatalogManager';
-import { Package } from 'lucide-react';
-
 const Templates = () => {
   const [activeTab, setActiveTab] = useState('jobs');
 
@@ -72,9 +69,9 @@ const Templates = () => {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <BookTemplate className="w-6 h-6" />
-              Templates & Catalog
+              Templates
             </h1>
-            <p className="text-muted-foreground">Manage your templates and product/service catalog</p>
+            <p className="text-muted-foreground">Manage your job and quote templates</p>
           </div>
 
           <TabsList>
@@ -88,10 +85,6 @@ const Templates = () => {
               <span className="hidden sm:inline">Quote Templates</span>
               <span className="sm:hidden">Quotes</span>
             </TabsTrigger>
-            <TabsTrigger value="catalog" className="flex items-center gap-2">
-              <Package className="w-4 h-4" />
-              Catalog
-            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -101,10 +94,6 @@ const Templates = () => {
 
         <TabsContent value="quotes">
           <QuoteTemplatesTab />
-        </TabsContent>
-
-        <TabsContent value="catalog">
-          <CatalogManager />
         </TabsContent>
       </Tabs>
     </div>
