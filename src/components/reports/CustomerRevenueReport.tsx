@@ -12,6 +12,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TablePagination } from '@/components/ui/table-pagination';
+import { SortableTableHeader } from '@/components/ui/sortable-table-header';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -39,9 +40,6 @@ import {
   TrendingUp,
   Download,
   Search,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
   Printer,
   CalendarIcon,
   Mail,
@@ -220,15 +218,6 @@ const CustomerRevenueReport = () => {
 
   const totalPages = Math.ceil(filteredData.length / pageSize);
 
-  // Get sort icon for column
-  const getSortIcon = (field: SortField) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="ml-2 h-4 w-4 opacity-50" />;
-    }
-    return sortDirection === 'asc' 
-      ? <ArrowUp className="ml-2 h-4 w-4" />
-      : <ArrowDown className="ml-2 h-4 w-4" />;
-  };
 
   // Calculate summary stats
   const stats = useMemo(() => {
@@ -767,61 +756,48 @@ const CustomerRevenueReport = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="-ml-3 h-8"
-                      onClick={() => handleSort('name')}
-                    >
-                      Customer
-                      {getSortIcon('name')}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="-mr-3 h-8"
-                      onClick={() => handleSort('totalRevenue')}
-                    >
-                      Total Revenue
-                      {getSortIcon('totalRevenue')}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right hidden sm:table-cell">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="-mr-3 h-8"
-                      onClick={() => handleSort('jobCount')}
-                    >
-                      Jobs
-                      {getSortIcon('jobCount')}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right hidden md:table-cell">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="-mr-3 h-8"
-                      onClick={() => handleSort('avgJobValue')}
-                    >
-                      Avg Job
-                      {getSortIcon('avgJobValue')}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right hidden lg:table-cell">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="-mr-3 h-8"
-                      onClick={() => handleSort('ltv')}
-                    >
-                      Est. LTV
-                      {getSortIcon('ltv')}
-                    </Button>
-                  </TableHead>
+                  <SortableTableHeader
+                    column="name"
+                    label="Customer"
+                    currentSortColumn={sortField}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                  />
+                  <SortableTableHeader
+                    column="totalRevenue"
+                    label="Total Revenue"
+                    currentSortColumn={sortField}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                  />
+                  <SortableTableHeader
+                    column="jobCount"
+                    label="Jobs"
+                    currentSortColumn={sortField}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                    className="hidden sm:table-cell"
+                  />
+                  <SortableTableHeader
+                    column="avgJobValue"
+                    label="Avg Job"
+                    currentSortColumn={sortField}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                    className="hidden md:table-cell"
+                  />
+                  <SortableTableHeader
+                    column="ltv"
+                    label="Est. LTV"
+                    currentSortColumn={sortField}
+                    currentSortDirection={sortDirection}
+                    onSort={handleSort}
+                    align="right"
+                    className="hidden lg:table-cell"
+                  />
                   <TableHead className="text-right hidden xl:table-cell">
                     Last Payment
                   </TableHead>
