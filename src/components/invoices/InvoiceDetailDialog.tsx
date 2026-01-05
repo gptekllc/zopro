@@ -20,7 +20,7 @@ import { CustomerInvoice } from '@/hooks/useCustomerHistory';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
-import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto } from '@/hooks/useInvoicePhotos';
+import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto, useUpdateInvoicePhotoType } from '@/hooks/useInvoicePhotos';
 
 const INVOICE_STATUSES = ['draft', 'sent', 'paid'] as const;
 
@@ -135,6 +135,7 @@ export function InvoiceDetailDialog({
   const { data: invoicePhotos = [], isLoading: loadingPhotos } = useInvoicePhotos(invoice?.id || null);
   const uploadPhoto = useUploadInvoicePhoto();
   const deletePhoto = useDeleteInvoicePhoto();
+  const updatePhotoType = useUpdateInvoicePhotoType();
 
   if (!invoice) return null;
 
@@ -155,6 +156,14 @@ export function InvoiceDetailDialog({
     await deletePhoto.mutateAsync({
       photoId,
       photoUrl,
+      invoiceId: invoice.id,
+    });
+  };
+
+  const handleUpdatePhotoType = (photoId: string, photoType: 'before' | 'after' | 'other') => {
+    updatePhotoType.mutate({
+      photoId,
+      photoType,
       invoiceId: invoice.id,
     });
   };
@@ -550,6 +559,7 @@ export function InvoiceDetailDialog({
                 documentId={invoice.id}
                 onUpload={handleUploadPhoto}
                 onDelete={handleDeletePhoto}
+                onUpdateType={handleUpdatePhotoType}
                 isUploading={uploadPhoto.isPending}
                 editable={true}
               />

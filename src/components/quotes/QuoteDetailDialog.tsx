@@ -21,7 +21,7 @@ import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useJobs, Job } from '@/hooks/useJobs';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
-import { useQuotePhotos, useUploadQuotePhoto, useDeleteQuotePhoto } from '@/hooks/useQuotePhotos';
+import { useQuotePhotos, useUploadQuotePhoto, useDeleteQuotePhoto, useUpdateQuotePhotoType } from '@/hooks/useQuotePhotos';
 import { useMemo } from 'react';
 import { formatAmount } from '@/lib/formatAmount';
 
@@ -95,6 +95,7 @@ export function QuoteDetailDialog({
   const { data: quotePhotos = [], isLoading: loadingPhotos } = useQuotePhotos(quote?.id || null);
   const uploadPhoto = useUploadQuotePhoto();
   const deletePhoto = useDeleteQuotePhoto();
+  const updatePhotoType = useUpdateQuotePhotoType();
 
   // Find job linked to this quote
   const linkedJob = useMemo(() => {
@@ -126,6 +127,14 @@ export function QuoteDetailDialog({
     await deletePhoto.mutateAsync({
       photoId,
       photoUrl,
+      quoteId: quote.id,
+    });
+  };
+
+  const handleUpdatePhotoType = (photoId: string, photoType: 'before' | 'after' | 'other') => {
+    updatePhotoType.mutate({
+      photoId,
+      photoType,
       quoteId: quote.id,
     });
   };
@@ -429,6 +438,7 @@ export function QuoteDetailDialog({
                 documentId={quote.id}
                 onUpload={handleUploadPhoto}
                 onDelete={handleDeletePhoto}
+                onUpdateType={handleUpdatePhotoType}
                 isUploading={uploadPhoto.isPending}
                 editable={true}
               />

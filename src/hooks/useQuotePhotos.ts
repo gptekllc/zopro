@@ -134,3 +134,27 @@ export function useDeleteQuotePhoto() {
     },
   });
 }
+
+export function useUpdateQuotePhotoType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ photoId, photoType, quoteId }: { photoId: string; photoType: 'before' | 'after' | 'other'; quoteId: string }) => {
+      const { error } = await supabase
+        .from('quote_photos')
+        .update({ photo_type: photoType })
+        .eq('id', photoId);
+
+      if (error) throw error;
+      return quoteId;
+    },
+    onSuccess: (quoteId) => {
+      queryClient.invalidateQueries({ queryKey: ['quote-photos', quoteId] });
+      toast.success('Photo category updated');
+    },
+    onError: (error) => {
+      console.error('Failed to update photo category:', error);
+      toast.error('Failed to update photo category');
+    },
+  });
+}

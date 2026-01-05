@@ -449,6 +449,29 @@ export function useDeleteJobPhoto() {
   });
 }
 
+export function useUpdateJobPhotoType() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ photoId, photoType }: { photoId: string; photoType: 'before' | 'after' | 'other' }) => {
+      const { error } = await (supabase as any)
+        .from('job_photos')
+        .update({ photo_type: photoType })
+        .eq('id', photoId);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['job'] });
+      toast.success('Photo category updated');
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to update photo category: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
+
 export function useArchiveJob() {
   const queryClient = useQueryClient();
   

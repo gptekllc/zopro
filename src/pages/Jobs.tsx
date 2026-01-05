@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useSearchParams, Link } from 'react-router-dom';
-import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, useJobRelatedQuotes, Job, JobItem } from '@/hooks/useJobs';
+import { useJobs, useCreateJob, useUpdateJob, useDeleteJob, useUploadJobPhoto, useDeleteJobPhoto, useUpdateJobPhotoType, useConvertJobToInvoice, useConvertJobToQuote, useArchiveJob, useUnarchiveJob, useJobRelatedQuotes, Job, JobItem } from '@/hooks/useJobs';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useJobTemplates, JobTemplate } from '@/hooks/useJobTemplates';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -151,6 +151,7 @@ const Jobs = () => {
   const deleteJob = useDeleteJob();
   const uploadPhoto = useUploadJobPhoto();
   const deletePhoto = useDeleteJobPhoto();
+  const updatePhotoType = useUpdateJobPhotoType();
   const convertToInvoice = useConvertJobToInvoice();
   const convertToQuote = useConvertJobToQuote();
   const archiveJob = useArchiveJob();
@@ -1867,6 +1868,16 @@ const Jobs = () => {
                       setViewingJob(prev => prev ? {
                         ...prev,
                         photos: prev.photos?.filter(p => p.id !== photoId) || []
+                      } : null);
+                    }
+                  });
+                }} onUpdateType={(photoId, photoType) => {
+                  updatePhotoType.mutate({ photoId, photoType }, {
+                    onSuccess: () => {
+                      // Immediately update local state
+                      setViewingJob(prev => prev ? {
+                        ...prev,
+                        photos: prev.photos?.map(p => p.id === photoId ? { ...p, photo_type: photoType } : p) || []
                       } : null);
                     }
                   });
