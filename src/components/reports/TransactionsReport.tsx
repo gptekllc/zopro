@@ -413,7 +413,7 @@ const TransactionsReport = () => {
             </div>
             <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2 shrink-0">
               <Plus className="w-4 h-4" />
-              Record Payment
+              Add Record
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
