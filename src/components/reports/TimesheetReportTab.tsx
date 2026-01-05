@@ -381,7 +381,7 @@ const TimesheetReportTab = () => {
               <ChevronRight className="w-4 h-4" />
             </Button>
             <Select value={numWeeks} onValueChange={setNumWeeks}>
-              <SelectTrigger className="w-[100px] sm:w-[120px]">
+              <SelectTrigger className="hidden sm:flex w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -510,6 +510,17 @@ const TimesheetReportTab = () => {
                 </div>
               </PopoverContent>
             </Popover>
+            {/* Mobile: Week Select */}
+            <Select value={numWeeks} onValueChange={setNumWeeks}>
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 Week</SelectItem>
+                <SelectItem value="2">2 Weeks</SelectItem>
+                <SelectItem value="4">4 Weeks</SelectItem>
+              </SelectContent>
+            </Select>
             {/* Mobile Actions Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
