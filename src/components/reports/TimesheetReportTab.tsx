@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, FileText, Mail, Users, X, Search, MoreVertical } from 'lucide-react';
+import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, Printer, Mail, Users, X, Search, MoreVertical } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -463,7 +463,7 @@ const TimesheetReportTab = () => {
                   Email
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={exportToPDF} disabled={isExportingPdf}>
-                  <FileText className="w-4 h-4 mr-2" />
+                  <Printer className="w-4 h-4 mr-2" />
                   Print/PDF
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={exportToCSV}>
@@ -557,7 +557,7 @@ const TimesheetReportTab = () => {
                   Email
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={exportToPDF} disabled={isExportingPdf}>
-                  <FileText className="w-4 h-4 mr-2" />
+                  <Printer className="w-4 h-4 mr-2" />
                   Print/PDF
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={exportToCSV}>
@@ -579,7 +579,7 @@ const TimesheetReportTab = () => {
             {isExportingPdf ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
-              <FileText className="w-4 h-4 mr-2" />
+              <Printer className="w-4 h-4 mr-2" />
             )}
             Print/PDF
           </Button>
