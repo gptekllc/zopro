@@ -1100,61 +1100,53 @@ const Invoices = () => {
             </DialogHeader>
 
             <div className="space-y-4 sm:space-y-6">
-              {/* Customer & Dates - responsive grid */}
+              {/* Basic Info - responsive grid */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
+                  <Label className="text-muted-foreground text-xs sm:text-sm">Customer</Label>
                   <p className="font-medium text-sm sm:text-base truncate">
                     {getCustomerName(viewingInvoice.customer_id)}
                   </p>
                 </div>
                 {(viewingInvoice as any).creator?.full_name && <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                      <UserCog className="w-3 h-3" /> Created By
-                    </p>
+                    <Label className="text-muted-foreground text-xs sm:text-sm">Created By</Label>
                     <p className="font-medium text-sm sm:text-base truncate">
                       {(viewingInvoice as any).creator.full_name}
                     </p>
                   </div>}
                 {/* Linked Job */}
                 {((viewingInvoice as any).job?.job_number || (viewingInvoice as any).quote?.job?.job_number) && <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                      <Briefcase className="w-3 h-3" /> Linked Job
-                    </p>
+                    <Label className="text-muted-foreground text-xs sm:text-sm">Linked Job</Label>
                     <p className="font-medium text-sm sm:text-base">
                       {(viewingInvoice as any).job?.job_number || (viewingInvoice as any).quote?.job?.job_number}
                     </p>
                   </div>}
                 {((viewingInvoice as any).assigned_technician?.full_name || (viewingInvoice as any).quote?.job?.assigned_technician?.full_name) && <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                      <Wrench className="w-3 h-3" /> Assigned Technician
-                    </p>
+                    <Label className="text-muted-foreground text-xs sm:text-sm">Assigned Technician</Label>
                     <p className="font-medium text-sm sm:text-base truncate">
                       {(viewingInvoice as any).assigned_technician?.full_name || (viewingInvoice as any).quote?.job?.assigned_technician?.full_name}
                     </p>
                   </div>}
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
+                  <Label className="text-muted-foreground text-xs sm:text-sm">Created</Label>
                   <p className="font-medium text-sm sm:text-base">
                     {format(new Date(viewingInvoice.created_at), "MMM d, yyyy")}
                   </p>
                 </div>
                 {viewingInvoice.due_date && <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Due Date</p>
+                    <Label className="text-muted-foreground text-xs sm:text-sm">Due Date</Label>
                     <p className="font-medium text-sm sm:text-base">
                       {format(new Date(viewingInvoice.due_date), "MMM d, yyyy")}
                     </p>
                   </div>}
                 {viewingInvoice.paid_at && <div>
-                    <p className="text-xs sm:text-sm text-muted-foreground">Paid</p>
+                    <Label className="text-muted-foreground text-xs sm:text-sm">Paid</Label>
                     <p className="font-medium text-green-600 flex items-center gap-1 text-sm sm:text-base">
                       <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
                       {format(new Date(viewingInvoice.paid_at), "MMM d, yyyy")}
                     </p>
                   </div>}
               </div>
-
-              <Separator />
 
               {/* Tabs for Items, Linked Docs, Photos */}
               <Tabs defaultValue="items" className="mt-4">
@@ -1171,190 +1163,146 @@ const Invoices = () => {
                 </TabsList>
 
                 {/* Items Tab */}
-                <TabsContent value="items" className="mt-4">
-                  <div className="space-y-4">
-                    {/* Line Items */}
-                    <div>
-                      <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
-                <div className="space-y-2">
-                  {viewingInvoice.items && viewingInvoice.items.length > 0 ? <>
-                      {/* Desktop header - hidden on mobile */}
-                      <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
-                        <div className="col-span-6">Description</div>
-                        <div className="col-span-2 text-right">Qty</div>
-                        <div className="col-span-2 text-right">Price</div>
-                        <div className="col-span-2 text-right">Total</div>
-                      </div>
-                      {viewingInvoice.items.map((item: any) => <div key={item.id} className="py-2 px-2 sm:px-3 bg-muted/50 rounded text-sm">
-                          {/* Mobile layout */}
-                          <div className="sm:hidden space-y-1">
-                            <p className="font-medium">{item.description}</p>
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>
-                                {item.quantity} × ${Number(item.unit_price).toLocaleString()}
-                              </span>
-                              <span className="font-medium text-foreground">
-                                ${Number(item.total).toLocaleString()}
-                              </span>
-                            </div>
+                <TabsContent value="items" className="space-y-6 mt-4">
+                  {/* Line Items Section */}
+                  <div className="space-y-3">
+                    <Label className="text-muted-foreground text-xs sm:text-sm font-medium">Line Items</Label>
+                    {viewingInvoice.items && viewingInvoice.items.length > 0 ? <>
+                        <div className="rounded-lg border">
+                          {/* Desktop header - hidden on mobile */}
+                          <div className="hidden sm:grid grid-cols-12 gap-2 p-3 bg-muted/50 font-medium text-sm">
+                            <div className="col-span-6">Description</div>
+                            <div className="col-span-2 text-center">Qty</div>
+                            <div className="col-span-2 text-right">Unit Price</div>
+                            <div className="col-span-2 text-right">Total</div>
                           </div>
-                          {/* Desktop layout */}
-                          <div className="hidden sm:grid grid-cols-12">
-                            <div className="col-span-6">{item.description}</div>
-                            <div className="col-span-2 text-right">{item.quantity}</div>
-                            <div className="col-span-2 text-right">${Number(item.unit_price).toLocaleString()}</div>
-                            <div className="col-span-2 text-right font-medium">
-                              ${Number(item.total).toLocaleString()}
-                            </div>
+                          {viewingInvoice.items.map((item: any) => <div key={item.id} className="p-3 border-t text-sm">
+                              {/* Mobile layout */}
+                              <div className="sm:hidden space-y-1">
+                                <p className="font-medium">{item.description}</p>
+                                <div className="flex justify-between text-xs text-muted-foreground">
+                                  <span>{item.quantity} × ${Number(item.unit_price).toFixed(2)}</span>
+                                  <span className="font-medium text-foreground">${Number(item.total).toFixed(2)}</span>
+                                </div>
+                              </div>
+                              {/* Desktop layout */}
+                              <div className="hidden sm:grid grid-cols-12 gap-2">
+                                <div className="col-span-6">{item.description}</div>
+                                <div className="col-span-2 text-center">{item.quantity}</div>
+                                <div className="col-span-2 text-right">${Number(item.unit_price).toFixed(2)}</div>
+                                <div className="col-span-2 text-right">${Number(item.total).toFixed(2)}</div>
+                              </div>
+                            </div>)}
+                        </div>
+                        <div className="flex flex-col items-end gap-1 text-sm">
+                          <div className="flex justify-between w-full sm:w-56">
+                            <span className="text-muted-foreground">Subtotal:</span>
+                            <span>${Number(viewingInvoice.subtotal).toFixed(2)}</span>
                           </div>
-                        </div>)}
-                    </> : <p className="text-sm text-muted-foreground">No line items</p>}
-                </div>
-              </div>
-
-              {/* Totals */}
-              <div className="flex justify-end">
-                <div className="w-full sm:w-56 space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>${Number(viewingInvoice.subtotal).toLocaleString()}</span>
+                          {Number(viewingInvoice.discount_value) > 0 && (
+                            <div className="flex justify-between w-full sm:w-56 text-success">
+                              <span>Discount ({formatDiscount(viewingInvoice.discount_type, Number(viewingInvoice.discount_value))}):</span>
+                              <span>-${calculateDiscountAmount(Number(viewingInvoice.subtotal), viewingInvoice.discount_type, Number(viewingInvoice.discount_value)).toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between w-full sm:w-56">
+                            <span className="text-muted-foreground">Tax:</span>
+                            <span>${Number(viewingInvoice.tax).toFixed(2)}</span>
+                          </div>
+                          {Number(viewingInvoice.late_fee_amount) > 0 ? <>
+                              <div className="flex justify-between w-full sm:w-56 font-semibold pt-1 border-t">
+                                <span>Invoice Total:</span>
+                                <span>${formatAmount(viewingInvoice.total)}</span>
+                              </div>
+                              <div className="flex justify-between w-full sm:w-56 text-destructive">
+                                <span className="flex items-center gap-1">
+                                  <AlertCircle className="w-3 h-3" />
+                                  Late Fee {lateFeePercentage > 0 && `(${lateFeePercentage}%)`}:
+                                </span>
+                                <span>+${Number(viewingInvoice.late_fee_amount).toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between w-full sm:w-56 font-semibold text-base pt-1 border-t border-destructive/30">
+                                <span className="text-destructive">Total Due:</span>
+                                <span className="text-destructive">
+                                  ${(Number(viewingInvoice.total) + Number(viewingInvoice.late_fee_amount)).toFixed(2)}
+                                </span>
+                              </div>
+                            </> : <div className="flex justify-between w-full sm:w-56 font-semibold text-base pt-1 border-t">
+                              <span>Total:</span>
+                              <span>${formatAmount(viewingInvoice.total)}</span>
+                            </div>}
+                        </div>
+                        {viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date() && viewingInvoice.status !== "paid" && (!viewingInvoice.late_fee_amount || Number(viewingInvoice.late_fee_amount) === 0) && lateFeePercentage > 0 && (
+                          <div className="flex justify-end">
+                            <Button variant="destructive" size="sm" onClick={() => handleApplyLateFee(viewingInvoice.id)} disabled={applyLateFee.isPending}>
+                              <AlertCircle className="w-4 h-4 mr-2" />
+                              Apply {lateFeePercentage}% Late Fee
+                            </Button>
+                          </div>
+                        )}
+                      </> : <div className="text-center py-6 text-muted-foreground border rounded-lg">
+                        <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No line items added</p>
+                        <Button variant="outline" size="sm" className="mt-2" onClick={() => {
+                          handleEdit(viewingInvoice);
+                          openViewingInvoice(null);
+                        }}>
+                          <Plus className="w-4 h-4 mr-1" />
+                          Add Items
+                        </Button>
+                      </div>}
                   </div>
-                  {Number(viewingInvoice.discount_value) > 0 && (
-                    <div className="flex justify-between text-sm text-success">
-                      <span>Discount ({formatDiscount(viewingInvoice.discount_type, Number(viewingInvoice.discount_value))})</span>
-                      <span>-${calculateDiscountAmount(Number(viewingInvoice.subtotal), viewingInvoice.discount_type, Number(viewingInvoice.discount_value)).toLocaleString()}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Tax</span>
-                    <span>${Number(viewingInvoice.tax).toLocaleString()}</span>
-                  </div>
 
-                  {Number(viewingInvoice.late_fee_amount) > 0 ? <>
-                      <div className="flex justify-between font-semibold pt-2 border-t">
-                        <span>Invoice Total</span>
-                        <span>${formatAmount(viewingInvoice.total)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-destructive">
-                        <span className="flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" />
-                          Late Fee {lateFeePercentage > 0 && `(${lateFeePercentage}%)`}
-                        </span>
-                        <span>+${Number(viewingInvoice.late_fee_amount).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-base sm:text-lg pt-2 border-t border-destructive/30">
-                        <span className="flex items-center gap-1 text-destructive">
-                          <DollarSign className="w-4 h-4" />
-                          Total Due
-                        </span>
-                        <span className="text-destructive">
-                          ${(Number(viewingInvoice.total) + Number(viewingInvoice.late_fee_amount)).toLocaleString()}
-                        </span>
-                      </div>
-                    </> : <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
-                      <span className="flex items-center gap-1">
-                        
-                        Total
+                  {/* Payment Status */}
+                  {viewingInvoice.status === "paid" ? <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-700 dark:text-green-400">
+                      <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+                      <span className="font-medium text-xs sm:text-sm">
+                        Payment received on {format(new Date(viewingInvoice.paid_at!), "MMM d, yyyy")}
                       </span>
-                      <span>${formatAmount(viewingInvoice.total)}</span>
-                    </div>}
+                    </div> : viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date() ? <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-700 dark:text-red-400">
+                      <span className="font-medium text-xs sm:text-sm">
+                        Overdue - was due on {format(new Date(viewingInvoice.due_date), "MMM d, yyyy")}
+                      </span>
+                    </div> : null}
 
-                  {viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date() && viewingInvoice.status !== "paid" && (!viewingInvoice.late_fee_amount || Number(viewingInvoice.late_fee_amount) === 0) && lateFeePercentage > 0 && <Button variant="destructive" size="sm" className="w-full mt-2" onClick={() => handleApplyLateFee(viewingInvoice.id)} disabled={applyLateFee.isPending}>
-                        <AlertCircle className="w-4 h-4 mr-2" />
-                        Apply {lateFeePercentage}% Late Fee
-                      </Button>}
-                </div>
-              </div>
-
-              {/* Payment Status */}
-              {viewingInvoice.status === "paid" ? <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-green-700 dark:text-green-400">
-                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-                  <span className="font-medium text-xs sm:text-sm">
-                    Payment received on {format(new Date(viewingInvoice.paid_at!), "MMM d, yyyy")}
-                  </span>
-                </div> : viewingInvoice.due_date && new Date(viewingInvoice.due_date) < new Date() ? <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-700 dark:text-red-400">
-                  <span className="font-medium text-xs sm:text-sm">
-                    Overdue - was due on {format(new Date(viewingInvoice.due_date), "MMM d, yyyy")}
-                  </span>
-                </div> : null}
-
-              {/* Signature Section */}
-              <ConstrainedPanel>
-                <SignatureSection signatureId={(viewingInvoice as any).signature_id} title="Customer Signature" onCollectSignature={() => handleOpenSignatureDialog(viewingInvoice as Invoice)} showCollectButton={viewingInvoice.status !== "paid"} collectButtonText="Collect Signature" isCollecting={signInvoice.isPending} />
-              </ConstrainedPanel>
-
-              {/* Notes */}
-              {viewingInvoice.notes && <div>
-                  <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
-                  <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{viewingInvoice.notes}</p>
-                </div>}
-
-              {/* Reminder History */}
-              {invoiceReminders.length > 0 && <div>
-                  <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
-                    <Bell className="w-4 h-4" />
-                    Payment Reminders Sent ({invoiceReminders.length})
-                  </h4>
+                  {/* Notes Section */}
                   <div className="space-y-2">
-                    {invoiceReminders.map(reminder => <div key={reminder.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 px-3 bg-muted/50 rounded text-sm">
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
-                          <span className="text-muted-foreground">{reminder.recipient_email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {reminder.sent_by_profile?.full_name && <span>by {reminder.sent_by_profile.full_name}</span>}
-                          <span>{format(new Date(reminder.sent_at), 'MMM d, yyyy h:mm a')}</span>
-                        </div>
-                      </div>)}
+                    <Label className="text-muted-foreground text-xs sm:text-sm font-medium">Notes</Label>
+                    {viewingInvoice.notes ? (
+                      <p className="text-sm whitespace-pre-wrap">{viewingInvoice.notes}</p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No notes</p>
+                    )}
                   </div>
-                </div>}
 
-              {/* Actions */}
-              <Separator />
-              <div className="flex flex-wrap justify-center gap-2 pt-2 sm:pt-4">
-                <Button variant="outline" size="sm" onClick={() => {
-                  handleEdit(viewingInvoice);
-                  openViewingInvoice(null);
-                }}>
-                  <Edit className="w-4 h-4 mr-1" />
-                  Edit
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => {
-                  handleDuplicateInvoice(viewingInvoice);
-                  openViewingInvoice(null);
-                }}>
-                  <Copy className="w-4 h-4 mr-1" />
-                  Duplicate
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handleDownload(viewingInvoice.id)}>
-                  <FileDown className="w-4 h-4 mr-1" />
-                  Download
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => handleOpenEmailDialog(viewingInvoice.id, viewingInvoice.customer_id)}>
-                  <Mail className="w-4 h-4 mr-1" />
-                  Email
-                </Button>
-                {viewingInvoice.status !== "paid" && (
-                  <>
-                    <Button variant="outline" size="sm" onClick={() => handleSendPaymentReminder(viewingInvoice as Invoice)} disabled={sendPaymentReminder.isPending}>
-                      <Bell className="w-4 h-4 mr-1" />
-                      {sendPaymentReminder.isPending ? 'Sending...' : 'Send Reminder'}
-                    </Button>
-                    <Button size="sm" onClick={() => {
-                      handleMarkPaid(viewingInvoice.id);
-                      setViewingInvoice(prev => prev ? { ...prev, status: 'paid' as Invoice['status'], paid_at: new Date().toISOString() } : null);
-                    }}>
-                      <CheckCircle className="w-4 h-4 mr-1" />
-                      Mark Paid
-                    </Button>
-                  </>
-                )}
-              </div>
-                  </div>
+                  {/* Signature Section */}
+                  <ConstrainedPanel>
+                    <SignatureSection signatureId={(viewingInvoice as any).signature_id} title="Customer Signature" onCollectSignature={() => handleOpenSignatureDialog(viewingInvoice as Invoice)} showCollectButton={viewingInvoice.status !== "paid"} collectButtonText="Collect Signature" isCollecting={signInvoice.isPending} />
+                  </ConstrainedPanel>
+
+                  {/* Reminder History */}
+                  {invoiceReminders.length > 0 && <div className="space-y-2">
+                      <Label className="text-muted-foreground text-xs sm:text-sm font-medium flex items-center gap-2">
+                        <Bell className="w-4 h-4" />
+                        Payment Reminders Sent ({invoiceReminders.length})
+                      </Label>
+                      <div className="space-y-2">
+                        {invoiceReminders.map(reminder => <div key={reminder.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 py-2 px-3 bg-muted/50 rounded text-sm">
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-3 h-3 text-muted-foreground shrink-0" />
+                              <span className="text-muted-foreground">{reminder.recipient_email}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {reminder.sent_by_profile?.full_name && <span>by {reminder.sent_by_profile.full_name}</span>}
+                              <span>{format(new Date(reminder.sent_at), 'MMM d, yyyy h:mm a')}</span>
+                            </div>
+                          </div>)}
+                      </div>
+                    </div>}
                 </TabsContent>
 
-              {/* Linked Docs Tab */}
-              <TabsContent value="linked" className="mt-4">
+                {/* Linked Docs Tab */}
+                <TabsContent value="linked" className="mt-4">
                 <div>
                   <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
                     <Link2 className="w-4 h-4" />

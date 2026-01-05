@@ -1523,7 +1523,7 @@ const Jobs = () => {
 
       {/* Job Detail Modal */}
       <Dialog open={!!viewingJob} onOpenChange={open => !open && openViewingJob(null)}>
-        <DialogContent className="max-w-4xl lg:max-w-5xl xl:max-w-6xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
           {viewingJob && <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 pr-8 text-base sm:text-lg">
