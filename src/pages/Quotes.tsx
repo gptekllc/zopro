@@ -43,6 +43,7 @@ import { SelectQuoteTemplateDialog } from '@/components/quotes/SelectQuoteTempla
 import { QuoteTemplate } from '@/hooks/useQuoteTemplates';
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
 import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
+import { QuoteListCard } from '@/components/quotes/QuoteListCard';
 const Quotes = () => {
   const {
     profile
@@ -840,290 +841,29 @@ const Quotes = () => {
       await refetchQuotes();
     }} className="sm:contents">
       <div className="space-y-3 lg:max-w-4xl lg:mx-auto">
-        {visibleQuotes.map(quote => <Card key={quote.id} className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer" onClick={() => openViewingQuote(quote)}>
-            <CardContent className="p-4 sm:p-5">
-              {/* Mobile Layout */}
-              <div className="flex flex-col gap-2 sm:hidden">
-                {/* Row 1: Quote Info */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{quote.quote_number}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                      <span className="truncate">{getCustomerName(quote.customer_id)}</span>
-                      {getCustomerEmail(quote.customer_id) && <>
-                          <span>•</span>
-                          <span className="truncate">{getCustomerEmail(quote.customer_id)}</span>
-                        </>}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                      {(quote as any).creator?.full_name && <span className="flex items-center gap-1">
-                          <UserCog className="w-3 h-3" />
-                          {(quote as any).creator.full_name}
-                        </span>}
-                      {quote.valid_until && <>
-                          {(quote as any).creator?.full_name && <span>•</span>}
-                          <span className="flex items-center gap-1 shrink-0">
-                            Valid: {format(new Date(quote.valid_until), 'MMM d')}
-                          </span>
-                        </>}
-                    </div>
-                    {quote.notes && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{quote.notes}</p>}
-                  </div>
-                  <span className="text-sm font-semibold text-primary shrink-0">${Number(quote.total).toFixed(2)}</span>
-                </div>
-                
-                {/* Row 2: Tags + Actions */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(quote.status)}`}>
-                          {getStatusLabel(quote.status)}
-                          <FileText className="w-3 h-3" />
-                        </span>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="bg-popover z-50">
-                        {['draft', 'sent', 'approved', 'rejected'].map(displayStatus => {
-                        const dbStatus = getDbStatus(displayStatus);
-                        return <DropdownMenuItem key={displayStatus} onClick={() => handleStatusChange(quote.id, dbStatus)} disabled={quote.status === dbStatus} className={quote.status === dbStatus ? 'bg-accent' : ''}>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(displayStatus)}`}>
-                              {displayStatus}
-                            </span>
-                            {quote.status === dbStatus && <CheckCircle className="w-4 h-4 ml-auto" />}
-                          </DropdownMenuItem>;
-                      })}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    {/* Signature Badge */}
-                    {quote.signature_id && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success flex items-center gap-1">
-                        <PenTool className="w-3 h-3" />
-                        Signed
-                      </span>}
-                    {/* Linked Jobs Badge */}
-                    {(jobsPerQuote.get(quote.id) || 0) > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary flex items-center gap-1">
-                        <Briefcase className="w-3 h-3" />
-                        {jobsPerQuote.get(quote.id)} Job{(jobsPerQuote.get(quote.id) || 0) > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    {/* Linked Invoices Badge */}
-                    {(invoicesPerQuote.get(quote.id) || 0) > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400 flex items-center gap-1">
-                        <Receipt className="w-3 h-3" />
-                        {invoicesPerQuote.get(quote.id)} Invoice{(invoicesPerQuote.get(quote.id) || 0) > 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Action Menu */}
-                  <div onClick={e => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover z-50">
-                        <DropdownMenuItem onClick={() => handleEdit(quote)}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicateQuote(quote)}>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSaveAsTemplate(quote)}>
-                          <BookTemplate className="w-4 h-4 mr-2" />
-                          Save as Template
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDownload(quote.id)}>
-                          <FileDown className="w-4 h-4 mr-2" />
-                          Download PDF
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenEmailDialog(quote.id, quote.customer_id)}>
-                          <Mail className="w-4 h-4 mr-2" />
-                          Email Quote
-                        </DropdownMenuItem>
-                        {/* Convert to Invoice */}
-                        <DropdownMenuItem 
-                          onClick={() => handleConvertToInvoice(quote)}
-                          disabled={convertingQuoteId === quote.id}
-                        >
-                          {convertingQuoteId === quote.id ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <ArrowRight className="w-4 h-4 mr-2" />
-                          )}
-                          Convert to Invoice
-                        </DropdownMenuItem>
-                        {/* Signature Actions */}
-                        {quote.signature_id && <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Signature
-                          </DropdownMenuItem>}
-                        <DropdownMenuItem onClick={() => handleDeleteClick(quote)} className="text-destructive focus:text-destructive">
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </div>
-
-              {/* Desktop Layout */}
-              <div className="hidden sm:flex flex-col gap-2">
-                {/* Row 1: Quote Info + Amount */}
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{quote.quote_number}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
-                      <span className="truncate">{getCustomerName(quote.customer_id)}</span>
-                      {getCustomerEmail(quote.customer_id) && <>
-                          <span>•</span>
-                          <span className="truncate">{getCustomerEmail(quote.customer_id)}</span>
-                        </>}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
-                      {(quote as any).creator?.full_name && <span className="flex items-center gap-1">
-                          <UserCog className="w-3 h-3" />
-                          {(quote as any).creator.full_name}
-                        </span>}
-                      {quote.valid_until && <>
-                          {(quote as any).creator?.full_name && <span>•</span>}
-                          <span className="flex items-center gap-1 shrink-0">
-                            Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}
-                          </span>
-                        </>}
-                    </div>
-                    {quote.notes && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{quote.notes}</p>}
-                  </div>
-                  <span className="text-base font-semibold text-primary shrink-0">${Number(quote.total).toFixed(2)}</span>
-                </div>
-                
-                {/* Row 2: Tags + Actions */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${getStatusColor(quote.status)}`}>
-                          {getStatusLabel(quote.status)}
-                          <FileText className="w-3 h-3" />
-                        </span>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="bg-popover z-50">
-                        {['draft', 'sent', 'approved', 'rejected'].map(displayStatus => {
-                        const dbStatus = getDbStatus(displayStatus);
-                        return <DropdownMenuItem key={displayStatus} onClick={() => handleStatusChange(quote.id, dbStatus)} disabled={quote.status === dbStatus} className={quote.status === dbStatus ? 'bg-accent' : ''}>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize mr-2 ${getStatusColor(displayStatus)}`}>
-                              {displayStatus}
-                            </span>
-                            {quote.status === dbStatus && <CheckCircle className="w-4 h-4 ml-auto" />}
-                          </DropdownMenuItem>;
-                      })}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    {/* Signature Badge */}
-                    {quote.signature_id && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success flex items-center gap-1">
-                        <PenTool className="w-3 h-3" />
-                        Signed
-                      </span>}
-                    {/* Linked Jobs Badge */}
-                    {(jobsPerQuote.get(quote.id) || 0) > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary flex items-center gap-1">
-                        <Briefcase className="w-3 h-3" />
-                        {jobsPerQuote.get(quote.id)} Job{(jobsPerQuote.get(quote.id) || 0) > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    {/* Linked Invoices Badge */}
-                    {(invoicesPerQuote.get(quote.id) || 0) > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400 flex items-center gap-1">
-                        <Receipt className="w-3 h-3" />
-                        {invoicesPerQuote.get(quote.id)} Invoice{(invoicesPerQuote.get(quote.id) || 0) > 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Action Menu */}
-                  <div onClick={e => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover z-50">
-                        <DropdownMenuItem onClick={() => handleEdit(quote)}>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDuplicateQuote(quote)}>
-                          <Copy className="w-4 h-4 mr-2" />
-                          Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSaveAsTemplate(quote)}>
-                          <BookTemplate className="w-4 h-4 mr-2" />
-                          Save as Template
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDownload(quote.id)}>
-                          <FileDown className="w-4 h-4 mr-2" />
-                          Download PDF
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenEmailDialog(quote.id, quote.customer_id)}>
-                          <Mail className="w-4 h-4 mr-2" />
-                          Email Quote
-                        </DropdownMenuItem>
-                        {/* Convert to Invoice */}
-                        <DropdownMenuItem 
-                          onClick={() => handleConvertToInvoice(quote)}
-                          disabled={convertingQuoteId === quote.id}
-                        >
-                          {convertingQuoteId === quote.id ? (
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          ) : (
-                            <ArrowRight className="w-4 h-4 mr-2" />
-                          )}
-                          Convert to Invoice
-                        </DropdownMenuItem>
-                        {/* Signature Actions */}
-                        {quote.signature_id && <DropdownMenuItem onClick={() => handleViewSignature(quote.signature_id!)}>
-                            <Eye className="w-4 h-4 mr-2" />
-                            View Signature
-                          </DropdownMenuItem>}
-                        {quote.status === 'accepted' && <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleOpenCreateJobDialog(quote)}>
-                              <Plus className="w-4 h-4 mr-2" />
-                              Create New Job
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleOpenAddToJobDialog(quote)}>
-                              <Briefcase className="w-4 h-4 mr-2" />
-                              Add to Existing Job
-                            </DropdownMenuItem>
-                          </>}
-                        <DropdownMenuSeparator />
-                        {(quote as any).archived_at ? <DropdownMenuItem onClick={() => handleUnarchiveQuote(quote)}>
-                            <ArchiveRestore className="w-4 h-4 mr-2" />
-                            Restore
-                          </DropdownMenuItem> : <DropdownMenuItem onClick={() => setArchiveConfirmQuote(quote)}>
-                            <Archive className="w-4 h-4 mr-2" />
-                            Archive
-                          </DropdownMenuItem>}
-                        <DropdownMenuItem onClick={() => handleDeleteClick(quote)} className="text-destructive focus:text-destructive">
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>)}
+        {visibleQuotes.map(quote => (
+          <QuoteListCard
+            key={quote.id}
+            quote={quote}
+            jobsCount={jobsPerQuote.get(quote.id) || 0}
+            invoicesCount={invoicesPerQuote.get(quote.id) || 0}
+            isConverting={convertingQuoteId === quote.id}
+            onView={openViewingQuote}
+            onEdit={handleEdit}
+            onDuplicate={handleDuplicateQuote}
+            onSaveAsTemplate={handleSaveAsTemplate}
+            onDownload={handleDownload}
+            onEmail={handleOpenEmailDialog}
+            onConvertToInvoice={handleConvertToInvoice}
+            onViewSignature={handleViewSignature}
+            onCreateJob={handleOpenCreateJobDialog}
+            onAddToJob={handleOpenAddToJobDialog}
+            onArchive={(q) => setArchiveConfirmQuote(q)}
+            onUnarchive={handleUnarchiveQuote}
+            onDelete={handleDeleteClick}
+            onStatusChange={handleStatusChange}
+          />
+        ))}
         {filteredQuotes.length === 0 && <Card>
             <CardContent className="py-8 text-center text-muted-foreground">
               No quotes found
