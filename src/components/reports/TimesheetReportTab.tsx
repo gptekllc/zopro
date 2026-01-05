@@ -322,7 +322,7 @@ const TimesheetReportTab = () => {
           </Button>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2">
           <Select value={numWeeks} onValueChange={setNumWeeks}>
             <SelectTrigger className="w-[100px] sm:w-[120px]">
               <SelectValue />
