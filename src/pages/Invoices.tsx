@@ -12,7 +12,8 @@ import { useEmailDocument, useDownloadDocument } from "@/hooks/useDocumentAction
 import { useUndoableDelete } from "@/hooks/useUndoableDelete";
 import { useSignInvoice } from "@/hooks/useSignatures";
 import { useSendSignatureRequest } from "@/hooks/useSendSignatureRequest";
-import { useInvoicePhotos } from "@/hooks/useInvoicePhotos";
+import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto, useUpdateInvoicePhotoType } from "@/hooks/useInvoicePhotos";
+import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,6 +117,9 @@ const Invoices = () => {
   
   // Fetch photos for the currently viewed invoice
   const { data: viewingInvoicePhotos = [] } = useInvoicePhotos(viewingInvoice?.id || null);
+  const uploadInvoicePhoto = useUploadInvoicePhoto();
+  const deleteInvoicePhoto = useDeleteInvoicePhoto();
+  const updateInvoicePhotoType = useUpdateInvoicePhotoType();
   // Wrapped setters for scroll restoration
   const openViewingInvoice = useCallback((invoice: (typeof invoices)[0] | null) => {
     if (invoice) saveScrollPosition();
@@ -1426,11 +1430,41 @@ const Invoices = () => {
 
               {/* Photos Tab */}
               <TabsContent value="photos" className="mt-4">
-                <div className="p-4 text-center text-muted-foreground bg-muted/50 rounded-lg">
-                  <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Photo management available in full invoice detail view.</p>
-                  <p className="text-xs mt-1">Open from the customer's invoices history to manage photos.</p>
-                </div>
+                <DocumentPhotoGallery
+                  photos={viewingInvoicePhotos.map(p => ({
+                    id: p.id,
+                    photo_url: p.photo_url,
+                    photo_type: p.photo_type,
+                    caption: p.caption,
+                    created_at: p.created_at,
+                    display_order: p.display_order ?? 0,
+                  }))}
+                  bucketName="invoice-photos"
+                  documentId={viewingInvoice.id}
+                  onUpload={async (file, photoType) => {
+                    await uploadInvoicePhoto.mutateAsync({
+                      invoiceId: viewingInvoice.id,
+                      file,
+                      photoType,
+                    });
+                  }}
+                  onDelete={async (photoId, photoUrl) => {
+                    await deleteInvoicePhoto.mutateAsync({
+                      photoId,
+                      photoUrl,
+                      invoiceId: viewingInvoice.id,
+                    });
+                  }}
+                  onUpdateType={(photoId, photoType) => {
+                    updateInvoicePhotoType.mutate({
+                      photoId,
+                      photoType,
+                      invoiceId: viewingInvoice.id,
+                    });
+                  }}
+                  isUploading={uploadInvoicePhoto.isPending}
+                  editable={true}
+                />
               </TabsContent>
               </Tabs>
             </div>
