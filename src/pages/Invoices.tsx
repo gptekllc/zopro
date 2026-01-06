@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { useInvoices, useCreateInvoice, useUpdateInvoice, Invoice } from "@/hooks/useInvoices";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useCompany } from "@/hooks/useCompany";
+import { useSyncInvoiceStatuses } from "@/hooks/usePayments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +37,17 @@ const Invoices = () => {
   
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
+  const syncStatuses = useSyncInvoiceStatuses();
+  const hasSyncedRef = useRef(false);
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
+  
+  // Sync invoice statuses on mount (one-time fix for stale statuses)
+  useEffect(() => {
+    if (!hasSyncedRef.current && invoices.length > 0) {
+      hasSyncedRef.current = true;
+      syncStatuses.mutate();
+    }
+  }, [invoices.length]);
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);

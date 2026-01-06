@@ -697,6 +697,73 @@ export async function recalculateInvoiceStatus(invoiceId: string) {
   }
 }
 
+// Sync all invoice statuses based on actual payments - fixes any stale statuses
+export async function syncAllInvoiceStatuses(companyId: string) {
+  // Get all non-voided invoices with their payment totals
+  const { data: invoices } = await (supabase as any)
+    .from('invoices')
+    .select('id, status, total, late_fee_amount, due_date')
+    .eq('company_id', companyId)
+    .not('status', 'eq', 'voided')
+    .is('archived_at', null);
+  
+  if (!invoices || invoices.length === 0) return;
+  
+  for (const invoice of invoices) {
+    // Get completed payments for this invoice
+    const { data: payments } = await (supabase as any)
+      .from('payments')
+      .select('amount, status')
+      .eq('invoice_id', invoice.id);
+    
+    const completedPayments = (payments || []).filter((p: { status: string }) => p.status === 'completed');
+    const totalPaid = completedPayments.reduce((sum: number, p: { amount: number }) => sum + Number(p.amount), 0);
+    const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
+    const isFullyPaid = totalPaid >= totalDue;
+    const hasPartialPayment = totalPaid > 0 && totalPaid < totalDue;
+    
+    let expectedStatus: string;
+    let paidAt: string | null = null;
+    
+    if (isFullyPaid) {
+      expectedStatus = 'paid';
+      paidAt = new Date().toISOString();
+    } else if (hasPartialPayment) {
+      expectedStatus = 'partially_paid';
+    } else {
+      const isOverdue = invoice.due_date && new Date(invoice.due_date) < new Date();
+      expectedStatus = isOverdue ? 'overdue' : invoice.status === 'draft' ? 'draft' : 'sent';
+    }
+    
+    // Update if status doesn't match
+    if (expectedStatus !== invoice.status) {
+      await (supabase as any)
+        .from('invoices')
+        .update({ 
+          status: expectedStatus,
+          paid_at: paidAt
+        })
+        .eq('id', invoice.id);
+    }
+  }
+}
+
+// Hook to sync invoice statuses on mount
+export function useSyncInvoiceStatuses() {
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      if (!profile?.company_id) return;
+      await syncAllInvoiceStatuses(profile.company_id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    },
+  });
+}
+
 // Get remaining balance for an invoice
 export function useInvoiceBalance(invoiceId: string | null) {
   const { data: payments = [] } = usePayments(invoiceId);
