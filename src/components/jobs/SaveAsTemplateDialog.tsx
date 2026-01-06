@@ -82,7 +82,7 @@ export function SaveAsTemplateDialog({ open, onOpenChange, job }: SaveAsTemplate
           {job && (
             <div className="rounded-lg border bg-muted/50 p-3 text-sm space-y-1">
               <p><span className="font-medium">Title:</span> {job.title}</p>
-              <p><span className="font-medium">Priority:</span> {job.priority}</p>
+              <p><span className="font-medium">Priority:</span> <span className="capitalize">{job.priority}</span></p>
               {job.items && job.items.length > 0 && (
                 <p><span className="font-medium">Line Items:</span> {job.items.length}</p>
               )}

@@ -277,10 +277,10 @@ export function JobDetailDialog({
               <span className="truncate">{job.job_number}</span>
             </DialogTitle>
             <div className="flex gap-1 sm:gap-2 shrink-0">
-              <Badge className={`${priorityColors[job.priority] || 'bg-muted'} text-xs`}>
+              <Badge className={`${priorityColors[job.priority] || 'bg-muted'} text-xs capitalize`}>
                 {job.priority}
               </Badge>
-              <Badge className={`${statusColors[job.status] || 'bg-muted'} text-xs`}>
+              <Badge className={`${statusColors[job.status] || 'bg-muted'} text-xs capitalize`}>
                 {job.status.replace('_', ' ')}
               </Badge>
             </div>
