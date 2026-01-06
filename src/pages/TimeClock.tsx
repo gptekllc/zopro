@@ -234,16 +234,6 @@ const TimeClock = () => {
             <h1 className="text-2xl font-bold tracking-tight">Time Clock</h1>
             <p className="text-muted-foreground">Manage your shifts and time cards.</p>
           </div>
-          <div className="flex items-center gap-2">
-            {canViewReports && (
-              <Link to="/timesheet">
-                <Button variant="outline" size="sm">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Timesheet
-                </Button>
-              </Link>
-            )}
-          </div>
         </div>
 
         {/* Main Action Card */}
@@ -541,9 +531,17 @@ const TimeClock = () => {
               </div>
             </div>
             {canViewReports && (
-              <Link to="/timesheet">
-                <Button variant="outline" size="sm">Export PDF</Button>
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link to="/timesheet">
+                  <Button variant="outline" size="sm">
+                    <FileText className="w-4 h-4 mr-2" />
+                    Timesheet
+                  </Button>
+                </Link>
+                <Link to="/timesheet">
+                  <Button variant="outline" size="sm">Export PDF</Button>
+                </Link>
+              </div>
             )}
           </div>
           <div className="overflow-x-auto">
