@@ -15,9 +15,7 @@ import { useInvoices, Invoice } from '@/hooks/useInvoices';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Search, Loader2, Filter, Archive } from 'lucide-react';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
@@ -25,10 +23,12 @@ import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog
 import { JobDetailDialog } from '@/components/jobs/JobDetailDialog';
 import { JobListCard } from '@/components/jobs/JobListCard';
 import { ConvertJobToInvoiceDialog } from '@/components/jobs/ConvertJobToInvoiceDialog';
+import { DocumentEmailDialog } from '@/components/email/DocumentEmailDialog';
 import { useSwipeHint } from '@/components/ui/swipeable-card';
 import { Customer } from '@/hooks/useCustomers';
 import { toast } from 'sonner';
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
+import { format } from 'date-fns';
 
 const JOB_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const;
 const JOB_STATUSES_EDITABLE = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced'] as const;
@@ -162,7 +162,7 @@ export function JobListManager({
   const [deleteConfirmJob, setDeleteConfirmJob] = useState<Job | null>(null);
   const [archiveConfirmJob, setArchiveConfirmJob] = useState<Job | null>(null);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [emailAddress, setEmailAddress] = useState('');
+  const [selectedJobForEmail, setSelectedJobForEmail] = useState<Job | null>(null);
 
   // Signature dialogs
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
@@ -270,17 +270,20 @@ export function JobListManager({
   const handleEmail = (jobId: string) => {
     const job = jobs.find(j => j.id === jobId);
     if (job) {
-      setEmailAddress(getCustomerEmail(job.customer_id));
+      setSelectedJobForEmail(job);
       setEmailDialogOpen(true);
     }
   };
 
-  const handleSendEmail = () => {
-    if (!viewingJob || !emailAddress) return;
-    emailDocument.mutate(
-      { type: 'job', documentId: viewingJob.id, recipientEmail: emailAddress },
-      { onSuccess: () => setEmailDialogOpen(false) }
-    );
+  const handleSendJobEmail = async (emails: string[], subject: string, message: string) => {
+    if (!selectedJobForEmail) return;
+    await emailDocument.mutateAsync({ 
+      type: 'job', 
+      documentId: selectedJobForEmail.id, 
+      recipientEmail: emails[0] 
+    });
+    setEmailDialogOpen(false);
+    setSelectedJobForEmail(null);
   };
 
   const handleArchiveJob = async (job: Job) => {
@@ -514,34 +517,23 @@ export function JobListManager({
         </div>
       </PullToRefresh>
 
-      {/* Email Dialog */}
-      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Email Job Details</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Recipient Email</Label>
-              <Input
-                type="email"
-                value={emailAddress}
-                onChange={(e) => setEmailAddress(e.target.value)}
-                placeholder="customer@example.com"
-              />
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setEmailDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button className="flex-1" onClick={handleSendEmail} disabled={emailDocument.isPending || !emailAddress}>
-                {emailDocument.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Send Email
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Job Email Dialog with Templates */}
+      <DocumentEmailDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        documentType="job"
+        documentNumber={selectedJobForEmail?.job_number}
+        customerName={selectedJobForEmail ? getCustomerName(selectedJobForEmail.customer_id) : undefined}
+        customerEmail={selectedJobForEmail ? getCustomerEmail(selectedJobForEmail.customer_id) : undefined}
+        companyName={company?.name}
+        jobTitle={selectedJobForEmail?.title}
+        jobDescription={selectedJobForEmail?.description || undefined}
+        scheduledDate={selectedJobForEmail?.scheduled_start || undefined}
+        scheduledTime={selectedJobForEmail?.scheduled_start ? format(new Date(selectedJobForEmail.scheduled_start), 'h:mm a') : undefined}
+        technicianName={(selectedJobForEmail as any)?.assignee?.full_name}
+        onSend={handleSendJobEmail}
+        isSending={emailDocument.isPending}
+      />
 
       {/* Job Detail Dialog */}
       <JobDetailDialog
