@@ -19,7 +19,7 @@ import { JobPhotoGallery } from '@/components/jobs/JobPhotoGallery';
 import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job, useUploadJobPhoto, useDeleteJobPhoto, useUpdateJobPhotoType } from '@/hooks/useJobs';
 import { Quote } from '@/hooks/useQuotes';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
-import { useInvoices, Invoice } from '@/hooks/useInvoices';
+import { useInvoices, Invoice, getInvoiceStatusLabel } from '@/hooks/useInvoices';
 import { useMemo, useState } from 'react';
 import { formatAmount } from '@/lib/formatAmount';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
@@ -579,8 +579,8 @@ export function JobDetailDialog({
                               <span className="text-sm font-semibold text-primary">
                                 ${Number(invoice.total || 0).toFixed(2)}
                               </span>
-                              <Badge variant="outline" className={`text-xs capitalize ${invoice.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : invoice.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : ''}`}>
-                                {invoice.status}
+                              <Badge variant="outline" className={`text-xs ${invoice.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : invoice.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : ''}`}>
+                                {getInvoiceStatusLabel(invoice.status)}
                               </Badge>
                             </div>
                           </div>)}
