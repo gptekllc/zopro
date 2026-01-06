@@ -4,7 +4,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, Upload, FolderInput, FileText, FileSpreadsheet, File, FileImage, FileVideo, FileAudio, FileArchive, FileCode, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, Upload, FolderInput } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { compressImageToFile } from '@/lib/imageCompression';
 import { toast } from 'sonner';
@@ -16,62 +16,6 @@ export interface JobPhoto {
   caption: string | null;
   created_at: string;
 }
-
-// Helper to detect file type from URL/filename
-const getFileType = (url: string): 'image' | 'pdf' | 'word' | 'excel' | 'video' | 'audio' | 'archive' | 'code' | 'other' => {
-  const ext = url.split('.').pop()?.toLowerCase() || '';
-  
-  const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'heic', 'heif'];
-  const pdfExts = ['pdf'];
-  const wordExts = ['doc', 'docx', 'odt', 'rtf'];
-  const excelExts = ['xls', 'xlsx', 'csv', 'ods'];
-  const videoExts = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-  const audioExts = ['mp3', 'wav', 'ogg', 'm4a', 'flac'];
-  const archiveExts = ['zip', 'rar', '7z', 'tar', 'gz'];
-  const codeExts = ['js', 'ts', 'jsx', 'tsx', 'html', 'css', 'json', 'xml', 'py', 'java'];
-  
-  if (imageExts.includes(ext)) return 'image';
-  if (pdfExts.includes(ext)) return 'pdf';
-  if (wordExts.includes(ext)) return 'word';
-  if (excelExts.includes(ext)) return 'excel';
-  if (videoExts.includes(ext)) return 'video';
-  if (audioExts.includes(ext)) return 'audio';
-  if (archiveExts.includes(ext)) return 'archive';
-  if (codeExts.includes(ext)) return 'code';
-  return 'other';
-};
-
-// Get icon component for file type
-const getFileIcon = (fileType: ReturnType<typeof getFileType>, className: string = 'w-8 h-8') => {
-  switch (fileType) {
-    case 'pdf':
-      return <FileText className={`${className} text-red-500`} />;
-    case 'word':
-      return <FileText className={`${className} text-blue-500`} />;
-    case 'excel':
-      return <FileSpreadsheet className={`${className} text-green-500`} />;
-    case 'video':
-      return <FileVideo className={`${className} text-purple-500`} />;
-    case 'audio':
-      return <FileAudio className={`${className} text-orange-500`} />;
-    case 'archive':
-      return <FileArchive className={`${className} text-yellow-600`} />;
-    case 'code':
-      return <FileCode className={`${className} text-cyan-500`} />;
-    case 'image':
-      return <FileImage className={`${className} text-pink-500`} />;
-    default:
-      return <File className={`${className} text-muted-foreground`} />;
-  }
-};
-
-// Get filename from URL
-const getFileName = (url: string): string => {
-  const parts = url.split('/');
-  const filename = parts[parts.length - 1];
-  // Remove any query params
-  return filename.split('?')[0];
-};
 
 interface JobPhotoGalleryProps {
   photos: JobPhoto[];
@@ -225,14 +169,10 @@ export function JobPhotoGallery({
     
     let successCount = 0;
     
-    // Process all files
+    // Process all images
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       try {
-        // Warn if file is larger than 5MB for non-images
-        const maxSizeMB = 5;
-        const fileSizeMB = file.size / (1024 * 1024);
-        
         // Check if it's an image file that needs compression
         const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
         const isCompressibleImage = imageTypes.includes(file.type.toLowerCase());
@@ -247,22 +187,19 @@ export function JobPhotoGallery({
             console.warn('Image compression failed, uploading original:', compressionError);
             fileToUpload = file;
           }
-        } else if (fileSizeMB > maxSizeMB) {
-          // Warn about large non-image files (PDFs, docs are already compressed formats)
-          toast.warning(`${file.name} is ${fileSizeMB.toFixed(1)}MB - consider using smaller files`);
         }
         
         await onUpload(fileToUpload, selectedPhotoType);
         successCount++;
         setUploadProgress({ current: i + 1, total: totalFiles });
       } catch (error) {
-        console.error(`Failed to upload file ${file.name}:`, error);
+        console.error(`Failed to upload image ${file.name}:`, error);
         toast.error(`Failed to upload ${file.name}`);
       }
     }
     
     if (successCount > 0) {
-      toast.success(`${successCount} file${successCount > 1 ? 's' : ''} uploaded`);
+      toast.success(`${successCount} image${successCount > 1 ? 's' : ''} uploaded`);
     }
     
     setIsProcessing(false);
@@ -399,7 +336,7 @@ export function JobPhotoGallery({
             <input
               ref={fileInputRef}
               type="file"
-              accept="*/*"
+              accept="image/*,.heic,.heif"
               multiple
               onChange={handleFileSelect}
               className="hidden"
@@ -408,13 +345,13 @@ export function JobPhotoGallery({
         </div>
       )}
 
-      {/* Photos/Files Display */}
+      {/* Photos Display */}
       {photos.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <Camera className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p className="text-sm">No photos or files yet</p>
+          <p className="text-sm">No photos yet</p>
           {editable && onUpload && (
-            <p className="text-xs mt-1">Upload photos or files using the button above</p>
+            <p className="text-xs mt-1">Upload photos using the button above</p>
           )}
         </div>
       ) : (
@@ -422,7 +359,7 @@ export function JobPhotoGallery({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Camera className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Photos/Files ({photos.length})</span>
+              <span className="font-medium text-sm">Photos ({photos.length})</span>
             </div>
             {editable && onUpdateType && (
               <span className="text-xs text-muted-foreground">Drag to move between categories</span>
@@ -482,46 +419,21 @@ export function JobPhotoGallery({
                         </button>
                       )}
                       <button
-                        onClick={() => {
-                          const fileType = getFileType(photo.photo_url);
-                          if (fileType === 'image') {
-                            openLightbox(photo);
-                          } else if (signedUrls[photo.id]) {
-                            // For non-image files, open in new tab
-                            window.open(signedUrls[photo.id], '_blank');
-                          }
-                        }}
+                        onClick={() => openLightbox(photo)}
                         className="w-full relative aspect-square rounded-lg overflow-hidden bg-muted hover:opacity-90 transition-opacity focus:outline-none focus:ring-2 focus:ring-primary"
                       >
-                        {(() => {
-                          const fileType = getFileType(photo.photo_url);
-                          if (fileType === 'image') {
-                            return signedUrls[photo.id] ? (
-                              <img
-                                src={signedUrls[photo.id]}
-                                alt={photo.caption || `${photo.photo_type} photo`}
-                                className="w-full h-full object-cover"
-                                draggable={false}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Camera className="w-6 h-6 text-muted-foreground" />
-                              </div>
-                            );
-                          } else {
-                            // Non-image file - show icon and filename
-                            const fileName = getFileName(photo.photo_url);
-                            return (
-                              <div className="w-full h-full flex flex-col items-center justify-center p-2 gap-1">
-                                {getFileIcon(fileType, 'w-8 h-8')}
-                                <span className="text-[10px] text-muted-foreground text-center line-clamp-2 break-all">
-                                  {fileName}
-                                </span>
-                                <Download className="w-3 h-3 text-muted-foreground/50 mt-1" />
-                              </div>
-                            );
-                          }
-                        })()}
+                        {signedUrls[photo.id] ? (
+                          <img
+                            src={signedUrls[photo.id]}
+                            alt={photo.caption || `${photo.photo_type} photo`}
+                            className="w-full h-full object-cover"
+                            draggable={false}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Camera className="w-6 h-6 text-muted-foreground" />
+                          </div>
+                        )}
                       </button>
                     </div>
                   ))}
