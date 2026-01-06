@@ -92,16 +92,13 @@ export function DocumentListCard({
             )}
           </div>
 
-          {/* Row 2: Metadata */}
-          {metadataRow && (
+          {/* Row 2: Metadata + Notes */}
+          {(metadataRow || notes) && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
               {metadataRow}
+              {metadataRow && notes && <span>•</span>}
+              {notes && <span className="truncate">{notes}</span>}
             </div>
-          )}
-
-          {/* Notes */}
-          {notes && (
-            <p className="text-xs text-muted-foreground line-clamp-1">{notes}</p>
           )}
 
           {/* Row 3: Tags + Actions */}
@@ -166,16 +163,13 @@ export function DocumentListCard({
             </div>
           </div>
 
-          {/* Row 2: Metadata */}
-          {metadataRow && (
+          {/* Row 2: Metadata + Notes */}
+          {(metadataRow || notes) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
               {metadataRow}
+              {metadataRow && notes && <span>•</span>}
+              {notes && <span className="truncate">{notes}</span>}
             </div>
-          )}
-
-          {/* Notes */}
-          {notes && (
-            <p className="text-sm text-muted-foreground line-clamp-1">{notes}</p>
           )}
 
           {/* Row 3: Tags */}
