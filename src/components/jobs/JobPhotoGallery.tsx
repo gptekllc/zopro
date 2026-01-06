@@ -52,6 +52,7 @@ export function JobPhotoGallery({
   const [draggedPhoto, setDraggedPhoto] = useState<JobPhoto | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<'before' | 'after' | 'other' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -162,37 +163,55 @@ export function JobPhotoGallery({
     const files = e.target.files;
     if (!files || files.length === 0 || !onUpload) return;
 
-    try {
-      setIsProcessing(true);
-      
-      // Process all files
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+    const totalFiles = files.length;
+    setUploadProgress({ current: 0, total: totalFiles });
+    setIsProcessing(true);
+    
+    let successCount = 0;
+    
+    // Process all files
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
         // Check if it's an image file that needs compression
-        const isImage = file.type.startsWith('image/') || 
-                        file.name.toLowerCase().endsWith('.heic') || 
-                        file.name.toLowerCase().endsWith('.heif');
+        // Use more robust check - only compress actual image types
+        const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
+        const isCompressibleImage = imageTypes.includes(file.type.toLowerCase());
+        const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
         
         let fileToUpload = file;
-        if (isImage) {
+        if (isCompressibleImage || isHeic) {
           // Compress image before upload (300kb max, supports HEIF/HEIC)
-          fileToUpload = await compressImageToFile(file, 300);
+          try {
+            fileToUpload = await compressImageToFile(file, 300);
+          } catch (compressionError) {
+            console.warn('Image compression failed, uploading original:', compressionError);
+            // If compression fails, upload original file
+            fileToUpload = file;
+          }
         }
+        
         await onUpload(fileToUpload, selectedPhotoType);
+        successCount++;
+        setUploadProgress({ current: i + 1, total: totalFiles });
+      } catch (error) {
+        console.error(`Failed to upload file ${file.name}:`, error);
+        toast.error(`Failed to upload ${file.name}`);
       }
-      
-      toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded`);
-    } catch (error) {
-      console.error('Failed to process file:', error);
-      toast.error('Failed to process file. Please try again.');
-    } finally {
-      setIsProcessing(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      if (cameraInputRef.current) {
-        cameraInputRef.current.value = '';
-      }
+    }
+    
+    if (successCount > 0) {
+      toast.success(`${successCount} file${successCount > 1 ? 's' : ''} uploaded`);
+    }
+    
+    setIsProcessing(false);
+    setUploadProgress({ current: 0, total: 0 });
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
     }
   };
 
@@ -292,7 +311,9 @@ export function JobPhotoGallery({
               {isProcessing ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Preparing...
+                  {uploadProgress.total > 1 
+                    ? `${uploadProgress.current}/${uploadProgress.total}`
+                    : 'Processing...'}
                 </>
               ) : isUploading ? (
                 <>
