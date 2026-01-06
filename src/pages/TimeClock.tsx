@@ -223,7 +223,7 @@ const TimeClock = () => {
       </div>
 
       {/* Main Time Clock Card */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden max-w-md mx-auto lg:mx-0">
         <div className={`p-8 text-center ${activeEntry?.is_on_break ? 'bg-amber-500' : activeEntry ? 'gradient-success' : 'gradient-primary'}`}>
           <div className="text-primary-foreground">
             {activeEntry?.is_on_break ? (
