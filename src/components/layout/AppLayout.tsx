@@ -29,6 +29,7 @@ import {
   Bell,
   Loader2,
   BarChart3,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -49,6 +50,7 @@ const navItems = [
   { icon: FileText, label: 'Quotes', path: '/quotes', roles: ['admin', 'technician'] },
   { icon: Receipt, label: 'Invoices', path: '/invoices', roles: ['admin', 'technician', 'customer'] },
   { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['admin', 'manager'] },
+  { icon: Clock, label: 'Timesheets', path: '/timesheet-report', roles: ['admin', 'manager'] },
   { icon: Package, label: 'Items', path: '/items', roles: ['admin', 'technician'] },
   { icon: Bell, label: 'Notifications', path: '/notifications', roles: ['admin', 'manager'] },
   { icon: UserCog, label: 'Technicians', path: '/technicians', roles: ['admin', 'technician'] },
