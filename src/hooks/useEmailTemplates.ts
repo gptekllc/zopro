@@ -7,7 +7,7 @@ export interface EmailTemplate {
   id: string;
   company_id: string;
   name: string;
-  template_type: 'invoice' | 'reminder' | 'general';
+  template_type: 'invoice' | 'reminder' | 'quote' | 'job' | 'general';
   subject: string;
   body: string;
   is_default: boolean;
@@ -16,7 +16,7 @@ export interface EmailTemplate {
   updated_at: string;
 }
 
-export function useEmailTemplates(templateType?: 'invoice' | 'reminder' | 'general') {
+export function useEmailTemplates(templateType?: 'invoice' | 'reminder' | 'quote' | 'job' | 'general') {
   const { profile } = useAuth();
 
   return useQuery({
@@ -45,7 +45,7 @@ export function useEmailTemplates(templateType?: 'invoice' | 'reminder' | 'gener
 
 interface CreateTemplateParams {
   name: string;
-  template_type: 'invoice' | 'reminder' | 'general';
+  template_type: 'invoice' | 'reminder' | 'quote' | 'job' | 'general';
   subject: string;
   body: string;
   is_default?: boolean;
