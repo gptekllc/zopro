@@ -33,6 +33,7 @@ import { useJobNotifications } from '@/hooks/useJobNotifications';
 import { useJobFeedbacks, JobFeedback } from '@/hooks/useJobFeedbacks';
 import { useJobTimeEntries } from '@/hooks/useTimeEntries';
 import { ConvertJobToInvoiceDialog } from '@/components/jobs/ConvertJobToInvoiceDialog';
+import { SignatureSection } from '@/components/signatures/SignatureSection';
 
 interface JobDetailDialogProps {
   job: CustomerJob | null;
@@ -550,28 +551,13 @@ export function JobDetailDialog({
             <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
               <PenTool className="w-4 h-4" /> Customer Signature
             </h4>
-            {job.completion_signed_at ? (
-              <div className="sm:max-w-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                    <PenTool className="w-4 h-4 shrink-0" />
-                    <div>
-                      <span className="text-xs sm:text-sm font-medium">Job completion signed</span>
-                      {job.completion_signed_by && (
-                        <p className="text-[10px] sm:text-xs">by {job.completion_signed_by}</p>
-                      )}
-                    </div>
-                  </div>
-                  {job.completion_signature_id && onViewSignature && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onViewSignature(job.completion_signature_id!)}
-                    >
-                      View
-                    </Button>
-                  )}
-                </div>
+            {job.completion_signed_at && job.completion_signature_id ? (
+              <div className="sm:max-w-md">
+                <SignatureSection 
+                  signatureId={job.completion_signature_id}
+                  title="Job Completion Signature"
+                  showCollectButton={false}
+                />
               </div>
             ) : (
               <div className="flex flex-col sm:flex-row gap-2 sm:max-w-md">
