@@ -482,25 +482,27 @@ export function JobDetailDialog({
                 
                 {/* Totals */}
                 {(job.subtotal !== null || job.total !== null) && (
-                  <div className="pt-2 border-t space-y-1">
-                    {job.subtotal !== null && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Subtotal</span>
-                        <span>{formatAmount(job.subtotal)}</span>
-                      </div>
-                    )}
-                    {job.tax !== null && job.tax > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Tax</span>
-                        <span>{formatAmount(job.tax)}</span>
-                      </div>
-                    )}
-                    {job.total !== null && (
-                      <div className="flex justify-between text-sm font-medium">
-                        <span>Total</span>
-                        <span>{formatAmount(job.total)}</span>
-                      </div>
-                    )}
+                  <div className="pt-2 border-t flex justify-end">
+                    <div className="space-y-1 min-w-[160px]">
+                      {job.subtotal !== null && (
+                        <div className="flex justify-between text-sm gap-4">
+                          <span className="text-muted-foreground">Subtotal</span>
+                          <span>{formatAmount(job.subtotal)}</span>
+                        </div>
+                      )}
+                      {job.tax !== null && job.tax > 0 && (
+                        <div className="flex justify-between text-sm gap-4">
+                          <span className="text-muted-foreground">Tax</span>
+                          <span>{formatAmount(job.tax)}</span>
+                        </div>
+                      )}
+                      {job.total !== null && (
+                        <div className="flex justify-between text-sm font-medium gap-4">
+                          <span>Total</span>
+                          <span>{formatAmount(job.total)}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
