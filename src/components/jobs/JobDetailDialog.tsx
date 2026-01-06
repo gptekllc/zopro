@@ -371,20 +371,238 @@ export function JobDetailDialog({
             </>
           )}
 
-          {/* Linked Docs + Photos Tabs */}
+          {/* Items Section */}
           <Separator />
-          <Tabs defaultValue="items" className="w-full">
-            <TabsList className={`grid w-full grid-cols-5`}>
-              <TabsTrigger value="items" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                <List className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Items</span>
-                {(job.items?.length || 0) > 0 && (
-                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {job.items?.length}
-                  </Badge>
+          <div>
+            <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
+              <List className="w-4 h-4" /> 
+              Items
+              {(job.items?.length || 0) > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {job.items?.length}
+                </Badge>
+              )}
+            </h4>
+            {job.items && job.items.length > 0 ? (
+              <div className="space-y-3">
+                {/* Desktop header */}
+                <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-3">
+                  <div className="col-span-5">Name</div>
+                  <div className="col-span-2 text-right">Quantity</div>
+                  <div className="col-span-3 text-right">Unit Price</div>
+                  <div className="col-span-2 text-right">Total</div>
+                </div>
+                {/* Items List */}
+                <div className="space-y-2">
+                  {job.items.map((item) => {
+                    const isLaborItem = item.description.toLowerCase().includes('labor');
+                    
+                    // Get time entry breakdown for labor items
+                    const laborBreakdown = isLaborItem ? jobTimeEntries
+                      .filter(entry => entry.clock_out)
+                      .reduce((acc, entry) => {
+                        const userName = entry.user?.full_name || 'Unknown';
+                        const minutes = differenceInMinutes(
+                          new Date(entry.clock_out!), 
+                          new Date(entry.clock_in)
+                        ) - (entry.break_minutes || 0);
+                        acc[userName] = (acc[userName] || 0) + minutes;
+                        return acc;
+                      }, {} as Record<string, number>) : null;
+                    
+                    return (
+                      <div 
+                        key={item.id}
+                        className={`p-3 rounded-lg border ${
+                          isLaborItem 
+                            ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/50' 
+                            : 'bg-muted/50'
+                        }`}
+                      >
+                        {/* Mobile layout */}
+                        <div className="sm:hidden space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium">{item.description}</span>
+                            {isLaborItem && (
+                              <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
+                                <Clock className="w-3 h-3 mr-1" />
+                                Auto
+                              </Badge>
+                            )}
+                          </div>
+                          {(item as any).item_description && (
+                            <p className="text-xs text-muted-foreground">{(item as any).item_description}</p>
+                          )}
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>Qty: {item.quantity.toFixed(2)} × Unit: {formatAmount(item.unit_price)}</span>
+                            <span className="font-medium text-foreground">{formatAmount(item.total)}</span>
+                          </div>
+                        </div>
+                        
+                        {/* Desktop layout */}
+                        <div className="hidden sm:block">
+                          <div className="grid grid-cols-12 items-center">
+                            <div className="col-span-5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">{item.description}</span>
+                                {isLaborItem && (
+                                  <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    Auto
+                                  </Badge>
+                                )}
+                              </div>
+                              {(item as any).item_description && (
+                                <p className="text-xs text-muted-foreground mt-0.5">{(item as any).item_description}</p>
+                              )}
+                            </div>
+                            <div className="col-span-2 text-right text-sm">{item.quantity.toFixed(2)}</div>
+                            <div className="col-span-3 text-right text-sm">{formatAmount(item.unit_price)}</div>
+                            <div className="col-span-2 text-right font-medium text-sm">{formatAmount(item.total)}</div>
+                          </div>
+                        </div>
+                        
+                        {/* Labor breakdown showing time contributions per technician */}
+                        {isLaborItem && laborBreakdown && Object.keys(laborBreakdown).length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-blue-200/50 dark:border-blue-700/50">
+                            <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                              <User className="w-3 h-3" />
+                              Time breakdown:
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {Object.entries(laborBreakdown).map(([name, minutes]) => {
+                                const hours = Math.floor(minutes / 60);
+                                const mins = Math.round(minutes % 60);
+                                return (
+                                  <span 
+                                    key={name} 
+                                    className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full"
+                                  >
+                                    {name}: {hours > 0 ? `${hours}h ` : ''}{mins}m
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Totals */}
+                {(job.subtotal !== null || job.total !== null) && (
+                  <div className="pt-2 border-t space-y-1">
+                    {job.subtotal !== null && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span>{formatAmount(job.subtotal)}</span>
+                      </div>
+                    )}
+                    {job.tax !== null && job.tax > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Tax</span>
+                        <span>{formatAmount(job.tax)}</span>
+                      </div>
+                    )}
+                    {job.total !== null && (
+                      <div className="flex justify-between text-sm font-medium">
+                        <span>Total</span>
+                        <span>{formatAmount(job.total)}</span>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </TabsTrigger>
+              </div>
+            ) : (
+              <div className="p-4 bg-muted/50 rounded-lg text-center">
+                <List className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-xs sm:text-sm text-muted-foreground">No items added yet</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Items will appear here when added via Edit Job or from time tracking
+                </p>
+                {onEdit && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="mt-3"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onEdit(job.id);
+                    }}
+                  >
+                    <Edit className="w-3 h-3 mr-1" />
+                    Edit Job
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
 
+          {/* Completion Signature */}
+          <Separator />
+          <div>
+            <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
+              <PenTool className="w-4 h-4" /> Customer Signature
+            </h4>
+            {job.completion_signed_at ? (
+              <div className="sm:max-w-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                    <PenTool className="w-4 h-4 shrink-0" />
+                    <div>
+                      <span className="text-xs sm:text-sm font-medium">Job completion signed</span>
+                      {job.completion_signed_by && (
+                        <p className="text-[10px] sm:text-xs">by {job.completion_signed_by}</p>
+                      )}
+                    </div>
+                  </div>
+                  {job.completion_signature_id && onViewSignature && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onViewSignature(job.completion_signature_id!)}
+                    >
+                      View
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-2 sm:max-w-md">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onCollectSignature}
+                  disabled={isCollectingSignature}
+                  className="gap-1"
+                >
+                  {isCollectingSignature ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <PenTool className="w-4 h-4" />
+                  )}
+                  Collect Signature
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onSendSignatureRequest}
+                  disabled={!customerEmail}
+                  className="gap-1"
+                  title={customerEmail ? "Send signature request via email" : "No email on file"}
+                >
+                  <Mail className="w-4 h-4" />
+                  Send Signature Request via Email
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Photos, Related Docs, Comments, History Tabs */}
+          <Separator />
+          <Tabs defaultValue="photos" className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Photos</span>
@@ -426,164 +644,6 @@ export function JobDetailDialog({
               </TabsTrigger>
             </TabsList>
 
-            {/* Items Tab */}
-            <TabsContent value="items" className="mt-4">
-              {job.items && job.items.length > 0 ? (
-                <div className="space-y-3">
-                  {/* Desktop header */}
-                  <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-3">
-                    <div className="col-span-5">Name</div>
-                    <div className="col-span-2 text-right">Quantity</div>
-                    <div className="col-span-3 text-right">Unit Price</div>
-                    <div className="col-span-2 text-right">Total</div>
-                  </div>
-                  {/* Items List */}
-                  <div className="space-y-2">
-                    {job.items.map((item) => {
-                      const isLaborItem = item.description.toLowerCase().includes('labor');
-                      
-                      // Get time entry breakdown for labor items
-                      const laborBreakdown = isLaborItem ? jobTimeEntries
-                        .filter(entry => entry.clock_out)
-                        .reduce((acc, entry) => {
-                          const userName = entry.user?.full_name || 'Unknown';
-                          const minutes = differenceInMinutes(
-                            new Date(entry.clock_out!), 
-                            new Date(entry.clock_in)
-                          ) - (entry.break_minutes || 0);
-                          acc[userName] = (acc[userName] || 0) + minutes;
-                          return acc;
-                        }, {} as Record<string, number>) : null;
-                      
-                      return (
-                        <div 
-                          key={item.id}
-                          className={`p-3 rounded-lg border ${
-                            isLaborItem 
-                              ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/50' 
-                              : 'bg-muted/50'
-                          }`}
-                        >
-                          {/* Mobile layout */}
-                          <div className="sm:hidden space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-medium">{item.description}</span>
-                              {isLaborItem && (
-                                <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  Auto
-                                </Badge>
-                              )}
-                            </div>
-                            {(item as any).item_description && (
-                              <p className="text-xs text-muted-foreground">{(item as any).item_description}</p>
-                            )}
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>Qty: {item.quantity.toFixed(2)} × Unit: {formatAmount(item.unit_price)}</span>
-                              <span className="font-medium text-foreground">{formatAmount(item.total)}</span>
-                            </div>
-                          </div>
-                          
-                          {/* Desktop layout */}
-                          <div className="hidden sm:block">
-                            <div className="grid grid-cols-12 items-center">
-                              <div className="col-span-5">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium">{item.description}</span>
-                                  {isLaborItem && (
-                                    <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
-                                      <Clock className="w-3 h-3 mr-1" />
-                                      Auto
-                                    </Badge>
-                                  )}
-                                </div>
-                                {(item as any).item_description && (
-                                  <p className="text-xs text-muted-foreground mt-0.5">{(item as any).item_description}</p>
-                                )}
-                              </div>
-                              <div className="col-span-2 text-right text-sm">{item.quantity.toFixed(2)}</div>
-                              <div className="col-span-3 text-right text-sm">{formatAmount(item.unit_price)}</div>
-                              <div className="col-span-2 text-right font-medium text-sm">{formatAmount(item.total)}</div>
-                            </div>
-                          </div>
-                          
-                          {/* Labor breakdown showing time contributions per technician */}
-                          {isLaborItem && laborBreakdown && Object.keys(laborBreakdown).length > 0 && (
-                            <div className="mt-2 pt-2 border-t border-blue-200/50 dark:border-blue-700/50">
-                              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                Time breakdown:
-                              </p>
-                              <div className="flex flex-wrap gap-2">
-                                {Object.entries(laborBreakdown).map(([name, minutes]) => {
-                                  const hours = Math.floor(minutes / 60);
-                                  const mins = Math.round(minutes % 60);
-                                  return (
-                                    <span 
-                                      key={name} 
-                                      className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full"
-                                    >
-                                      {name}: {hours > 0 ? `${hours}h ` : ''}{mins}m
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Totals */}
-                  {(job.subtotal !== null || job.total !== null) && (
-                    <div className="pt-2 border-t space-y-1">
-                      {job.subtotal !== null && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Subtotal</span>
-                          <span>{formatAmount(job.subtotal)}</span>
-                        </div>
-                      )}
-                      {job.tax !== null && job.tax > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Tax</span>
-                          <span>{formatAmount(job.tax)}</span>
-                        </div>
-                      )}
-                      {job.total !== null && (
-                        <div className="flex justify-between text-sm font-medium">
-                          <span>Total</span>
-                          <span>{formatAmount(job.total)}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="p-4 bg-muted/50 rounded-lg text-center">
-                  <List className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-                  <p className="text-xs sm:text-sm text-muted-foreground">No items added yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Items will appear here when added via Edit Job or from time tracking
-                  </p>
-                  {onEdit && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="mt-3"
-                      onClick={() => {
-                        onOpenChange(false);
-                        onEdit(job.id);
-                      }}
-                    >
-                      <Edit className="w-3 h-3 mr-1" />
-                      Edit Job
-                    </Button>
-                  )}
-                </div>
-              )}
-            </TabsContent>
-
             {/* Photos Tab */}
             <TabsContent value="photos" className="mt-4">
               <JobPhotoGallery
@@ -612,6 +672,7 @@ export function JobDetailDialog({
               />
             </TabsContent>
 
+            {/* Related Docs Tab */}
             <TabsContent value="linked" className="mt-4">
               {loadingQuotes || loadingInvoices ? (
                 <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p>
@@ -665,28 +726,26 @@ export function JobDetailDialog({
                             }}
                           >
                             <div className="flex items-center gap-3">
-                              <Receipt className="w-4 h-4 text-muted-foreground shrink-0" />
+                              <div className="p-2 bg-primary/10 rounded-full shrink-0">
+                                <Receipt className="w-4 h-4 text-primary" />
+                              </div>
                               <div>
-                                <p className="font-medium text-sm">{invoice.invoice_number}</p>
+                                <p className="text-sm font-medium">{invoice.invoice_number}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                                  {formatAmount(invoice.total)}
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm">{formatAmount(invoice.total)}</span>
-                              <Badge className={`text-xs ${
-                                invoice.status === 'paid' 
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                  : invoice.status === 'sent'
-                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                  : invoice.status === 'overdue'
-                                  ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                  : 'bg-muted text-muted-foreground'
-                              }`}>
-                                {invoice.status}
-                              </Badge>
-                            </div>
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs capitalize ${
+                                invoice.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                                invoice.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                                ''
+                              }`}
+                            >
+                              {invoice.status}
+                            </Badge>
                           </div>
                         ))}
                       </div>
@@ -746,7 +805,6 @@ export function JobDetailDialog({
                 </div>
               )}
             </TabsContent>
-
 
             {/* Customer Feedback Tab */}
             <TabsContent value="feedback" className="mt-4">
@@ -811,7 +869,6 @@ export function JobDetailDialog({
                   </p>
                 </div>
               )}
-
             </TabsContent>
 
             {/* Notification History Tab */}
@@ -859,67 +916,6 @@ export function JobDetailDialog({
             </TabsContent>
           </Tabs>
 
-          {/* Completion Signature */}
-          <Separator />
-          <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
-              <PenTool className="w-4 h-4" /> Customer Signature
-            </h4>
-            {job.completion_signed_at ? (
-              <div className="sm:max-w-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400">
-                    <PenTool className="w-4 h-4 shrink-0" />
-                    <div>
-                      <span className="text-xs sm:text-sm font-medium">Job completion signed</span>
-                      {job.completion_signed_by && (
-                        <p className="text-[10px] sm:text-xs">by {job.completion_signed_by}</p>
-                      )}
-                    </div>
-                  </div>
-                  {job.completion_signature_id && onViewSignature && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onViewSignature(job.completion_signature_id!)}
-                    >
-                      View
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row gap-2 sm:max-w-md">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={onCollectSignature}
-                  disabled={isCollectingSignature}
-                  className="gap-1"
-                >
-                  {isCollectingSignature ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <PenTool className="w-4 h-4" />
-                  )}
-                  Collect Signature
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onSendSignatureRequest}
-                  disabled={!customerEmail}
-                  className="gap-1"
-                  title={customerEmail ? "Send signature request via email" : "No email on file"}
-                >
-                  <Mail className="w-4 h-4" />
-                  Send Signature Request via Email
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Email Modal */}
           <AlertDialog open={showEmailModal} onOpenChange={setShowEmailModal}>
             <AlertDialogContent className="sm:max-w-md">
               <AlertDialogHeader>
