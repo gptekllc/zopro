@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink, RotateCcw, Eye, Filter } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
+import PageContainer from '@/components/layout/PageContainer';
 
 const Customers = () => {
   const navigate = useNavigate();
@@ -137,7 +138,7 @@ const Customers = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
@@ -351,7 +352,7 @@ const Customers = () => {
       >
         <Plus className="w-6 h-6" />
       </Button>
-    </div>
+    </PageContainer>
   );
 };
 

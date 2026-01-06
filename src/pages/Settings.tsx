@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Settings as SettingsIcon, User, Save, Loader2 } from 'lucide-react';
 import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle';
+import PageContainer from '@/components/layout/PageContainer';
 
 const Settings = () => {
   const { user, profile } = useAuth();
@@ -51,7 +52,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-2xl">
+    <PageContainer width="narrow" className="space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold">Settings</h1>
@@ -143,7 +144,7 @@ const Settings = () => {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 };
 

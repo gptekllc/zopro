@@ -19,6 +19,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
+import PageContainer from '@/components/layout/PageContainer';
 
 interface Notification {
   id: string;
@@ -188,7 +189,7 @@ const Notifications = () => {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <PageContainer className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>

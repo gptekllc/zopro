@@ -17,6 +17,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { compressImageToFile } from '@/lib/imageCompression';
 import { format } from 'date-fns';
 import ViewMemberDialog from '@/components/team/ViewMemberDialog';
+import PageContainer from '@/components/layout/PageContainer';
 
 const AVAILABLE_ROLES = ['admin', 'manager', 'technician'] as const;
 type AppRole = typeof AVAILABLE_ROLES[number];
@@ -343,7 +344,7 @@ const Technicians = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
@@ -759,7 +760,7 @@ const Technicians = () => {
           </p>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 };
 

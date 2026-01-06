@@ -7,6 +7,7 @@ import MonthlySummaryReport from '@/components/reports/MonthlySummaryReport';
 import CustomerRevenueReport from '@/components/reports/CustomerRevenueReport';
 import TechnicianPerformanceReport from '@/components/reports/TechnicianPerformanceReport';
 import { cn } from '@/lib/utils';
+import PageContainer from '@/components/layout/PageContainer';
 
 const Reports = () => {
   const [activeTab, setActiveTab] = useState('transactions');
@@ -22,7 +23,7 @@ const Reports = () => {
   }, []);
 
   return (
-    <div className="space-y-6 lg:space-y-8 animate-fade-in">
+    <PageContainer className="space-y-6 lg:space-y-8">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div 
           className={cn(
@@ -84,7 +85,7 @@ const Reports = () => {
           <TechnicianPerformanceReport />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 };
 

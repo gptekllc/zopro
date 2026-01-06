@@ -15,6 +15,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import PageContainer from '@/components/layout/PageContainer';
 
 interface Company {
   id: string;
@@ -355,7 +356,7 @@ const SuperAdmin = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <PageContainer className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -740,7 +741,7 @@ const SuperAdmin = () => {
           </Dialog>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 };
 

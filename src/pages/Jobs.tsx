@@ -28,6 +28,7 @@ import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/compon
 import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
 import { JobListManager } from '@/components/jobs/JobListManager';
 import { JobListControls } from '@/components/jobs/JobListControls';
+import PageContainer from '@/components/layout/PageContainer';
 
 const JOB_STATUSES_EDITABLE = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -414,7 +415,7 @@ const Jobs = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
@@ -699,7 +700,7 @@ const Jobs = () => {
           onOpenChange={(open) => !open && setSaveAsTemplateJob(null)}
         />
       )}
-    </div>
+    </PageContainer>
   );
 };
 
