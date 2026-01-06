@@ -831,6 +831,18 @@ export function useConvertJobToInvoice() {
       
       if (updateError) throw updateError;
       
+      // Log activity
+      await supabase
+        .from('job_activities')
+        .insert({
+          job_id: job.id,
+          company_id: profile.company_id,
+          activity_type: 'invoice_created',
+          new_value: invoice.invoice_number,
+          related_document_id: invoice.id,
+          performed_by: user?.id,
+        });
+      
       return invoice;
     },
     onSuccess: () => {
@@ -928,6 +940,17 @@ export function useConvertJobToQuote() {
         
         if (itemsError) throw itemsError;
       }
+      // Log activity
+      await supabase
+        .from('job_activities')
+        .insert({
+          job_id: job.id,
+          company_id: profile.company_id,
+          activity_type: 'quote_created',
+          new_value: quote.quote_number,
+          related_document_id: quote.id,
+          performed_by: user?.id,
+        });
       
       return quote;
     },
