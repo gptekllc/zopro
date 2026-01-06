@@ -50,6 +50,7 @@ export function JobPhotoGallery({
   const [draggedPhoto, setDraggedPhoto] = useState<JobPhoto | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<'before' | 'after' | 'other' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function loadSignedUrls() {
@@ -240,6 +241,15 @@ export function JobPhotoGallery({
             </Select>
             <Button 
               variant="outline" 
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={isUploading}
+              className="sm:hidden"
+              title="Take Photo"
+            >
+              <Camera className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="outline" 
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
               className="flex-1 sm:flex-none sm:w-auto"
@@ -249,8 +259,16 @@ export function JobPhotoGallery({
               ) : (
                 <Upload className="w-4 h-4 mr-2" />
               )}
-              {isUploading ? 'Uploading...' : 'Upload Photo'}
+              {isUploading ? 'Uploading...' : 'Upload'}
             </Button>
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
             <input
               ref={fileInputRef}
               type="file"
