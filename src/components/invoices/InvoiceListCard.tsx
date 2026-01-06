@@ -221,15 +221,6 @@ export function InvoiceListCard({
           <Mail className="w-4 h-4 mr-2" />
           Email Invoice
         </DropdownMenuItem>
-        {invoice.status !== "paid" && invoice.status !== "voided" && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onMarkPaid(invoice.id)}>
-              <CheckCircle className="w-4 h-4 mr-2 text-success" />
-              Mark as Paid in Full
-            </DropdownMenuItem>
-          </>
-        )}
         {signatureId ? (
           <DropdownMenuItem onClick={() => onViewSignature(signatureId)}>
             <Eye className="w-4 h-4 mr-2" />
