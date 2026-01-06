@@ -12,6 +12,28 @@ interface SaveSignatureParams {
   customerId: string;
 }
 
+// Helper to record signature history
+async function recordSignatureHistory(params: {
+  signatureId: string;
+  documentType: string;
+  documentId: string;
+  companyId: string;
+  customerId: string;
+  signerName: string;
+  performedBy: string;
+}) {
+  await supabase.from('signature_history').insert({
+    signature_id: params.signatureId,
+    document_type: params.documentType,
+    document_id: params.documentId,
+    company_id: params.companyId,
+    customer_id: params.customerId,
+    event_type: 'signed',
+    signer_name: params.signerName,
+    performed_by: params.performedBy,
+  });
+}
+
 // Hook to approve a quote with signature (in-person)
 export function useApproveQuoteWithSignature() {
   const queryClient = useQueryClient();
@@ -43,6 +65,17 @@ export function useApproveQuoteWithSignature() {
 
       if (sigError) throw sigError;
 
+      // Record signature history
+      await recordSignatureHistory({
+        signatureId: signature.id,
+        documentType: 'quote',
+        documentId: quoteId,
+        companyId: profile.company_id,
+        customerId,
+        signerName,
+        performedBy: profile.id,
+      });
+
       // Update quote with signature and set status to accepted
       const { error: quoteError } = await (supabase as any)
         .from('quotes')
@@ -60,6 +93,7 @@ export function useApproveQuoteWithSignature() {
     onSuccess: (signature) => {
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['signature', signature.id] });
+      queryClient.invalidateQueries({ queryKey: ['signature-history'] });
       toast.success('Quote approved with signature');
     },
     onError: (error: unknown) => {
@@ -99,6 +133,17 @@ export function useSignInvoice() {
 
       if (sigError) throw sigError;
 
+      // Record signature history
+      await recordSignatureHistory({
+        signatureId: signature.id,
+        documentType: 'invoice',
+        documentId: invoiceId,
+        companyId: profile.company_id,
+        customerId,
+        signerName,
+        performedBy: profile.id,
+      });
+
       // Update invoice with signature and mark as paid
       const { error: invoiceError } = await (supabase as any)
         .from('invoices')
@@ -117,6 +162,7 @@ export function useSignInvoice() {
     onSuccess: (signature) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['signature', signature.id] });
+      queryClient.invalidateQueries({ queryKey: ['signature-history'] });
       toast.success('Invoice signed successfully');
     },
     onError: (error: unknown) => {
@@ -156,6 +202,17 @@ export function useSignJobCompletion() {
 
       if (sigError) throw sigError;
 
+      // Record signature history
+      await recordSignatureHistory({
+        signatureId: signature.id,
+        documentType: 'job',
+        documentId: jobId,
+        companyId: profile.company_id,
+        customerId,
+        signerName,
+        performedBy: profile.id,
+      });
+
       // Update job with completion signature and mark as completed
       const { error: jobError } = await (supabase as any)
         .from('jobs')
@@ -175,6 +232,7 @@ export function useSignJobCompletion() {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['job'] });
       queryClient.invalidateQueries({ queryKey: ['signature', signature.id] });
+      queryClient.invalidateQueries({ queryKey: ['signature-history'] });
       toast.success('Job completion signed successfully');
     },
     onError: (error: unknown) => {

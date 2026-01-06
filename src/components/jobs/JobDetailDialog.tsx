@@ -11,7 +11,7 @@ import {
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
   Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star,
-  List, Camera, StickyNote
+  List, Camera, StickyNote, History
 } from 'lucide-react';
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,6 +34,7 @@ import { useJobFeedbacks, JobFeedback } from '@/hooks/useJobFeedbacks';
 import { useJobTimeEntries } from '@/hooks/useTimeEntries';
 import { ConvertJobToInvoiceDialog } from '@/components/jobs/ConvertJobToInvoiceDialog';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
+import { useSignatureHistory, useClearJobSignature } from '@/hooks/useSignatureHistory';
 
 interface JobDetailDialogProps {
   job: CustomerJob | null;
@@ -99,6 +100,8 @@ export function JobDetailDialog({
   const { data: notifications = [], isLoading: loadingNotifications } = useJobNotifications(job?.id || null);
   const { data: feedbacks = [], isLoading: loadingFeedbacks } = useJobFeedbacks(job?.id || null);
   const { data: jobTimeEntries = [] } = useJobTimeEntries(job?.id || null);
+  const { data: signatureHistory = [], isLoading: loadingSignatureHistory } = useSignatureHistory('job', job?.id || null);
+  const clearSignature = useClearJobSignature();
   
   // State hooks - must be before any conditionals
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -557,6 +560,13 @@ export function JobDetailDialog({
                   signatureId={job.completion_signature_id}
                   title="Job Completion Signature"
                   showCollectButton={false}
+                  showClearButton={true}
+                  onClearSignature={() => clearSignature.mutate({
+                    jobId: job.id,
+                    signatureId: job.completion_signature_id!,
+                    customerId: job.customer_id,
+                  })}
+                  isClearing={clearSignature.isPending}
                 />
               </div>
             ) : (
@@ -593,7 +603,7 @@ export function JobDetailDialog({
           {/* Photos, Related Docs, Comments, History Tabs */}
           <Separator />
           <Tabs defaultValue="photos" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Photos</span>
@@ -606,7 +616,7 @@ export function JobDetailDialog({
 
               <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Related Docs</span>
+                <span className="hidden sm:inline">Docs</span>
                 {((relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0) + jobInvoices.length) > 0 && (
                   <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
                     {(relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0) + jobInvoices.length}
@@ -626,10 +636,20 @@ export function JobDetailDialog({
 
               <TabsTrigger value="notifications" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <Bell className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">History</span>
+                <span className="hidden sm:inline">Activity</span>
                 {notifications.length > 0 && (
                   <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
                     {notifications.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+
+              <TabsTrigger value="history" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <History className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">History</span>
+                {signatureHistory.length > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {signatureHistory.length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -901,6 +921,66 @@ export function JobDetailDialog({
                   <p className="text-xs sm:text-sm text-muted-foreground">No notifications sent yet</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Use "Send to Customer" to notify them about this job
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Signature History Tab */}
+            <TabsContent value="history" className="mt-4">
+              {loadingSignatureHistory ? (
+                <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p>
+              ) : signatureHistory.length > 0 ? (
+                <div className="space-y-2">
+                  {signatureHistory.map((event) => (
+                    <div 
+                      key={event.id}
+                      className={`flex items-start gap-3 p-3 rounded-lg border ${
+                        event.event_type === 'signed' 
+                          ? 'bg-success/5 border-success/30' 
+                          : 'bg-destructive/5 border-destructive/30'
+                      }`}
+                    >
+                      <div className={`p-2 rounded-full shrink-0 ${
+                        event.event_type === 'signed' 
+                          ? 'bg-success/10' 
+                          : 'bg-destructive/10'
+                      }`}>
+                        <PenTool className={`w-3 h-3 sm:w-4 sm:h-4 ${
+                          event.event_type === 'signed' 
+                            ? 'text-success' 
+                            : 'text-destructive'
+                        }`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm capitalize">
+                            {event.event_type === 'signed' ? 'Signature Collected' : 'Signature Cleared'}
+                          </span>
+                        </div>
+                        {event.signer_name && (
+                          <p className="text-xs text-muted-foreground">
+                            Signer: {event.signer_name}
+                          </p>
+                        )}
+                        {event.performer?.full_name && (
+                          <p className="text-xs text-muted-foreground">
+                            By: {event.performer.full_name}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(event.created_at), 'MMM d, yyyy h:mm a')}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 bg-muted/50 rounded-lg text-center">
+                  <History className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+                  <p className="text-xs sm:text-sm text-muted-foreground">No signature history yet</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Signature events will appear here when signatures are collected or cleared
                   </p>
                 </div>
               )}
