@@ -959,19 +959,6 @@ export function InvoiceDetailDialog({
           {/* Actions */}
           <Separator />
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
-            <Button 
-              size="sm" 
-              onClick={() => onEmail?.(invoice.id)} 
-              disabled={!customerEmail || isSendingEmail}
-              title={!customerEmail ? 'Customer has no email address' : undefined}
-            >
-              {isSendingEmail ? (
-                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4 mr-1" />
-              )}
-              {isSendingEmail ? 'Sending...' : 'Send to Customer'}
-            </Button>
             {onDuplicate && (
               <Button variant="outline" size="sm" onClick={() => onDuplicate(invoice.id)}>
                 <Copy className="w-4 h-4 mr-1" />
@@ -1016,12 +1003,6 @@ export function InvoiceDetailDialog({
                   Split
                 </Button>
               </>
-            )}
-            {invoice.status !== 'paid' && invoice.status !== 'voided' && (
-              <Button variant="outline" size="sm" onClick={() => onMarkPaid?.(invoice.id)}>
-                <CheckCircle className="w-4 h-4 mr-1" />
-                Mark Paid
-              </Button>
             )}
             {invoice.status !== 'paid' && invoice.status !== 'voided' && (
               <Button 
