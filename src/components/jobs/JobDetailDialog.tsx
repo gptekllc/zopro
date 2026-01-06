@@ -575,9 +575,14 @@ export function JobDetailDialog({
                                 </p>
                               </div>
                             </div>
-                            <Badge variant="outline" className={`text-xs capitalize ${invoice.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : invoice.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : ''}`}>
-                              {invoice.status}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold text-primary">
+                                ${Number(invoice.total || 0).toFixed(2)}
+                              </span>
+                              <Badge variant="outline" className={`text-xs capitalize ${invoice.status === 'paid' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : invoice.status === 'overdue' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : ''}`}>
+                                {invoice.status}
+                              </Badge>
+                            </div>
                           </div>)}
                       </div>
                     </div>}
