@@ -165,6 +165,36 @@ export function InvoiceListManager({
     fixStaleStatusMutation.mutate(invoiceId);
   };
 
+  // Fix all stale statuses state
+  const [fixAllProgress, setFixAllProgress] = useState<{ current: number; total: number } | null>(null);
+
+  // Helper to compute expected status (same logic as InvoiceListCard)
+  const computeExpectedStatus = (
+    totalPaid: number,
+    totalDue: number,
+    currentStatus: string,
+    dueDate: string | null
+  ): string | null => {
+    if (currentStatus === 'voided') return null;
+    if (currentStatus === 'draft' && totalPaid === 0) return null;
+
+    const isOverdue = dueDate && new Date(dueDate) < new Date();
+
+    if (totalPaid >= totalDue && totalDue > 0) {
+      return currentStatus !== 'paid' ? 'paid' : null;
+    }
+
+    if (totalPaid > 0 && totalPaid < totalDue) {
+      return currentStatus !== 'partially_paid' ? 'partially_paid' : null;
+    }
+
+    if (totalPaid === 0 && (currentStatus === 'paid' || currentStatus === 'partially_paid')) {
+      return isOverdue ? 'overdue' : 'sent';
+    }
+
+    return null;
+  };
+
   // Wrapped setters for scroll restoration
   const openViewingInvoice = useCallback((invoice: Invoice | null) => {
     if (invoice) saveScrollPosition();
@@ -200,13 +230,45 @@ export function InvoiceListManager({
   const getCustomerName = (customerId: string) => customers.find(c => c.id === customerId)?.name || 'Unknown';
   const getCustomerEmail = (customerId: string) => customers.find(c => c.id === customerId)?.email || '';
   const lateFeePercentage = company?.late_fee_percentage ?? 0;
-  
+
   // Calculate total paid per invoice from all payments
   const getInvoiceTotalPaid = (invoiceId: string): number => {
     const invoicePayments = allPayments.filter(p => p.invoice_id === invoiceId && p.status === 'completed');
     return invoicePayments.reduce((sum, p) => sum + Number(p.amount), 0);
   };
 
+  // Find all stale invoices in the VISIBLE list (so “Fix All” only affects what the user can see)
+  const staleInvoices = useMemo(() => {
+    return visibleInvoices.filter((invoice) => {
+      const totalPaid = getInvoiceTotalPaid(invoice.id);
+      const total = typeof invoice.total === 'string' ? Number(invoice.total) : invoice.total ?? 0;
+      const lateFee = invoice.late_fee_amount && invoice.late_fee_amount > 0 ? Number(invoice.late_fee_amount) : 0;
+      const totalDue = lateFee > 0 ? total + lateFee : total;
+
+      const expectedStatus = computeExpectedStatus(totalPaid, totalDue, invoice.status, invoice.due_date);
+      return expectedStatus !== null;
+    });
+  }, [visibleInvoices, allPayments, computeExpectedStatus]);
+
+  const handleFixAllStale = async () => {
+    if (staleInvoices.length === 0 || fixAllProgress) return;
+
+    setFixAllProgress({ current: 0, total: staleInvoices.length });
+
+    for (let i = 0; i < staleInvoices.length; i++) {
+      try {
+        await recalculateInvoiceStatus(staleInvoices[i].id);
+      } catch (error) {
+        console.error('Failed to fix invoice:', staleInvoices[i].id, error);
+      } finally {
+        setFixAllProgress({ current: i + 1, total: staleInvoices.length });
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['invoices'] });
+    toast.success(`Fixed ${staleInvoices.length} invoice${staleInvoices.length > 1 ? 's' : ''}`);
+    setFixAllProgress(null);
+  };
   // Handlers
   const handleStatusChange = async (invoiceId: string, newStatus: string) => {
     if (newStatus === 'paid') {
