@@ -159,10 +159,15 @@ export function JobPhotoGallery({
   const handleMouseUp = () => setIsDragging(false);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && onUpload) {
-      try {
-        setIsProcessing(true);
+    const files = e.target.files;
+    if (!files || files.length === 0 || !onUpload) return;
+
+    try {
+      setIsProcessing(true);
+      
+      // Process all files
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         // Check if it's an image file that needs compression
         const isImage = file.type.startsWith('image/') || 
                         file.name.toLowerCase().endsWith('.heic') || 
@@ -173,13 +178,15 @@ export function JobPhotoGallery({
           // Compress image before upload (300kb max, supports HEIF/HEIC)
           fileToUpload = await compressImageToFile(file, 300);
         }
-        setIsProcessing(false);
         await onUpload(fileToUpload, selectedPhotoType);
-      } catch (error) {
-        console.error('Failed to process file:', error);
-        toast.error('Failed to process file. Please try again.');
-        setIsProcessing(false);
       }
+      
+      toast.success(`${files.length} file${files.length > 1 ? 's' : ''} uploaded`);
+    } catch (error) {
+      console.error('Failed to process file:', error);
+      toast.error('Failed to process file. Please try again.');
+    } finally {
+      setIsProcessing(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -311,6 +318,7 @@ export function JobPhotoGallery({
               ref={fileInputRef}
               type="file"
               accept="*/*"
+              multiple
               onChange={handleFileSelect}
               className="hidden"
             />
