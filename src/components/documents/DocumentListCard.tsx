@@ -135,6 +135,11 @@ export function DocumentListCard({
             </div>
           </div>
 
+          {/* Row 2: Metadata */}
+          {metadataRow && <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+              {metadataRow}
+            </div>}
+
           {/* Notes */}
           {notes}
 
