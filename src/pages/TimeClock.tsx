@@ -213,7 +213,7 @@ const TimeClock = () => {
         </div>
 
         {/* Main Layout: Clock Widget + Stats on left, Recent Entries on right */}
-        <div className="grid lg:grid-cols-[340px,1fr] gap-6">
+        <div className="grid lg:grid-cols-[400px,1fr] gap-6">
           {/* Left Column: Clock Widget + Stats */}
           <div className="space-y-4">
             {/* Clock Widget */}
