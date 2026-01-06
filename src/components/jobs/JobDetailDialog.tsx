@@ -478,7 +478,7 @@ export function JobDetailDialog({
             <TabsList className="w-full grid grid-cols-4 h-auto p-1">
               <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Photos/Files</span>
+                <span className="hidden sm:inline">Photos</span>
                 {(job.photos?.length || 0) > 0 && <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
                     {job.photos?.length}
                   </Badge>}
