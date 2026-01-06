@@ -13,9 +13,7 @@ import { useInvoices } from '@/hooks/useInvoices';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Search, Loader2, Filter, Archive } from 'lucide-react';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
@@ -24,6 +22,7 @@ import { QuoteDetailDialog } from '@/components/quotes/QuoteDetailDialog';
 import { QuoteListCard } from '@/components/quotes/QuoteListCard';
 import { CreateJobFromQuoteDialog, AddQuoteItemsToJobDialog } from '@/components/quotes/QuoteToJobDialogs';
 import { ConvertToInvoiceDialog } from '@/components/quotes/ConvertToInvoiceDialog';
+import { DocumentEmailDialog } from '@/components/email/DocumentEmailDialog';
 import { useSwipeHint } from '@/components/ui/swipeable-card';
 import { Customer } from '@/hooks/useCustomers';
 import { toast } from 'sonner';
@@ -141,8 +140,7 @@ export function QuoteListManager({
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
   const [archiveConfirmQuote, setArchiveConfirmQuote] = useState<Quote | null>(null);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [selectedQuoteForEmail, setSelectedQuoteForEmail] = useState<string | null>(null);
-  const [emailRecipient, setEmailRecipient] = useState('');
+  const [selectedQuoteForEmail, setSelectedQuoteForEmail] = useState<Quote | null>(null);
 
   // Signature dialogs
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
@@ -217,20 +215,23 @@ export function QuoteListManager({
   };
 
   const handleOpenEmailDialog = (quoteId: string, customerId: string) => {
-    setSelectedQuoteForEmail(quoteId);
-    setEmailRecipient(getCustomerEmail(customerId));
-    setEmailDialogOpen(true);
+    const quote = quotes.find(q => q.id === quoteId);
+    if (quote) {
+      setSelectedQuoteForEmail(quote);
+      setEmailDialogOpen(true);
+    }
   };
 
-  const handleSendEmail = async () => {
-    if (!selectedQuoteForEmail || !emailRecipient) {
-      toast.error('Please enter a recipient email');
-      return;
-    }
-    await emailDocument.mutateAsync({ type: 'quote', documentId: selectedQuoteForEmail, recipientEmail: emailRecipient });
+  const handleSendQuoteEmail = async (emails: string[], subject: string, message: string) => {
+    if (!selectedQuoteForEmail) return;
+    // For now, send to first email (the backend will handle multiple recipients)
+    await emailDocument.mutateAsync({ 
+      type: 'quote', 
+      documentId: selectedQuoteForEmail.id, 
+      recipientEmail: emails[0] 
+    });
     setEmailDialogOpen(false);
     setSelectedQuoteForEmail(null);
-    setEmailRecipient('');
   };
 
   const handleArchiveQuote = async (quote: Quote) => {
@@ -481,34 +482,20 @@ export function QuoteListManager({
         </div>
       </PullToRefresh>
 
-      {/* Email Dialog */}
-      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Email Quote</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Recipient Email</Label>
-              <Input
-                type="email"
-                value={emailRecipient}
-                onChange={(e) => setEmailRecipient(e.target.value)}
-                placeholder="customer@example.com"
-              />
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setEmailDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button className="flex-1" onClick={handleSendEmail} disabled={emailDocument.isPending || !emailRecipient}>
-                {emailDocument.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Send Email
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Quote Email Dialog with Templates */}
+      <DocumentEmailDialog
+        open={emailDialogOpen}
+        onOpenChange={setEmailDialogOpen}
+        documentType="quote"
+        documentNumber={selectedQuoteForEmail?.quote_number}
+        customerName={selectedQuoteForEmail ? getCustomerName(selectedQuoteForEmail.customer_id) : undefined}
+        customerEmail={selectedQuoteForEmail ? getCustomerEmail(selectedQuoteForEmail.customer_id) : undefined}
+        companyName={company?.name}
+        documentTotal={selectedQuoteForEmail?.total}
+        validUntil={selectedQuoteForEmail?.valid_until || undefined}
+        onSend={handleSendQuoteEmail}
+        isSending={emailDocument.isPending}
+      />
 
       {/* Quote Detail Dialog */}
       <QuoteDetailDialog

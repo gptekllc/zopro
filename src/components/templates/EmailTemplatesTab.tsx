@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil } from 'lucide-react';
+import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil, CopyPlus } from 'lucide-react';
 import { 
   useEmailTemplates, 
   useCreateEmailTemplate, 
@@ -196,6 +196,18 @@ export const EmailTemplatesTab = () => {
     });
 
     setEditingTemplate(null);
+  };
+
+  const handleDuplicate = (template: EmailTemplate) => {
+    setFormData({
+      name: `${template.name} (Copy)`,
+      template_type: template.template_type as TemplateType,
+      subject: template.subject,
+      body: template.body,
+      is_default: false,
+    });
+    setEditorTab('edit');
+    setIsCreateOpen(true);
   };
 
   const insertPlaceholder = (variable: string) => {
@@ -403,7 +415,15 @@ export const EmailTemplatesTab = () => {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => handleDuplicate(template)}
+                      title="Duplicate template"
+                    >
+                      <CopyPlus className="w-4 h-4" />
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => handleEditOpen(template)}>
                       <Edit className="w-4 h-4 mr-1" />
                       Edit
