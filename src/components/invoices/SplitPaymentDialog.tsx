@@ -82,8 +82,9 @@ export function SplitPaymentDialog({
     }
   }, [open, remainingBalance, customerEmail]);
 
+  const balanceDue = remainingBalance ?? invoiceTotal ?? 0;
   const totalEntered = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-  const difference = remainingBalance - totalEntered;
+  const difference = balanceDue - totalEntered;
 
   const handleAddPayment = () => {
     setPayments([
@@ -201,11 +202,11 @@ export function SplitPaymentDialog({
           <div className="p-3 bg-muted/50 rounded-lg space-y-1 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Balance Due</span>
-              <span>${remainingBalance.toFixed(2)}</span>
+              <span>${balanceDue.toFixed(2)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Total Entered</span>
-              <span className={totalEntered > remainingBalance ? 'text-orange-600' : ''}>
+              <span className={totalEntered > balanceDue ? 'text-orange-600' : ''}>
                 ${totalEntered.toFixed(2)}
               </span>
             </div>
