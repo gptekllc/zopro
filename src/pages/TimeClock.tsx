@@ -192,7 +192,7 @@ const TimeClock = () => {
 
   return (
     <AppLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-4 lg:space-y-6 animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -212,8 +212,8 @@ const TimeClock = () => {
           )}
         </div>
 
-        {/* Main Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        {/* Main Layout - responsive grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4 lg:gap-6">
           {/* Left Column: Clock Widget + Stats */}
           <div className="space-y-4">
             {/* Clock Widget */}
@@ -356,8 +356,8 @@ const TimeClock = () => {
             </div>
           </div>
 
-          {/* Right Column: Recent Entries - spans 2 columns */}
-          <Card className="lg:col-span-2">
+          {/* Right Column: Recent Entries */}
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Recent Entries</CardTitle>
             </CardHeader>
