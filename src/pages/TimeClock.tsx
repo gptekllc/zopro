@@ -219,7 +219,7 @@ const TimeClock = () => {
 
   if (isLoading) {
     return (
-      <AppLayout>
+      <AppLayout contentWidth="full">
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -228,8 +228,8 @@ const TimeClock = () => {
   }
 
   return (
-    <AppLayout>
-      <div className="space-y-6 max-w-5xl mx-auto">
+    <AppLayout contentWidth="full">
+      <div className="space-y-6 w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
