@@ -582,3 +582,87 @@ export function useInvoiceReminders(invoiceId: string | null) {
     enabled: !!invoiceId,
   });
 }
+
+// Void an invoice
+export function useVoidInvoice() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async ({ 
+      invoiceId, 
+      reason, 
+      sendNotification 
+    }: { 
+      invoiceId: string; 
+      reason: string; 
+      sendNotification: boolean;
+    }) => {
+      // Get the invoice with customer and company info
+      const { data: invoice, error: fetchError } = await (supabase as any)
+        .from('invoices')
+        .select(`
+          id, invoice_number, status, notes, company_id,
+          customer:customers(name, email),
+          company:companies(name, email)
+        `)
+        .eq('id', invoiceId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
+      // Check if invoice can be voided
+      if (invoice.status === 'paid') {
+        throw new Error('Cannot void a paid invoice');
+      }
+      if (invoice.status === 'voided') {
+        throw new Error('Invoice is already voided');
+      }
+      
+      // Update invoice status to voided and append reason to notes
+      const existingNotes = invoice.notes || '';
+      const voidedNote = `[VOIDED ${new Date().toLocaleString()}] ${reason}`;
+      const updatedNotes = existingNotes 
+        ? `${existingNotes}\n\n${voidedNote}` 
+        : voidedNote;
+      
+      const { error: updateError } = await (supabase as any)
+        .from('invoices')
+        .update({
+          status: 'voided',
+          notes: updatedNotes,
+        })
+        .eq('id', invoiceId);
+      
+      if (updateError) throw updateError;
+      
+      // Send email notification if requested and customer has email
+      if (sendNotification && invoice.customer?.email && invoice.company?.email) {
+        try {
+          await supabase.functions.invoke('send-payment-notification', {
+            body: {
+              type: 'invoice_voided',
+              invoiceNumber: invoice.invoice_number,
+              customerName: invoice.customer.name || 'Customer',
+              customerEmail: invoice.customer.email,
+              companyName: invoice.company.name || 'Company',
+              companyEmail: invoice.company.email,
+              reason: reason,
+            },
+          });
+        } catch (emailError) {
+          console.error('Failed to send void notification email:', emailError);
+          // Don't throw - the invoice was still voided successfully
+        }
+      }
+      
+      return { invoiceNumber: invoice.invoice_number };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success(`Invoice ${data.invoiceNumber} has been voided`);
+    },
+    onError: (error: unknown) => {
+      toast.error('Failed to void invoice: ' + sanitizeErrorMessage(error));
+    },
+  });
+}
