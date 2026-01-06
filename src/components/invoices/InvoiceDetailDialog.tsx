@@ -1058,6 +1058,10 @@ export function InvoiceDetailDialog({
         customerEmail={customerEmail}
         onConfirm={handleRecordPayment}
         isLoading={createPayment.isPending}
+        onSwitchToSplit={() => {
+          setRecordPaymentDialogOpen(false);
+          setSplitPaymentDialogOpen(true);
+        }}
       />
 
       {/* Split Payment Dialog */}
