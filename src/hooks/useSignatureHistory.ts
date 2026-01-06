@@ -40,6 +40,7 @@ export function useSignatureHistory(documentType: string, documentId: string | n
       return data as SignatureHistoryEvent[];
     },
     enabled: !!documentId,
+    staleTime: 30000, // Cache for 30 seconds to reduce refetches
   });
 }
 
