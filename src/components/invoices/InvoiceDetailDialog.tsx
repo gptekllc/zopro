@@ -15,7 +15,7 @@ import {
   FileDown, Mail, Edit, PenTool, Calendar, 
   DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
   ChevronRight, CheckCircle2, Copy, Briefcase, FileText, Link2, Send, Loader2,
-  List, Image as ImageIcon, CreditCard, Trash2, Pencil, RotateCcw, XCircle, MoreHorizontal
+  List, Image as ImageIcon, CreditCard, Trash2, Pencil, RotateCcw, XCircle, MoreHorizontal, Ban
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -24,10 +24,12 @@ import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto, useUpdateInvoicePhotoType } from '@/hooks/useInvoicePhotos';
 import { usePayments, useDeletePayment, useUpdatePayment, useRefundPayment, useVoidPayment, useCreatePayment, Payment } from '@/hooks/usePayments';
+import { useVoidInvoice } from '@/hooks/useInvoices';
 import { PAYMENT_METHODS, RecordPaymentDialog, PaymentData } from './RecordPaymentDialog';
 import { SplitPaymentDialog, SplitPaymentData } from './SplitPaymentDialog';
 import { EditPaymentDialog, EditPaymentData } from './EditPaymentDialog';
 import { RefundPaymentDialog } from './RefundPaymentDialog';
+import { VoidInvoiceDialog } from './VoidInvoiceDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -168,6 +170,10 @@ export function InvoiceDetailDialog({
   // Record payment dialog state
   const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
   const [splitPaymentDialogOpen, setSplitPaymentDialogOpen] = useState(false);
+  
+  // Void invoice dialog state
+  const [voidInvoiceDialogOpen, setVoidInvoiceDialogOpen] = useState(false);
+  const voidInvoice = useVoidInvoice();
   
   // Receipt loading state
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
@@ -344,6 +350,16 @@ export function InvoiceDetailDialog({
     } finally {
       setReceiptLoadingId(null);
     }
+  };
+
+  const handleVoidInvoice = async (reason: string, sendNotification: boolean) => {
+    await voidInvoice.mutateAsync({
+      invoiceId: invoice.id,
+      reason,
+      sendNotification,
+    });
+    setVoidInvoiceDialogOpen(false);
+    onOpenChange(false);
   };
 
   return (
@@ -968,10 +984,21 @@ export function InvoiceDetailDialog({
                 </Button>
               </>
             )}
-            {invoice.status !== 'paid' && (
+            {invoice.status !== 'paid' && invoice.status !== 'voided' && (
               <Button variant="outline" size="sm" onClick={() => onMarkPaid?.(invoice.id)}>
                 <CheckCircle className="w-4 h-4 mr-1" />
                 Mark Paid
+              </Button>
+            )}
+            {invoice.status !== 'paid' && invoice.status !== 'voided' && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setVoidInvoiceDialogOpen(true)}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              >
+                <Ban className="w-4 h-4 mr-1" />
+                Void
               </Button>
             )}
             <Button size="sm" onClick={() => onEdit?.(invoice.id)} className="sm:ml-auto">
@@ -1029,6 +1056,16 @@ export function InvoiceDetailDialog({
         customerEmail={customerEmail}
         onConfirm={handleSplitPayment}
         isLoading={createPayment.isPending}
+      />
+
+      {/* Void Invoice Dialog */}
+      <VoidInvoiceDialog
+        open={voidInvoiceDialogOpen}
+        onOpenChange={setVoidInvoiceDialogOpen}
+        invoiceNumber={invoice.invoice_number}
+        customerEmail={customerEmail}
+        onConfirm={handleVoidInvoice}
+        isLoading={voidInvoice.isPending}
       />
     </Dialog>
   );
