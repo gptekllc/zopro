@@ -163,13 +163,21 @@ export function JobPhotoGallery({
     if (file && onUpload) {
       try {
         setIsProcessing(true);
-        // Compress image before upload (300kb max, supports HEIF/HEIC)
-        const compressedFile = await compressImageToFile(file, 300);
+        // Check if it's an image file that needs compression
+        const isImage = file.type.startsWith('image/') || 
+                        file.name.toLowerCase().endsWith('.heic') || 
+                        file.name.toLowerCase().endsWith('.heif');
+        
+        let fileToUpload = file;
+        if (isImage) {
+          // Compress image before upload (300kb max, supports HEIF/HEIC)
+          fileToUpload = await compressImageToFile(file, 300);
+        }
         setIsProcessing(false);
-        await onUpload(compressedFile, selectedPhotoType);
+        await onUpload(fileToUpload, selectedPhotoType);
       } catch (error) {
-        console.error('Failed to compress image:', error);
-        toast.error('Failed to process image. Please try a different file.');
+        console.error('Failed to process file:', error);
+        toast.error('Failed to process file. Please try again.');
         setIsProcessing(false);
       }
       if (fileInputRef.current) {
@@ -302,7 +310,7 @@ export function JobPhotoGallery({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,.heic,.heif"
+              accept="*/*"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -310,13 +318,13 @@ export function JobPhotoGallery({
         </div>
       )}
 
-      {/* Photos Display */}
+      {/* Photos/Files Display */}
       {photos.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <Camera className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p className="text-sm">No photos yet</p>
+          <p className="text-sm">No photos or files yet</p>
           {editable && onUpload && (
-            <p className="text-xs mt-1">Upload photos using the button above</p>
+            <p className="text-xs mt-1">Upload photos or files using the button above</p>
           )}
         </div>
       ) : (
@@ -324,7 +332,7 @@ export function JobPhotoGallery({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Camera className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Photos ({photos.length})</span>
+              <span className="font-medium text-sm">Photos/Files ({photos.length})</span>
             </div>
             {editable && onUpdateType && (
               <span className="text-xs text-muted-foreground">Drag to move between categories</span>
