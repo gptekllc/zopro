@@ -91,6 +91,24 @@ export function InvoiceEmailActionDialog({
   const createTemplate = useCreateEmailTemplate();
   const deleteTemplate = useDeleteEmailTemplate();
 
+  // Replace placeholder variables with actual values
+  const replacePlaceholders = (text: string) => {
+    const totalStr = invoiceTotal ? `$${invoiceTotal.toFixed(2)}` : '';
+    const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString() : '';
+    const todayStr = new Date().toLocaleDateString();
+    
+    return text
+      .replace(/\{\{customer_name\}\}/g, customerName || '')
+      .replace(/\{\{company_name\}\}/g, companyName)
+      .replace(/\{\{invoice_number\}\}/g, invoiceNumber || '')
+      .replace(/\{\{invoice_total\}\}/g, totalStr)
+      .replace(/\{\{due_date\}\}/g, dueDateStr)
+      .replace(/\{\{today_date\}\}/g, todayStr)
+      // Also handle quote and job numbers if they're in the subject/body
+      .replace(/\{\{quote_number\}\}/g, '')
+      .replace(/\{\{job_number\}\}/g, '');
+  };
+
   const getDefaultSubject = (type: EmailActionType) => {
     if (type === 'invoice') {
       return `Invoice ${invoiceNumber || ''} from ${companyName}`;
@@ -152,8 +170,9 @@ ${companyName}`;
     // Find default template for this type
     const defaultTemplate = templates.find(t => t.template_type === type && t.is_default);
     if (defaultTemplate) {
-      setSubject(defaultTemplate.subject);
-      setMessage(defaultTemplate.body);
+      // Replace placeholders with actual values when loading template
+      setSubject(replacePlaceholders(defaultTemplate.subject));
+      setMessage(replacePlaceholders(defaultTemplate.body));
       setSelectedTemplateId(defaultTemplate.id);
     } else {
       setSubject(getDefaultSubject(type));
@@ -172,8 +191,9 @@ ${companyName}`;
     } else {
       const template = templates.find(t => t.id === templateId);
       if (template) {
-        setSubject(template.subject);
-        setMessage(template.body);
+        // Replace placeholders with actual values when loading template
+        setSubject(replacePlaceholders(template.subject));
+        setMessage(replacePlaceholders(template.body));
       }
     }
   };

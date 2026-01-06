@@ -31,9 +31,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, FileText, Edit, Plus, X, Briefcase, BookTemplate } from 'lucide-react';
+import { Loader2, Trash2, FileText, Edit, Plus, X, Briefcase, BookTemplate, Mail } from 'lucide-react';
 import { useJobTemplates, useDeleteJobTemplate, useUpdateJobTemplate, JobTemplate } from '@/hooks/useJobTemplates';
 import { useQuoteTemplates, useDeleteQuoteTemplate, useUpdateQuoteTemplate, QuoteTemplate } from '@/hooks/useQuoteTemplates';
+import { EmailTemplatesTab } from '@/components/templates/EmailTemplatesTab';
 
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 
@@ -71,19 +72,21 @@ const Templates = () => {
               <BookTemplate className="w-6 h-6" />
               Templates
             </h1>
-            <p className="text-muted-foreground">Manage your job and quote templates</p>
+            <p className="text-muted-foreground">Manage your job, quote, and email templates</p>
           </div>
 
           <TabsList>
             <TabsTrigger value="jobs" className="flex items-center gap-2">
               <Briefcase className="w-4 h-4" />
-              <span className="hidden sm:inline">Job Templates</span>
-              <span className="sm:hidden">Jobs</span>
+              <span className="hidden sm:inline">Jobs</span>
             </TabsTrigger>
             <TabsTrigger value="quotes" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">Quote Templates</span>
-              <span className="sm:hidden">Quotes</span>
+              <span className="hidden sm:inline">Quotes</span>
+            </TabsTrigger>
+            <TabsTrigger value="emails" className="flex items-center gap-2">
+              <Mail className="w-4 h-4" />
+              <span className="hidden sm:inline">Emails</span>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -94,6 +97,10 @@ const Templates = () => {
 
         <TabsContent value="quotes">
           <QuoteTemplatesTab />
+        </TabsContent>
+
+        <TabsContent value="emails">
+          <EmailTemplatesTab />
         </TabsContent>
       </Tabs>
     </div>
