@@ -227,9 +227,9 @@ export function JobPhotoGallery({
       {/* Upload Section */}
       {editable && onUpload && (
         <div className="mb-4 p-4 border-2 border-dashed rounded-lg">
-          <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex flex-row items-center gap-3">
             <Select value={selectedPhotoType} onValueChange={(v) => setSelectedPhotoType(v as 'before' | 'after' | 'other')}>
-              <SelectTrigger className="w-full sm:w-32">
+              <SelectTrigger className="w-28 sm:w-32">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -242,7 +242,7 @@ export function JobPhotoGallery({
               variant="outline" 
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="w-full sm:w-auto"
+              className="flex-1 sm:flex-none sm:w-auto"
             >
               {isUploading ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
