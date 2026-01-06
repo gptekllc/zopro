@@ -30,6 +30,7 @@ import { SplitPaymentDialog, SplitPaymentData } from './SplitPaymentDialog';
 import { EditPaymentDialog, EditPaymentData } from './EditPaymentDialog';
 import { RefundPaymentDialog } from './RefundPaymentDialog';
 import { VoidInvoiceDialog } from './VoidInvoiceDialog';
+import { InvoiceEmailActionDialog } from './InvoiceEmailActionDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -175,6 +176,9 @@ export function InvoiceDetailDialog({
   const [voidInvoiceDialogOpen, setVoidInvoiceDialogOpen] = useState(false);
   const voidInvoice = useVoidInvoice();
   
+  // Email action dialog state
+  const [emailActionDialogOpen, setEmailActionDialogOpen] = useState(false);
+  
   // Receipt loading state
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
 
@@ -313,6 +317,21 @@ export function InvoiceDetailDialog({
       // The last payment already triggers notification if needed
     }
     setSplitPaymentDialogOpen(false);
+  };
+
+  const handleSendInvoiceEmail = async (emails: string[]) => {
+    // For now, send to the first email (the hook expects single email)
+    // TODO: Extend hook to support multiple emails
+    if (emails[0]) {
+      await onEmailCustom?.(invoice.id);
+    }
+  };
+
+  const handleSendReminderEmail = async (emails: string[]) => {
+    // For now, send to the first email (the hook expects single email)
+    if (emails[0]) {
+      await onSendReminder?.(invoice.id);
+    }
   };
 
   const handleDownloadReceipt = async (paymentId: string) => {
@@ -963,22 +982,10 @@ export function InvoiceDetailDialog({
               <FileDown className="w-4 h-4 mr-1" />
               Download
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onEmailCustom?.(invoice.id)} className="justify-center">
+            <Button variant="outline" size="sm" onClick={() => setEmailActionDialogOpen(true)} className="justify-center">
               <Mail className="w-4 h-4 mr-1" />
               Email
             </Button>
-            {invoice.status !== 'paid' && onSendReminder && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => onSendReminder(invoice.id)} 
-                disabled={isSendingReminder}
-                className="justify-center"
-              >
-                <Bell className="w-4 h-4 mr-1" />
-                {isSendingReminder ? 'Sending...' : 'Send Reminder'}
-              </Button>
-            )}
             {invoice.status !== 'paid' && remainingBalance > 0 && (
               <Button 
                 size="sm" 
@@ -1069,6 +1076,19 @@ export function InvoiceDetailDialog({
         customerEmail={customerEmail}
         onConfirm={handleVoidInvoice}
         isLoading={voidInvoice.isPending}
+      />
+
+      {/* Email Action Dialog */}
+      <InvoiceEmailActionDialog
+        open={emailActionDialogOpen}
+        onOpenChange={setEmailActionDialogOpen}
+        invoiceNumber={invoice.invoice_number}
+        customerEmail={customerEmail}
+        onSendInvoice={handleSendInvoiceEmail}
+        onSendReminder={handleSendReminderEmail}
+        isSendingInvoice={isSendingEmail}
+        isSendingReminder={isSendingReminder}
+        showReminderOption={invoice.status !== 'paid'}
       />
     </Dialog>
   );
