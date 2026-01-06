@@ -238,62 +238,65 @@ const TimeClock = () => {
 
         {/* Main Action Card */}
         <div className="grid lg:grid-cols-2 gap-6">
-          <Card className="overflow-hidden relative">
-            {/* Background decorative blob */}
-            <div className={`absolute top-0 right-0 w-64 h-64 bg-gradient-to-br opacity-10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none 
-              ${status === 'working' ? 'from-green-400 to-emerald-600' : status === 'break' ? 'from-amber-400 to-orange-600' : 'from-slate-400 to-slate-600'}`} 
+          <Card className="overflow-hidden relative border-0 shadow-xl bg-gradient-to-br from-background via-background to-muted/30">
+            {/* Background decorative elements */}
+            <div className={`absolute top-0 right-0 w-80 h-80 bg-gradient-to-br opacity-[0.08] rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none transition-colors duration-500
+              ${status === 'working' ? 'from-green-400 to-emerald-600' : status === 'break' ? 'from-amber-400 to-orange-600' : 'from-primary/50 to-primary'}`} 
+            />
+            <div className={`absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr opacity-[0.05] rounded-full blur-2xl -ml-12 -mb-12 pointer-events-none
+              ${status === 'working' ? 'from-emerald-500 to-teal-400' : status === 'break' ? 'from-orange-400 to-amber-300' : 'from-muted to-muted-foreground/20'}`}
             />
 
-            <div className="p-8 flex flex-col items-center justify-center text-center min-h-[360px]">
+            <div className="p-6 sm:p-8 lg:p-10 flex flex-col items-center justify-center text-center min-h-[400px] lg:min-h-[420px] relative z-10">
               {/* Status Badge */}
-              <div className="mb-6">
+              <div className="mb-4 sm:mb-6">
                 {status === 'working' && (
-                  <span className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-green-50 text-green-700 border border-green-100 animate-pulse dark:bg-green-950 dark:text-green-300 dark:border-green-800">
-                    <span className="w-2 h-2 rounded-full bg-green-500 mr-2"></span>
+                  <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-green-500/10 text-green-600 dark:text-green-400 backdrop-blur-sm border border-green-500/20 shadow-sm">
+                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 mr-2.5 animate-pulse shadow-lg shadow-green-500/50"></span>
                     Clocked In
                   </span>
                 )}
                 {status === 'break' && (
-                  <span className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-amber-50 text-amber-700 border border-amber-100 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
-                    <span className="w-2 h-2 rounded-full bg-amber-500 mr-2 animate-bounce"></span>
+                  <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 backdrop-blur-sm border border-amber-500/20 shadow-sm">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 mr-2.5 animate-bounce"></span>
                     On Break
                   </span>
                 )}
                 {status === 'idle' && (
-                  <span className="inline-flex items-center px-4 py-1.5 rounded-full text-sm font-semibold bg-muted text-muted-foreground border">
-                    <span className="w-2 h-2 rounded-full bg-muted-foreground mr-2"></span>
+                  <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-muted/80 text-muted-foreground backdrop-blur-sm border border-border/50">
+                    <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/50 mr-2.5"></span>
                     Off Clock
                   </span>
                 )}
               </div>
 
-              {/* Time Display */}
-              <div className="mb-2">
-                <span className="text-7xl font-mono font-bold tracking-tighter">
+              {/* Time Display - Responsive sizing */}
+              <div className="mb-3 flex items-baseline justify-center">
+                <span className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-mono font-bold tracking-tighter bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
                   {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
-                <span className="text-xl font-mono text-muted-foreground font-medium ml-2">
+                <span className="text-lg sm:text-xl lg:text-2xl font-mono text-muted-foreground/60 font-medium ml-1 sm:ml-2 tabular-nums">
                   {currentTime.getSeconds().toString().padStart(2, '0')}
                 </span>
               </div>
-              <p className="text-muted-foreground font-medium mb-6 flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
+              <p className="text-muted-foreground font-medium mb-6 sm:mb-8 flex items-center gap-2 text-sm sm:text-base">
+                <Calendar className="w-4 h-4 opacity-60" />
                 {currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
               </p>
 
               {/* Shift Timer */}
               {(status === 'working' || status === 'break') && (
-                <div className="mb-6 p-3 bg-muted/50 rounded-lg border w-full max-w-xs">
-                  <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-1">Current Shift Duration</div>
-                  <div className="text-2xl font-mono font-medium">{elapsedTime}</div>
+                <div className="mb-6 sm:mb-8 p-4 bg-muted/30 backdrop-blur-sm rounded-2xl border border-border/50 w-full max-w-xs shadow-inner">
+                  <div className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-2">Current Shift</div>
+                  <div className="text-2xl sm:text-3xl font-mono font-semibold tracking-tight">{elapsedTime}</div>
                   {activeEntry?.job && (
-                    <div className="mt-1 text-xs text-muted-foreground flex items-center justify-center gap-1">
+                    <div className="mt-2 text-xs text-muted-foreground flex items-center justify-center gap-1.5 bg-background/50 rounded-full px-3 py-1 w-fit mx-auto">
                       <Briefcase className="w-3 h-3" />
                       {activeEntry.job.job_number}
                     </div>
                   )}
                   {((activeEntry?.break_minutes || 0) > 0 || status === 'break') && (
-                    <div className="mt-1 text-xs text-amber-600 flex items-center justify-center gap-1">
+                    <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center justify-center gap-1.5">
                       <Coffee className="w-3 h-3" />
                       Break: {breakTime}
                     </div>
@@ -303,10 +306,10 @@ const TimeClock = () => {
 
               {/* Job Selection (only when idle) */}
               {status === 'idle' && availableJobs.length > 0 && (
-                <div className="w-full max-w-md mb-4 space-y-2">
-                  <Label className="text-xs">Link to Job (Optional)</Label>
+                <div className="w-full max-w-sm mb-4 space-y-3">
+                  <Label className="text-xs text-muted-foreground">Link to Job (Optional)</Label>
                   <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger className="h-10 bg-muted/30 border-border/50 backdrop-blur-sm">
                       <SelectValue placeholder="Select a job" />
                     </SelectTrigger>
                     <SelectContent>
@@ -320,7 +323,7 @@ const TimeClock = () => {
                   </Select>
                   
                   {selectedJobId !== 'none' && (
-                    <div className="flex items-start gap-2 p-2 bg-muted/50 rounded border text-xs">
+                    <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-xl border border-border/50 text-xs backdrop-blur-sm">
                       <Checkbox
                         id="record-work-hours"
                         checked={recordWorkHours}
@@ -337,22 +340,22 @@ const TimeClock = () => {
               )}
 
               {/* Notes Input */}
-              <div className="w-full max-w-md mb-4">
+              <div className="w-full max-w-sm mb-5">
                 <Textarea
                   placeholder="Notes (optional)..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  className="text-sm"
+                  className="text-sm bg-muted/30 border-border/50 backdrop-blur-sm resize-none"
                 />
               </div>
 
               {/* Actions Grid */}
-              <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-sm">
                 {status === 'idle' ? (
                   <Button 
                     size="lg" 
-                    className="col-span-2 h-14 shadow-lg bg-green-600 hover:bg-green-700 text-white"
+                    className="col-span-2 h-12 sm:h-14 shadow-lg shadow-green-600/25 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                     onClick={handleClockIn}
                     disabled={clockIn.isPending}
                   >
@@ -368,7 +371,7 @@ const TimeClock = () => {
                     <Button 
                       variant="destructive" 
                       size="lg" 
-                      className="h-14 shadow-lg"
+                      className="h-12 sm:h-14 shadow-lg shadow-destructive/25 font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                       onClick={handleClockOut}
                       disabled={clockOut.isPending}
                     >
@@ -383,7 +386,7 @@ const TimeClock = () => {
                     {status === 'working' ? (
                       <Button 
                         size="lg" 
-                        className="h-14 shadow-lg bg-amber-500 hover:bg-amber-600 text-white"
+                        className="h-12 sm:h-14 shadow-lg shadow-amber-500/25 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                         onClick={handleToggleBreak}
                         disabled={startBreak.isPending}
                       >
@@ -392,12 +395,12 @@ const TimeClock = () => {
                         ) : (
                           <Coffee className="w-5 h-5 mr-2" />
                         )}
-                        Start Break
+                        Break
                       </Button>
                     ) : (
                       <Button 
                         size="lg" 
-                        className="h-14"
+                        className="h-12 sm:h-14 shadow-lg font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                         onClick={handleToggleBreak}
                         disabled={endBreak.isPending}
                       >
@@ -406,7 +409,7 @@ const TimeClock = () => {
                         ) : (
                           <Play className="w-5 h-5 mr-2" />
                         )}
-                        Resume Work
+                        Resume
                       </Button>
                     )}
                   </>
@@ -414,10 +417,9 @@ const TimeClock = () => {
               </div>
 
               {status !== 'idle' && company?.timezone && (
-                <div className="mt-6 flex items-center text-xs text-muted-foreground gap-1">
+                <div className="mt-6 sm:mt-8 flex items-center text-xs text-muted-foreground/70 gap-1.5 bg-muted/30 rounded-full px-3 py-1.5 backdrop-blur-sm">
                   <MapPin className="w-3 h-3" />
-                  <span>Timezone: </span>
-                  <span className="font-medium">{company.timezone}</span>
+                  <span>{company.timezone}</span>
                 </div>
               )}
             </div>
