@@ -212,8 +212,8 @@ const TimeClock = () => {
           )}
         </div>
 
-        {/* Main Layout: Clock Widget + Stats on left, Recent Entries on right */}
-        <div className="grid lg:grid-cols-2 gap-6">
+        {/* Main Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
           {/* Left Column: Clock Widget + Stats */}
           <div className="space-y-4">
             {/* Clock Widget */}
@@ -356,8 +356,8 @@ const TimeClock = () => {
             </div>
           </div>
 
-          {/* Right Column: Recent Entries */}
-          <Card>
+          {/* Right Column: Recent Entries - spans 2 columns */}
+          <Card className="lg:col-span-2">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Recent Entries</CardTitle>
             </CardHeader>
