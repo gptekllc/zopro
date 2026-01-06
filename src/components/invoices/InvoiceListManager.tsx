@@ -277,10 +277,6 @@ export function InvoiceListManager({
     }
   };
 
-  const handleMarkPaid = (id: string) => {
-    const invoice = invoices.find(inv => inv.id === id);
-    if (invoice) initiateRecordPayment(invoice);
-  };
 
   // Signature handlers
   const handleOpenSignatureDialog = (invoice: Invoice) => {
@@ -417,7 +413,6 @@ export function InvoiceListManager({
               onDuplicate={handleDuplicateInvoice}
               onDownload={handleDownload}
               onEmail={handleOpenEmailDialog}
-              onMarkPaid={handleMarkPaid}
               onViewSignature={handleViewSignature}
               onOpenSignatureDialog={handleOpenSignatureDialog}
               onSendSignatureRequest={handleSendSignatureRequest}
