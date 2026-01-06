@@ -253,8 +253,8 @@ const TimeClock = () => {
         </div>
 
         {/* Main Action Card */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 overflow-hidden relative">
+        <div className="grid lg:grid-cols-2 gap-6">
+          <Card className="overflow-hidden relative">
             {/* Background decorative blob */}
             <div className={`absolute top-0 right-0 w-64 h-64 bg-gradient-to-br opacity-10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none 
               ${status === 'working' ? 'from-green-400 to-emerald-600' : status === 'break' ? 'from-amber-400 to-orange-600' : 'from-slate-400 to-slate-600'}`} 
