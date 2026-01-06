@@ -2,8 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import AppLayout from "@/components/layout/AppLayout";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
@@ -32,6 +33,12 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
+const AuthedLayout = () => (
+  <AppLayout>
+    <Outlet />
+  </AppLayout>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -45,26 +52,28 @@ const App = () => (
             <Route path="/customer-portal" element={<CustomerPortal />} />
 
             <Route element={<ProtectedRoute />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/customers" element={<Customers />} />
-              <Route path="/customers/:customerId" element={<CustomerDetail />} />
-              <Route path="/jobs" element={<Jobs />} />
-              <Route path="/jobs/templates" element={<JobTemplates />} />
-              <Route path="/templates" element={<Templates />} />
-              <Route path="/items" element={<Items />} />
-              <Route path="/quotes" element={<Quotes />} />
-              <Route path="/invoices" element={<Invoices />} />
-              <Route path="/timeclock" element={<TimeClock />} />
-              <Route path="/timesheet" element={<TimesheetReport />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/technicians" element={<Technicians />} />
-              <Route path="/company" element={<Company />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/super-admin" element={<SuperAdmin />} />
-              <Route path="/stripe-connect/return" element={<StripeConnectReturn />} />
-              <Route path="/stripe-connect/refresh" element={<StripeConnectRefresh />} />
+              <Route element={<AuthedLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/customers" element={<Customers />} />
+                <Route path="/customers/:customerId" element={<CustomerDetail />} />
+                <Route path="/jobs" element={<Jobs />} />
+                <Route path="/jobs/templates" element={<JobTemplates />} />
+                <Route path="/templates" element={<Templates />} />
+                <Route path="/items" element={<Items />} />
+                <Route path="/quotes" element={<Quotes />} />
+                <Route path="/invoices" element={<Invoices />} />
+                <Route path="/timeclock" element={<TimeClock />} />
+                <Route path="/timesheet" element={<TimesheetReport />} />
+                <Route path="/reports" element={<Reports />} />
+                <Route path="/technicians" element={<Technicians />} />
+                <Route path="/company" element={<Company />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/super-admin" element={<SuperAdmin />} />
+                <Route path="/stripe-connect/return" element={<StripeConnectReturn />} />
+                <Route path="/stripe-connect/refresh" element={<StripeConnectRefresh />} />
+              </Route>
             </Route>
 
             <Route path="*" element={<NotFound />} />
