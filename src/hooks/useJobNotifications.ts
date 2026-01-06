@@ -13,6 +13,9 @@ export interface JobNotification {
   sent_by: string | null;
   recipient_email: string;
   created_at: string;
+  sent_by_profile?: {
+    full_name: string | null;
+  } | null;
 }
 
 export function useJobNotifications(jobId: string | null) {
@@ -23,7 +26,10 @@ export function useJobNotifications(jobId: string | null) {
       
       const { data, error } = await (supabase as any)
         .from('job_notifications')
-        .select('*')
+        .select(`
+          *,
+          sent_by_profile:profiles!job_notifications_sent_by_fkey(full_name)
+        `)
         .eq('job_id', jobId)
         .order('sent_at', { ascending: false });
       

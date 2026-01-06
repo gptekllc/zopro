@@ -603,7 +603,7 @@ export function JobDetailDialog({
           {/* Photos, Related Docs, Comments, History Tabs */}
           <Separator />
           <Tabs defaultValue="photos" className="w-full">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="w-full grid grid-cols-4 h-auto p-1">
               <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Photos</span>
@@ -634,22 +634,12 @@ export function JobDetailDialog({
                 )}
               </TabsTrigger>
 
-              <TabsTrigger value="notifications" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-                <Bell className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Activity</span>
-                {notifications.length > 0 && (
-                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {notifications.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-
-              <TabsTrigger value="history" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+              <TabsTrigger value="activities" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <History className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">History</span>
-                {signatureHistory.length > 0 && (
+                <span className="hidden sm:inline">Activities</span>
+                {(notifications.length + signatureHistory.length) > 0 && (
                   <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {signatureHistory.length}
+                    {notifications.length + signatureHistory.length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -882,108 +872,121 @@ export function JobDetailDialog({
               )}
             </TabsContent>
 
-            {/* Notification History Tab */}
-            <TabsContent value="notifications" className="mt-4">
-              {loadingNotifications ? (
+            {/* Activities Tab (Combined Email + Signature History) */}
+            <TabsContent value="activities" className="mt-4">
+              {(loadingNotifications || loadingSignatureHistory) ? (
                 <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p>
-              ) : notifications.length > 0 ? (
-                <div className="space-y-2">
-                  {notifications.map((notification) => (
-                    <div 
-                      key={notification.id}
-                      className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border"
-                    >
-                      <div className="p-2 bg-primary/10 rounded-full shrink-0">
-                        <Mail className="w-3 h-3 sm:w-4 sm:h-4 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-sm">Email sent</span>
-                          {notification.status_at_send && (
-                            <Badge variant="outline" className="text-xs capitalize">
-                              {notification.status_at_send.replace('_', ' ')}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate">
-                          To: {notification.recipient_email}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(notification.sent_at), 'MMM d, yyyy h:mm a')}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 bg-muted/50 rounded-lg text-center">
-                  <Bell className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-                  <p className="text-xs sm:text-sm text-muted-foreground">No notifications sent yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Use "Send to Customer" to notify them about this job
-                  </p>
-                </div>
-              )}
-            </TabsContent>
+              ) : (() => {
+                // Create unified activity items
+                type ActivityItem = {
+                  id: string;
+                  type: 'email' | 'signature_collected' | 'signature_cleared';
+                  timestamp: string;
+                  title: string;
+                  details: string;
+                  performer?: string | null;
+                  extra?: string;
+                };
 
-            {/* Signature History Tab */}
-            <TabsContent value="history" className="mt-4">
-              {loadingSignatureHistory ? (
-                <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p>
-              ) : signatureHistory.length > 0 ? (
-                <div className="space-y-2">
-                  {signatureHistory.map((event) => (
-                    <div 
-                      key={event.id}
-                      className={`flex items-start gap-3 p-3 rounded-lg border ${
-                        event.event_type === 'signed' 
-                          ? 'bg-success/5 border-success/30' 
-                          : 'bg-destructive/5 border-destructive/30'
-                      }`}
-                    >
-                      <div className={`p-2 rounded-full shrink-0 ${
-                        event.event_type === 'signed' 
-                          ? 'bg-success/10' 
-                          : 'bg-destructive/10'
-                      }`}>
-                        <PenTool className={`w-3 h-3 sm:w-4 sm:h-4 ${
-                          event.event_type === 'signed' 
-                            ? 'text-success' 
-                            : 'text-destructive'
-                        }`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium text-sm capitalize">
-                            {event.event_type === 'signed' ? 'Signature Collected' : 'Signature Cleared'}
-                          </span>
-                        </div>
-                        {event.signer_name && (
-                          <p className="text-xs text-muted-foreground">
-                            Signer: {event.signer_name}
-                          </p>
-                        )}
-                        {event.performer?.full_name && (
-                          <p className="text-xs text-muted-foreground">
-                            By: {event.performer.full_name}
-                          </p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          {format(new Date(event.created_at), 'MMM d, yyyy h:mm a')}
-                        </p>
-                      </div>
+                const activities: ActivityItem[] = [
+                  // Email notifications
+                  ...notifications.map((n) => ({
+                    id: `email-${n.id}`,
+                    type: 'email' as const,
+                    timestamp: n.sent_at,
+                    title: 'Email Sent',
+                    details: `To: ${n.recipient_email}`,
+                    performer: n.sent_by_profile?.full_name || null,
+                    extra: n.status_at_send ? n.status_at_send.replace('_', ' ') : undefined,
+                  })),
+                  // Signature events
+                  ...signatureHistory.map((e) => ({
+                    id: `sig-${e.id}`,
+                    type: e.event_type === 'signed' ? 'signature_collected' as const : 'signature_cleared' as const,
+                    timestamp: e.created_at,
+                    title: e.event_type === 'signed' ? 'Signature Collected' : 'Signature Cleared',
+                    details: e.signer_name ? `Signer: ${e.signer_name}` : '',
+                    performer: e.performer?.full_name || null,
+                  })),
+                ];
+
+                // Sort by timestamp descending
+                activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+                if (activities.length === 0) {
+                  return (
+                    <div className="p-4 bg-muted/50 rounded-lg text-center">
+                      <History className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+                      <p className="text-xs sm:text-sm text-muted-foreground">No activity yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Emails sent and signature events will appear here
+                      </p>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 bg-muted/50 rounded-lg text-center">
-                  <History className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-                  <p className="text-xs sm:text-sm text-muted-foreground">No signature history yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Signature events will appear here when signatures are collected or cleared
-                  </p>
-                </div>
-              )}
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    {activities.map((activity) => {
+                      const bgClass = activity.type === 'email' 
+                        ? 'bg-muted/50' 
+                        : activity.type === 'signature_collected'
+                          ? 'bg-success/5 border-success/30'
+                          : 'bg-destructive/5 border-destructive/30';
+                      
+                      const iconBgClass = activity.type === 'email'
+                        ? 'bg-primary/10'
+                        : activity.type === 'signature_collected'
+                          ? 'bg-success/10'
+                          : 'bg-destructive/10';
+                      
+                      const iconColorClass = activity.type === 'email'
+                        ? 'text-primary'
+                        : activity.type === 'signature_collected'
+                          ? 'text-success'
+                          : 'text-destructive';
+
+                      return (
+                        <div 
+                          key={activity.id}
+                          className={`flex items-start gap-3 p-3 rounded-lg border ${bgClass}`}
+                        >
+                          <div className={`p-2 rounded-full shrink-0 ${iconBgClass}`}>
+                            {activity.type === 'email' ? (
+                              <Mail className={`w-3 h-3 sm:w-4 sm:h-4 ${iconColorClass}`} />
+                            ) : (
+                              <PenTool className={`w-3 h-3 sm:w-4 sm:h-4 ${iconColorClass}`} />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-sm">{activity.title}</span>
+                              {activity.extra && (
+                                <Badge variant="outline" className="text-xs capitalize">
+                                  {activity.extra}
+                                </Badge>
+                              )}
+                            </div>
+                            {activity.details && (
+                              <p className="text-xs text-muted-foreground truncate">
+                                {activity.details}
+                              </p>
+                            )}
+                            {activity.performer && (
+                              <p className="text-xs text-muted-foreground">
+                                By: {activity.performer}
+                              </p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(activity.timestamp), 'MMM d, yyyy h:mm a')}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </TabsContent>
           </Tabs>
 
