@@ -144,31 +144,44 @@ interface EmailDocumentParams {
   type: 'quote' | 'invoice' | 'job';
   documentId: string;
   recipientEmail: string;
+  recipientEmails?: string[];
 }
 
 export function useEmailDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ type, documentId, recipientEmail }: EmailDocumentParams) => {
-      const { data, error } = await supabase.functions.invoke('generate-pdf', {
-        body: {
-          type,
-          documentId,
-          action: 'email',
-          recipientEmail,
-        },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+    mutationFn: async ({ type, documentId, recipientEmail, recipientEmails }: EmailDocumentParams) => {
+      // Use recipientEmails array if provided, otherwise fall back to single recipientEmail
+      const emails = recipientEmails && recipientEmails.length > 0 
+        ? recipientEmails 
+        : [recipientEmail].filter(Boolean);
       
-      return data;
+      // Send to each recipient
+      const results = await Promise.all(
+        emails.map(async (email) => {
+          const { data, error } = await supabase.functions.invoke('generate-pdf', {
+            body: {
+              type,
+              documentId,
+              action: 'email',
+              recipientEmail: email,
+            },
+          });
+
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+          
+          return { email, success: true };
+        })
+      );
+      
+      return { emails, count: results.length };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       const queryKey = variables.type === 'quote' ? 'quotes' : variables.type === 'invoice' ? 'invoices' : 'jobs';
       queryClient.invalidateQueries({ queryKey: [queryKey] });
-      toast.success('Email sent successfully');
+      toast.success(`Email sent to ${data.count} recipient${data.count > 1 ? 's' : ''}`);
     },
     onError: (error: any) => {
       toast.error('Failed to send email: ' + error.message);

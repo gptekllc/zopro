@@ -69,7 +69,7 @@ interface InvoiceDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onDownload?: (invoiceId: string) => void;
   onEmail?: (invoiceId: string) => void;
-  onEmailCustom?: (invoiceId: string) => void;
+  onEmailCustom?: (invoiceId: string, recipientEmails?: string[]) => void;
   onMarkPaid?: (invoiceId: string) => void;
   onEdit?: (invoiceId: string) => void;
   onDuplicate?: (invoiceId: string) => void;
@@ -80,7 +80,7 @@ interface InvoiceDetailDialogProps {
   isCollectingSignature?: boolean;
   onApplyLateFee?: (invoiceId: string) => void;
   isApplyingLateFee?: boolean;
-  onSendReminder?: (invoiceId: string) => void;
+  onSendReminder?: (invoiceId: string, recipientEmails?: string[]) => void;
   isSendingReminder?: boolean;
   isSendingEmail?: boolean;
   reminders?: ReminderHistory[];
@@ -320,17 +320,14 @@ export function InvoiceDetailDialog({
   };
 
   const handleSendInvoiceEmail = async (emails: string[]) => {
-    // For now, send to the first email (the hook expects single email)
-    // TODO: Extend hook to support multiple emails
-    if (emails[0]) {
-      await onEmailCustom?.(invoice.id);
+    if (emails.length > 0) {
+      await onEmailCustom?.(invoice.id, emails);
     }
   };
 
   const handleSendReminderEmail = async (emails: string[]) => {
-    // For now, send to the first email (the hook expects single email)
-    if (emails[0]) {
-      await onSendReminder?.(invoice.id);
+    if (emails.length > 0) {
+      await onSendReminder?.(invoice.id, emails);
     }
   };
 
@@ -977,7 +974,7 @@ export function InvoiceDetailDialog({
 
           {/* Actions */}
           <Separator />
-          <div className="grid grid-cols-3 gap-2 pt-2 sm:pt-4 sm:flex sm:flex-wrap sm:justify-start">
+          <div className="grid grid-cols-3 gap-2 pt-2 justify-items-center sm:pt-4 sm:flex sm:flex-wrap sm:justify-start">
             <Button variant="outline" size="sm" onClick={() => onDownload?.(invoice.id)} className="justify-center">
               <FileDown className="w-4 h-4 mr-1" />
               Download

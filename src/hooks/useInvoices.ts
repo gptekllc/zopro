@@ -475,7 +475,7 @@ export function useSendPaymentReminder() {
   const { user } = useAuth();
   
   return useMutation({
-    mutationFn: async (invoiceId: string) => {
+    mutationFn: async ({ invoiceId, recipientEmails }: { invoiceId: string; recipientEmails?: string[] }) => {
       // Get the invoice with customer and company info
       const { data: invoice, error: fetchError } = await (supabase as any)
         .from('invoices')
@@ -493,32 +493,51 @@ export function useSendPaymentReminder() {
         throw new Error('Invoice is already paid');
       }
       
-      if (!invoice.customer?.email) {
-        throw new Error('Customer does not have an email address');
-      }
-      
       if (!invoice.company?.email) {
         throw new Error('Company email is not configured');
       }
       
+      // Use provided emails or fall back to customer email
+      const emails = recipientEmails && recipientEmails.length > 0 
+        ? recipientEmails 
+        : invoice.customer?.email 
+          ? [invoice.customer.email] 
+          : [];
+      
+      if (emails.length === 0) {
+        throw new Error('No recipient email addresses provided');
+      }
+      
       const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
       
-      // Send reminder email
-      const { error: emailError } = await supabase.functions.invoke('send-payment-notification', {
-        body: {
-          type: 'payment_reminder',
-          invoiceNumber: invoice.invoice_number,
-          customerName: invoice.customer.name || 'Customer',
-          customerEmail: invoice.customer.email,
-          companyName: invoice.company.name || 'Company',
-          companyEmail: invoice.company.email,
-          amount: Number(invoice.total),
-          lateFeeAmount: invoice.late_fee_amount ? Number(invoice.late_fee_amount) : undefined,
-          dueDate: invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : undefined,
-        },
-      });
-      
-      if (emailError) throw emailError;
+      // Send reminder email to each recipient
+      for (const email of emails) {
+        const { error: emailError } = await supabase.functions.invoke('send-payment-notification', {
+          body: {
+            type: 'payment_reminder',
+            invoiceNumber: invoice.invoice_number,
+            customerName: invoice.customer?.name || 'Customer',
+            customerEmail: email,
+            companyName: invoice.company.name || 'Company',
+            companyEmail: invoice.company.email,
+            amount: Number(invoice.total),
+            lateFeeAmount: invoice.late_fee_amount ? Number(invoice.late_fee_amount) : undefined,
+            dueDate: invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : undefined,
+          },
+        });
+        
+        if (emailError) throw emailError;
+        
+        // Record the reminder in the database
+        await (supabase as any)
+          .from('invoice_reminders')
+          .insert({
+            invoice_id: invoiceId,
+            company_id: invoice.company_id,
+            sent_by: user?.id,
+            recipient_email: email,
+          });
+      }
       
       // Update invoice status to 'sent' if it's still in draft
       if (invoice.status === 'draft') {
@@ -528,27 +547,12 @@ export function useSendPaymentReminder() {
           .eq('id', invoiceId);
       }
       
-      // Record the reminder in the database
-      const { error: insertError } = await (supabase as any)
-        .from('invoice_reminders')
-        .insert({
-          invoice_id: invoiceId,
-          company_id: invoice.company_id,
-          sent_by: user?.id,
-          recipient_email: invoice.customer.email,
-        });
-      
-      if (insertError) {
-        console.error('Failed to record reminder:', insertError);
-        // Don't throw - email was sent successfully
-      }
-      
-      return { customerEmail: invoice.customer.email };
+      return { emails, count: emails.length };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['invoice-reminders'] });
-      toast.success(`Payment reminder sent to ${data.customerEmail}`);
+      toast.success(`Payment reminder sent to ${data.count} recipient${data.count > 1 ? 's' : ''}`);
     },
     onError: (error: unknown) => {
       toast.error('Failed to send reminder: ' + sanitizeErrorMessage(error));
