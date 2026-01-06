@@ -70,7 +70,8 @@ export function SplitPaymentDialog({
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
-      const halfAmount = (remainingBalance / 2).toFixed(2);
+      const balance = remainingBalance ?? invoiceTotal ?? 0;
+      const halfAmount = (balance / 2).toFixed(2);
       setPayments([
         { id: '1', method: 'cash', amount: halfAmount },
         { id: '2', method: 'credit_debit', amount: halfAmount },
