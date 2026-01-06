@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -9,7 +8,7 @@ import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useSignInvoice } from '@/hooks/useSignatures';
 import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
 import { useDeleteInvoice, useArchiveInvoice, useUnarchiveInvoice, useApplyLateFee, isInvoiceOverdue, getTotalWithLateFee, Invoice, useSendPaymentReminder, useInvoiceReminders, useUpdateInvoice, getInvoiceStatusLabel } from '@/hooks/useInvoices';
-import { useCreatePayment, useInvoiceBalance, useAllPayments, recalculateInvoiceStatus } from '@/hooks/usePayments';
+import { useCreatePayment, useInvoiceBalance, useAllPayments } from '@/hooks/usePayments';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Plus, Search, Loader2, Filter, Archive } from 'lucide-react';
+import { Search, Loader2, Filter, Archive } from 'lucide-react';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
 import { RecordPaymentDialog, PaymentData } from '@/components/invoices/RecordPaymentDialog';
@@ -143,57 +142,6 @@ export function InvoiceListManager({
 
   // Swipe hint
   const { showHint: showSwipeHint, dismissHint: dismissSwipeHint } = useSwipeHint('invoices-swipe-hint-shown');
-  
-  // Query client for cache invalidation
-  const queryClient = useQueryClient();
-  
-  // Fix stale status mutation
-  const fixStaleStatusMutation = useMutation({
-    mutationFn: async (invoiceId: string) => {
-      await recalculateInvoiceStatus(invoiceId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      toast.success('Invoice status fixed');
-    },
-    onError: () => {
-      toast.error('Failed to fix status');
-    },
-  });
-  
-  const handleFixStaleStatus = (invoiceId: string, _expectedStatus: string) => {
-    fixStaleStatusMutation.mutate(invoiceId);
-  };
-
-  // Fix all stale statuses state
-  const [fixAllProgress, setFixAllProgress] = useState<{ current: number; total: number } | null>(null);
-
-  // Helper to compute expected status (same logic as InvoiceListCard)
-  const computeExpectedStatus = (
-    totalPaid: number,
-    totalDue: number,
-    currentStatus: string,
-    dueDate: string | null
-  ): string | null => {
-    if (currentStatus === 'voided') return null;
-    if (currentStatus === 'draft' && totalPaid === 0) return null;
-
-    const isOverdue = dueDate && new Date(dueDate) < new Date();
-
-    if (totalPaid >= totalDue && totalDue > 0) {
-      return currentStatus !== 'paid' ? 'paid' : null;
-    }
-
-    if (totalPaid > 0 && totalPaid < totalDue) {
-      return currentStatus !== 'partially_paid' ? 'partially_paid' : null;
-    }
-
-    if (totalPaid === 0 && (currentStatus === 'paid' || currentStatus === 'partially_paid')) {
-      return isOverdue ? 'overdue' : 'sent';
-    }
-
-    return null;
-  };
 
   // Wrapped setters for scroll restoration
   const openViewingInvoice = useCallback((invoice: Invoice | null) => {
@@ -237,38 +185,6 @@ export function InvoiceListManager({
     return invoicePayments.reduce((sum, p) => sum + Number(p.amount), 0);
   };
 
-  // Find all stale invoices in the VISIBLE list (so “Fix All” only affects what the user can see)
-  const staleInvoices = useMemo(() => {
-    return visibleInvoices.filter((invoice) => {
-      const totalPaid = getInvoiceTotalPaid(invoice.id);
-      const total = typeof invoice.total === 'string' ? Number(invoice.total) : invoice.total ?? 0;
-      const lateFee = invoice.late_fee_amount && invoice.late_fee_amount > 0 ? Number(invoice.late_fee_amount) : 0;
-      const totalDue = lateFee > 0 ? total + lateFee : total;
-
-      const expectedStatus = computeExpectedStatus(totalPaid, totalDue, invoice.status, invoice.due_date);
-      return expectedStatus !== null;
-    });
-  }, [visibleInvoices, allPayments, computeExpectedStatus]);
-
-  const handleFixAllStale = async () => {
-    if (staleInvoices.length === 0 || fixAllProgress) return;
-
-    setFixAllProgress({ current: 0, total: staleInvoices.length });
-
-    for (let i = 0; i < staleInvoices.length; i++) {
-      try {
-        await recalculateInvoiceStatus(staleInvoices[i].id);
-      } catch (error) {
-        console.error('Failed to fix invoice:', staleInvoices[i].id, error);
-      } finally {
-        setFixAllProgress({ current: i + 1, total: staleInvoices.length });
-      }
-    }
-
-    queryClient.invalidateQueries({ queryKey: ['invoices'] });
-    toast.success(`Fixed ${staleInvoices.length} invoice${staleInvoices.length > 1 ? 's' : ''}`);
-    setFixAllProgress(null);
-  };
   // Handlers
   const handleStatusChange = async (invoiceId: string, newStatus: string) => {
     if (newStatus === 'paid') {
@@ -511,8 +427,6 @@ export function InvoiceListManager({
               showSwipeHint={index === 0 && showSwipeHint}
               onSwipeHintDismiss={dismissSwipeHint}
               totalPaid={getInvoiceTotalPaid(invoice.id)}
-              onFixStaleStatus={handleFixStaleStatus}
-              isFixingStatus={fixStaleStatusMutation.isPending && fixStaleStatusMutation.variables === invoice.id}
             />
           ))}
           {filteredInvoices.length === 0 && (
