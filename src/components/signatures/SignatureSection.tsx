@@ -2,10 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PenTool, Calendar, User, Globe, Loader2, Eye } from 'lucide-react';
+import { PenTool, Calendar, User, Globe, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useState } from 'react';
-import { ViewSignatureDialog } from './ViewSignatureDialog';
 
 interface SignatureSectionProps {
   signatureId: string | null | undefined;
@@ -34,8 +32,6 @@ export function SignatureSection({
   collectButtonText = 'Collect Signature',
   isCollecting = false,
 }: SignatureSectionProps) {
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-
   const { data: signature, isLoading } = useQuery({
     queryKey: ['signature', signatureId],
     queryFn: async () => {
@@ -133,25 +129,8 @@ export function SignatureSection({
               </div>
             )}
           </div>
-
-          {/* View Full Details Button */}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="w-full"
-            onClick={() => setViewDialogOpen(true)}
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            View Full Signature Details
-          </Button>
         </CardContent>
       </Card>
-
-      <ViewSignatureDialog
-        signatureId={signatureId}
-        open={viewDialogOpen}
-        onOpenChange={setViewDialogOpen}
-      />
     </div>
   );
 }
