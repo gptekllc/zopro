@@ -40,7 +40,7 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
-import { Package } from 'lucide-react';
+import { Package, Clock } from 'lucide-react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'technician', 'super_admin'] },
@@ -50,6 +50,7 @@ const navItems = [
   { icon: Receipt, label: 'Invoices', path: '/invoices', roles: ['admin', 'technician', 'customer'] },
   { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['admin', 'manager'] },
   { icon: Package, label: 'Items', path: '/items', roles: ['admin', 'technician'] },
+  { icon: Clock, label: 'Time Clock', path: '/time-clock', roles: ['admin', 'technician'] },
   { icon: Bell, label: 'Notifications', path: '/notifications', roles: ['admin', 'manager'] },
   { icon: UserCog, label: 'Technicians', path: '/technicians', roles: ['admin', 'technician'] },
   { icon: Building2, label: 'Company', path: '/company', roles: ['admin'] },
