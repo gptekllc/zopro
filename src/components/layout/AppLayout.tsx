@@ -40,7 +40,7 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
-import { BookTemplate, Package } from 'lucide-react';
+import { Package } from 'lucide-react';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', roles: ['admin', 'technician', 'super_admin'] },
@@ -49,7 +49,6 @@ const navItems = [
   { icon: FileText, label: 'Quotes', path: '/quotes', roles: ['admin', 'technician'] },
   { icon: Receipt, label: 'Invoices', path: '/invoices', roles: ['admin', 'technician', 'customer'] },
   { icon: BarChart3, label: 'Reports', path: '/reports', roles: ['admin', 'manager'] },
-  { icon: BookTemplate, label: 'Templates', path: '/templates', roles: ['admin', 'technician'] },
   { icon: Package, label: 'Items', path: '/items', roles: ['admin', 'technician'] },
   { icon: Bell, label: 'Notifications', path: '/notifications', roles: ['admin', 'manager'] },
   { icon: UserCog, label: 'Technicians', path: '/technicians', roles: ['admin', 'technician'] },

@@ -108,7 +108,7 @@ const Templates = () => {
 };
 
 // Job Templates Tab
-const JobTemplatesTab = () => {
+export const JobTemplatesTab = () => {
   const { data: templates, isLoading } = useJobTemplates();
   const deleteTemplate = useDeleteJobTemplate();
   const updateTemplate = useUpdateJobTemplate();
@@ -454,7 +454,7 @@ const JobTemplatesTab = () => {
 };
 
 // Quote Templates Tab
-const QuoteTemplatesTab = () => {
+export const QuoteTemplatesTab = () => {
   const { data: templates, isLoading } = useQuoteTemplates();
   const deleteTemplate = useDeleteQuoteTemplate();
   const updateTemplate = useUpdateQuoteTemplate();
