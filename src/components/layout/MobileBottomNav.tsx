@@ -12,7 +12,6 @@ import {
   Bell,
   Package,
   BarChart3,
-  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -45,7 +44,6 @@ const MobileBottomNav = () => {
     { icon: Users, label: 'Customers', path: '/customers', showFor: 'all' },
     { icon: Package, label: 'Items', path: '/items', showFor: 'all' },
     { icon: BarChart3, label: 'Reports', path: '/reports', showFor: 'admin' },
-    { icon: Clock, label: 'Timesheets', path: '/timesheet-report', showFor: 'admin' },
     { icon: Bell, label: 'Notifications', path: '/notifications', showFor: 'admin' },
     { icon: UserCog, label: 'Technicians', path: '/technicians', showFor: 'admin' },
     { icon: Building2, label: 'Company', path: '/company', showFor: 'admin' },
