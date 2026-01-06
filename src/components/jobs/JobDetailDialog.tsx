@@ -11,7 +11,7 @@ import {
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
   Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star,
-  List, Camera, StickyNote, History
+  List, Camera, StickyNote, History, RefreshCw
 } from 'lucide-react';
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { useAuth } from '@/hooks/useAuth';
@@ -35,6 +35,7 @@ import { useJobTimeEntries } from '@/hooks/useTimeEntries';
 import { ConvertJobToInvoiceDialog } from '@/components/jobs/ConvertJobToInvoiceDialog';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { useSignatureHistory, useClearJobSignature } from '@/hooks/useSignatureHistory';
+import { useJobActivities } from '@/hooks/useJobActivities';
 
 interface JobDetailDialogProps {
   job: CustomerJob | null;
@@ -101,6 +102,7 @@ export function JobDetailDialog({
   const { data: feedbacks = [], isLoading: loadingFeedbacks } = useJobFeedbacks(job?.id || null);
   const { data: jobTimeEntries = [] } = useJobTimeEntries(job?.id || null);
   const { data: signatureHistory = [], isLoading: loadingSignatureHistory } = useSignatureHistory('job', job?.id || null);
+  const { data: jobActivities = [], isLoading: loadingJobActivities } = useJobActivities(job?.id || null);
   const clearSignature = useClearJobSignature();
   
   // State hooks - must be before any conditionals
@@ -637,9 +639,9 @@ export function JobDetailDialog({
               <TabsTrigger value="activities" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <History className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Activities</span>
-                {(notifications.length + signatureHistory.length) > 0 && (
+                {(notifications.length + signatureHistory.length + jobActivities.length) > 0 && (
                   <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {notifications.length + signatureHistory.length}
+                    {notifications.length + signatureHistory.length + jobActivities.length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -872,15 +874,15 @@ export function JobDetailDialog({
               )}
             </TabsContent>
 
-            {/* Activities Tab (Combined Email + Signature History) */}
+            {/* Activities Tab (Combined Email + Signature + Job Activities) */}
             <TabsContent value="activities" className="mt-4">
-              {(loadingNotifications || loadingSignatureHistory) ? (
+              {(loadingNotifications || loadingSignatureHistory || loadingJobActivities) ? (
                 <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p>
               ) : (() => {
                 // Create unified activity items
                 type ActivityItem = {
                   id: string;
-                  type: 'email' | 'signature_collected' | 'signature_cleared';
+                  type: 'email' | 'signature_collected' | 'signature_cleared' | 'status_change' | 'quote_created' | 'invoice_created';
                   timestamp: string;
                   title: string;
                   details: string;
@@ -908,6 +910,21 @@ export function JobDetailDialog({
                     details: e.signer_name ? `Signer: ${e.signer_name}` : '',
                     performer: e.performer?.full_name || null,
                   })),
+                  // Job activities (status changes, document creation)
+                  ...jobActivities.map((a) => ({
+                    id: `activity-${a.id}`,
+                    type: a.activity_type as 'status_change' | 'quote_created' | 'invoice_created',
+                    timestamp: a.created_at,
+                    title: a.activity_type === 'status_change' 
+                      ? 'Status Changed'
+                      : a.activity_type === 'quote_created'
+                        ? 'Quote Created'
+                        : 'Invoice Created',
+                    details: a.activity_type === 'status_change'
+                      ? `${(a.old_value || 'draft').replace('_', ' ')} → ${(a.new_value || '').replace('_', ' ')}`
+                      : a.new_value || '',
+                    performer: a.performer?.full_name || null,
+                  })),
                 ];
 
                 // Sort by timestamp descending
@@ -919,44 +936,61 @@ export function JobDetailDialog({
                       <History className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
                       <p className="text-xs sm:text-sm text-muted-foreground">No activity yet</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Emails sent and signature events will appear here
+                        Status changes, emails, and signature events will appear here
                       </p>
                     </div>
                   );
                 }
 
+                const getActivityStyles = (type: ActivityItem['type']) => {
+                  switch (type) {
+                    case 'email':
+                      return { bg: 'bg-muted/50', iconBg: 'bg-primary/10', iconColor: 'text-primary' };
+                    case 'signature_collected':
+                      return { bg: 'bg-success/5 border-success/30', iconBg: 'bg-success/10', iconColor: 'text-success' };
+                    case 'signature_cleared':
+                      return { bg: 'bg-destructive/5 border-destructive/30', iconBg: 'bg-destructive/10', iconColor: 'text-destructive' };
+                    case 'status_change':
+                      return { bg: 'bg-blue-50/50 dark:bg-blue-900/10', iconBg: 'bg-blue-100 dark:bg-blue-900/30', iconColor: 'text-blue-600 dark:text-blue-400' };
+                    case 'quote_created':
+                      return { bg: 'bg-purple-50/50 dark:bg-purple-900/10', iconBg: 'bg-purple-100 dark:bg-purple-900/30', iconColor: 'text-purple-600 dark:text-purple-400' };
+                    case 'invoice_created':
+                      return { bg: 'bg-orange-50/50 dark:bg-orange-900/10', iconBg: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-600 dark:text-orange-400' };
+                    default:
+                      return { bg: 'bg-muted/50', iconBg: 'bg-muted', iconColor: 'text-muted-foreground' };
+                  }
+                };
+
+                const getActivityIcon = (type: ActivityItem['type'], colorClass: string) => {
+                  switch (type) {
+                    case 'email':
+                      return <Mail className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
+                    case 'signature_collected':
+                    case 'signature_cleared':
+                      return <PenTool className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
+                    case 'status_change':
+                      return <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
+                    case 'quote_created':
+                      return <FileText className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
+                    case 'invoice_created':
+                      return <Receipt className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
+                    default:
+                      return <History className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
+                  }
+                };
+
                 return (
                   <div className="space-y-2">
                     {activities.map((activity) => {
-                      const bgClass = activity.type === 'email' 
-                        ? 'bg-muted/50' 
-                        : activity.type === 'signature_collected'
-                          ? 'bg-success/5 border-success/30'
-                          : 'bg-destructive/5 border-destructive/30';
-                      
-                      const iconBgClass = activity.type === 'email'
-                        ? 'bg-primary/10'
-                        : activity.type === 'signature_collected'
-                          ? 'bg-success/10'
-                          : 'bg-destructive/10';
-                      
-                      const iconColorClass = activity.type === 'email'
-                        ? 'text-primary'
-                        : activity.type === 'signature_collected'
-                          ? 'text-success'
-                          : 'text-destructive';
+                      const styles = getActivityStyles(activity.type);
 
                       return (
                         <div 
                           key={activity.id}
-                          className={`flex items-start gap-3 p-3 rounded-lg border ${bgClass}`}
+                          className={`flex items-start gap-3 p-3 rounded-lg border ${styles.bg}`}
                         >
-                          <div className={`p-2 rounded-full shrink-0 ${iconBgClass}`}>
-                            {activity.type === 'email' ? (
-                              <Mail className={`w-3 h-3 sm:w-4 sm:h-4 ${iconColorClass}`} />
-                            ) : (
-                              <PenTool className={`w-3 h-3 sm:w-4 sm:h-4 ${iconColorClass}`} />
-                            )}
+                          <div className={`p-2 rounded-full shrink-0 ${styles.iconBg}`}>
+                            {getActivityIcon(activity.type, styles.iconColor)}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">

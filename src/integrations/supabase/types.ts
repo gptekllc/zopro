@@ -730,6 +730,64 @@ export type Database = {
           },
         ]
       }
+      job_activities: {
+        Row: {
+          activity_type: string
+          company_id: string
+          created_at: string
+          id: string
+          job_id: string
+          new_value: string | null
+          old_value: string | null
+          performed_by: string | null
+          related_document_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          company_id: string
+          created_at?: string
+          id?: string
+          job_id: string
+          new_value?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+          related_document_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          new_value?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+          related_document_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_activities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_activities_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_activities_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_feedbacks: {
         Row: {
           company_id: string
