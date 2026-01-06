@@ -14,7 +14,7 @@ import { format, differenceInMinutes, startOfWeek, endOfWeek, eachDayOfInterval,
 import { toast } from 'sonner';
 import { TimeEntryDialog } from '@/components/timeclock/TimeEntryDialog';
 import { Link } from 'react-router-dom';
-import AppLayout from '@/components/layout/AppLayout';
+
 
 const TimeClock = () => {
   const { user, profile, roles } = useAuth();
@@ -219,17 +219,14 @@ const TimeClock = () => {
 
   if (isLoading) {
     return (
-      <AppLayout contentWidth="full">
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
     );
   }
 
   return (
-    <AppLayout contentWidth="full">
-      <div className="space-y-6 w-full">
+    <div className="space-y-6 w-full">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -631,8 +628,7 @@ const TimeClock = () => {
           onSave={handleSaveEntry}
           timezone={company?.timezone}
         />
-      </div>
-    </AppLayout>
+    </div>
   );
 };
 
