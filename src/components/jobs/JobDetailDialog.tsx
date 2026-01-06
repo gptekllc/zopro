@@ -292,104 +292,86 @@ export function JobDetailDialog({
             )}
           </div>
 
-          <Separator />
+          <Separator className="my-2" />
 
-          {/* Details Grid */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+          {/* Details Grid - Compact */}
+          <div className="grid grid-cols-3 gap-2 text-sm">
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
-              <p className="font-medium text-sm sm:text-base truncate">{customerName || 'Unknown'}</p>
+              <p className="text-xs text-muted-foreground">Customer</p>
+              <p className="font-medium truncate">{customerName || 'Unknown'}</p>
             </div>
             {job.assignee?.full_name && (
               <div>
-                <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                  <User className="w-3 h-3" /> Assigned To
-                </p>
-                <p className="font-medium text-sm sm:text-base truncate">{job.assignee.full_name}</p>
+                <p className="text-xs text-muted-foreground">Assigned To</p>
+                <p className="font-medium truncate">{job.assignee.full_name}</p>
               </div>
             )}
             <div>
-              <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
-              <p className="font-medium text-sm sm:text-base">{format(new Date(job.created_at), 'MMM d, yyyy')}</p>
+              <p className="text-xs text-muted-foreground">Created</p>
+              <p className="font-medium">{format(new Date(job.created_at), 'MMM d, yyyy')}</p>
             </div>
           </div>
 
-          {/* Schedule */}
-          {(job.scheduled_start || job.scheduled_end) && (
+          {/* Schedule & Actual Times - Inline Compact */}
+          {(job.scheduled_start || job.scheduled_end || job.actual_start || job.actual_end) && (
             <>
-              <Separator />
-              <div>
-                <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
-                  <Calendar className="w-4 h-4" /> Schedule
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  {job.scheduled_start && (
-                    <div>
-                      <p className="text-xs sm:text-sm text-muted-foreground">Scheduled Start</p>
-                      <p className="font-medium text-sm sm:text-base">{format(new Date(job.scheduled_start), 'MMM d, yyyy h:mm a')}</p>
-                    </div>
-                  )}
-                  {job.scheduled_end && (
-                    <div>
-                      <p className="text-xs sm:text-sm text-muted-foreground">Scheduled End</p>
-                      <p className="font-medium text-sm sm:text-base">{format(new Date(job.scheduled_end), 'MMM d, yyyy h:mm a')}</p>
-                    </div>
-                  )}
-                </div>
+              <Separator className="my-2" />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                {job.scheduled_start && (
+                  <div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> Scheduled
+                    </p>
+                    <p className="font-medium">{format(new Date(job.scheduled_start), 'MMM d, h:mm a')}</p>
+                  </div>
+                )}
+                {job.scheduled_end && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">End</p>
+                    <p className="font-medium">{format(new Date(job.scheduled_end), 'MMM d, h:mm a')}</p>
+                  </div>
+                )}
+                {job.actual_start && (
+                  <div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Started
+                    </p>
+                    <p className="font-medium">{format(new Date(job.actual_start), 'MMM d, h:mm a')}</p>
+                  </div>
+                )}
+                {job.actual_end && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Completed</p>
+                    <p className="font-medium">{format(new Date(job.actual_end), 'MMM d, h:mm a')}</p>
+                  </div>
+                )}
               </div>
             </>
           )}
 
-          {/* Actual Times */}
-          {(job.actual_start || job.actual_end) && (
-            <>
-              <Separator />
-              <div>
-                <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
-                  <Clock className="w-4 h-4" /> Actual Times
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  {job.actual_start && (
-                    <div>
-                      <p className="text-xs sm:text-sm text-muted-foreground">Started</p>
-                      <p className="font-medium text-sm sm:text-base">{format(new Date(job.actual_start), 'MMM d, yyyy h:mm a')}</p>
-                    </div>
-                  )}
-                  {job.actual_end && (
-                    <div>
-                      <p className="text-xs sm:text-sm text-muted-foreground">Completed</p>
-                      <p className="font-medium text-sm sm:text-base">{format(new Date(job.actual_end), 'MMM d, yyyy h:mm a')}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-
-
-          {/* Items Section */}
-          <Separator />
+          {/* Items Section - Compact */}
+          <Separator className="my-2" />
           <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
-              <List className="w-4 h-4" /> 
+            <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
+              <List className="w-3.5 h-3.5" /> 
               Items
               {(job.items?.length || 0) > 0 && (
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                   {job.items?.length}
                 </Badge>
               )}
             </h4>
             {job.items && job.items.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 {/* Desktop header */}
-                <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-3">
+                <div className="hidden sm:grid grid-cols-12 text-[10px] text-muted-foreground font-medium px-2">
                   <div className="col-span-5">Name</div>
-                  <div className="col-span-2 text-right">Quantity</div>
-                  <div className="col-span-3 text-right">Unit Price</div>
+                  <div className="col-span-2 text-right">Qty</div>
+                  <div className="col-span-3 text-right">Price</div>
                   <div className="col-span-2 text-right">Total</div>
                 </div>
                 {/* Items List */}
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {job.items.map((item) => {
                     const isLaborItem = item.description.toLowerCase().includes('labor');
                     
@@ -409,76 +391,53 @@ export function JobDetailDialog({
                     return (
                       <div 
                         key={item.id}
-                        className={`py-2 px-2 sm:px-3 rounded ${
+                        className={`py-1.5 px-2 rounded text-sm ${
                           isLaborItem 
                             ? 'bg-blue-50/50 dark:bg-blue-900/10' 
                             : 'bg-muted/50'
                         }`}
                       >
                         {/* Mobile layout */}
-                        <div className="sm:hidden space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium">{item.description}</span>
-                            {isLaborItem && (
-                              <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
-                                <Clock className="w-3 h-3 mr-1" />
-                                Auto
-                              </Badge>
-                            )}
+                        <div className="sm:hidden">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium truncate">{item.description}</span>
+                            <span className="font-medium shrink-0">{formatAmount(item.total)}</span>
                           </div>
-                          {(item as any).item_description && (
-                            <p className="text-xs text-muted-foreground">{(item as any).item_description}</p>
-                          )}
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>Qty: {item.quantity.toFixed(2)} × Unit: {formatAmount(item.unit_price)}</span>
-                            <span className="font-medium text-foreground">{formatAmount(item.total)}</span>
+                          <div className="text-xs text-muted-foreground">
+                            {item.quantity.toFixed(2)} × {formatAmount(item.unit_price)}
                           </div>
                         </div>
                         
                         {/* Desktop layout */}
-                        <div className="hidden sm:block">
-                          <div className="grid grid-cols-12 items-center">
-                            <div className="col-span-5">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">{item.description}</span>
-                                {isLaborItem && (
-                                  <Badge variant="outline" className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-700">
-                                    <Clock className="w-3 h-3 mr-1" />
-                                    Auto
-                                  </Badge>
-                                )}
-                              </div>
-                              {(item as any).item_description && (
-                                <p className="text-xs text-muted-foreground mt-0.5">{(item as any).item_description}</p>
-                              )}
-                            </div>
-                            <div className="col-span-2 text-right text-sm">{item.quantity.toFixed(2)}</div>
-                            <div className="col-span-3 text-right text-sm">{formatAmount(item.unit_price)}</div>
-                            <div className="col-span-2 text-right font-medium text-sm">{formatAmount(item.total)}</div>
+                        <div className="hidden sm:grid grid-cols-12 items-center">
+                          <div className="col-span-5 flex items-center gap-1.5">
+                            <span className="font-medium truncate">{item.description}</span>
+                            {isLaborItem && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                                Auto
+                              </Badge>
+                            )}
                           </div>
+                          <div className="col-span-2 text-right text-xs">{item.quantity.toFixed(2)}</div>
+                          <div className="col-span-3 text-right text-xs">{formatAmount(item.unit_price)}</div>
+                          <div className="col-span-2 text-right font-medium">{formatAmount(item.total)}</div>
                         </div>
                         
-                        {/* Labor breakdown showing time contributions per technician */}
+                        {/* Labor breakdown */}
                         {isLaborItem && laborBreakdown && Object.keys(laborBreakdown).length > 0 && (
-                          <div className="mt-2 pt-2 border-t border-blue-200/50 dark:border-blue-700/50">
-                            <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                              <User className="w-3 h-3" />
-                              Time breakdown:
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {Object.entries(laborBreakdown).map(([name, minutes]) => {
-                                const hours = Math.floor(minutes / 60);
-                                const mins = Math.round(minutes % 60);
-                                return (
-                                  <span 
-                                    key={name} 
-                                    className="text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full"
-                                  >
-                                    {name}: {hours > 0 ? `${hours}h ` : ''}{mins}m
-                                  </span>
-                                );
-                              })}
-                            </div>
+                          <div className="mt-1 pt-1 border-t border-blue-200/50 dark:border-blue-700/50 flex flex-wrap gap-1">
+                            {Object.entries(laborBreakdown).map(([name, minutes]) => {
+                              const hours = Math.floor(minutes / 60);
+                              const mins = Math.round(minutes % 60);
+                              return (
+                                <span 
+                                  key={name} 
+                                  className="text-[10px] bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded-full"
+                                >
+                                  {name}: {hours > 0 ? `${hours}h ` : ''}{mins}m
+                                </span>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -486,25 +445,25 @@ export function JobDetailDialog({
                   })}
                 </div>
                 
-                {/* Totals */}
+                {/* Totals - Compact */}
                 {(job.subtotal !== null || job.total !== null) && (
-                  <div className="pt-2 border-t flex justify-end">
-                    <div className="space-y-1 min-w-[160px]">
+                  <div className="pt-1.5 border-t flex justify-end">
+                    <div className="space-y-0.5 min-w-[140px] text-sm">
                       {job.subtotal !== null && (
-                        <div className="flex justify-between text-sm gap-4">
-                          <span className="text-muted-foreground">Subtotal</span>
-                          <span>{formatAmount(job.subtotal)}</span>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground text-xs">Subtotal</span>
+                          <span className="text-xs">{formatAmount(job.subtotal)}</span>
                         </div>
                       )}
                       {job.tax !== null && job.tax > 0 && (
-                        <div className="flex justify-between text-sm gap-4">
-                          <span className="text-muted-foreground">Tax</span>
-                          <span>{formatAmount(job.tax)}</span>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground text-xs">Tax</span>
+                          <span className="text-xs">{formatAmount(job.tax)}</span>
                         </div>
                       )}
                       {job.total !== null && (
-                        <div className="flex justify-between text-sm font-medium gap-4">
-                          <span>Total</span>
+                        <div className="flex justify-between font-medium gap-4">
+                          <span className="text-xs">Total</span>
                           <span>{formatAmount(job.total)}</span>
                         </div>
                       )}
@@ -513,17 +472,13 @@ export function JobDetailDialog({
                 )}
               </div>
             ) : (
-              <div className="p-4 bg-muted/50 rounded-lg text-center">
-                <List className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-                <p className="text-xs sm:text-sm text-muted-foreground">No items added yet</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Items will appear here when added via Edit Job or from time tracking
-                </p>
+              <div className="p-3 bg-muted/50 rounded-lg text-center">
+                <p className="text-xs text-muted-foreground">No items added yet</p>
                 {onEdit && (
                   <Button 
                     variant="outline" 
                     size="sm"
-                    className="mt-3"
+                    className="mt-2 h-7 text-xs"
                     onClick={() => {
                       onOpenChange(false);
                       onEdit(job.id);
