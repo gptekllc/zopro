@@ -51,6 +51,7 @@ export function JobPhotoGallery({
   const [newCategory, setNewCategory] = useState<'before' | 'after' | 'other'>('other');
   const [draggedPhoto, setDraggedPhoto] = useState<JobPhoto | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<'before' | 'after' | 'other' | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -161,12 +162,15 @@ export function JobPhotoGallery({
     const file = e.target.files?.[0];
     if (file && onUpload) {
       try {
+        setIsProcessing(true);
         // Compress image before upload (300kb max, supports HEIF/HEIC)
         const compressedFile = await compressImageToFile(file, 300);
+        setIsProcessing(false);
         await onUpload(compressedFile, selectedPhotoType);
       } catch (error) {
         console.error('Failed to compress image:', error);
         toast.error('Failed to process image. Please try a different file.');
+        setIsProcessing(false);
       }
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -254,24 +258,38 @@ export function JobPhotoGallery({
             <Button 
               variant="outline" 
               onClick={() => cameraInputRef.current?.click()}
-              disabled={isUploading}
+              disabled={isUploading || isProcessing}
               className="sm:hidden"
               title="Take Photo"
             >
-              <Camera className="w-4 h-4" />
+              {isProcessing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
             </Button>
             <Button 
               variant="outline" 
               onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
+              disabled={isUploading || isProcessing}
               className="flex-1 sm:flex-none sm:w-auto"
             >
-              {isUploading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              {isProcessing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Preparing...
+                </>
+              ) : isUploading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
               ) : (
-                <Upload className="w-4 h-4 mr-2" />
+                <>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload
+                </>
               )}
-              {isUploading ? 'Uploading...' : 'Upload'}
             </Button>
             <input
               ref={cameraInputRef}
