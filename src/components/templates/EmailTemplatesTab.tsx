@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -30,13 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Info } from 'lucide-react';
+import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil } from 'lucide-react';
 import { 
   useEmailTemplates, 
   useCreateEmailTemplate, 
@@ -46,27 +42,83 @@ import {
 } from '@/hooks/useEmailTemplates';
 import { toast } from 'sonner';
 
-const TEMPLATE_TYPES = [
+type TemplateType = 'invoice' | 'reminder' | 'quote' | 'job' | 'general';
+
+const TEMPLATE_TYPES: { value: TemplateType; label: string }[] = [
   { value: 'invoice', label: 'Invoice' },
   { value: 'reminder', label: 'Reminder' },
+  { value: 'quote', label: 'Quote' },
+  { value: 'job', label: 'Job' },
   { value: 'general', label: 'General' },
-] as const;
+];
 
-const PLACEHOLDER_VARIABLES = [
-  { variable: '{{customer_name}}', description: 'Customer\'s full name' },
-  { variable: '{{company_name}}', description: 'Your company name' },
-  { variable: '{{invoice_number}}', description: 'Invoice number (e.g., I-2026-0001)' },
-  { variable: '{{invoice_total}}', description: 'Invoice total amount formatted' },
-  { variable: '{{due_date}}', description: 'Invoice due date' },
-  { variable: '{{quote_number}}', description: 'Quote number' },
-  { variable: '{{job_number}}', description: 'Job number' },
-  { variable: '{{today_date}}', description: 'Current date' },
+// Sample values for preview mode
+const SAMPLE_VALUES: Record<string, string> = {
+  '{{customer_name}}': 'John Smith',
+  '{{company_name}}': 'Acme Services LLC',
+  '{{invoice_number}}': 'I-2026-0042',
+  '{{invoice_total}}': '$1,250.00',
+  '{{due_date}}': 'January 15, 2026',
+  '{{quote_number}}': 'Q-2026-0018',
+  '{{quote_total}}': '$2,500.00',
+  '{{quote_valid_until}}': 'January 20, 2026',
+  '{{job_number}}': 'J-2026-0031',
+  '{{job_title}}': 'HVAC System Maintenance',
+  '{{job_description}}': 'Annual maintenance and inspection of heating and cooling systems',
+  '{{scheduled_date}}': 'January 10, 2026',
+  '{{scheduled_time}}': '9:00 AM',
+  '{{technician_name}}': 'Mike Johnson',
+  '{{today_date}}': new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+  '{{customer_address}}': '123 Main Street, Springfield, IL 62701',
+};
+
+interface PlaceholderInfo {
+  variable: string;
+  description: string;
+  types: TemplateType[];
+}
+
+const PLACEHOLDER_VARIABLES: PlaceholderInfo[] = [
+  // Common placeholders
+  { variable: '{{customer_name}}', description: "Customer's full name", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{company_name}}', description: 'Your company name', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{today_date}}', description: 'Current date', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{customer_address}}', description: "Customer's address", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  
+  // Invoice placeholders
+  { variable: '{{invoice_number}}', description: 'Invoice number', types: ['invoice', 'reminder'] },
+  { variable: '{{invoice_total}}', description: 'Invoice total amount', types: ['invoice', 'reminder'] },
+  { variable: '{{due_date}}', description: 'Invoice due date', types: ['invoice', 'reminder'] },
+  
+  // Quote placeholders
+  { variable: '{{quote_number}}', description: 'Quote number', types: ['quote'] },
+  { variable: '{{quote_total}}', description: 'Quote total amount', types: ['quote'] },
+  { variable: '{{quote_valid_until}}', description: 'Quote expiration date', types: ['quote'] },
+  
+  // Job placeholders
+  { variable: '{{job_number}}', description: 'Job number', types: ['job'] },
+  { variable: '{{job_title}}', description: 'Job title', types: ['job'] },
+  { variable: '{{job_description}}', description: 'Job description', types: ['job'] },
+  { variable: '{{scheduled_date}}', description: 'Scheduled date', types: ['job'] },
+  { variable: '{{scheduled_time}}', description: 'Scheduled time', types: ['job'] },
+  { variable: '{{technician_name}}', description: 'Assigned technician', types: ['job'] },
 ];
 
 const typeColors: Record<string, string> = {
   invoice: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   reminder: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
+  quote: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+  job: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
   general: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
+};
+
+// Replace placeholders with sample values for preview
+const replacePlaceholdersWithSamples = (text: string): string => {
+  let result = text;
+  Object.entries(SAMPLE_VALUES).forEach(([placeholder, value]) => {
+    result = result.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value);
+  });
+  return result;
 };
 
 export const EmailTemplatesTab = () => {
@@ -80,11 +132,12 @@ export const EmailTemplatesTab = () => {
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    template_type: 'invoice' as 'invoice' | 'reminder' | 'general',
+    template_type: 'invoice' as TemplateType,
     subject: '',
     body: '',
     is_default: false,
   });
+  const [editorTab, setEditorTab] = useState<'edit' | 'preview'>('edit');
 
   const handleDelete = async () => {
     if (deleteConfirmId) {
@@ -101,6 +154,7 @@ export const EmailTemplatesTab = () => {
       body: '',
       is_default: false,
     });
+    setEditorTab('edit');
     setIsCreateOpen(true);
   };
 
@@ -108,11 +162,12 @@ export const EmailTemplatesTab = () => {
     setEditingTemplate(template);
     setFormData({
       name: template.name,
-      template_type: template.template_type,
+      template_type: template.template_type as TemplateType,
       subject: template.subject,
       body: template.body,
       is_default: template.is_default,
     });
+    setEditorTab('edit');
   };
 
   const handleCreate = async () => {
@@ -148,11 +203,19 @@ export const EmailTemplatesTab = () => {
       ...prev,
       body: prev.body + variable,
     }));
+    setEditorTab('edit');
   };
 
   const copyPlaceholder = (variable: string) => {
     navigator.clipboard.writeText(variable);
     toast.success('Copied to clipboard');
+  };
+
+  // Get placeholders relevant to current template type
+  const getRelevantPlaceholders = () => {
+    return PLACEHOLDER_VARIABLES.filter(p => 
+      p.types.includes(formData.template_type) || p.types.includes('general')
+    );
   };
 
   if (isLoading) {
@@ -163,116 +226,134 @@ export const EmailTemplatesTab = () => {
     );
   }
 
-  const TemplateForm = () => (
-    <div className="space-y-4 py-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>Template Name *</Label>
-          <Input
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g., Standard Invoice Email"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label>Type</Label>
-          <Select
-            value={formData.template_type}
-            onValueChange={(value: 'invoice' | 'reminder' | 'general') =>
-              setFormData({ ...formData, template_type: value })
-            }
-            disabled={!!editingTemplate}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TEMPLATE_TYPES.map((t) => (
-                <SelectItem key={t.value} value={t.value}>
-                  {t.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label>Subject *</Label>
-        <Input
-          value={formData.subject}
-          onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-          placeholder="Email subject line"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label>Message Body</Label>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 text-xs">
-                  <Info className="w-3 h-3 mr-1" />
-                  Placeholders
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="left" className="max-w-xs">
-                <p className="text-xs mb-2">Click a placeholder to insert it:</p>
-                <div className="space-y-1">
-                  {PLACEHOLDER_VARIABLES.map((p) => (
-                    <button
-                      key={p.variable}
-                      className="block w-full text-left text-xs hover:bg-muted p-1 rounded"
-                      onClick={() => insertPlaceholder(p.variable)}
-                    >
-                      <code className="text-primary">{p.variable}</code>
-                      <span className="text-muted-foreground ml-2">- {p.description}</span>
-                    </button>
-                  ))}
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-        <Textarea
-          value={formData.body}
-          onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-          placeholder="Email message body. Use placeholders like {{customer_name}} for dynamic content."
-          rows={8}
-        />
-      </div>
-
-      {/* Placeholder reference */}
-      <div className="p-3 bg-muted/50 rounded-lg">
-        <p className="text-xs font-medium mb-2">Available Placeholders (click to copy):</p>
-        <div className="flex flex-wrap gap-1.5">
-          {PLACEHOLDER_VARIABLES.map((p) => (
-            <Badge
-              key={p.variable}
-              variant="outline"
-              className="cursor-pointer hover:bg-muted text-xs"
-              onClick={() => copyPlaceholder(p.variable)}
+  const TemplateForm = () => {
+    const relevantPlaceholders = getRelevantPlaceholders();
+    
+    return (
+      <div className="space-y-4 py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Template Name *</Label>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="e.g., Standard Invoice Email"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <Select
+              value={formData.template_type}
+              onValueChange={(value: TemplateType) =>
+                setFormData({ ...formData, template_type: value })
+              }
+              disabled={!!editingTemplate}
             >
-              <Copy className="w-2.5 h-2.5 mr-1" />
-              {p.variable}
-            </Badge>
-          ))}
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TEMPLATE_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Subject *</Label>
+          <Input
+            value={formData.subject}
+            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+            placeholder="Email subject line"
+          />
+          {editorTab === 'preview' && (
+            <div className="p-2 bg-muted/50 rounded text-sm mt-1">
+              <span className="text-muted-foreground text-xs">Preview:</span>
+              <p className="font-medium">{replacePlaceholdersWithSamples(formData.subject)}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Message Body</Label>
+            <Tabs value={editorTab} onValueChange={(v) => setEditorTab(v as 'edit' | 'preview')}>
+              <TabsList className="h-8">
+                <TabsTrigger value="edit" className="text-xs h-7 px-2">
+                  <Pencil className="w-3 h-3 mr-1" />
+                  Edit
+                </TabsTrigger>
+                <TabsTrigger value="preview" className="text-xs h-7 px-2">
+                  <Eye className="w-3 h-3 mr-1" />
+                  Preview
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {editorTab === 'edit' ? (
+            <Textarea
+              value={formData.body}
+              onChange={(e) => setFormData({ ...formData, body: e.target.value })}
+              placeholder="Email message body. Use placeholders like {{customer_name}} for dynamic content."
+              rows={10}
+            />
+          ) : (
+            <div className="min-h-[240px] p-4 border rounded-md bg-muted/30">
+              <p className="text-xs text-muted-foreground mb-2">
+                Preview with sample values:
+              </p>
+              <Separator className="mb-3" />
+              <div className="whitespace-pre-wrap text-sm">
+                {replacePlaceholdersWithSamples(formData.body) || (
+                  <span className="text-muted-foreground italic">No message body yet</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Placeholder reference */}
+        <div className="p-3 bg-muted/50 rounded-lg">
+          <p className="text-xs font-medium mb-2">
+            Available Placeholders for {TEMPLATE_TYPES.find(t => t.value === formData.template_type)?.label} templates (click to insert):
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {relevantPlaceholders.map((p) => (
+              <Badge
+                key={p.variable}
+                variant="outline"
+                className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs transition-colors"
+                onClick={() => insertPlaceholder(p.variable)}
+                title={p.description}
+              >
+                <Copy className="w-2.5 h-2.5 mr-1" />
+                {p.variable}
+              </Badge>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Click a placeholder to insert it at the end of the message body, or copy and paste manually.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Switch
+            id="is-default"
+            checked={formData.is_default}
+            onCheckedChange={(checked) => setFormData({ ...formData, is_default: checked })}
+          />
+          <Label htmlFor="is-default" className="font-normal cursor-pointer">
+            Set as default template for {formData.template_type} emails
+          </Label>
         </div>
       </div>
-
-      <div className="flex items-center gap-3">
-        <Switch
-          id="is-default"
-          checked={formData.is_default}
-          onCheckedChange={(checked) => setFormData({ ...formData, is_default: checked })}
-        />
-        <Label htmlFor="is-default" className="font-normal cursor-pointer">
-          Set as default template for {formData.template_type} emails
-        </Label>
-      </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <>
@@ -289,7 +370,7 @@ export const EmailTemplatesTab = () => {
             <Mail className="w-16 h-16 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-medium mb-2">No Email Templates Yet</h3>
             <p className="text-muted-foreground text-center max-w-md mb-4">
-              Create reusable email templates with placeholder variables for invoices and reminders.
+              Create reusable email templates with placeholder variables for invoices, quotes, jobs, and reminders.
             </p>
             <Button onClick={handleCreateOpen}>
               <Plus className="w-4 h-4 mr-2" />
@@ -312,7 +393,7 @@ export const EmailTemplatesTab = () => {
                           Default
                         </Badge>
                       )}
-                      <Badge variant="outline" className={typeColors[template.template_type]}>
+                      <Badge variant="outline" className={typeColors[template.template_type] || typeColors.general}>
                         {template.template_type}
                       </Badge>
                     </div>
