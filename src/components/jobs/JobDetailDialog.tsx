@@ -360,16 +360,6 @@ export function JobDetailDialog({
             </>
           )}
 
-          {/* Notes */}
-          {job.notes && (
-            <>
-              <Separator />
-              <div>
-                <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
-                <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{job.notes}</p>
-              </div>
-            </>
-          )}
 
           {/* Items Section */}
           <Separator />
@@ -538,6 +528,17 @@ export function JobDetailDialog({
               </div>
             )}
           </div>
+
+          {/* Notes */}
+          {job.notes && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
+                <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{job.notes}</p>
+              </div>
+            </>
+          )}
 
           {/* Completion Signature */}
           <Separator />
