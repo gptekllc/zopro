@@ -412,7 +412,7 @@ const Notifications = () => {
             )}
           </CardContent>
         </Card>
-    </div>
+    </PageContainer>
   );
 };
 

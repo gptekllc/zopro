@@ -575,7 +575,7 @@ const CustomerDetail = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   );
 };
 

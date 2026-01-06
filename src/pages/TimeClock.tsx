@@ -14,6 +14,7 @@ import { format, differenceInMinutes, startOfWeek, endOfWeek, eachDayOfInterval,
 import { toast } from 'sonner';
 import { TimeEntryDialog } from '@/components/timeclock/TimeEntryDialog';
 import { Link } from 'react-router-dom';
+import PageContainer from '@/components/layout/PageContainer';
 
 
 const TimeClock = () => {
@@ -628,7 +629,7 @@ const TimeClock = () => {
           onSave={handleSaveEntry}
           timezone={company?.timezone}
         />
-    </div>
+    </PageContainer>
   );
 };
 
