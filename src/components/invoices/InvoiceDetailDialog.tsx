@@ -958,12 +958,12 @@ export function InvoiceDetailDialog({
 
           {/* Actions */}
           <Separator />
-          <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
-            <Button variant="outline" size="sm" onClick={() => onDownload?.(invoice.id)}>
+          <div className="grid grid-cols-3 gap-2 pt-2 sm:pt-4 sm:flex sm:flex-wrap sm:justify-start">
+            <Button variant="outline" size="sm" onClick={() => onDownload?.(invoice.id)} className="justify-center">
               <FileDown className="w-4 h-4 mr-1" />
               Download
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onEmailCustom?.(invoice.id)}>
+            <Button variant="outline" size="sm" onClick={() => onEmailCustom?.(invoice.id)} className="justify-center">
               <Mail className="w-4 h-4 mr-1" />
               Email
             </Button>
@@ -973,6 +973,7 @@ export function InvoiceDetailDialog({
                 size="sm" 
                 onClick={() => onSendReminder(invoice.id)} 
                 disabled={isSendingReminder}
+                className="justify-center"
               >
                 <Bell className="w-4 h-4 mr-1" />
                 {isSendingReminder ? 'Sending...' : 'Send Reminder'}
@@ -982,7 +983,7 @@ export function InvoiceDetailDialog({
               <Button 
                 size="sm" 
                 onClick={() => setRecordPaymentDialogOpen(true)}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 justify-center"
               >
                 <DollarSign className="w-4 h-4 mr-1" />
                 Payment
@@ -993,13 +994,13 @@ export function InvoiceDetailDialog({
                 variant="outline" 
                 size="sm" 
                 onClick={() => setVoidInvoiceDialogOpen(true)}
-                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                className="text-destructive hover:text-destructive hover:bg-destructive/10 justify-center"
               >
                 <Ban className="w-4 h-4 mr-1" />
                 Void
               </Button>
             )}
-            <Button size="sm" onClick={() => onEdit?.(invoice.id)} className="sm:ml-auto">
+            <Button size="sm" onClick={() => onEdit?.(invoice.id)} className="sm:ml-auto justify-center">
               <Edit className="w-4 h-4 mr-1" />
               Edit
             </Button>
