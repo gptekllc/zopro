@@ -8,13 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   AlertCircle,
-  AlertTriangle,
   Archive,
   ArchiveRestore,
   Briefcase,
@@ -26,7 +20,6 @@ import {
   Mail,
   MoreVertical,
   PenTool,
-  RefreshCw,
   Send,
   Trash2,
   UserCog,
@@ -68,10 +61,6 @@ type Props = {
   
   // Payment info for showing remaining balance
   totalPaid?: number;
-  
-  // Stale status fix callback
-  onFixStaleStatus?: (invoiceId: string, expectedStatus: string) => void;
-  isFixingStatus?: boolean;
 };
 
 const invoiceStatusColors: Record<string, string> = {
@@ -82,31 +71,6 @@ const invoiceStatusColors: Record<string, string> = {
   overdue: "bg-destructive/10 text-destructive",
   voided: "bg-muted text-muted-foreground line-through",
 };
-
-// Helper to compute what the status SHOULD be based on payments
-function computeExpectedStatus(
-  totalPaid: number,
-  totalDue: number,
-  currentStatus: string,
-  dueDate: string | null
-): string | null {
-  if (currentStatus === 'voided') return null; // Don't suggest changes for voided
-  if (currentStatus === 'draft' && totalPaid === 0) return null; // Draft with no payments is fine
-
-  const isOverdue = dueDate && new Date(dueDate) < new Date();
-
-  if (totalPaid >= totalDue && totalDue > 0) {
-    return currentStatus !== 'paid' ? 'paid' : null;
-  } else if (totalPaid > 0 && totalPaid < totalDue) {
-    return currentStatus !== 'partially_paid' ? 'partially_paid' : null;
-  } else if (totalPaid === 0) {
-    // No payments - should be sent/overdue/draft
-    if (currentStatus === 'paid' || currentStatus === 'partially_paid') {
-      return isOverdue ? 'overdue' : 'sent';
-    }
-  }
-  return null;
-}
 
 export function InvoiceListCard({
   invoice,
@@ -130,8 +94,6 @@ export function InvoiceListCard({
   showSwipeHint = false,
   onSwipeHintDismiss,
   totalPaid = 0,
-  onFixStaleStatus,
-  isFixingStatus = false,
 }: Props) {
   const signatureId = (invoice as any).signature_id as string | undefined;
   const archivedAt = (invoice as any).archived_at as string | undefined;
@@ -149,11 +111,6 @@ export function InvoiceListCard({
   // Show remaining balance if partially paid, otherwise show total
   // For voided invoices, show 0
   const displayTotal = isVoided ? 0 : (hasPartialPayment ? remainingBalance : totalDue);
-
-  // Check if stored status is stale (doesn't match computed status)
-  const expectedStatus = computeExpectedStatus(totalPaid, totalDue, invoice.status, invoice.due_date);
-  const isStatusStale = expectedStatus !== null;
-
   const customerName = invoice.customer?.name || "Unknown";
   const customerEmail = invoice.customer?.email || null;
   const creatorName = (invoice as any).creator?.full_name || null;
@@ -199,33 +156,6 @@ export function InvoiceListCard({
         <Badge variant="outline" className="text-warning text-xs">
           Balance: ${remainingBalance.toFixed(2)}
         </Badge>
-      )}
-      {/* Stale status warning with fix button */}
-      {isStatusStale && onFixStaleStatus && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onFixStaleStatus(invoice.id, expectedStatus!);
-              }}
-              disabled={isFixingStatus}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-warning/20 text-warning hover:bg-warning/30 transition-colors cursor-pointer"
-            >
-              {isFixingStatus ? (
-                <RefreshCw className="w-3 h-3 animate-spin" />
-              ) : (
-                <AlertTriangle className="w-3 h-3" />
-              )}
-              Fix
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-xs">
-            <p className="text-xs">
-              Status mismatch: showing "{getInvoiceStatusLabel(invoice.status)}" but should be "{getInvoiceStatusLabel(expectedStatus!)}". Click to fix.
-            </p>
-          </TooltipContent>
-        </Tooltip>
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
