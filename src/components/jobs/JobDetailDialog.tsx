@@ -571,7 +571,7 @@ export function JobDetailDialog({
                               <div>
                                 <p className="text-sm font-medium">{invoice.invoice_number}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  {formatAmount(invoice.total)}
+                                  {invoice.customer?.name || customerName}
                                 </p>
                               </div>
                             </div>
