@@ -597,16 +597,16 @@ export function InvoiceDetailDialog({
 
               {/* Totals */}
               <div className="flex justify-end">
-                <div className="w-full sm:w-64 space-y-1">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-1 min-w-[160px]">
+                  <div className="flex justify-between text-sm gap-4">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>${Number(invoice.subtotal).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm gap-4">
                     <span className="text-muted-foreground">Tax</span>
                     <span>${Number(invoice.tax).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between font-semibold pt-2 border-t">
+                  <div className="flex justify-between font-semibold pt-2 border-t gap-4">
                     <span>Invoice Total</span>
                     <span>${Number(invoice.total).toLocaleString()}</span>
                   </div>

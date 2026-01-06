@@ -308,16 +308,16 @@ export function QuoteDetailDialog({
 
               {/* Totals */}
               <div className="flex justify-end">
-                <div className="w-full sm:w-48 space-y-1">
-                  <div className="flex justify-between text-sm">
+                <div className="space-y-1 min-w-[160px]">
+                  <div className="flex justify-between text-sm gap-4">
                     <span className="text-muted-foreground">Subtotal</span>
                     <span>${Number(quote.subtotal).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm gap-4">
                     <span className="text-muted-foreground">Tax</span>
                     <span>${Number(quote.tax).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t">
+                  <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t gap-4">
                     <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
                     <span>${Number(quote.total).toLocaleString()}</span>
                   </div>
