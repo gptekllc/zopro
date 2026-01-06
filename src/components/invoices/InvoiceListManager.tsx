@@ -20,6 +20,7 @@ import { Search, Loader2, Filter, Archive } from 'lucide-react';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
 import { RecordPaymentDialog, PaymentData } from '@/components/invoices/RecordPaymentDialog';
+import { SplitPaymentDialog, SplitPaymentData } from '@/components/invoices/SplitPaymentDialog';
 import { InvoiceDetailDialog } from '@/components/invoices/InvoiceDetailDialog';
 import { InvoiceListCard } from '@/components/invoices/InvoiceListCard';
 import { useSwipeHint } from '@/components/ui/swipeable-card';
@@ -132,6 +133,7 @@ export function InvoiceListManager({
 
   // Record Payment dialog
   const [recordPaymentDialogOpen, setRecordPaymentDialogOpen] = useState(false);
+  const [splitPaymentDialogOpen, setSplitPaymentDialogOpen] = useState(false);
   const [pendingPaymentInvoice, setPendingPaymentInvoice] = useState<Invoice | null>(null);
 
   // Fetch reminders for the currently viewed invoice
@@ -271,6 +273,29 @@ export function InvoiceListManager({
         onRefetch();
       }
       setRecordPaymentDialogOpen(false);
+      setPendingPaymentInvoice(null);
+    } catch {
+      // Error handled by hook
+    }
+  };
+
+  const handleSplitPayment = async (data: SplitPaymentData) => {
+    if (!pendingPaymentInvoice) return;
+    try {
+      for (const payment of data.payments) {
+        await createPayment.mutateAsync({
+          invoiceId: pendingPaymentInvoice.id,
+          amount: payment.amount,
+          method: payment.method,
+          paymentDate: data.date,
+          notes: data.note || undefined,
+          sendNotification: false,
+        });
+      }
+      if (viewingInvoice?.id === pendingPaymentInvoice.id && onRefetch) {
+        onRefetch();
+      }
+      setSplitPaymentDialogOpen(false);
       setPendingPaymentInvoice(null);
     } catch {
       // Error handled by hook
@@ -593,6 +618,21 @@ export function InvoiceListManager({
         invoiceNumber={pendingPaymentInvoice?.invoice_number || ''}
         customerEmail={pendingPaymentInvoice ? getCustomerEmail(pendingPaymentInvoice.customer_id) : undefined}
         onConfirm={handleRecordPayment}
+        onSwitchToSplit={() => {
+          setRecordPaymentDialogOpen(false);
+          setSplitPaymentDialogOpen(true);
+        }}
+      />
+
+      {/* Split Payment Dialog */}
+      <SplitPaymentDialog
+        open={splitPaymentDialogOpen}
+        onOpenChange={setSplitPaymentDialogOpen}
+        invoiceTotal={pendingPaymentInvoice ? getTotalWithLateFee(pendingPaymentInvoice) : 0}
+        remainingBalance={pendingInvoiceBalance?.remaining}
+        invoiceNumber={pendingPaymentInvoice?.invoice_number || ''}
+        customerEmail={pendingPaymentInvoice ? getCustomerEmail(pendingPaymentInvoice.customer_id) : undefined}
+        onConfirm={handleSplitPayment}
       />
     </div>
   );

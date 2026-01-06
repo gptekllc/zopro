@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Loader2 } from 'lucide-react';
+import { CalendarIcon, Loader2, Split } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -54,6 +54,7 @@ interface RecordPaymentDialogProps {
   customerEmail?: string | null;
   onConfirm: (data: PaymentData) => void;
   isLoading?: boolean;
+  onSwitchToSplit?: () => void;
 }
 
 export function RecordPaymentDialog({
@@ -65,6 +66,7 @@ export function RecordPaymentDialog({
   customerEmail,
   onConfirm,
   isLoading = false,
+  onSwitchToSplit,
 }: RecordPaymentDialogProps) {
   const [method, setMethod] = useState<PaymentMethod>('cash');
   const [amount, setAmount] = useState<string>('');
@@ -188,14 +190,27 @@ export function RecordPaymentDialog({
           )}
 
           <DialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              {onSwitchToSplit && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onSwitchToSplit}
+                  disabled={isLoading}
+                >
+                  <Split className="w-4 h-4 mr-2" />
+                  Split
+                </Button>
+              )}
+            </div>
             <Button type="submit" disabled={isLoading || !amount}>
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Record Payment
