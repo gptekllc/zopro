@@ -403,9 +403,9 @@ export function JobDetailDialog({
                     return (
                       <div 
                         key={item.id}
-                        className={`p-3 rounded-lg border ${
+                        className={`py-2 px-2 sm:px-3 rounded ${
                           isLaborItem 
-                            ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800/50' 
+                            ? 'bg-blue-50/50 dark:bg-blue-900/10' 
                             : 'bg-muted/50'
                         }`}
                       >
