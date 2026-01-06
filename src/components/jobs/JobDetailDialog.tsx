@@ -11,7 +11,7 @@ import {
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
   Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star,
-  List, Camera
+  List, Camera, StickyNote
 } from 'lucide-react';
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { useAuth } from '@/hooks/useAuth';
@@ -534,7 +534,9 @@ export function JobDetailDialog({
             <>
               <Separator />
               <div>
-                <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
+                <h4 className="font-medium mb-2 text-sm sm:text-base flex items-center gap-2">
+                  <StickyNote className="w-4 h-4" /> Notes
+                </h4>
                 <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{job.notes}</p>
               </div>
             </>
@@ -952,73 +954,75 @@ export function JobDetailDialog({
             </AlertDialogContent>
           </AlertDialog>
 
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => downloadDocument.mutate({ type: 'job', documentId: job.id })}
-              disabled={downloadDocument.isPending}
-              className="flex-1 sm:flex-none"
-            >
-              {downloadDocument.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4 sm:mr-1" />}
-              <span className="hidden sm:inline">Download</span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleOpenEmailModal}
-              className="flex-1 sm:flex-none"
-            >
-              <Mail className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Email</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleCreateUpsellQuote}
-              disabled={convertJobToQuote.isPending}
-              className="flex-1 sm:flex-none"
-            >
-              <FileText className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Create Quote</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleCreateInvoice}
-              disabled={convertJobToInvoice.isPending}
-              className="flex-1 sm:flex-none"
-            >
-              <Receipt className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Create Invoice</span>
-            </Button>
-            {/* On My Way with ETA dropdown */}
-            {['scheduled', 'in_progress'].includes(job.status) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 sm:flex-none"
-                    title={customerPhone ? "Send SMS to customer" : "Copy message (no phone on file)"}
-                  >
-                    <Navigation className="w-4 h-4 sm:mr-1" />
-                    <span className="hidden sm:inline">On My Way</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {etaOptions.map((eta) => (
-                    <DropdownMenuItem key={eta} onClick={() => handleOnMyWay(eta)}>
-                      ~{eta} minutes
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            <Button size="sm" onClick={() => onEdit?.(job.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
-              <Edit className="w-4 h-4 mr-1" /> Edit
-            </Button>
+          {/* Sticky Footer Actions */}
+          <div className="sticky bottom-0 bg-background border-t pt-3 pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 mt-4">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadDocument.mutate({ type: 'job', documentId: job.id })}
+                disabled={downloadDocument.isPending}
+                className="flex-1 sm:flex-none"
+              >
+                {downloadDocument.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+                Download
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenEmailModal}
+                className="flex-1 sm:flex-none"
+              >
+                <Mail className="w-4 h-4 mr-1" />
+                Email
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleCreateUpsellQuote}
+                disabled={convertJobToQuote.isPending}
+                className="flex-1 sm:flex-none"
+              >
+                <FileText className="w-4 h-4 mr-1" />
+                Quote
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleCreateInvoice}
+                disabled={convertJobToInvoice.isPending}
+                className="flex-1 sm:flex-none"
+              >
+                <Receipt className="w-4 h-4 mr-1" />
+                Invoice
+              </Button>
+              {/* On My Way with ETA dropdown */}
+              {['scheduled', 'in_progress'].includes(job.status) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 sm:flex-none"
+                      title={customerPhone ? "Send SMS to customer" : "Copy message (no phone on file)"}
+                    >
+                      <Navigation className="w-4 h-4 mr-1" />
+                      On My Way
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {etaOptions.map((eta) => (
+                      <DropdownMenuItem key={eta} onClick={() => handleOnMyWay(eta)}>
+                        ~{eta} minutes
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Button size="sm" onClick={() => onEdit?.(job.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
+                <Edit className="w-4 h-4 mr-1" /> Edit
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>
