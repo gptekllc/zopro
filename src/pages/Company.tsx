@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link, Clock } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link, Clock, BookTemplate } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -18,6 +18,10 @@ import SocialLinksManager from '@/components/company/SocialLinksManager';
 import { TIMEZONES } from '@/lib/timezones';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Import template components
+import { JobTemplatesTab, QuoteTemplatesTab } from '@/pages/Templates';
+import { EmailTemplatesTab } from '@/components/templates/EmailTemplatesTab';
 
 const Company = () => {
   const { isAdmin } = useAuth();
@@ -267,7 +271,7 @@ const Company = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         {/* Mobile: Icon-only tabs */}
-        <TabsList className="sm:hidden w-full grid grid-cols-4">
+        <TabsList className="sm:hidden w-full grid grid-cols-5">
           <TabsTrigger value="details" className="flex-col gap-1 py-2">
             <Building2 className="w-5 h-5" />
             <span className="text-xs">Details</span>
@@ -280,10 +284,14 @@ const Company = () => {
             <Settings className="w-5 h-5" />
             <span className="text-xs">Prefs</span>
           </TabsTrigger>
+          <TabsTrigger value="templates" className="flex-col gap-1 py-2">
+            <BookTemplate className="w-5 h-5" />
+            <span className="text-xs">Templates</span>
+          </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="payments" className="flex-col gap-1 py-2">
               <CreditCard className="w-5 h-5" />
-              <span className="text-xs">Payments</span>
+              <span className="text-xs">Pay</span>
             </TabsTrigger>
           )}
         </TabsList>
@@ -301,6 +309,10 @@ const Company = () => {
           <TabsTrigger value="preferences" className="gap-2">
             <Settings className="w-4 h-4" />
             Preferences
+          </TabsTrigger>
+          <TabsTrigger value="templates" className="gap-2">
+            <BookTemplate className="w-4 h-4" />
+            Templates
           </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="payments" className="gap-2">
@@ -1133,6 +1145,43 @@ const Company = () => {
               </form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates">
+          <div className="space-y-6">
+            <Tabs defaultValue="jobs" className="w-full">
+              <TabsList className="mb-4">
+                <TabsTrigger value="jobs" className="gap-2">
+                  <Briefcase className="w-4 h-4" />
+                  <span className="hidden sm:inline">Job Templates</span>
+                  <span className="sm:hidden">Jobs</span>
+                </TabsTrigger>
+                <TabsTrigger value="quotes" className="gap-2">
+                  <FileText className="w-4 h-4" />
+                  <span className="hidden sm:inline">Quote Templates</span>
+                  <span className="sm:hidden">Quotes</span>
+                </TabsTrigger>
+                <TabsTrigger value="emails" className="gap-2">
+                  <Mail className="w-4 h-4" />
+                  <span className="hidden sm:inline">Email Templates</span>
+                  <span className="sm:hidden">Emails</span>
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="jobs">
+                <JobTemplatesTab />
+              </TabsContent>
+
+              <TabsContent value="quotes">
+                <QuoteTemplatesTab />
+              </TabsContent>
+
+              <TabsContent value="emails">
+                <EmailTemplatesTab />
+              </TabsContent>
+            </Tabs>
+          </div>
         </TabsContent>
 
         {isAdmin && (
