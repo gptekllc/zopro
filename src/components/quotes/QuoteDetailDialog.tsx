@@ -12,7 +12,7 @@ import {
 import { 
   FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, 
   DollarSign, FileText, CheckCircle, Send, UserCog, ChevronRight, CheckCircle2,
-  Briefcase, Receipt, Link2, List, Image as ImageIcon
+  Briefcase, Receipt, Link2, List, Image as ImageIcon, StickyNote
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
@@ -180,164 +180,154 @@ export function QuoteDetailDialog({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pt-4">
-        {/* Tabs for Details, Linked Docs, Photos - at top like Job dialog */}
-        <Tabs defaultValue="details" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="details" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-              <List className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Details</span>
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pt-4 space-y-4 sm:space-y-6">
+          {/* Details Grid - Compact */}
+          <div className="grid grid-cols-3 gap-2 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Customer</p>
+              <p className="font-medium truncate">{customerName || 'Unknown'}</p>
+            </div>
+            {creatorName && (
+              <div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <UserCog className="w-3 h-3" /> Created By
+                </p>
+                <p className="font-medium truncate">{creatorName}</p>
+              </div>
+            )}
+            <div>
+              <p className="text-xs text-muted-foreground">Created</p>
+              <p className="font-medium">{format(new Date(quote.created_at), 'MMM d, yyyy')}</p>
+            </div>
+          </div>
+
+          {/* Dates - Compact Inline */}
+          {(quote.valid_until || quote.signed_at) && (
+            <>
+              <Separator className="my-2" />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+                {quote.valid_until && (
+                  <div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> Valid Until
+                    </p>
+                    <p className="font-medium">{format(new Date(quote.valid_until), 'MMM d, yyyy')}</p>
+                  </div>
+                )}
+                {quote.signed_at && (
+                  <div>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <PenTool className="w-3 h-3" /> Signed
+                    </p>
+                    <p className="font-medium text-green-600 flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" />
+                      {format(new Date(quote.signed_at), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Items Section - Compact */}
+          <Separator className="my-2" />
+          <div>
+            <h4 className="font-medium mb-2 flex items-center gap-2 text-sm">
+              <List className="w-3.5 h-3.5" /> 
+              Items
               {(quote.items?.length || 0) > 0 && (
-                <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                   {quote.items?.length}
                 </Badge>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-              <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Linked Docs</span>
-              {linkedDocsCount > 0 && (
-                <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                  {linkedDocsCount}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
-              <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Photos</span>
-              {quotePhotos.length > 0 && (
-                <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                  {quotePhotos.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          {/* Details Tab */}
-          <TabsContent value="details" className="mt-4 space-y-4">
-            {/* Customer & Dates - responsive grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Customer</p>
-                <p className="font-medium text-sm sm:text-base truncate">{customerName || 'Unknown'}</p>
-              </div>
-              {creatorName && (
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                    <UserCog className="w-3 h-3" /> Created By
-                  </p>
-                  <p className="font-medium text-sm sm:text-base truncate">{creatorName}</p>
+            </h4>
+            {quote.items && quote.items.length > 0 ? (
+              <div className="space-y-1.5">
+                {/* Desktop header */}
+                <div className="hidden sm:grid grid-cols-12 text-[10px] text-muted-foreground font-medium px-2">
+                  <div className="col-span-5">Name</div>
+                  <div className="col-span-2 text-right">Quantity</div>
+                  <div className="col-span-3 text-right">Unit Price</div>
+                  <div className="col-span-2 text-right">Total</div>
                 </div>
-              )}
-              <div>
-                <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
-                <p className="font-medium text-sm sm:text-base">{format(new Date(quote.created_at), 'MMM d, yyyy')}</p>
-              </div>
-              {quote.valid_until && (
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                    <Calendar className="w-3 h-3" /> Valid Until
-                  </p>
-                  <p className="font-medium text-sm sm:text-base">{format(new Date(quote.valid_until), 'MMM d, yyyy')}</p>
-                </div>
-              )}
-              {quote.signed_at && (
-                <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1">
-                    <PenTool className="w-3 h-3" /> Signed
-                  </p>
-                  <p className="font-medium text-green-600 flex items-center gap-1 text-sm sm:text-base">
-                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
-                    {format(new Date(quote.signed_at), 'MMM d, yyyy')}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Line Items */}
-              <div>
-                <h4 className="font-medium mb-2 sm:mb-3 text-sm sm:text-base">Line Items</h4>
-                <div className="space-y-2">
-                  {quote.items && quote.items.length > 0 ? (
-                    <>
-                      {/* Desktop header - hidden on mobile */}
-                      <div className="hidden sm:grid grid-cols-12 text-xs text-muted-foreground font-medium px-2">
-                        <div className="col-span-5">Name</div>
-                        <div className="col-span-2 text-right">Quantity</div>
-                        <div className="col-span-3 text-right">Unit Price</div>
-                        <div className="col-span-2 text-right">Total</div>
-                      </div>
-                      {quote.items.map((item) => (
-                        <div key={item.id} className="py-2 px-2 sm:px-3 bg-muted/50 rounded text-sm">
-                          {/* Mobile layout */}
-                          <div className="sm:hidden space-y-1">
-                            <p className="font-medium">{item.description}</p>
-                            {(item as any).item_description && (
-                              <p className="text-xs text-muted-foreground">{(item as any).item_description}</p>
-                            )}
-                            <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>Qty: {item.quantity} × Unit: ${Number(item.unit_price).toLocaleString()}</span>
-                              <span className="font-medium text-foreground">${Number(item.total).toLocaleString()}</span>
-                            </div>
-                          </div>
-                          {/* Desktop layout */}
-                          <div className="hidden sm:block">
-                            <div className="grid grid-cols-12 items-start">
-                              <div className="col-span-5">
-                                <span>{item.description}</span>
-                                {(item as any).item_description && (
-                                  <p className="text-xs text-muted-foreground mt-0.5">{(item as any).item_description}</p>
-                                )}
-                              </div>
-                              <div className="col-span-2 text-right">{item.quantity}</div>
-                              <div className="col-span-3 text-right">${Number(item.unit_price).toLocaleString()}</div>
-                              <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
-                            </div>
-                          </div>
+                {/* Items List */}
+                <div className="space-y-1">
+                  {quote.items.map((item) => (
+                    <div key={item.id} className="py-1.5 px-2 bg-muted/50 rounded text-sm">
+                      {/* Mobile layout */}
+                      <div className="sm:hidden">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium truncate">{item.description}</span>
+                          <span className="font-medium shrink-0">${Number(item.total).toLocaleString()}</span>
                         </div>
-                      ))}
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No line items</p>
-                  )}
+                        {(item as any).item_description && (
+                          <p className="text-xs text-muted-foreground">{(item as any).item_description}</p>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          {item.quantity} × ${Number(item.unit_price).toLocaleString()}
+                        </div>
+                      </div>
+                      {/* Desktop layout */}
+                      <div className="hidden sm:grid grid-cols-12 items-center">
+                        <div className="col-span-5 flex flex-col">
+                          <span className="font-medium truncate">{item.description}</span>
+                          {(item as any).item_description && (
+                            <p className="text-xs text-muted-foreground">{(item as any).item_description}</p>
+                          )}
+                        </div>
+                        <div className="col-span-2 text-right text-xs">{item.quantity}</div>
+                        <div className="col-span-3 text-right text-xs">${Number(item.unit_price).toLocaleString()}</div>
+                        <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Totals - Compact */}
+                <div className="pt-1.5 border-t flex justify-end">
+                  <div className="space-y-0.5 min-w-[140px] text-sm">
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground text-xs">Subtotal</span>
+                      <span className="text-xs">${Number(quote.subtotal).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground text-xs">Tax</span>
+                      <span className="text-xs">${Number(quote.tax).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between font-medium gap-4">
+                      <span className="text-xs flex items-center gap-1"><DollarSign className="w-3 h-3" />Total</span>
+                      <span>${Number(quote.total).toLocaleString()}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              <Separator />
-
-              {/* Totals */}
-              <div className="flex justify-end">
-                <div className="space-y-1 min-w-[160px]">
-                  <div className="flex justify-between text-sm gap-4">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>${Number(quote.subtotal).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm gap-4">
-                    <span className="text-muted-foreground">Tax</span>
-                    <span>${Number(quote.tax).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between font-semibold text-base sm:text-lg pt-2 border-t gap-4">
-                    <span className="flex items-center gap-1"><DollarSign className="w-4 h-4" />Total</span>
-                    <span>${Number(quote.total).toLocaleString()}</span>
-                  </div>
-                </div>
+            ) : (
+              <div className="p-3 bg-muted/50 rounded-lg text-center">
+                <p className="text-xs text-muted-foreground">No items added yet</p>
               </div>
+            )}
+          </div>
 
-              {/* Notes */}
-              {quote.notes && (
-                <>
-                  <Separator />
-                  <div>
-                    <h4 className="font-medium mb-2 text-sm sm:text-base">Notes</h4>
-                    <p className="text-xs sm:text-sm text-muted-foreground whitespace-pre-wrap">{quote.notes}</p>
-                  </div>
-                </>
-              )}
-
-              {/* Signature Section */}
+          {/* Notes */}
+          {quote.notes && (
+            <>
               <Separator />
+              <div>
+                <h4 className="font-medium mb-2 text-sm flex items-center gap-2">
+                  <StickyNote className="w-4 h-4" /> Notes
+                </h4>
+                <p className="text-xs text-muted-foreground whitespace-pre-wrap">{quote.notes}</p>
+              </div>
+            </>
+          )}
+
+          {/* Signature Section */}
+          <Separator />
+          <div>
+            <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
+              <PenTool className="w-4 h-4" /> Customer Signature
+            </h4>
+            <div className="sm:max-w-md">
               <ConstrainedPanel>
                 <SignatureSection 
                   signatureId={quote.signature_id}
@@ -348,32 +338,78 @@ export function QuoteDetailDialog({
                   isCollecting={isCollectingSignature}
                 />
               </ConstrainedPanel>
+            </div>
 
-              {/* Send Signature Request Button (separate from in-person collection) */}
-              {showCollectButton && !quote.signature_id && customerEmail && onSendSignatureRequest && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => onSendSignatureRequest(quote.id)}
-                  className="w-full sm:w-auto"
-                >
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Signature Request via Email
-                </Button>
-              )}
+            {/* Send Signature Request Button */}
+            {showCollectButton && !quote.signature_id && customerEmail && onSendSignatureRequest && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => onSendSignatureRequest(quote.id)}
+                className="mt-2"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Send Signature Request via Email
+              </Button>
+            )}
+          </div>
+
+          {/* Tabs for Photos and Linked Docs - At bottom like Job */}
+          <Separator />
+          <Tabs defaultValue="photos" className="w-full">
+            <TabsList className="w-full grid grid-cols-2 h-auto p-1">
+              <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <ImageIcon className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Photos</span>
+                {quotePhotos.length > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {quotePhotos.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <Link2 className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Linked Docs</span>
+                {linkedDocsCount > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {linkedDocsCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Photos Tab */}
+            <TabsContent value="photos" className="mt-4">
+              <DocumentPhotoGallery
+                photos={quotePhotos.map(p => ({
+                  id: p.id,
+                  photo_url: p.photo_url,
+                  photo_type: p.photo_type,
+                  caption: p.caption,
+                  created_at: p.created_at,
+                  display_order: p.display_order ?? 0,
+                }))}
+                bucketName="quote-photos"
+                documentId={quote.id}
+                onUpload={handleUploadPhoto}
+                onDelete={handleDeletePhoto}
+                onUpdateType={handleUpdatePhotoType}
+                isUploading={uploadPhoto.isPending}
+                editable={true}
+              />
             </TabsContent>
 
             {/* Linked Docs Tab */}
             <TabsContent value="linked" className="mt-4">
               <div>
-                <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm sm:text-base">
+                <h4 className="font-medium mb-2 sm:mb-3 flex items-center gap-2 text-sm">
                   <Link2 className="w-4 h-4" /> Linked Documents
                 </h4>
                 
                 {(loadingJobs || loadingInvoices) ? (
-                  <p className="text-xs sm:text-sm text-muted-foreground">Loading linked documents...</p>
+                  <p className="text-xs text-muted-foreground">Loading linked documents...</p>
                 ) : (linkedJob || linkedInvoices.length > 0) ? (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {/* Linked Job */}
                     {linkedJob && (
                       <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
@@ -417,32 +453,11 @@ export function QuoteDetailDialog({
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs sm:text-sm text-muted-foreground p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground p-3 bg-muted/50 rounded-lg">
                     No linked jobs or invoices yet
                   </p>
                 )}
               </div>
-            </TabsContent>
-
-            {/* Photos Tab */}
-            <TabsContent value="photos" className="mt-4">
-              <DocumentPhotoGallery
-                photos={quotePhotos.map(p => ({
-                  id: p.id,
-                  photo_url: p.photo_url,
-                  photo_type: p.photo_type,
-                  caption: p.caption,
-                  created_at: p.created_at,
-                  display_order: p.display_order ?? 0,
-                }))}
-                bucketName="quote-photos"
-                documentId={quote.id}
-                onUpload={handleUploadPhoto}
-                onDelete={handleDeletePhoto}
-                onUpdateType={handleUpdatePhotoType}
-                isUploading={uploadPhoto.isPending}
-                editable={true}
-              />
             </TabsContent>
           </Tabs>
         </div>
