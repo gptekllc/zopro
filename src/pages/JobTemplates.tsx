@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2, Trash2, FileText, Edit, Plus, X, ArrowLeft, BookTemplate } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import PageContainer from '@/components/layout/PageContainer';
 
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 
@@ -147,7 +148,7 @@ const JobTemplates = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
+    <PageContainer width="narrow" className="py-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link to="/jobs">
@@ -433,7 +434,7 @@ const JobTemplates = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageContainer>
   );
 };
 
