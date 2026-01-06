@@ -38,6 +38,12 @@ import MobileFAB from '@/components/layout/MobileFAB';
 
 interface AppLayoutProps {
   children: ReactNode;
+  /**
+   * Controls the maximum width of the page content area (inside the sidebar layout).
+   * - contained: centered content with a max width
+   * - full: content spans the available width
+   */
+  contentWidth?: 'contained' | 'full';
 }
 
 import { Package, Clock } from 'lucide-react';
@@ -57,7 +63,7 @@ const navItems = [
   { icon: Shield, label: 'Super Admin', path: '/super-admin', roles: ['super_admin'] },
 ];
 
-const AppLayout = ({ children }: AppLayoutProps) => {
+const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, roles, signOut, refreshProfile } = useAuth();
@@ -271,7 +277,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
       {/* Main content */}
       <main className="lg:ml-64 pt-16 lg:pt-0 pb-20 lg:pb-0 min-h-screen">
-        <div className="w-full p-3 lg:py-4 lg:pr-4 lg:pl-2">
+        <div
+          className={cn(
+            'w-full p-3 lg:py-6 lg:px-6',
+            contentWidth === 'contained' && 'mx-auto max-w-7xl'
+          )}
+        >
           {children}
         </div>
       </main>
