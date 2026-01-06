@@ -243,12 +243,6 @@ const TimeClock = () => {
                 </Button>
               </Link>
             )}
-            <Link to="/notifications">
-              <Button variant="outline" size="sm">
-                <History className="w-4 h-4 mr-2" />
-                View History
-              </Button>
-            </Link>
           </div>
         </div>
 
