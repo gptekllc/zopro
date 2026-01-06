@@ -6,13 +6,14 @@ import { useCustomers } from "@/hooks/useCustomers";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useCompany } from "@/hooks/useCompany";
 import { useSyncInvoiceStatuses } from "@/hooks/usePayments";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, RefreshCw } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { toast } from "sonner";
 import { InlineCustomerForm } from "@/components/customers/InlineCustomerForm";
@@ -34,12 +35,20 @@ const Invoices = () => {
   const { data: customers = [] } = useCustomers();
   const { data: profiles = [] } = useProfiles();
   const { data: company } = useCompany();
+  const { isAdmin } = useAuth();
   
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
   const syncStatuses = useSyncInvoiceStatuses();
   const hasSyncedRef = useRef(false);
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
+  
+  // Handle manual sync
+  const handleManualSync = () => {
+    syncStatuses.mutate(undefined, {
+      onSuccess: () => toast.success('Invoice statuses synchronized'),
+    });
+  };
   
   // Sync invoice statuses on mount (one-time fix for stale statuses)
   useEffect(() => {
@@ -273,6 +282,17 @@ const Invoices = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={handleManualSync}
+              disabled={syncStatuses.isPending}
+              title="Sync invoice statuses"
+            >
+              <RefreshCw className={`w-4 h-4 ${syncStatuses.isPending ? 'animate-spin' : ''}`} />
+            </Button>
+          )}
           <InvoiceListControls
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
