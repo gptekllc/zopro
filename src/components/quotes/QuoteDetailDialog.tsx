@@ -141,8 +141,8 @@ export function QuoteDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[85dvh] sm:max-h-[90vh] overflow-y-auto mx-4 my-auto rounded-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[85dvh] sm:max-h-[90vh] overflow-hidden mx-4 my-auto rounded-lg p-0 flex flex-col">
+        <DialogHeader className="p-4 sm:p-6 pb-0 sm:pb-0">
           <div className="flex items-center justify-between gap-2 pr-8">
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
@@ -180,6 +180,7 @@ export function QuoteDetailDialog({
           </div>
         </DialogHeader>
 
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pt-4">
         {/* Tabs for Details, Linked Docs, Photos - at top like Job dialog */}
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -444,9 +445,11 @@ export function QuoteDetailDialog({
               />
             </TabsContent>
           </Tabs>
+        </div>
 
-          {/* Actions */}
-          <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
+        {/* Footer Actions - Fixed at bottom */}
+        <div className="border-t bg-background p-4 sm:px-6">
+          <div className="flex flex-wrap gap-2">
             <Button 
               size="sm" 
               onClick={() => onEmail?.(quote.id)} 
@@ -454,33 +457,34 @@ export function QuoteDetailDialog({
               className="flex-1 sm:flex-none"
               title={!customerEmail ? 'Customer has no email address' : undefined}
             >
-              <Send className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Send to Customer</span>
+              <Send className="w-4 h-4 mr-1" />
+              Send
             </Button>
             <Button variant="outline" size="sm" onClick={() => onDownload?.(quote.id)} className="flex-1 sm:flex-none">
-              <FileDown className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Download</span>
+              <FileDown className="w-4 h-4 mr-1" />
+              Download
             </Button>
             <Button variant="outline" size="sm" onClick={() => onEmailCustom?.(quote.id)} className="flex-1 sm:flex-none">
-              <Mail className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">Email</span>
+              <Mail className="w-4 h-4 mr-1" />
+              Email
             </Button>
             {quote.status !== 'rejected' && (
               <Button variant="outline" size="sm" onClick={() => onConvertToInvoice?.(quote.id)} className="flex-1 sm:flex-none">
-                <ArrowRight className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Convert to Invoice</span>
+                <ArrowRight className="w-4 h-4 mr-1" />
+                Invoice
               </Button>
             )}
             {quote.status !== 'rejected' && !linkedJob && (
               <Button variant="outline" size="sm" onClick={() => onCreateJob?.(quote.id)} className="flex-1 sm:flex-none">
-                <Briefcase className="w-4 h-4 sm:mr-1" />
-                <span className="hidden sm:inline">Create Job</span>
+                <Briefcase className="w-4 h-4 mr-1" />
+                Job
               </Button>
             )}
             <Button size="sm" onClick={() => onEdit?.(quote.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
               <Edit className="w-4 h-4 mr-1" /> Edit
             </Button>
           </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

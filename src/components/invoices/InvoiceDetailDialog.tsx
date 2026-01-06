@@ -391,8 +391,8 @@ export function InvoiceDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[85dvh] sm:max-h-[90vh] overflow-y-auto mx-4 my-auto rounded-lg">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[85dvh] sm:max-h-[90vh] overflow-hidden mx-4 my-auto rounded-lg p-0 flex flex-col">
+        <DialogHeader className="p-4 sm:p-6 pb-0 sm:pb-0">
           <div className="flex items-center justify-between gap-2 pr-8">
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
@@ -439,6 +439,7 @@ export function InvoiceDetailDialog({
           </div>
         </DialogHeader>
 
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pt-4">
         {/* Tabs for Details, Linked Docs, Photos - at top like Job dialog */}
         <Tabs defaultValue="details" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -971,10 +972,11 @@ export function InvoiceDetailDialog({
               />
             </TabsContent>
           </Tabs>
+        </div>
 
-          {/* Actions */}
-          <Separator />
-          <div className="grid grid-cols-3 gap-2 pt-2 justify-items-center sm:pt-4 sm:flex sm:flex-wrap sm:justify-start">
+        {/* Footer Actions - Fixed at bottom */}
+        <div className="border-t bg-background p-4 sm:px-6">
+          <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
             <Button variant="outline" size="sm" onClick={() => onDownload?.(invoice.id)} className="justify-center">
               <FileDown className="w-4 h-4 mr-1" />
               Download
@@ -1009,6 +1011,7 @@ export function InvoiceDetailDialog({
               Edit
             </Button>
           </div>
+        </div>
       </DialogContent>
 
       {/* Edit Payment Dialog */}
