@@ -933,8 +933,8 @@ export function InvoiceDetailDialog({
                           <span className="font-medium text-sm">{linkedQuote.quote_number}</span>
                           <span className="text-xs text-muted-foreground">Quote</span>
                         </div>
-                        <Badge className={quoteStatusColors[linkedQuote.status] || 'bg-muted'}>
-                          {linkedQuote.status}
+                        <Badge className={`${quoteStatusColors[linkedQuote.status] || 'bg-muted'} capitalize`}>
+                          {linkedQuote.status === 'accepted' ? 'approved' : linkedQuote.status}
                         </Badge>
                       </div>
                     )}

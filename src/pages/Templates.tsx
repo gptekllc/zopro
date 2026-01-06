@@ -233,7 +233,7 @@ export const JobTemplatesTab = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <h3 className="font-semibold text-lg">{template.name}</h3>
-                    <Badge variant="outline" className={priorityColors[template.priority]}>
+                    <Badge variant="outline" className={`${priorityColors[template.priority]} capitalize`}>
                       {template.priority}
                     </Badge>
                   </div>
