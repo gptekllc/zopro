@@ -12,7 +12,7 @@ import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
-import { format, differenceInMinutes } from 'date-fns';
+import { format, differenceInMinutes, isToday, isYesterday, startOfDay } from 'date-fns';
 import { CustomerJob } from '@/hooks/useCustomerHistory';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { JobPhotoGallery } from '@/components/jobs/JobPhotoGallery';
@@ -831,52 +831,91 @@ export function JobDetailDialog({
                     return <History className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
                 }
               };
+              // Group activities by date
+              const getDateLabel = (date: Date) => {
+                if (isToday(date)) return 'Today';
+                if (isYesterday(date)) return 'Yesterday';
+                return format(date, 'MMMM d, yyyy');
+              };
+
+              // Group activities by date
+              const groupedActivities: { label: string; items: typeof activities }[] = [];
+              let currentLabel = '';
+              
+              activities.forEach(activity => {
+                const activityDate = new Date(activity.timestamp);
+                const label = getDateLabel(activityDate);
+                
+                if (label !== currentLabel) {
+                  groupedActivities.push({ label, items: [activity] });
+                  currentLabel = label;
+                } else {
+                  groupedActivities[groupedActivities.length - 1].items.push(activity);
+                }
+              });
+
               return <div className="relative">
-                    {/* Timeline line */}
-                    <div className="absolute left-[19px] top-6 bottom-6 w-0.5 bg-border" />
-                    
-                    <div className="space-y-0">
-                      {activities.map((activity, index) => {
-                        const styles = getActivityStyles(activity.type);
-                        const isFirst = index === 0;
-                        const isLast = index === activities.length - 1;
+                    {groupedActivities.map((group, groupIndex) => (
+                      <div key={group.label} className={groupIndex > 0 ? 'mt-4' : ''}>
+                        {/* Date header */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="h-px flex-1 bg-border" />
+                          <span className="text-xs font-medium text-muted-foreground px-2 bg-background">
+                            {group.label}
+                          </span>
+                          <div className="h-px flex-1 bg-border" />
+                        </div>
                         
-                        return (
-                          <div key={activity.id} className="relative flex items-start gap-3 py-3">
-                            {/* Timeline dot */}
-                            <div className={`relative z-10 p-2 rounded-full shrink-0 ${styles.iconBg} ring-4 ring-background`}>
-                              {getActivityIcon(activity.type, styles.iconColor)}
-                            </div>
-                            
-                            {/* Content */}
-                            <div className={`flex-1 min-w-0 p-3 rounded-lg border ${styles.bg} -mt-1`}>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-medium text-sm">{activity.title}</span>
-                                {activity.extra && (
-                                  <Badge variant="outline" className="text-xs capitalize">
-                                    {activity.extra}
-                                  </Badge>
-                                )}
-                              </div>
-                              {activity.details && (
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  {activity.details}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                {activity.performer && (
-                                  <>
-                                    <span>By: {activity.performer}</span>
-                                    <span>•</span>
-                                  </>
-                                )}
-                                <span>{format(new Date(activity.timestamp), 'MMM d, yyyy h:mm a')}</span>
-                              </div>
-                            </div>
+                        {/* Timeline for this group */}
+                        <div className="relative">
+                          {/* Timeline line */}
+                          {group.items.length > 1 && (
+                            <div className="absolute left-[19px] top-6 bottom-6 w-0.5 bg-border" />
+                          )}
+                          
+                          <div className="space-y-0">
+                            {group.items.map((activity, index) => {
+                              const styles = getActivityStyles(activity.type);
+                              
+                              return (
+                                <div key={activity.id} className="relative flex items-start gap-3 py-2">
+                                  {/* Timeline dot */}
+                                  <div className={`relative z-10 p-2 rounded-full shrink-0 ${styles.iconBg} ring-4 ring-background`}>
+                                    {getActivityIcon(activity.type, styles.iconColor)}
+                                  </div>
+                                  
+                                  {/* Content */}
+                                  <div className={`flex-1 min-w-0 p-3 rounded-lg border ${styles.bg} -mt-1`}>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="font-medium text-sm">{activity.title}</span>
+                                      {activity.extra && (
+                                        <Badge variant="outline" className="text-xs capitalize">
+                                          {activity.extra}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {activity.details && (
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        {activity.details}
+                                      </p>
+                                    )}
+                                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                      {activity.performer && (
+                                        <>
+                                          <span>By: {activity.performer}</span>
+                                          <span>•</span>
+                                        </>
+                                      )}
+                                      <span>{format(new Date(activity.timestamp), 'h:mm a')}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>;
             })()}
             </TabsContent>
