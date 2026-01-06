@@ -6,7 +6,30 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { FileText, Bell, Mail, X, Plus, Loader2, ArrowLeft, CheckCircle, Send } from 'lucide-react';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { 
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { FileText, Bell, Mail, X, Plus, Loader2, ArrowLeft, CheckCircle, Send, Save, ChevronDown, Trash2, Star } from 'lucide-react';
+import { useEmailTemplates, useCreateEmailTemplate, useDeleteEmailTemplate, EmailTemplate } from '@/hooks/useEmailTemplates';
 
 type EmailActionType = 'invoice' | 'reminder';
 type Step = 'select' | 'compose' | 'preview' | 'success';
@@ -20,8 +43,8 @@ interface InvoiceEmailActionDialogProps {
   companyName?: string;
   invoiceTotal?: number;
   dueDate?: string;
-  onSendInvoice: (emails: string[], subject: string, message: string) => Promise<void>;
-  onSendReminder: (emails: string[], subject: string, message: string) => Promise<void>;
+  onSendInvoice: (emails: string[], subject: string, message: string, cc?: string[], bcc?: string[]) => Promise<void>;
+  onSendReminder: (emails: string[], subject: string, message: string, cc?: string[], bcc?: string[]) => Promise<void>;
   isSendingInvoice?: boolean;
   isSendingReminder?: boolean;
   showReminderOption?: boolean;
@@ -49,6 +72,24 @@ export function InvoiceEmailActionDialog({
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [sentEmails, setSentEmails] = useState<string[]>([]);
+  
+  // CC/BCC fields
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [ccEmails, setCcEmails] = useState<string[]>([]);
+  const [bccEmails, setBccEmails] = useState<string[]>([]);
+  const [newCcEmail, setNewCcEmail] = useState('');
+  const [newBccEmail, setNewBccEmail] = useState('');
+  
+  // Template management
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState('');
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
+  
+  const { data: templates = [] } = useEmailTemplates(actionType);
+  const createTemplate = useCreateEmailTemplate();
+  const deleteTemplate = useDeleteEmailTemplate();
 
   const getDefaultSubject = (type: EmailActionType) => {
     if (type === 'invoice') {
@@ -96,32 +137,88 @@ ${companyName}`;
       setSubject('');
       setMessage('');
       setSentEmails([]);
+      setCcEmails([]);
+      setBccEmails([]);
+      setNewCcEmail('');
+      setNewBccEmail('');
+      setShowCcBcc(false);
+      setSelectedTemplateId('');
     }
   }, [open, customerEmail]);
 
   const handleSelectAction = (type: EmailActionType) => {
     setActionType(type);
-    setSubject(getDefaultSubject(type));
-    setMessage(getDefaultMessage(type));
+    
+    // Find default template for this type
+    const defaultTemplate = templates.find(t => t.template_type === type && t.is_default);
+    if (defaultTemplate) {
+      setSubject(defaultTemplate.subject);
+      setMessage(defaultTemplate.body);
+      setSelectedTemplateId(defaultTemplate.id);
+    } else {
+      setSubject(getDefaultSubject(type));
+      setMessage(getDefaultMessage(type));
+      setSelectedTemplateId('');
+    }
+    
     setStep('compose');
   };
 
-  const handleAddEmail = () => {
-    const trimmed = newEmail.trim();
-    if (trimmed && !emails.includes(trimmed) && trimmed.includes('@')) {
-      setEmails([...emails, trimmed]);
-      setNewEmail('');
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    if (templateId === 'default') {
+      setSubject(getDefaultSubject(actionType));
+      setMessage(getDefaultMessage(actionType));
+    } else {
+      const template = templates.find(t => t.id === templateId);
+      if (template) {
+        setSubject(template.subject);
+        setMessage(template.body);
+      }
     }
   };
 
-  const handleRemoveEmail = (email: string) => {
-    setEmails(emails.filter(e => e !== email));
+  const handleSaveTemplate = async () => {
+    if (!newTemplateName.trim()) return;
+    
+    await createTemplate.mutateAsync({
+      name: newTemplateName.trim(),
+      template_type: actionType,
+      subject,
+      body: message,
+      is_default: saveAsDefault,
+    });
+    
+    setSaveTemplateDialogOpen(false);
+    setNewTemplateName('');
+    setSaveAsDefault(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleDeleteTemplate = async () => {
+    if (!deleteTemplateId) return;
+    await deleteTemplate.mutateAsync(deleteTemplateId);
+    setDeleteTemplateId(null);
+    if (selectedTemplateId === deleteTemplateId) {
+      setSelectedTemplateId('');
+    }
+  };
+
+  const addEmail = (email: string, list: string[], setList: (v: string[]) => void, setNew: (v: string) => void) => {
+    const trimmed = email.trim();
+    if (trimmed && !list.includes(trimmed) && trimmed.includes('@')) {
+      setList([...list, trimmed]);
+      setNew('');
+    }
+  };
+
+  const removeEmail = (email: string, list: string[], setList: (v: string[]) => void) => {
+    setList(list.filter(e => e !== email));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, email: string, list: string[], setList: (v: string[]) => void, setNew: (v: string) => void) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      handleAddEmail();
+      addEmail(email, list, setList, setNew);
     }
   };
 
@@ -135,9 +232,9 @@ ${companyName}`;
     
     try {
       if (actionType === 'invoice') {
-        await onSendInvoice(emails, subject, message);
+        await onSendInvoice(emails, subject, message, ccEmails.length > 0 ? ccEmails : undefined, bccEmails.length > 0 ? bccEmails : undefined);
       } else {
-        await onSendReminder(emails, subject, message);
+        await onSendReminder(emails, subject, message, ccEmails.length > 0 ? ccEmails : undefined, bccEmails.length > 0 ? bccEmails : undefined);
       }
       setSentEmails([...emails]);
       setStep('success');
@@ -152,9 +249,37 @@ ${companyName}`;
 
   const isSending = actionType === 'invoice' ? isSendingInvoice : isSendingReminder;
 
+  const EmailBadgeList = ({ 
+    emails: emailList, 
+    onRemove, 
+    placeholder 
+  }: { 
+    emails: string[]; 
+    onRemove: (email: string) => void; 
+    placeholder: string;
+  }) => (
+    <div className="flex flex-wrap gap-1.5 min-h-[28px]">
+      {emailList.map((email) => (
+        <Badge key={email} variant="secondary" className="flex items-center gap-1 text-xs">
+          {email}
+          <button
+            type="button"
+            onClick={() => onRemove(email)}
+            className="ml-0.5 hover:text-destructive"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </Badge>
+      ))}
+      {emailList.length === 0 && (
+        <span className="text-muted-foreground text-xs">{placeholder}</span>
+      )}
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {step === 'select' && 'Email Options'}
@@ -212,46 +337,155 @@ ${companyName}`;
               Back
             </Button>
 
+            {/* Template selector */}
             <div className="space-y-2">
-              <Label>Recipients</Label>
-              <div className="flex flex-wrap gap-2 min-h-[32px] p-2 border rounded-md bg-background">
-                {emails.map((email) => (
-                  <Badge key={email} variant="secondary" className="flex items-center gap-1">
-                    <Mail className="w-3 h-3" />
-                    {email}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveEmail(email)}
-                      className="ml-1 hover:text-destructive"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
-                {emails.length === 0 && (
-                  <span className="text-muted-foreground text-sm">No recipients added</span>
-                )}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Add email address"
-                  className="text-sm"
-                />
+              <div className="flex items-center justify-between">
+                <Label>Template</Label>
                 <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleAddEmail}
-                  disabled={!newEmail.trim() || !newEmail.includes('@')}
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setSaveTemplateDialogOpen(true)}
                 >
-                  <Plus className="w-4 h-4" />
+                  <Save className="w-3 h-3 mr-1" />
+                  Save as Template
                 </Button>
               </div>
+              <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a template or use default" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default Template</SelectItem>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={template.id}>
+                      <div className="flex items-center gap-2">
+                        {template.is_default && <Star className="w-3 h-3 text-yellow-500" />}
+                        {template.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedTemplateId && selectedTemplateId !== 'default' && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs text-destructive hover:text-destructive"
+                  onClick={() => setDeleteTemplateId(selectedTemplateId)}
+                >
+                  <Trash2 className="w-3 h-3 mr-1" />
+                  Delete Template
+                </Button>
+              )}
             </div>
+
+            {/* To field */}
+            <div className="space-y-2">
+              <Label>To</Label>
+              <div className="space-y-2 p-2 border rounded-md bg-background">
+                <EmailBadgeList 
+                  emails={emails} 
+                  onRemove={(e) => removeEmail(e, emails, setEmails)}
+                  placeholder="No recipients added"
+                />
+                <div className="flex gap-2">
+                  <Input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, newEmail, emails, setEmails, setNewEmail)}
+                    placeholder="Add email address"
+                    className="text-sm h-8"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addEmail(newEmail, emails, setEmails, setNewEmail)}
+                    disabled={!newEmail.trim() || !newEmail.includes('@')}
+                    className="h-8 px-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* CC/BCC collapsible */}
+            <Collapsible open={showCcBcc} onOpenChange={setShowCcBcc}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
+                  <ChevronDown className={`w-4 h-4 mr-1 transition-transform ${showCcBcc ? 'rotate-180' : ''}`} />
+                  {showCcBcc ? 'Hide' : 'Show'} CC & BCC
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-2">
+                {/* CC field */}
+                <div className="space-y-2">
+                  <Label className="text-sm">CC</Label>
+                  <div className="space-y-2 p-2 border rounded-md bg-background">
+                    <EmailBadgeList 
+                      emails={ccEmails} 
+                      onRemove={(e) => removeEmail(e, ccEmails, setCcEmails)}
+                      placeholder="No CC recipients"
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        type="email"
+                        value={newCcEmail}
+                        onChange={(e) => setNewCcEmail(e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, newCcEmail, ccEmails, setCcEmails, setNewCcEmail)}
+                        placeholder="Add CC email"
+                        className="text-sm h-8"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addEmail(newCcEmail, ccEmails, setCcEmails, setNewCcEmail)}
+                        disabled={!newCcEmail.trim() || !newCcEmail.includes('@')}
+                        className="h-8 px-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BCC field */}
+                <div className="space-y-2">
+                  <Label className="text-sm">BCC</Label>
+                  <div className="space-y-2 p-2 border rounded-md bg-background">
+                    <EmailBadgeList 
+                      emails={bccEmails} 
+                      onRemove={(e) => removeEmail(e, bccEmails, setBccEmails)}
+                      placeholder="No BCC recipients"
+                    />
+                    <div className="flex gap-2">
+                      <Input
+                        type="email"
+                        value={newBccEmail}
+                        onChange={(e) => setNewBccEmail(e.target.value)}
+                        onKeyDown={(e) => handleKeyDown(e, newBccEmail, bccEmails, setBccEmails, setNewBccEmail)}
+                        placeholder="Add BCC email"
+                        className="text-sm h-8"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addEmail(newBccEmail, bccEmails, setBccEmails, setNewBccEmail)}
+                        disabled={!newBccEmail.trim() || !newBccEmail.includes('@')}
+                        className="h-8 px-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             <div className="space-y-2">
               <Label>Subject</Label>
@@ -305,7 +539,7 @@ ${companyName}`;
               Edit
             </Button>
 
-            <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+            <div className="space-y-3 p-4 bg-muted/50 rounded-lg text-sm">
               <div>
                 <Label className="text-xs text-muted-foreground">To</Label>
                 <div className="flex flex-wrap gap-1 mt-1">
@@ -317,18 +551,50 @@ ${companyName}`;
                 </div>
               </div>
               
+              {ccEmails.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <Label className="text-xs text-muted-foreground">CC</Label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {ccEmails.map((email) => (
+                        <Badge key={email} variant="outline" className="text-xs">
+                          {email}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+              
+              {bccEmails.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <Label className="text-xs text-muted-foreground">BCC</Label>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {bccEmails.map((email) => (
+                        <Badge key={email} variant="outline" className="text-xs">
+                          {email}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+              
               <Separator />
               
               <div>
                 <Label className="text-xs text-muted-foreground">Subject</Label>
-                <p className="text-sm font-medium mt-1">{subject}</p>
+                <p className="font-medium mt-1">{subject}</p>
               </div>
               
               <Separator />
               
               <div>
                 <Label className="text-xs text-muted-foreground">Message</Label>
-                <p className="text-sm mt-1 whitespace-pre-wrap">{message}</p>
+                <p className="mt-1 whitespace-pre-wrap">{message}</p>
               </div>
               
               <Separator />
@@ -385,6 +651,13 @@ ${companyName}`;
                   </Badge>
                 ))}
               </div>
+              {(ccEmails.length > 0 || bccEmails.length > 0) && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  {ccEmails.length > 0 && `CC: ${ccEmails.length}`}
+                  {ccEmails.length > 0 && bccEmails.length > 0 && ', '}
+                  {bccEmails.length > 0 && `BCC: ${bccEmails.length}`}
+                </p>
+              )}
             </div>
             
             <Button onClick={handleClose} className="w-full">
@@ -393,6 +666,71 @@ ${companyName}`;
           </div>
         )}
       </DialogContent>
+
+      {/* Save Template Dialog */}
+      <AlertDialog open={saveTemplateDialogOpen} onOpenChange={setSaveTemplateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save as Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              Save this email as a reusable template for future {actionType === 'invoice' ? 'invoices' : 'reminders'}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Template Name</Label>
+              <Input
+                value={newTemplateName}
+                onChange={(e) => setNewTemplateName(e.target.value)}
+                placeholder="e.g., Standard Invoice Email"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="save-as-default"
+                checked={saveAsDefault}
+                onChange={(e) => setSaveAsDefault(e.target.checked)}
+                className="rounded border-input"
+              />
+              <Label htmlFor="save-as-default" className="text-sm font-normal cursor-pointer">
+                Set as default template for {actionType === 'invoice' ? 'invoices' : 'reminders'}
+              </Label>
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleSaveTemplate}
+              disabled={!newTemplateName.trim() || createTemplate.isPending}
+            >
+              {createTemplate.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Save Template
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Template Confirmation */}
+      <AlertDialog open={!!deleteTemplateId} onOpenChange={() => setDeleteTemplateId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Template</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this template? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteTemplate}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

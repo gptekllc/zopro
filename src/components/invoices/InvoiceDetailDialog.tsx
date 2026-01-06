@@ -319,13 +319,13 @@ export function InvoiceDetailDialog({
     setSplitPaymentDialogOpen(false);
   };
 
-  const handleSendInvoiceEmail = async (emails: string[], _subject: string, _message: string) => {
+  const handleSendInvoiceEmail = async (emails: string[], _subject: string, _message: string, _cc?: string[], _bcc?: string[]) => {
     if (emails.length > 0) {
       await onEmailCustom?.(invoice.id, emails);
     }
   };
 
-  const handleSendReminderEmail = async (emails: string[], _subject: string, _message: string) => {
+  const handleSendReminderEmail = async (emails: string[], _subject: string, _message: string, _cc?: string[], _bcc?: string[]) => {
     if (emails.length > 0) {
       await onSendReminder?.(invoice.id, emails);
     }
