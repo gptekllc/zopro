@@ -1851,6 +1851,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      sync_invoice_status_for_invoice: {
+        Args: { _invoice_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "technician" | "super_admin" | "manager" | "customer"
