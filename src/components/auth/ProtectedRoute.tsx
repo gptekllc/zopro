@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import AppLayout from '@/components/layout/AppLayout';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
+
 
 const ProtectedRoute = () => {
   const { user, profile, roles, isLoading, isSuperAdmin } = useAuth();
@@ -37,11 +37,7 @@ const ProtectedRoute = () => {
     return <OnboardingFlow onComplete={() => window.location.reload()} />;
   }
 
-  return (
-    <AppLayout>
-      <Outlet />
-    </AppLayout>
-  );
+  return <Outlet />;
 };
 
 export default ProtectedRoute;
