@@ -129,6 +129,9 @@ export function QuoteListCard({
       {archivedAt && (
         <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
       )}
+      <span className="text-xs font-semibold text-primary">
+        ${Number(quote.total).toFixed(2)}
+      </span>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${quoteStatusColors[quote.status] || "bg-muted"}`}>
