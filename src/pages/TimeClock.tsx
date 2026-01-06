@@ -272,7 +272,7 @@ const TimeClock = () => {
 
               {/* Time Display - Responsive sizing */}
               <div className="mb-3 flex items-baseline justify-center">
-                <span className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-mono font-bold tracking-tighter bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
+                <span className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-mono font-bold tracking-tighter bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent">
                   {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
                 <span className="text-lg sm:text-xl lg:text-2xl font-mono text-muted-foreground/60 font-medium ml-1 sm:ml-2 tabular-nums">
