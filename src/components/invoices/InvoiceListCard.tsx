@@ -46,7 +46,6 @@ type Props = {
   onDuplicate: (invoice: Invoice) => void;
   onDownload: (invoiceId: string) => void;
   onEmail: (invoiceId: string, customerId: string) => void;
-  onMarkPaid: (invoiceId: string) => void;
 
   onViewSignature: (signatureId: string) => void;
   onOpenSignatureDialog: (invoice: Invoice) => void;
@@ -84,7 +83,6 @@ export function InvoiceListCard({
   onDuplicate,
   onDownload,
   onEmail,
-  onMarkPaid,
   onViewSignature,
   onOpenSignatureDialog,
   onSendSignatureRequest,
