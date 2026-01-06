@@ -659,7 +659,7 @@ export function JobDetailDialog({
               // Create unified activity items
               type ActivityItem = {
                 id: string;
-                type: 'email' | 'signature_collected' | 'signature_cleared' | 'status_change' | 'quote_created' | 'invoice_created';
+                type: 'email' | 'signature_collected' | 'signature_cleared' | 'status_change' | 'priority_change' | 'quote_created' | 'invoice_created';
                 timestamp: string;
                 title: string;
                 details: string;
@@ -686,13 +686,17 @@ export function JobDetailDialog({
                 details: e.signer_name ? `Signer: ${e.signer_name}` : '',
                 performer: e.performer?.full_name || null
               })),
-              // Job activities (status changes, document creation)
+              // Job activities (status changes, priority changes, document creation)
               ...jobActivities.map(a => ({
                 id: `activity-${a.id}`,
-                type: a.activity_type as 'status_change' | 'quote_created' | 'invoice_created',
+                type: a.activity_type as 'status_change' | 'priority_change' | 'quote_created' | 'invoice_created',
                 timestamp: a.created_at,
-                title: a.activity_type === 'status_change' ? 'Status Changed' : a.activity_type === 'quote_created' ? 'Quote Created' : 'Invoice Created',
-                details: a.activity_type === 'status_change' ? `${(a.old_value || 'draft').replace('_', ' ')} → ${(a.new_value || '').replace('_', ' ')}` : a.new_value || '',
+                title: a.activity_type === 'status_change' ? 'Status Changed' : 
+                       a.activity_type === 'priority_change' ? 'Priority Changed' :
+                       a.activity_type === 'quote_created' ? 'Quote Created' : 'Invoice Created',
+                details: a.activity_type === 'status_change' ? `${(a.old_value || 'draft').replace('_', ' ')} → ${(a.new_value || '').replace('_', ' ')}` : 
+                         a.activity_type === 'priority_change' ? `${a.old_value || 'medium'} → ${a.new_value || ''}` :
+                         a.new_value || '',
                 performer: a.performer?.full_name || null
               }))];
 
@@ -733,6 +737,12 @@ export function JobDetailDialog({
                       iconBg: 'bg-blue-100 dark:bg-blue-900/30',
                       iconColor: 'text-blue-600 dark:text-blue-400'
                     };
+                  case 'priority_change':
+                    return {
+                      bg: 'bg-amber-50/50 dark:bg-amber-900/10',
+                      iconBg: 'bg-amber-100 dark:bg-amber-900/30',
+                      iconColor: 'text-amber-600 dark:text-amber-400'
+                    };
                   case 'quote_created':
                     return {
                       bg: 'bg-purple-50/50 dark:bg-purple-900/10',
@@ -762,6 +772,8 @@ export function JobDetailDialog({
                     return <PenTool className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
                   case 'status_change':
                     return <RefreshCw className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
+                  case 'priority_change':
+                    return <ArrowUp className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
                   case 'quote_created':
                     return <FileText className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
                   case 'invoice_created':

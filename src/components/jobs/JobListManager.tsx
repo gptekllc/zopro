@@ -10,6 +10,7 @@ import { useSignJobCompletion } from '@/hooks/useSignatures';
 import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
 import { useSendJobNotification } from '@/hooks/useSendJobNotification';
 import { useDeleteJob, useArchiveJob, useUnarchiveJob, useUpdateJob, useConvertJobToInvoice, useConvertJobToQuote, Job } from '@/hooks/useJobs';
+import { useRecordJobActivity } from '@/hooks/useJobActivities';
 import { useQuotes, Quote } from '@/hooks/useQuotes';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
 import { Card, CardContent } from '@/components/ui/card';
@@ -129,6 +130,7 @@ export function JobListManager({
   const signJobCompletion = useSignJobCompletion();
   const sendSignatureRequest = useSendSignatureRequest();
   const sendJobNotification = useSendJobNotification();
+  const recordJobActivity = useRecordJobActivity();
 
   // Undo-able delete
   const { scheduleDelete: scheduleJobDelete, filterPendingDeletes: filterPendingJobDeletes } = useUndoableDelete(
@@ -260,7 +262,16 @@ export function JobListManager({
   };
 
   const handlePriorityChange = async (jobId: string, newPriority: Job['priority']) => {
+    const job = jobs.find(j => j.id === jobId);
+    const oldPriority = job?.priority || 'medium';
     await updateJob.mutateAsync({ id: jobId, priority: newPriority });
+    // Record priority change activity
+    recordJobActivity.mutate({
+      jobId,
+      activityType: 'priority_change',
+      oldValue: oldPriority,
+      newValue: newPriority,
+    });
   };
 
   const handleDownload = (jobId: string) => {

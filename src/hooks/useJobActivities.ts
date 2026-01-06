@@ -6,7 +6,7 @@ export interface JobActivity {
   id: string;
   job_id: string;
   company_id: string;
-  activity_type: 'status_change' | 'quote_created' | 'invoice_created';
+  activity_type: 'status_change' | 'priority_change' | 'quote_created' | 'invoice_created';
   old_value: string | null;
   new_value: string | null;
   related_document_id: string | null;
@@ -36,6 +36,7 @@ export function useJobActivities(jobId: string | null) {
       return data as JobActivity[];
     },
     enabled: !!jobId,
+    staleTime: 30000, // Cache for 30 seconds to reduce refetches
   });
 }
 
@@ -52,7 +53,7 @@ export function useRecordJobActivity() {
       relatedDocumentId,
     }: {
       jobId: string;
-      activityType: 'status_change' | 'quote_created' | 'invoice_created';
+      activityType: 'status_change' | 'priority_change' | 'quote_created' | 'invoice_created';
       oldValue?: string;
       newValue?: string;
       relatedDocumentId?: string;
