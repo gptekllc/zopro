@@ -298,7 +298,6 @@ export function InvoiceListCard({
       customerEmail={customerEmail}
       total={displayTotal}
       metadataRow={metadataRow}
-      notes={invoice.notes}
       tagsRow={tagsRow}
       actionsMenu={actionsMenu}
       swipeRightActions={swipeRightActions}
