@@ -486,7 +486,7 @@ export function JobDetailDialog({
 
               <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Docs</span>
+                <span className="hidden sm:inline">Related Docs</span>
                 {(relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0) + jobInvoices.length > 0 && <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
                     {(relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0) + jobInvoices.length}
                   </Badge>}
@@ -494,7 +494,7 @@ export function JobDetailDialog({
 
               <TabsTrigger value="feedback" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Comments</span>
+                <span className="hidden sm:inline">Feedbacks</span>
                 {feedbacks.length > 0 && <Badge variant="secondary" className="ml-0.5 text-xs">
                     {feedbacks.length}
                   </Badge>}
@@ -839,11 +839,11 @@ export function JobDetailDialog({
             </Button>
             <Button variant="outline" size="sm" onClick={handleCreateUpsellQuote} disabled={convertJobToQuote.isPending} className="flex-1 sm:flex-none">
               <FileText className="w-4 h-4 mr-1" />
-              Create Quote
+              Quote
             </Button>
             <Button variant="outline" size="sm" onClick={handleCreateInvoice} disabled={convertJobToInvoice.isPending} className="flex-1 sm:flex-none">
               <Receipt className="w-4 h-4 mr-1" />
-              Convert to Invoice
+              Invoice
             </Button>
             {/* On My Way with ETA dropdown */}
             {['scheduled', 'in_progress'].includes(job.status) && <DropdownMenu>
