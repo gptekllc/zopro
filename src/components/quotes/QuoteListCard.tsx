@@ -295,7 +295,6 @@ export function QuoteListCard({
       customerEmail={customerEmail}
       total={Number(quote.total)}
       metadataRow={metadataRow}
-      notes={quote.notes}
       tagsRow={tagsRow}
       actionsMenu={actionsMenu}
       swipeRightActions={swipeRightActions}
