@@ -486,13 +486,13 @@ export function QuoteDetailDialog({
             {quote.status !== 'rejected' && (
               <Button variant="outline" size="sm" onClick={() => onConvertToInvoice?.(quote.id)} className="flex-1 sm:flex-none">
                 <ArrowRight className="w-4 h-4 mr-1" />
-                Invoice
+                Convert to Invoice
               </Button>
             )}
             {quote.status !== 'rejected' && !linkedJob && (
               <Button variant="outline" size="sm" onClick={() => onCreateJob?.(quote.id)} className="flex-1 sm:flex-none">
                 <Briefcase className="w-4 h-4 mr-1" />
-                Job
+                Create Job
               </Button>
             )}
             <Button size="sm" onClick={() => onEdit?.(quote.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">

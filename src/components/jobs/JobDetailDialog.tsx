@@ -856,11 +856,11 @@ export function JobDetailDialog({
             </Button>
             <Button variant="outline" size="sm" onClick={handleCreateUpsellQuote} disabled={convertJobToQuote.isPending} className="flex-1 sm:flex-none">
               <FileText className="w-4 h-4 mr-1" />
-              Quote
+              Create Quote
             </Button>
             <Button variant="outline" size="sm" onClick={handleCreateInvoice} disabled={convertJobToInvoice.isPending} className="flex-1 sm:flex-none">
               <Receipt className="w-4 h-4 mr-1" />
-              Invoice
+              Convert to Invoice
             </Button>
             {/* On My Way with ETA dropdown */}
             {['scheduled', 'in_progress'].includes(job.status) && <DropdownMenu>
