@@ -3,7 +3,7 @@ import TimesheetReportTab from '@/components/reports/TimesheetReportTab';
 
 const TimesheetReport = () => {
   return (
-    <AppLayout>
+    <AppLayout contentWidth="full">
       <div className="space-y-6 max-w-full">
         <div>
           <h1 className="text-2xl font-bold">Weekly Timesheet</h1>
