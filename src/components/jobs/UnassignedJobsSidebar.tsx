@@ -153,7 +153,7 @@ export default function UnassignedJobsSidebar({ jobs, onJobClick }: UnassignedJo
 
                     {/* Meta info */}
                     <div className="flex items-center gap-3 mt-2 flex-wrap">
-                      <Badge variant="outline" className={`text-xs ${getPriorityColor(job.priority)}`}>
+                      <Badge variant="outline" className={`text-xs capitalize ${getPriorityColor(job.priority)}`}>
                         {job.priority}
                       </Badge>
                       

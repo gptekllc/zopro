@@ -142,7 +142,7 @@ export function JobListCard({
       )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Badge className={`${getPriorityColor(job.priority)} text-xs cursor-pointer hover:opacity-80 transition-opacity`} variant="outline">
+          <Badge className={`${getPriorityColor(job.priority)} text-xs cursor-pointer hover:opacity-80 transition-opacity capitalize`} variant="outline">
             {job.priority}
             <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
           </Badge>
@@ -155,7 +155,7 @@ export function JobListCard({
               disabled={job.priority === priority}
               className={job.priority === priority ? 'bg-accent' : ''}
             >
-              <Badge className={`${getPriorityColor(priority)} mr-2`} variant="outline">
+              <Badge className={`${getPriorityColor(priority)} mr-2 capitalize`} variant="outline">
                 {priority}
               </Badge>
               {job.priority === priority && <CheckCircle2 className="w-4 h-4 ml-auto" />}
