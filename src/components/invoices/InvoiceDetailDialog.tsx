@@ -959,12 +959,6 @@ export function InvoiceDetailDialog({
           {/* Actions */}
           <Separator />
           <div className="flex flex-wrap gap-2 pt-2 sm:pt-4">
-            {onDuplicate && (
-              <Button variant="outline" size="sm" onClick={() => onDuplicate(invoice.id)}>
-                <Copy className="w-4 h-4 mr-1" />
-                Duplicate
-              </Button>
-            )}
             <Button variant="outline" size="sm" onClick={() => onDownload?.(invoice.id)}>
               <FileDown className="w-4 h-4 mr-1" />
               Download
@@ -985,24 +979,14 @@ export function InvoiceDetailDialog({
               </Button>
             )}
             {invoice.status !== 'paid' && remainingBalance > 0 && (
-              <>
-                <Button 
-                  size="sm" 
-                  onClick={() => setRecordPaymentDialogOpen(true)}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <DollarSign className="w-4 h-4 mr-1" />
-                  Payment
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => setSplitPaymentDialogOpen(true)}
-                >
-                  <CreditCard className="w-4 h-4 mr-1" />
-                  Split
-                </Button>
-              </>
+              <Button 
+                size="sm" 
+                onClick={() => setRecordPaymentDialogOpen(true)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <DollarSign className="w-4 h-4 mr-1" />
+                Payment
+              </Button>
             )}
             {invoice.status !== 'paid' && invoice.status !== 'voided' && (
               <Button 
