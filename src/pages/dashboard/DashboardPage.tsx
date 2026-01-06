@@ -274,7 +274,7 @@ export default function DashboardPage() {
                     <div className="text-right">
                       <p className="font-medium">${Number(invoice.total).toLocaleString()}</p>
                       <span
-                        className={`text-xs px-2 py-0.5 rounded-full ${
+                        className={`text-xs px-2 py-0.5 rounded-full capitalize ${
                           invoice.status === "paid"
                             ? "bg-success/10 text-success"
                             : invoice.status === "overdue"
@@ -282,7 +282,7 @@ export default function DashboardPage() {
                               : "bg-muted text-muted-foreground"
                         }`}
                       >
-                        {invoice.status}
+                        {invoice.status.replace('_', ' ')}
                       </span>
                     </div>
                   </div>

@@ -151,7 +151,7 @@ export function QuoteDetailDialog({
             {onStatusChange ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Badge className={`${statusColors[quote.status] || 'bg-muted'} shrink-0 text-xs cursor-pointer hover:opacity-80 transition-opacity`}>
+                  <Badge className={`${statusColors[quote.status] || 'bg-muted'} shrink-0 text-xs cursor-pointer hover:opacity-80 transition-opacity capitalize`}>
                     {quote.status === 'accepted' ? 'approved' : quote.status}
                     <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
                   </Badge>
@@ -164,7 +164,7 @@ export function QuoteDetailDialog({
                       disabled={quote.status === status}
                       className={quote.status === status ? 'bg-accent' : ''}
                     >
-                      <Badge className={`${statusColors[status] || 'bg-muted'} mr-2`} variant="outline">
+                      <Badge className={`${statusColors[status] || 'bg-muted'} mr-2 capitalize`} variant="outline">
                         {status === 'accepted' ? 'approved' : status}
                       </Badge>
                       {quote.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
@@ -173,7 +173,7 @@ export function QuoteDetailDialog({
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Badge className={`${statusColors[quote.status] || 'bg-muted'} shrink-0 text-xs`}>
+              <Badge className={`${statusColors[quote.status] || 'bg-muted'} shrink-0 text-xs capitalize`}>
                 {quote.status === 'accepted' ? 'approved' : quote.status}
               </Badge>
             )}
@@ -445,8 +445,8 @@ export function QuoteDetailDialog({
                           <span className="font-medium text-sm">
                             {formatAmount(invoice.total)}
                           </span>
-                          <Badge className={`text-xs ${invoiceStatusColors[invoice.status] || 'bg-muted'}`}>
-                            {invoice.status}
+                          <Badge className={`text-xs capitalize ${invoiceStatusColors[invoice.status] || 'bg-muted'}`}>
+                            {invoice.status.replace('_', ' ')}
                           </Badge>
                         </div>
                       </div>

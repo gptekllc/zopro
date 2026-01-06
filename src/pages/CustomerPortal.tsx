@@ -1420,7 +1420,7 @@ const CustomerPortal = () => {
                         Please review and sign this document
                       </CardDescription>
                     </div>
-                    <Badge variant="secondary">{signingDocument.document.status}</Badge>
+                    <Badge variant="secondary" className="capitalize">{signingDocument.document.status}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
