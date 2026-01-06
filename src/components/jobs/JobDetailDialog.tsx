@@ -503,8 +503,8 @@ export function JobDetailDialog({
               <TabsTrigger value="activities" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <History className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Activities</span>
-                {notifications.length + signatureHistory.length + jobActivities.length > 0 && <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {notifications.length + signatureHistory.length + jobActivities.length}
+                {notifications.length + signatureHistory.length + jobActivities.length + jobTimeEntries.length > 0 && <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {notifications.length + signatureHistory.length + jobActivities.length + jobTimeEntries.length}
                   </Badge>}
               </TabsTrigger>
             </TabsList>
@@ -659,7 +659,7 @@ export function JobDetailDialog({
               // Create unified activity items
               type ActivityItem = {
                 id: string;
-                type: 'email' | 'signature_collected' | 'signature_cleared' | 'status_change' | 'priority_change' | 'quote_created' | 'invoice_created';
+                type: 'email' | 'signature_collected' | 'signature_cleared' | 'status_change' | 'priority_change' | 'quote_created' | 'invoice_created' | 'clock_in' | 'clock_out';
                 timestamp: string;
                 title: string;
                 details: string;
@@ -698,8 +698,35 @@ export function JobDetailDialog({
                          a.activity_type === 'priority_change' ? `${a.old_value || 'medium'} → ${a.new_value || ''}` :
                          a.new_value || '',
                 performer: a.performer?.full_name || null
-              }))];
-
+              })),
+              // Time clock entries
+              ...jobTimeEntries.flatMap(te => {
+                const entries: ActivityItem[] = [];
+                // Clock in entry
+                entries.push({
+                  id: `clock-in-${te.id}`,
+                  type: 'clock_in' as const,
+                  timestamp: te.clock_in,
+                  title: 'Clocked In',
+                  details: te.notes || '',
+                  performer: te.user?.full_name || null
+                });
+                // Clock out entry (if exists)
+                if (te.clock_out) {
+                  const durationMins = differenceInMinutes(new Date(te.clock_out), new Date(te.clock_in)) - (te.break_minutes || 0);
+                  const hours = Math.floor(durationMins / 60);
+                  const mins = durationMins % 60;
+                  entries.push({
+                    id: `clock-out-${te.id}`,
+                    type: 'clock_out' as const,
+                    timestamp: te.clock_out,
+                    title: 'Clocked Out',
+                    details: `Duration: ${hours}h ${mins}m${te.break_minutes ? ` (${te.break_minutes}m break)` : ''}`,
+                    performer: te.user?.full_name || null
+                  });
+                }
+                return entries;
+              })];
               // Sort by timestamp descending
               activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
               if (activities.length === 0) {
@@ -755,6 +782,18 @@ export function JobDetailDialog({
                       iconBg: 'bg-orange-100 dark:bg-orange-900/30',
                       iconColor: 'text-orange-600 dark:text-orange-400'
                     };
+                  case 'clock_in':
+                    return {
+                      bg: 'bg-emerald-50/50 dark:bg-emerald-900/10',
+                      iconBg: 'bg-emerald-100 dark:bg-emerald-900/30',
+                      iconColor: 'text-emerald-600 dark:text-emerald-400'
+                    };
+                  case 'clock_out':
+                    return {
+                      bg: 'bg-slate-50/50 dark:bg-slate-900/10',
+                      iconBg: 'bg-slate-100 dark:bg-slate-900/30',
+                      iconColor: 'text-slate-600 dark:text-slate-400'
+                    };
                   default:
                     return {
                       bg: 'bg-muted/50',
@@ -778,6 +817,9 @@ export function JobDetailDialog({
                     return <FileText className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
                   case 'invoice_created':
                     return <Receipt className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
+                  case 'clock_in':
+                  case 'clock_out':
+                    return <Clock className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
                   default:
                     return <History className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
                 }

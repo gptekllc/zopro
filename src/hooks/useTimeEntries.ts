@@ -84,6 +84,7 @@ export function useJobTimeEntries(jobId: string | null) {
       return data as TimeEntry[];
     },
     enabled: !!jobId,
+    staleTime: 30000, // Cache for 30 seconds to reduce refetches
   });
 }
 
