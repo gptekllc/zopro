@@ -503,9 +503,16 @@ export function JobDetailDialog({
               <TabsTrigger value="activities" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <History className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Activities</span>
-                {notifications.length + signatureHistory.length + jobActivities.length + jobTimeEntries.length > 0 && <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {notifications.length + signatureHistory.length + jobActivities.length + jobTimeEntries.length}
-                  </Badge>}
+                {(() => {
+                  // Count time entries: each entry has clock_in, and optionally clock_out
+                  const timeEntryCount = jobTimeEntries.reduce((acc, te) => acc + 1 + (te.clock_out ? 1 : 0), 0);
+                  const totalCount = notifications.length + signatureHistory.length + jobActivities.length + timeEntryCount;
+                  return totalCount > 0 ? (
+                    <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                      {totalCount}
+                    </Badge>
+                  ) : null;
+                })()}
               </TabsTrigger>
             </TabsList>
 
@@ -824,32 +831,52 @@ export function JobDetailDialog({
                     return <History className={`w-3 h-3 sm:w-4 sm:h-4 ${colorClass}`} />;
                 }
               };
-              return <div className="space-y-2">
-                    {activities.map(activity => {
-                  const styles = getActivityStyles(activity.type);
-                  return <div key={activity.id} className={`flex items-start gap-3 p-3 rounded-lg border ${styles.bg}`}>
-                          <div className={`p-2 rounded-full shrink-0 ${styles.iconBg}`}>
-                            {getActivityIcon(activity.type, styles.iconColor)}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-sm">{activity.title}</span>
-                              {activity.extra && <Badge variant="outline" className="text-xs capitalize">
-                                  {activity.extra}
-                                </Badge>}
+              return <div className="relative">
+                    {/* Timeline line */}
+                    <div className="absolute left-[19px] top-6 bottom-6 w-0.5 bg-border" />
+                    
+                    <div className="space-y-0">
+                      {activities.map((activity, index) => {
+                        const styles = getActivityStyles(activity.type);
+                        const isFirst = index === 0;
+                        const isLast = index === activities.length - 1;
+                        
+                        return (
+                          <div key={activity.id} className="relative flex items-start gap-3 py-3">
+                            {/* Timeline dot */}
+                            <div className={`relative z-10 p-2 rounded-full shrink-0 ${styles.iconBg} ring-4 ring-background`}>
+                              {getActivityIcon(activity.type, styles.iconColor)}
                             </div>
-                            {activity.details && <p className="text-xs text-muted-foreground truncate">
-                                {activity.details}
-                              </p>}
-                            {activity.performer && <p className="text-xs text-muted-foreground">
-                                By: {activity.performer}
-                              </p>}
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(activity.timestamp), 'MMM d, yyyy h:mm a')}
-                            </p>
+                            
+                            {/* Content */}
+                            <div className={`flex-1 min-w-0 p-3 rounded-lg border ${styles.bg} -mt-1`}>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-sm">{activity.title}</span>
+                                {activity.extra && (
+                                  <Badge variant="outline" className="text-xs capitalize">
+                                    {activity.extra}
+                                  </Badge>
+                                )}
+                              </div>
+                              {activity.details && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {activity.details}
+                                </p>
+                              )}
+                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                {activity.performer && (
+                                  <>
+                                    <span>By: {activity.performer}</span>
+                                    <span>•</span>
+                                  </>
+                                )}
+                                <span>{format(new Date(activity.timestamp), 'MMM d, yyyy h:mm a')}</span>
+                              </div>
+                            </div>
                           </div>
-                        </div>;
-                })}
+                        );
+                      })}
+                    </div>
                   </div>;
             })()}
             </TabsContent>
