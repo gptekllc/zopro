@@ -352,15 +352,25 @@ export function InvoiceListManager({
     });
   };
 
-  const handleSendPaymentReminder = async (invoice: Invoice) => {
+  const handleSendPaymentReminder = async (invoice: Invoice, recipientEmails?: string[]) => {
     try {
-      await sendPaymentReminder.mutateAsync(invoice.id);
+      await sendPaymentReminder.mutateAsync({ invoiceId: invoice.id, recipientEmails });
       if (viewingInvoice?.id === invoice.id && invoice.status === 'draft') {
         setViewingInvoice({ ...viewingInvoice, status: 'sent' } as any);
       }
     } catch {
       // Error handled by mutation
     }
+  };
+
+  const handleEmailInvoice = async (invoiceId: string, recipientEmails?: string[]) => {
+    if (!recipientEmails || recipientEmails.length === 0) return;
+    await emailDocument.mutateAsync({ 
+      type: 'invoice', 
+      documentId: invoiceId, 
+      recipientEmail: recipientEmails[0],
+      recipientEmails 
+    });
   };
 
   const handleDuplicateInvoice = (invoice: Invoice) => {
@@ -551,8 +561,9 @@ export function InvoiceListManager({
           onSendSignatureRequest={() => handleSendSignatureRequest(viewingInvoice)}
           onApplyLateFee={() => handleApplyLateFee(viewingInvoice.id)}
           isApplyingLateFee={applyLateFee.isPending}
-          onSendReminder={() => handleSendPaymentReminder(viewingInvoice)}
+          onSendReminder={(id, emails) => handleSendPaymentReminder(viewingInvoice, emails)}
           isSendingReminder={sendPaymentReminder.isPending}
+          onEmailCustom={(id, emails) => handleEmailInvoice(id, emails)}
           isSendingEmail={emailDocument.isPending}
           reminders={invoiceReminders}
         />
