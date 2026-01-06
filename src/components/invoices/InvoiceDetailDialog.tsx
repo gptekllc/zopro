@@ -319,13 +319,13 @@ export function InvoiceDetailDialog({
     setSplitPaymentDialogOpen(false);
   };
 
-  const handleSendInvoiceEmail = async (emails: string[]) => {
+  const handleSendInvoiceEmail = async (emails: string[], _subject: string, _message: string) => {
     if (emails.length > 0) {
       await onEmailCustom?.(invoice.id, emails);
     }
   };
 
-  const handleSendReminderEmail = async (emails: string[]) => {
+  const handleSendReminderEmail = async (emails: string[], _subject: string, _message: string) => {
     if (emails.length > 0) {
       await onSendReminder?.(invoice.id, emails);
     }
@@ -391,7 +391,7 @@ export function InvoiceDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl max-h-[85dvh] sm:max-h-[90vh] overflow-y-auto mx-4 my-auto rounded-lg">
         <DialogHeader>
           <div className="flex items-center justify-between gap-2 pr-8">
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -1080,7 +1080,10 @@ export function InvoiceDetailDialog({
         open={emailActionDialogOpen}
         onOpenChange={setEmailActionDialogOpen}
         invoiceNumber={invoice.invoice_number}
+        customerName={customerName}
         customerEmail={customerEmail}
+        invoiceTotal={totalDue}
+        dueDate={invoice.due_date || undefined}
         onSendInvoice={handleSendInvoiceEmail}
         onSendReminder={handleSendReminderEmail}
         isSendingInvoice={isSendingEmail}
