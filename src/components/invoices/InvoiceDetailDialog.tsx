@@ -184,6 +184,17 @@ export function InvoiceDetailDialog({
   const hasLateFee = invoice.late_fee_amount && Number(invoice.late_fee_amount) > 0;
   const canApplyLateFee = isOverdue && !hasLateFee && lateFeePercentage > 0;
   const linkedDocsCount = (linkedQuote ? 1 : 0) + (linkedJob ? 1 : 0);
+  const isVoided = invoice.status === 'voided';
+  
+  // Parse void reason from notes if voided
+  const voidInfo = (() => {
+    if (!isVoided || !invoice.notes) return null;
+    const match = invoice.notes.match(/\[VOIDED ([^\]]+)\] (.+?)(?:\n|$)/);
+    if (match) {
+      return { date: match[1], reason: match[2] };
+    }
+    return null;
+  })();
   
   // Calculate payment totals - only count completed payments
   const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
@@ -492,6 +503,28 @@ export function InvoiceDetailDialog({
                 </div>
               )}
             </div>
+
+            {/* Voided Info Banner */}
+            {isVoided && (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 sm:p-4">
+                <div className="flex items-start gap-2">
+                  <Ban className="w-4 h-4 sm:w-5 sm:h-5 text-destructive shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-medium text-destructive text-sm sm:text-base">This invoice has been voided</p>
+                    {voidInfo && (
+                      <>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          <span className="font-medium">Date:</span> {voidInfo.date}
+                        </p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">
+                          <span className="font-medium">Reason:</span> {voidInfo.reason}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <Separator />
 

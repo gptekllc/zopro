@@ -97,6 +97,7 @@ export function InvoiceListCard({
 }: Props) {
   const signatureId = (invoice as any).signature_id as string | undefined;
   const archivedAt = (invoice as any).archived_at as string | undefined;
+  const isVoided = invoice.status === 'voided';
 
   const total = typeof invoice.total === "string" ? Number(invoice.total) : invoice.total ?? 0;
   const lateFee = invoice.late_fee_amount && invoice.late_fee_amount > 0 ? Number(invoice.late_fee_amount) : 0;
@@ -108,7 +109,8 @@ export function InvoiceListCard({
   const hasPartialPayment = totalPaid > 0 && totalPaid < totalDue;
   
   // Show remaining balance if partially paid, otherwise show total
-  const displayTotal = hasPartialPayment ? remainingBalance : totalDue;
+  // For voided invoices, show 0
+  const displayTotal = isVoided ? 0 : (hasPartialPayment ? remainingBalance : totalDue);
 
   const customerName = invoice.customer?.name || "Unknown";
   const customerEmail = invoice.customer?.email || null;
@@ -302,6 +304,7 @@ export function InvoiceListCard({
     <DocumentListCard
       onClick={() => onOpen(invoice)}
       isArchived={!!archivedAt}
+      isVoided={isVoided}
       documentNumber={invoice.invoice_number}
       customerName={customerName}
       customerEmail={customerEmail}

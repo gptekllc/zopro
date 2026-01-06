@@ -5,6 +5,7 @@ import { ReactNode } from "react";
 interface DocumentListCardProps {
   onClick?: () => void;
   isArchived?: boolean;
+  isVoided?: boolean;
   // Row 1: Document info on the left, total + optional actions on the right
   documentNumber: string;
   title?: string;
@@ -31,6 +32,7 @@ interface DocumentListCardProps {
 export function DocumentListCard({
   onClick,
   isArchived = false,
+  isVoided = false,
   documentNumber,
   title,
   customerName,
@@ -50,7 +52,7 @@ export function DocumentListCard({
 
   const cardContent = (
     <Card
-      className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${isArchived ? 'opacity-60 border-dashed' : ''}`}
+      className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${isArchived ? 'opacity-60 border-dashed' : ''} ${isVoided ? 'opacity-70' : ''}`}
       onClick={onClick}
     >
       <CardContent className="p-4 sm:p-5">
@@ -60,16 +62,16 @@ export function DocumentListCard({
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm">{documentNumber}</span>
+                <span className={`font-semibold text-sm ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{documentNumber}</span>
                 {title && (
                   <>
                     <span className="text-muted-foreground">•</span>
-                    <span className="font-medium text-sm truncate">{title}</span>
+                    <span className={`font-medium text-sm truncate ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{title}</span>
                   </>
                 )}
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                <span className="truncate">{customerName}</span>
+                <span className={`truncate ${isVoided ? 'line-through' : ''}`}>{customerName}</span>
                 {customerEmail && (
                   <>
                     <span>•</span>
@@ -78,9 +80,14 @@ export function DocumentListCard({
                 )}
               </div>
             </div>
-            {total !== undefined && total > 0 && (
+            {total !== undefined && total > 0 && !isVoided && (
               <span className="text-sm font-semibold text-primary shrink-0">
                 ${total.toFixed(2)}
+              </span>
+            )}
+            {isVoided && (
+              <span className="text-sm font-medium text-muted-foreground line-through shrink-0">
+                Voided
               </span>
             )}
           </div>
@@ -119,16 +126,16 @@ export function DocumentListCard({
               {icon}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="font-semibold">{documentNumber}</h3>
+                  <h3 className={`font-semibold ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{documentNumber}</h3>
                   {title && (
                     <>
                       <span className="text-muted-foreground">•</span>
-                      <span className="font-medium truncate">{title}</span>
+                      <span className={`font-medium truncate ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{title}</span>
                     </>
                   )}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
-                  <span className="truncate">{customerName}</span>
+                  <span className={`truncate ${isVoided ? 'line-through' : ''}`}>{customerName}</span>
                   {customerEmail && (
                     <>
                       <span>•</span>
@@ -141,9 +148,14 @@ export function DocumentListCard({
 
             {/* Right: Total + Actions */}
             <div className="flex items-center gap-2 shrink-0">
-              {total !== undefined && total > 0 && (
+              {total !== undefined && total > 0 && !isVoided && (
                 <span className="text-base font-semibold text-primary">
                   ${total.toFixed(2)}
+                </span>
+              )}
+              {isVoided && (
+                <span className="text-base font-medium text-muted-foreground line-through">
+                  Voided
                 </span>
               )}
               {actionsMenu && (
