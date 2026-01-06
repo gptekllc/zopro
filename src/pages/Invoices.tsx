@@ -21,6 +21,7 @@ import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/compon
 import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
 import { InvoiceListManager } from "@/components/invoices/InvoiceListManager";
 import { InvoiceListControls } from "@/components/invoices/InvoiceListControls";
+import PageContainer from '@/components/layout/PageContainer';
 
 const Invoices = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -273,7 +274,7 @@ const Invoices = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
@@ -428,7 +429,7 @@ const Invoices = () => {
           isLoading={isLoading}
         />
       </div>
-    </div>
+    </PageContainer>
   );
 };
 

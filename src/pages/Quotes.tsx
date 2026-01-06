@@ -22,6 +22,7 @@ import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/compon
 import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEditor';
 import { QuoteListManager } from '@/components/quotes/QuoteListManager';
 import { QuoteListControls } from '@/components/quotes/QuoteListControls';
+import PageContainer from '@/components/layout/PageContainer';
 
 const Quotes = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -299,7 +300,7 @@ const Quotes = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
@@ -467,7 +468,7 @@ const Quotes = () => {
         onOpenChange={setSelectTemplateDialogOpen}
         onSelect={handleSelectTemplate}
       />
-    </div>
+    </PageContainer>
   );
 };
 

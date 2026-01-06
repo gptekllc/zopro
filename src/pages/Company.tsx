@@ -18,6 +18,7 @@ import SocialLinksManager from '@/components/company/SocialLinksManager';
 import { TIMEZONES } from '@/lib/timezones';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import PageContainer from '@/components/layout/PageContainer';
 
 // Import template components
 import { JobTemplatesTab, QuoteTemplatesTab } from '@/pages/Templates';
@@ -263,7 +264,7 @@ const Company = () => {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageContainer className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">Company Settings</h1>
         <p className="text-muted-foreground mt-1">Manage your company details and preferences</p>
@@ -1190,7 +1191,7 @@ const Company = () => {
           </TabsContent>
         )}
       </Tabs>
-    </div>
+    </PageContainer>
   );
 };
 

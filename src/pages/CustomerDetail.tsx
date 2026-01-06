@@ -32,6 +32,7 @@ import { JobListManager } from '@/components/jobs/JobListManager';
 import { Invoice } from '@/hooks/useInvoices';
 import { Quote } from '@/hooks/useQuotes';
 import { Job } from '@/hooks/useJobs';
+import PageContainer from '@/components/layout/PageContainer';
 
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -187,7 +188,7 @@ const CustomerDetail = () => {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 animate-fade-in">
+    <PageContainer className="space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">

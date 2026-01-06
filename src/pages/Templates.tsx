@@ -35,6 +35,7 @@ import { Loader2, Trash2, FileText, Edit, Plus, X, Briefcase, BookTemplate, Mail
 import { useJobTemplates, useDeleteJobTemplate, useUpdateJobTemplate, JobTemplate } from '@/hooks/useJobTemplates';
 import { useQuoteTemplates, useDeleteQuoteTemplate, useUpdateQuoteTemplate, QuoteTemplate } from '@/hooks/useQuoteTemplates';
 import { EmailTemplatesTab } from '@/components/templates/EmailTemplatesTab';
+import PageContainer from '@/components/layout/PageContainer';
 
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 
@@ -63,7 +64,7 @@ const Templates = () => {
   const [activeTab, setActiveTab] = useState('jobs');
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
+    <PageContainer width="narrow" className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         {/* Header with tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -103,7 +104,7 @@ const Templates = () => {
           <EmailTemplatesTab />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 };
 

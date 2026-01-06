@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { User, Mail, Phone, Building2, DollarSign, Loader2, Save, Camera, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { compressImageToFile } from '@/lib/imageCompression';
+import PageContainer from '@/components/layout/PageContainer';
 
 const Profile = () => {
   const { user, profile, roles, isLoading: authLoading, refreshProfile } = useAuth();
@@ -175,7 +176,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in max-w-2xl mx-auto">
+    <PageContainer width="narrow" className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Profile</h1>
         <p className="text-muted-foreground mt-1">Manage your account settings</p>
@@ -384,7 +385,7 @@ const Profile = () => {
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageContainer>
   );
 };
 

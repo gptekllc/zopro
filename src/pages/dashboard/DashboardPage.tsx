@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { useDashboardAccess } from "./useDashboardAccess";
 import { SchedulerWidget } from "@/components/dashboard/SchedulerWidget";
+import PageContainer from "@/components/layout/PageContainer";
 
 export default function DashboardPage() {
   const { profile, user, isLoading: authLoading } = useAuth();
@@ -151,7 +152,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6 lg:space-y-8 animate-fade-in">
+    <PageContainer>
       <header>
         <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground mt-1 text-sm sm:text-base">
@@ -387,6 +388,6 @@ export default function DashboardPage() {
           )}
         </div>
       </section>
-    </div>
+    </PageContainer>
   );
 }

@@ -4,13 +4,14 @@ import { ItemsManager } from '@/components/items/ItemsManager';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import PageContainer from '@/components/layout/PageContainer';
 
 const Items = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
+    <PageContainer width="narrow" className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -54,7 +55,7 @@ const Items = () => {
       </div>
 
       <ItemsManager searchQuery={searchQuery} statusFilter={statusFilter} />
-    </div>
+    </PageContainer>
   );
 };
 

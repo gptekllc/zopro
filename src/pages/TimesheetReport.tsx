@@ -1,9 +1,10 @@
 import TimesheetReportTab from '@/components/reports/TimesheetReportTab';
 import { Link } from 'react-router-dom';
+import PageContainer from '@/components/layout/PageContainer';
 
 const TimesheetReport = () => {
   return (
-    <div className="space-y-6 max-w-full">
+    <PageContainer width="full" className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Weekly Timesheet</h1>
         <p className="text-muted-foreground text-sm">
@@ -13,7 +14,7 @@ const TimesheetReport = () => {
       <div className="w-full overflow-x-auto">
         <TimesheetReportTab />
       </div>
-    </div>
+    </PageContainer>
   );
 };
 
