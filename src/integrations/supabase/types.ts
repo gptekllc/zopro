@@ -1675,6 +1675,74 @@ export type Database = {
           },
         ]
       }
+      signature_history: {
+        Row: {
+          company_id: string
+          created_at: string
+          customer_id: string | null
+          document_id: string
+          document_type: string
+          event_type: string
+          id: string
+          performed_by: string | null
+          signature_id: string | null
+          signer_name: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          customer_id?: string | null
+          document_id: string
+          document_type: string
+          event_type: string
+          id?: string
+          performed_by?: string | null
+          signature_id?: string | null
+          signer_name?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          customer_id?: string | null
+          document_id?: string
+          document_type?: string
+          event_type?: string
+          id?: string
+          performed_by?: string | null
+          signature_id?: string | null
+          signer_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "signature_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signature_history_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signature_history_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "signature_history_signature_id_fkey"
+            columns: ["signature_id"]
+            isOneToOne: false
+            referencedRelation: "signatures"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       signatures: {
         Row: {
           company_id: string
