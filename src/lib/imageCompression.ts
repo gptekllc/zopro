@@ -1,19 +1,35 @@
 /**
  * Image compression utility
  * Compresses images to a target file size while maintaining quality
+ * Supports HEIF/HEIC conversion
  */
 
 const MAX_DIMENSION = 2000;
 const DEFAULT_TARGET_SIZE_KB = 300;
 
+// HEIF/HEIC mime types
+const HEIF_TYPES = ['image/heif', 'image/heic', 'image/heif-sequence', 'image/heic-sequence'];
+
+/**
+ * Check if a file is a HEIF/HEIC image
+ */
+function isHeifImage(file: File): boolean {
+  const extension = file.name.toLowerCase().split('.').pop();
+  return HEIF_TYPES.includes(file.type) || extension === 'heic' || extension === 'heif';
+}
+
 /**
  * Load an image file into an HTMLImageElement
+ * For HEIF/HEIC files, uses the browser's built-in conversion if supported
  */
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    img.onerror = reject;
+    img.onerror = () => {
+      // If loading fails (e.g., HEIF not supported), reject with helpful message
+      reject(new Error('Failed to load image. HEIF/HEIC files may not be supported on this browser.'));
+    };
     img.src = URL.createObjectURL(file);
   });
 }
@@ -81,15 +97,18 @@ async function compressWithQuality(
 /**
  * Compress an image file to approximately the target size in KB
  * Uses binary search to find the optimal quality setting
+ * Automatically converts HEIF/HEIC to JPEG
  */
 export async function compressImage(
   file: File,
   targetSizeKB: number = DEFAULT_TARGET_SIZE_KB,
   maxDimension: number = MAX_DIMENSION
 ): Promise<Blob> {
-  // If file is already small enough and is JPEG, return as-is
+  // If file is already small enough and is JPEG (and not HEIF), return as-is
   const targetSizeBytes = targetSizeKB * 1024;
-  if (file.size <= targetSizeBytes && file.type === 'image/jpeg') {
+  const needsConversion = isHeifImage(file);
+  
+  if (file.size <= targetSizeBytes && file.type === 'image/jpeg' && !needsConversion) {
     return file;
   }
 

@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, Upload, FolderInput } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { compressImageToFile } from '@/lib/imageCompression';
+import { toast } from 'sonner';
 
 export interface JobPhoto {
   id: string;
@@ -158,9 +160,19 @@ export function JobPhotoGallery({
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && onUpload) {
-      await onUpload(file, selectedPhotoType);
+      try {
+        // Compress image before upload (300kb max, supports HEIF/HEIC)
+        const compressedFile = await compressImageToFile(file, 300);
+        await onUpload(compressedFile, selectedPhotoType);
+      } catch (error) {
+        console.error('Failed to compress image:', error);
+        toast.error('Failed to process image. Please try a different file.');
+      }
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
+      }
+      if (cameraInputRef.current) {
+        cameraInputRef.current.value = '';
       }
     }
   };
@@ -264,7 +276,7 @@ export function JobPhotoGallery({
             <input
               ref={cameraInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif"
               capture="environment"
               onChange={handleFileSelect}
               className="hidden"
@@ -272,7 +284,7 @@ export function JobPhotoGallery({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif"
               onChange={handleFileSelect}
               className="hidden"
             />
