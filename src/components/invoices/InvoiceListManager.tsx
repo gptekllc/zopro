@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -8,7 +9,7 @@ import { useUndoableDelete } from '@/hooks/useUndoableDelete';
 import { useSignInvoice } from '@/hooks/useSignatures';
 import { useSendSignatureRequest } from '@/hooks/useSendSignatureRequest';
 import { useDeleteInvoice, useArchiveInvoice, useUnarchiveInvoice, useApplyLateFee, isInvoiceOverdue, getTotalWithLateFee, Invoice, useSendPaymentReminder, useInvoiceReminders, useUpdateInvoice, getInvoiceStatusLabel } from '@/hooks/useInvoices';
-import { useCreatePayment, useInvoiceBalance, useAllPayments } from '@/hooks/usePayments';
+import { useCreatePayment, useInvoiceBalance, useAllPayments, recalculateInvoiceStatus } from '@/hooks/usePayments';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -142,6 +143,27 @@ export function InvoiceListManager({
 
   // Swipe hint
   const { showHint: showSwipeHint, dismissHint: dismissSwipeHint } = useSwipeHint('invoices-swipe-hint-shown');
+  
+  // Query client for cache invalidation
+  const queryClient = useQueryClient();
+  
+  // Fix stale status mutation
+  const fixStaleStatusMutation = useMutation({
+    mutationFn: async (invoiceId: string) => {
+      await recalculateInvoiceStatus(invoiceId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast.success('Invoice status fixed');
+    },
+    onError: () => {
+      toast.error('Failed to fix status');
+    },
+  });
+  
+  const handleFixStaleStatus = (invoiceId: string, _expectedStatus: string) => {
+    fixStaleStatusMutation.mutate(invoiceId);
+  };
 
   // Wrapped setters for scroll restoration
   const openViewingInvoice = useCallback((invoice: Invoice | null) => {
@@ -427,6 +449,8 @@ export function InvoiceListManager({
               showSwipeHint={index === 0 && showSwipeHint}
               onSwipeHintDismiss={dismissSwipeHint}
               totalPaid={getInvoiceTotalPaid(invoice.id)}
+              onFixStaleStatus={handleFixStaleStatus}
+              isFixingStatus={fixStaleStatusMutation.isPending && fixStaleStatusMutation.variables === invoice.id}
             />
           ))}
           {filteredInvoices.length === 0 && (
