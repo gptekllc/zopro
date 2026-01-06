@@ -14,6 +14,7 @@ import { format, differenceInMinutes } from 'date-fns';
 import { toast } from 'sonner';
 import { TimeEntryDialog } from '@/components/timeclock/TimeEntryDialog';
 import { Link } from 'react-router-dom';
+import AppLayout from '@/components/layout/AppLayout';
 
 const TimeClock = () => {
   const { user, profile, roles } = useAuth();
@@ -34,16 +35,13 @@ const TimeClock = () => {
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [recordWorkHours, setRecordWorkHours] = useState(false);
-  // Filter jobs that can be worked on (scheduled or in_progress)
+
   const availableJobs = jobs.filter(j => 
     j.status === 'scheduled' || j.status === 'in_progress' || j.status === 'draft'
   );
 
-  // Check if user can edit entries (admin or manager)
   const canEdit = roles.some(r => r.role === 'admin' || r.role === 'manager');
   const canViewReports = roles.some(r => r.role === 'admin' || r.role === 'manager');
-
-  // Filter entries for current user
   const userEntries = timeEntries.filter(e => e.user_id === user?.id);
   
   // Calculate weekly hours
@@ -62,7 +60,6 @@ const TimeClock = () => {
   const weeklyHours = Math.floor(weeklyMinutes / 60);
   const weeklyMins = weeklyMinutes % 60;
 
-  // Update elapsed time for active entry
   useEffect(() => {
     if (!activeEntry) {
       setElapsedTime('00:00:00');
@@ -75,16 +72,12 @@ const TimeClock = () => {
       const start = new Date(activeEntry.clock_in);
       let diff = now.getTime() - start.getTime();
       
-      // Subtract accumulated break time
       const breakMinutes = activeEntry.break_minutes || 0;
       diff -= breakMinutes * 60000;
       
-      // If currently on break, also subtract ongoing break time
       if (activeEntry.is_on_break && activeEntry.break_start) {
         const ongoingBreak = now.getTime() - new Date(activeEntry.break_start).getTime();
         diff -= ongoingBreak;
-        
-        // Update break display
         const breakMins = Math.floor(ongoingBreak / 60000);
         const breakSecs = Math.floor((ongoingBreak % 60000) / 1000);
         setBreakTime(`${String(breakMins).padStart(2, '0')}:${String(breakSecs).padStart(2, '0')}`);
@@ -117,7 +110,6 @@ const TimeClock = () => {
         recordWorkHours: selectedJobId !== 'none' && recordWorkHours,
       });
       setNotes('');
-      // Keep selectedJobId and recordWorkHours for clock out
       toast.success('Clocked in successfully!');
     } catch (error) {
       toast.error('Failed to clock in');
@@ -127,7 +119,6 @@ const TimeClock = () => {
   const handleClockOut = async () => {
     if (!activeEntry) return;
     
-    // End break first if on break
     if (activeEntry.is_on_break && activeEntry.break_start) {
       await endBreak.mutateAsync({
         entryId: activeEntry.id,
@@ -156,7 +147,6 @@ const TimeClock = () => {
     if (!activeEntry) return;
     
     if (activeEntry.is_on_break) {
-      // End break
       if (activeEntry.break_start) {
         await endBreak.mutateAsync({
           entryId: activeEntry.id,
@@ -165,7 +155,6 @@ const TimeClock = () => {
         });
       }
     } else {
-      // Start break
       await startBreak.mutateAsync(activeEntry.id);
     }
   };
@@ -193,261 +182,250 @@ const TimeClock = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
+      <AppLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Time Clock</h1>
-          <p className="text-muted-foreground mt-1">
-            Track your work hours
-            {company?.timezone && (
-              <span className="ml-2 text-xs">({company.timezone})</span>
-            )}
-          </p>
-        </div>
-        {canViewReports && (
-          <Link to="/timesheet">
-            <Button variant="outline">
-              <FileText className="w-4 h-4 mr-2" />
-              View Timesheet
-            </Button>
-          </Link>
-        )}
-      </div>
-
-      {/* Main Time Clock Card */}
-      <Card className="overflow-hidden max-w-md mx-auto lg:mx-0">
-        <div className={`p-8 text-center ${activeEntry?.is_on_break ? 'bg-amber-500' : activeEntry ? 'gradient-success' : 'gradient-primary'}`}>
-          <div className="text-primary-foreground">
-            {activeEntry?.is_on_break ? (
-              <Coffee className="w-12 h-12 mx-auto mb-4 opacity-90" />
-            ) : (
-              <Timer className="w-12 h-12 mx-auto mb-4 opacity-90" />
-            )}
-            <p className="text-sm uppercase tracking-wider opacity-80 mb-2">
-              {activeEntry?.is_on_break ? 'On Break' : activeEntry ? 'Currently Working' : 'Ready to Clock In'}
+    <AppLayout>
+      <div className="space-y-6 animate-fade-in">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Time Clock</h1>
+            <p className="text-sm text-muted-foreground">
+              Track your work hours
+              {company?.timezone && <span className="ml-1">({company.timezone})</span>}
             </p>
-            <p className="text-5xl font-bold font-mono mb-2">{elapsedTime}</p>
-              {activeEntry && (
-              <div className="space-y-1">
-                <p className="text-sm opacity-80">
-                  Started at {format(new Date(activeEntry.clock_in), 'h:mm a')}
-                </p>
-                {activeEntry.job && (
-                  <p className="text-sm opacity-80 flex items-center justify-center gap-1">
-                    <Briefcase className="w-3 h-3" />
-                    {activeEntry.job.job_number}
-                  </p>
-                )}
-                {((activeEntry.break_minutes || 0) > 0 || activeEntry.is_on_break) && (
-                  <p className="text-sm opacity-80 flex items-center justify-center gap-1">
-                    <Coffee className="w-3 h-3" />
-                    Break: {breakTime}
-                  </p>
-                )}
-              </div>
-            )}
           </div>
-        </div>
-        
-        <CardContent className="p-6">
-          <div className="space-y-4">
-            {/* Job Selector - only show when not clocked in */}
-            {!activeEntry && availableJobs.length > 0 && (
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label>Link to Job (optional)</Label>
-                  <Select value={selectedJobId} onValueChange={setSelectedJobId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a job" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No job</SelectItem>
-                      {availableJobs.map((job) => (
-                        <SelectItem key={job.id} value={job.id}>
-                          {job.job_number} - {job.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {/* Record Work Hours Checkbox */}
-                {selectedJobId !== 'none' && (
-                  <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg border">
-                    <Checkbox
-                      id="record-work-hours"
-                      checked={recordWorkHours}
-                      onCheckedChange={(checked) => setRecordWorkHours(checked === true)}
-                    />
-                    <div className="flex-1">
-                      <label
-                        htmlFor="record-work-hours"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        Add/Record Work Hours to Job
-                      </label>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        When stopped, your time will be recorded as labor hours on this job
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            
-            <Textarea
-              placeholder="Add notes (optional)..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-            />
-            
-            {activeEntry ? (
-              <div className="flex gap-3">
-                <Button
-                  onClick={handleToggleBreak}
-                  disabled={startBreak.isPending || endBreak.isPending}
-                  variant={activeEntry.is_on_break ? "default" : "secondary"}
-                  className="flex-1 h-14 text-lg"
-                >
-                  {startBreak.isPending || endBreak.isPending ? (
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  ) : (
-                    <Coffee className="w-5 h-5 mr-2" />
-                  )}
-                  {activeEntry.is_on_break ? 'End Break' : 'Start Break'}
-                </Button>
-                <Button
-                  onClick={handleClockOut}
-                  disabled={clockOut.isPending}
-                  className="flex-1 h-14 text-lg bg-destructive hover:bg-destructive/90"
-                >
-                  {clockOut.isPending ? (
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  ) : (
-                    <Square className="w-5 h-5 mr-2" />
-                  )}
-                  Clock Out
-                </Button>
-              </div>
-            ) : (
-              <Button
-                onClick={handleClockIn}
-                disabled={clockIn.isPending}
-                className="w-full h-14 text-lg"
-              >
-                {clockIn.isPending ? (
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                ) : (
-                  <Play className="w-5 h-5 mr-2" />
-                )}
-                Clock In
+          {canViewReports && (
+            <Link to="/timesheet">
+              <Button variant="outline" size="sm">
+                <FileText className="w-4 h-4 mr-2" />
+                Timesheet
               </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </Link>
+          )}
+        </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Calendar className="w-8 h-8 mx-auto mb-2 text-primary" />
-            <p className="text-2xl font-bold">{weeklyHours}h {weeklyMins}m</p>
-            <p className="text-sm text-muted-foreground">This Week</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-6 text-center">
-            <Clock className="w-8 h-8 mx-auto mb-2 text-accent" />
-            <p className="text-2xl font-bold">{userEntries.length}</p>
-            <p className="text-sm text-muted-foreground">Total Entries</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Entries */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Recent Time Entries</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {userEntries.slice(0, 10).map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center justify-between py-3 border-b last:border-0 cursor-pointer hover:bg-muted/50 rounded-lg px-2 -mx-2 transition-colors"
-                onClick={() => handleViewEntry(entry)}
-              >
-                <div className="flex items-center gap-3">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
-                    {canEdit ? <Pencil className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </Button>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">
-                        {format(new Date(entry.clock_in), 'EEEE, MMM d')}
-                      </p>
-                      {entry.job && (
-                        <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full flex items-center gap-1">
+        {/* Main Layout: Clock Widget + Stats on left, Recent Entries on right */}
+        <div className="grid lg:grid-cols-[340px,1fr] gap-6">
+          {/* Left Column: Clock Widget + Stats */}
+          <div className="space-y-4">
+            {/* Clock Widget */}
+            <Card className="overflow-hidden">
+              <div className={`p-6 text-center ${activeEntry?.is_on_break ? 'bg-amber-500' : activeEntry ? 'gradient-success' : 'gradient-primary'}`}>
+                <div className="text-primary-foreground">
+                  {activeEntry?.is_on_break ? (
+                    <Coffee className="w-10 h-10 mx-auto mb-3 opacity-90" />
+                  ) : (
+                    <Timer className="w-10 h-10 mx-auto mb-3 opacity-90" />
+                  )}
+                  <p className="text-xs uppercase tracking-wider opacity-80 mb-1">
+                    {activeEntry?.is_on_break ? 'On Break' : activeEntry ? 'Working' : 'Ready'}
+                  </p>
+                  <p className="text-4xl font-bold font-mono">{elapsedTime}</p>
+                  {activeEntry && (
+                    <div className="mt-2 space-y-0.5 text-sm opacity-80">
+                      <p>Started {format(new Date(activeEntry.clock_in), 'h:mm a')}</p>
+                      {activeEntry.job && (
+                        <p className="flex items-center justify-center gap-1">
                           <Briefcase className="w-3 h-3" />
-                          {entry.job.job_number}
-                        </span>
+                          {activeEntry.job.job_number}
+                        </p>
+                      )}
+                      {((activeEntry.break_minutes || 0) > 0 || activeEntry.is_on_break) && (
+                        <p className="flex items-center justify-center gap-1">
+                          <Coffee className="w-3 h-3" />
+                          Break: {breakTime}
+                        </p>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(entry.clock_in), 'h:mm a')}
-                      {entry.clock_out && ` - ${format(new Date(entry.clock_out), 'h:mm a')}`}
-                      {(entry.break_minutes || 0) > 0 && (
-                        <span className="ml-2 text-amber-600">
-                          <Coffee className="w-3 h-3 inline mr-1" />
-                          {entry.break_minutes}m break
-                        </span>
-                      )}
-                    </p>
-                    {entry.notes && (
-                      <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{entry.notes}</p>
+                  )}
+                </div>
+              </div>
+              
+              <CardContent className="p-4 space-y-3">
+                {!activeEntry && availableJobs.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs">Link to Job</Label>
+                    <Select value={selectedJobId} onValueChange={setSelectedJobId}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Select a job" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No job</SelectItem>
+                        {availableJobs.map((job) => (
+                          <SelectItem key={job.id} value={job.id}>
+                            {job.job_number} - {job.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    
+                    {selectedJobId !== 'none' && (
+                      <div className="flex items-start gap-2 p-2 bg-muted/50 rounded border text-xs">
+                        <Checkbox
+                          id="record-work-hours"
+                          checked={recordWorkHours}
+                          onCheckedChange={(checked) => setRecordWorkHours(checked === true)}
+                          className="mt-0.5"
+                        />
+                        <label htmlFor="record-work-hours" className="cursor-pointer">
+                          <span className="font-medium">Record hours to job</span>
+                          <p className="text-muted-foreground">Time will be added as labor</p>
+                        </label>
+                      </div>
                     )}
                   </div>
-                </div>
-                <div className="text-right">
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    entry.clock_out 
-                      ? 'bg-muted text-muted-foreground' 
-                      : 'bg-success/10 text-success'
-                  }`}>
-                    {formatDuration(entry)}
-                  </span>
-                </div>
-              </div>
-            ))}
-            {userEntries.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">
-                No time entries yet. Clock in to start tracking!
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                )}
+                
+                <Textarea
+                  placeholder="Notes (optional)..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={2}
+                  className="text-sm"
+                />
+                
+                {activeEntry ? (
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleToggleBreak}
+                      disabled={startBreak.isPending || endBreak.isPending}
+                      variant={activeEntry.is_on_break ? "default" : "secondary"}
+                      className="flex-1 h-11"
+                    >
+                      {startBreak.isPending || endBreak.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Coffee className="w-4 h-4 mr-2" />
+                      )}
+                      {activeEntry.is_on_break ? 'End' : 'Break'}
+                    </Button>
+                    <Button
+                      onClick={handleClockOut}
+                      disabled={clockOut.isPending}
+                      className="flex-1 h-11 bg-destructive hover:bg-destructive/90"
+                    >
+                      {clockOut.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Square className="w-4 h-4 mr-2" />
+                      )}
+                      Clock Out
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    onClick={handleClockIn}
+                    disabled={clockIn.isPending}
+                    className="w-full h-11"
+                  >
+                    {clockIn.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Play className="w-4 h-4 mr-2" />
+                    )}
+                    Clock In
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
 
-      {/* Time Entry Dialog */}
-      <TimeEntryDialog
-        entry={selectedEntry}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        canEdit={canEdit}
-        onSave={handleSaveEntry}
-        timezone={company?.timezone}
-      />
-    </div>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 gap-3">
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Calendar className="w-6 h-6 mx-auto mb-1 text-primary" />
+                  <p className="text-lg font-bold">{weeklyHours}h {weeklyMins}m</p>
+                  <p className="text-xs text-muted-foreground">This Week</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Clock className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+                  <p className="text-lg font-bold">{userEntries.length}</p>
+                  <p className="text-xs text-muted-foreground">Total Entries</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Right Column: Recent Entries */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Recent Entries</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {userEntries.slice(0, 10).map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between py-2.5 px-3 -mx-3 border-b last:border-0 cursor-pointer hover:bg-muted/50 rounded transition-colors"
+                    onClick={() => handleViewEntry(entry)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0">
+                        {canEdit ? <Pencil className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </Button>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-sm">
+                            {format(new Date(entry.clock_in), 'EEE, MMM d')}
+                          </p>
+                          {entry.job && (
+                            <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded flex items-center gap-1">
+                              <Briefcase className="w-3 h-3" />
+                              {entry.job.job_number}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(entry.clock_in), 'h:mm a')}
+                          {entry.clock_out && ` - ${format(new Date(entry.clock_out), 'h:mm a')}`}
+                          {(entry.break_minutes || 0) > 0 && (
+                            <span className="ml-1.5 text-amber-600">
+                              <Coffee className="w-3 h-3 inline mr-0.5" />
+                              {entry.break_minutes}m
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium shrink-0 ${
+                      entry.clock_out 
+                        ? 'bg-muted text-muted-foreground' 
+                        : 'bg-success/10 text-success'
+                    }`}>
+                      {formatDuration(entry)}
+                    </span>
+                  </div>
+                ))}
+                {userEntries.length === 0 && (
+                  <p className="text-center text-muted-foreground py-8 text-sm">
+                    No time entries yet. Clock in to start!
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <TimeEntryDialog
+          entry={selectedEntry}
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          canEdit={canEdit}
+          onSave={handleSaveEntry}
+          timezone={company?.timezone}
+        />
+      </div>
+    </AppLayout>
   );
 };
 
