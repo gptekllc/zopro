@@ -11,7 +11,7 @@ import {
   Edit, PenTool, Calendar, User, Briefcase, 
   Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt,
   Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star,
-  List
+  List, Camera
 } from 'lucide-react';
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,7 +20,8 @@ import { toast } from 'sonner';
 import { format, differenceInMinutes } from 'date-fns';
 import { CustomerJob } from '@/hooks/useCustomerHistory';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
-import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job } from '@/hooks/useJobs';
+import { JobPhotoGallery } from '@/components/jobs/JobPhotoGallery';
+import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job, useUploadJobPhoto, useDeleteJobPhoto, useUpdateJobPhotoType } from '@/hooks/useJobs';
 import { Quote } from '@/hooks/useQuotes';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
@@ -90,6 +91,9 @@ export function JobDetailDialog({
   const { data: allInvoices = [], isLoading: loadingInvoices } = useInvoices(false);
   const downloadDocument = useDownloadDocument();
   const emailDocument = useEmailDocument();
+  const uploadJobPhoto = useUploadJobPhoto();
+  const deleteJobPhoto = useDeleteJobPhoto();
+  const updateJobPhotoType = useUpdateJobPhotoType();
   
   const { data: notifications = [], isLoading: loadingNotifications } = useJobNotifications(job?.id || null);
   const { data: feedbacks = [], isLoading: loadingFeedbacks } = useJobFeedbacks(job?.id || null);
@@ -370,7 +374,7 @@ export function JobDetailDialog({
           {/* Linked Docs + Photos Tabs */}
           <Separator />
           <Tabs defaultValue="items" className="w-full">
-            <TabsList className={`grid w-full grid-cols-4`}>
+            <TabsList className={`grid w-full grid-cols-5`}>
               <TabsTrigger value="items" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <List className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Items</span>
@@ -381,9 +385,19 @@ export function JobDetailDialog({
                 )}
               </TabsTrigger>
 
+              <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
+                <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">Photos</span>
+                {(job.photos?.length || 0) > 0 && (
+                  <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {job.photos?.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+
               <TabsTrigger value="linked" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden sm:inline">Docs</span>
+                <span className="hidden sm:inline">Related Docs</span>
                 {((relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0) + jobInvoices.length) > 0 && (
                   <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
                     {(relatedQuotes?.originQuote ? 1 : 0) + (relatedQuotes?.childQuotes?.length || 0) + jobInvoices.length}
@@ -568,6 +582,34 @@ export function JobDetailDialog({
                   )}
                 </div>
               )}
+            </TabsContent>
+
+            {/* Photos Tab */}
+            <TabsContent value="photos" className="mt-4">
+              <JobPhotoGallery
+                photos={(job.photos || []).map(p => ({
+                  id: p.id,
+                  photo_url: p.photo_url,
+                  photo_type: p.photo_type as 'before' | 'after' | 'other',
+                  caption: p.caption,
+                  created_at: p.created_at,
+                }))}
+                onUpload={async (file, photoType) => {
+                  await uploadJobPhoto.mutateAsync({
+                    jobId: job.id,
+                    file,
+                    photoType,
+                  });
+                }}
+                onDelete={async (photoId) => {
+                  await deleteJobPhoto.mutateAsync(photoId);
+                }}
+                onUpdateType={(photoId, photoType) => {
+                  updateJobPhotoType.mutate({ photoId, photoType });
+                }}
+                isUploading={uploadJobPhoto.isPending}
+                editable={true}
+              />
             </TabsContent>
 
             <TabsContent value="linked" className="mt-4">
@@ -770,18 +812,6 @@ export function JobDetailDialog({
                 </div>
               )}
 
-              {/* Photos section within feedback tab */}
-              {job.photos && job.photos.length > 0 && (
-                <div className="mt-4 pt-4 border-t">
-                  <p className="text-sm font-medium mb-2 flex items-center gap-2">
-                    <span>Job Photos</span>
-                    <Badge variant="secondary" className="text-xs">
-                      {job.photos.length}
-                    </Badge>
-                  </p>
-                  <PhotoGallery photos={job.photos} />
-                </div>
-              )}
             </TabsContent>
 
             {/* Notification History Tab */}
