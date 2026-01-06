@@ -957,7 +957,7 @@ export function JobDetailDialog({
           </AlertDialog>
 
           {/* Sticky Footer Actions */}
-          <div className="sticky bottom-0 bg-background border-t pt-3 pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 mt-4">
+          <div className="sticky bottom-0 bg-background border-t pt-3 pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 -mb-4 sm:-mb-6 mt-4">
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
