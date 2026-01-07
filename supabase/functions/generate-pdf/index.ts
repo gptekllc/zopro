@@ -1718,31 +1718,71 @@ serve(async (req) => {
       // Helper function to replace all placeholders in text
       const replacePlaceholders = (text: string): string => {
         const totalStr = document.total ? `$${Number(document.total).toLocaleString()}` : '';
+        const subtotalStr = document.subtotal ? `$${Number(document.subtotal).toLocaleString()}` : '';
+        const taxStr = document.tax ? `$${Number(document.tax).toLocaleString()}` : '';
         const dueDateStr = document.due_date ? new Date(document.due_date).toLocaleDateString() : '';
         const validUntilStr = document.valid_until ? new Date(document.valid_until).toLocaleDateString() : '';
         const scheduledDateStr = document.scheduled_start ? new Date(document.scheduled_start).toLocaleDateString() : '';
         const scheduledTimeStr = document.scheduled_start ? new Date(document.scheduled_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
         const todayStr = new Date().toLocaleDateString();
         
-        // Build customer address string
-        const customerAddress = [
+        // Build customer full address string
+        const customerFullAddress = [
           customer?.address,
           customer?.city,
           customer?.state,
           customer?.zip
         ].filter(Boolean).join(', ');
         
+        // Build company full address string
+        const companyFullAddress = [
+          company?.address,
+          company?.city,
+          company?.state,
+          company?.zip
+        ].filter(Boolean).join(', ');
+        
+        // Payment terms string
+        const paymentTermsStr = company?.payment_terms_days !== null && company?.payment_terms_days !== undefined
+          ? (company.payment_terms_days === 0 ? 'Due on Receipt' : `Net ${company.payment_terms_days}`)
+          : '';
+        
+        // Sender email (from address used for sending)
+        const senderEmail = 'noreply@email.zopro.app';
+        
         return text
+          // Customer placeholders
           .replace(/\{\{customer_name\}\}/g, customer?.name || '')
+          .replace(/\{\{customer_email\}\}/g, customer?.email || '')
+          .replace(/\{\{customer_phone\}\}/g, customer?.phone || '')
+          .replace(/\{\{customer_address\}\}/g, customer?.address || '')
+          .replace(/\{\{customer_city\}\}/g, customer?.city || '')
+          .replace(/\{\{customer_state\}\}/g, customer?.state || '')
+          .replace(/\{\{customer_zip\}\}/g, customer?.zip || '')
+          .replace(/\{\{customer_full_address\}\}/g, customerFullAddress)
+          // Company placeholders
           .replace(/\{\{company_name\}\}/g, company?.name || '')
+          .replace(/\{\{company_email\}\}/g, company?.email || '')
+          .replace(/\{\{company_phone\}\}/g, company?.phone || '')
+          .replace(/\{\{company_website\}\}/g, company?.website || '')
+          .replace(/\{\{company_address\}\}/g, company?.address || '')
+          .replace(/\{\{company_city\}\}/g, company?.city || '')
+          .replace(/\{\{company_state\}\}/g, company?.state || '')
+          .replace(/\{\{company_zip\}\}/g, company?.zip || '')
+          .replace(/\{\{company_full_address\}\}/g, companyFullAddress)
+          // Sender placeholder
+          .replace(/\{\{sender_email\}\}/g, senderEmail)
+          // General placeholders
           .replace(/\{\{today_date\}\}/g, todayStr)
-          .replace(/\{\{customer_address\}\}/g, customerAddress)
           .replace(/\{\{customer_portal_link\}\}/g, customerPortalLink)
           .replace(/\{\{payment_link\}\}/g, paymentLink)
           // Invoice/reminder placeholders
           .replace(/\{\{invoice_number\}\}/g, type === 'invoice' ? documentNumber : '')
           .replace(/\{\{invoice_total\}\}/g, type === 'invoice' ? totalStr : '')
+          .replace(/\{\{invoice_subtotal\}\}/g, type === 'invoice' ? subtotalStr : '')
+          .replace(/\{\{invoice_tax\}\}/g, type === 'invoice' ? taxStr : '')
           .replace(/\{\{due_date\}\}/g, dueDateStr)
+          .replace(/\{\{payment_terms\}\}/g, paymentTermsStr)
           // Quote placeholders
           .replace(/\{\{quote_number\}\}/g, type === 'quote' ? documentNumber : '')
           .replace(/\{\{quote_total\}\}/g, type === 'quote' ? totalStr : '')

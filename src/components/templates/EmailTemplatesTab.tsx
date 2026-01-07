@@ -75,6 +75,9 @@ const SAMPLE_VALUES: Record<string, string> = {
   '{{company_zip}}': '60601',
   '{{company_full_address}}': '456 Business Ave, Chicago, IL 60601',
   
+  // Sender placeholder
+  '{{sender_email}}': 'noreply@email.zopro.app',
+  
   // Invoice placeholders
   '{{invoice_number}}': 'I-2026-0042',
   '{{invoice_total}}': '$1,250.00',
@@ -131,6 +134,9 @@ const PLACEHOLDER_VARIABLES: PlaceholderInfo[] = [
   { variable: '{{company_state}}', description: 'Your company state', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
   { variable: '{{company_zip}}', description: 'Your company zip code', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
   { variable: '{{company_full_address}}', description: 'Your company full address', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  
+  // Sender placeholder
+  { variable: '{{sender_email}}', description: 'Email sender address', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
   
   // General placeholders
   { variable: '{{today_date}}', description: 'Current date', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
