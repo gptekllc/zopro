@@ -1840,32 +1840,45 @@ serve(async (req) => {
       const pdfBase64 = uint8ArrayToBase64(pdfBytes);
       console.log(`PDF generated, size: ${pdfBytes.length} bytes`);
 
-      const emailHtml = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2>Hello ${customer?.name || ""},</h2>
-          <p style="white-space: pre-wrap;">${emailBody}</p>
-          <p><strong>${type === "quote" ? "Quote" : type === "invoice" ? "Invoice" : "Job"} Number:</strong> ${documentNumber}</p>
-          ${document.total ? `<p><strong>Total Amount:</strong> $${Number(document.total).toLocaleString()}</p>` : ""}
-          ${type === "invoice" && document.due_date ? `<p><strong>Due Date:</strong> ${new Date(document.due_date).toLocaleDateString()}</p>` : ""}
-          ${type === "quote" && document.valid_until ? `<p><strong>Valid Until:</strong> ${new Date(document.valid_until).toLocaleDateString()}</p>` : ""}
-          ${type === "invoice" ? `
-            <div style="margin: 20px 0; padding: 15px; background: #e8f4fc; border-left: 4px solid #2563eb; border-radius: 4px;">
-              <p style="margin: 0 0 5px 0; font-weight: bold; color: #2563eb;">Payment Information</p>
-              <p style="margin: 5px 0;"><strong>Accepted Payment Method:</strong> ${paymentMethodLabel}</p>
-              ${paymentTerms !== null && paymentTerms !== undefined ? `<p style="margin: 5px 0;"><strong>Payment Terms:</strong> ${paymentTerms === 0 ? 'Due on Receipt' : `Net ${paymentTerms} days`}</p>` : ''}
-              ${lateFee && lateFee > 0 ? `<p style="margin: 5px 0;"><strong>Late Fee:</strong> ${lateFee}% on overdue balances</p>` : ''}
-            </div>
-          ` : ""}
-          <p style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
-            📎 <strong>Attached:</strong> ${type === "quote" ? "Quote" : type === "invoice" ? "Invoice" : "Job Summary"} ${documentNumber} (PDF)
-          </p>
-          <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
-          <p>If you have any questions, please don't hesitate to contact us.</p>
-          <p>Best regards,<br/>${company?.name || "The Team"}</p>
-          ${company?.website ? `<p style="margin-top: 15px;"><a href="${company.website}" style="color: #2563eb; text-decoration: none;">${company.website}</a></p>` : ""}
-          ${emailSocialIconsHtml}
-        </div>
-      `;
+      // When custom message is provided, use it as the full email body
+      // When using default, include additional context like document details
+      const emailHtml = customMessage 
+        ? `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="white-space: pre-wrap;">${emailBody}</div>
+            <p style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
+              📎 <strong>Attached:</strong> ${type === "quote" ? "Quote" : type === "invoice" ? "Invoice" : "Job Summary"} ${documentNumber} (PDF)
+            </p>
+            ${company?.website ? `<p style="margin-top: 15px;"><a href="${company.website}" style="color: #2563eb; text-decoration: none;">${company.website}</a></p>` : ""}
+            ${emailSocialIconsHtml}
+          </div>
+        `
+        : `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Hello ${customer?.name || ""},</h2>
+            <p style="white-space: pre-wrap;">${emailBody}</p>
+            <p><strong>${type === "quote" ? "Quote" : type === "invoice" ? "Invoice" : "Job"} Number:</strong> ${documentNumber}</p>
+            ${document.total ? `<p><strong>Total Amount:</strong> $${Number(document.total).toLocaleString()}</p>` : ""}
+            ${type === "invoice" && document.due_date ? `<p><strong>Due Date:</strong> ${new Date(document.due_date).toLocaleDateString()}</p>` : ""}
+            ${type === "quote" && document.valid_until ? `<p><strong>Valid Until:</strong> ${new Date(document.valid_until).toLocaleDateString()}</p>` : ""}
+            ${type === "invoice" ? `
+              <div style="margin: 20px 0; padding: 15px; background: #e8f4fc; border-left: 4px solid #2563eb; border-radius: 4px;">
+                <p style="margin: 0 0 5px 0; font-weight: bold; color: #2563eb;">Payment Information</p>
+                <p style="margin: 5px 0;"><strong>Accepted Payment Method:</strong> ${paymentMethodLabel}</p>
+                ${paymentTerms !== null && paymentTerms !== undefined ? `<p style="margin: 5px 0;"><strong>Payment Terms:</strong> ${paymentTerms === 0 ? 'Due on Receipt' : `Net ${paymentTerms} days`}</p>` : ''}
+                ${lateFee && lateFee > 0 ? `<p style="margin: 5px 0;"><strong>Late Fee:</strong> ${lateFee}% on overdue balances</p>` : ''}
+              </div>
+            ` : ""}
+            <p style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
+              📎 <strong>Attached:</strong> ${type === "quote" ? "Quote" : type === "invoice" ? "Invoice" : "Job Summary"} ${documentNumber} (PDF)
+            </p>
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
+            <p>If you have any questions, please don't hesitate to contact us.</p>
+            <p>Best regards,<br/>${company?.name || "The Team"}</p>
+            ${company?.website ? `<p style="margin-top: 15px;"><a href="${company.website}" style="color: #2563eb; text-decoration: none;">${company.website}</a></p>` : ""}
+            ${emailSocialIconsHtml}
+          </div>
+        `;
 
       console.log(`Sending email to ${recipientEmail} with PDF attachment`);
 
