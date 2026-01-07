@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil, CopyPlus, ChevronDown, User, Building2, FileText, Briefcase, Link2, Send, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, RemoveFormatting, Type, Palette, Highlighter, Share2, ChevronsDownUp, ChevronsUpDown, ALargeSmall } from 'lucide-react';
+import { Loader2, Trash2, Edit, Plus, Star, Copy, Eye, Pencil, CopyPlus, ChevronDown, User, Building2, FileText, Briefcase, Link2, Send, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, RemoveFormatting, Type, Palette, Highlighter, Share2, ChevronsDownUp, ChevronsUpDown, ALargeSmall, Mail } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -48,7 +48,6 @@ import {
   useCreateEmailTemplate, 
   useUpdateEmailTemplate, 
   useDeleteEmailTemplate,
-  useInitializeDefaultTemplates,
   EmailTemplate 
 } from '@/hooks/useEmailTemplates';
 import { toast } from 'sonner';
@@ -61,6 +60,139 @@ const TEMPLATE_TYPES: { value: TemplateType; label: string }[] = [
   { value: 'quote', label: 'Quote' },
   { value: 'job', label: 'Job' },
   { value: 'general', label: 'General' },
+];
+
+// Built-in default templates that come with the software
+interface BuiltInTemplate {
+  id: string;
+  name: string;
+  template_type: TemplateType;
+  subject: string;
+  body: string;
+  is_default: boolean;
+  is_builtin: true;
+}
+
+const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
+  {
+    id: 'builtin-invoice-default',
+    name: 'Invoice (Default)',
+    template_type: 'invoice',
+    subject: 'Invoice {{invoice_number}} from {{company_name}}',
+    body: `<p>Hi {{customer_name}},</p>
+
+<p>Please find attached your invoice <strong>{{invoice_number}}</strong> for <strong>{{invoice_total}}</strong>.</p>
+
+<p><strong>Due Date:</strong> {{due_date}}</p>
+
+<p>You can view and pay your invoice online using the link below:</p>
+<p><a href="{{customer_portal_link}}">View Invoice &amp; Pay Online</a></p>
+
+<p>If you have any questions, please don't hesitate to reach out.</p>
+
+<p>Thank you for your business!</p>
+
+<p>Best regards,<br>
+{{company_name}}<br>
+{{company_phone}}<br>
+{{company_email}}</p>
+
+{{social_links}}`,
+    is_default: true,
+    is_builtin: true,
+  },
+  {
+    id: 'builtin-reminder-default',
+    name: 'Payment Reminder (Default)',
+    template_type: 'reminder',
+    subject: 'Reminder: Invoice {{invoice_number}} is past due',
+    body: `<p>Hi {{customer_name}},</p>
+
+<p>This is a friendly reminder that invoice <strong>{{invoice_number}}</strong> for <strong>{{invoice_total}}</strong> was due on <strong>{{due_date}}</strong>.</p>
+
+<p>If you've already made the payment, please disregard this message. Otherwise, we would appreciate prompt payment.</p>
+
+<p>You can pay online here:</p>
+<p><a href="{{payment_link}}">Pay Now</a></p>
+
+<p>If you have any questions or concerns, please contact us.</p>
+
+<p>Thank you,<br>
+{{company_name}}<br>
+{{company_phone}}</p>`,
+    is_default: true,
+    is_builtin: true,
+  },
+  {
+    id: 'builtin-quote-default',
+    name: 'Quote (Default)',
+    template_type: 'quote',
+    subject: 'Quote {{quote_number}} from {{company_name}}',
+    body: `<p>Hi {{customer_name}},</p>
+
+<p>Thank you for your interest! Please find attached your quote <strong>{{quote_number}}</strong> for <strong>{{quote_total}}</strong>.</p>
+
+<p>This quote is valid until <strong>{{quote_valid_until}}</strong>.</p>
+
+<p>You can review and approve the quote online:</p>
+<p><a href="{{customer_portal_link}}">View Quote</a></p>
+
+<p>If you have any questions or would like to proceed, please let us know.</p>
+
+<p>Best regards,<br>
+{{company_name}}<br>
+{{company_phone}}<br>
+{{company_email}}</p>
+
+{{social_links}}`,
+    is_default: true,
+    is_builtin: true,
+  },
+  {
+    id: 'builtin-job-scheduled',
+    name: 'Job Scheduled (Default)',
+    template_type: 'job',
+    subject: 'Your appointment is confirmed - {{job_title}}',
+    body: `<p>Hi {{customer_name}},</p>
+
+<p>Your service appointment has been scheduled!</p>
+
+<p><strong>Job:</strong> {{job_title}}<br>
+<strong>Job #:</strong> {{job_number}}<br>
+<strong>Date:</strong> {{scheduled_date}}<br>
+<strong>Time:</strong> {{scheduled_time}}<br>
+<strong>Technician:</strong> {{technician_name}}</p>
+
+<p>If you need to reschedule or have any questions, please contact us.</p>
+
+<p>We look forward to serving you!</p>
+
+<p>Best regards,<br>
+{{company_name}}<br>
+{{company_phone}}</p>`,
+    is_default: true,
+    is_builtin: true,
+  },
+  {
+    id: 'builtin-general-default',
+    name: 'General Message (Default)',
+    template_type: 'general',
+    subject: 'Message from {{company_name}}',
+    body: `<p>Hi {{customer_name}},</p>
+
+<p>[Your message here]</p>
+
+<p>If you have any questions, please don't hesitate to contact us.</p>
+
+<p>Best regards,<br>
+{{company_name}}<br>
+{{company_phone}}<br>
+{{company_email}}</p>
+
+{{social_links}}`,
+    is_default: true,
+    is_builtin: true,
+  },
 ];
 
 // Sample values for preview mode
@@ -222,21 +354,20 @@ const replacePlaceholdersWithSamples = (text: string): string => {
   return result;
 };
 
+// Extended template type that includes built-in flag
+type DisplayTemplate = (EmailTemplate & { is_builtin?: false }) | BuiltInTemplate;
+
 export const EmailTemplatesTab = () => {
-  const { data: templates, isLoading, isFetched } = useEmailTemplates();
+  const { data: templates, isLoading } = useEmailTemplates();
   const createTemplate = useCreateEmailTemplate();
   const updateTemplate = useUpdateEmailTemplate();
   const deleteTemplate = useDeleteEmailTemplate();
-  const initializeDefaultTemplates = useInitializeDefaultTemplates();
-  const [hasInitialized, setHasInitialized] = useState(false);
 
-  // Auto-initialize default templates when there are none
-  useEffect(() => {
-    if (isFetched && !isLoading && templates?.length === 0 && !hasInitialized && !initializeDefaultTemplates.isPending) {
-      setHasInitialized(true);
-      initializeDefaultTemplates.mutate();
-    }
-  }, [isFetched, isLoading, templates, hasInitialized, initializeDefaultTemplates]);
+  // Combine built-in templates with user-created templates
+  const allTemplates: DisplayTemplate[] = [
+    ...BUILTIN_TEMPLATES,
+    ...(templates?.map(t => ({ ...t, is_builtin: false as const })) || []),
+  ];
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -309,9 +440,9 @@ export const EmailTemplatesTab = () => {
     setEditingTemplate(null);
   };
 
-  const handleDuplicate = (template: EmailTemplate) => {
+  const handleDuplicate = (template: DisplayTemplate) => {
     setFormData({
-      name: `${template.name} (Copy)`,
+      name: template.is_builtin ? template.name.replace(' (Default)', '') : `${template.name} (Copy)`,
       template_type: template.template_type as TemplateType,
       subject: template.subject,
       body: template.body,
@@ -861,50 +992,28 @@ export const EmailTemplatesTab = () => {
         </Button>
       </div>
 
-      {initializeDefaultTemplates.isPending ? (
+      {isLoading ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-            <h3 className="text-lg font-medium mb-2">Setting Up Templates</h3>
-            <p className="text-muted-foreground text-center max-w-md">
-              Creating your default email templates...
-            </p>
-          </CardContent>
-        </Card>
-      ) : !templates || templates.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Mail className="w-16 h-16 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Email Templates Yet</h3>
-            <p className="text-muted-foreground text-center max-w-md mb-4">
-              Get started quickly with our professionally designed default templates, or create your own from scratch.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
-                onClick={() => initializeDefaultTemplates.mutate()}
-                disabled={initializeDefaultTemplates.isPending}
-              >
-                {initializeDefaultTemplates.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                <Star className="w-4 h-4 mr-2" />
-                Load Default Templates
-              </Button>
-              <Button variant="outline" onClick={handleCreateOpen}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create From Scratch
-              </Button>
-            </div>
+            <h3 className="text-lg font-medium mb-2">Loading Templates</h3>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4">
-          {templates.map((template) => (
+          {allTemplates.map((template) => (
             <Card key={template.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <h3 className="font-semibold text-lg">{template.name}</h3>
-                      {template.is_default && (
+                      {template.is_builtin && (
+                        <Badge variant="secondary" className="flex items-center gap-1 bg-primary/10 text-primary">
+                          Built-in
+                        </Badge>
+                      )}
+                      {template.is_default && !template.is_builtin && (
                         <Badge variant="secondary" className="flex items-center gap-1">
                           <Star className="w-3 h-3 text-yellow-500" />
                           Default
@@ -916,7 +1025,7 @@ export const EmailTemplatesTab = () => {
                     </div>
                     <p className="text-muted-foreground text-sm">{template.subject}</p>
                     <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
-                      {template.body}
+                      {template.body.replace(/<[^>]*>/g, ' ').substring(0, 150)}...
                     </p>
                   </div>
 
@@ -925,22 +1034,26 @@ export const EmailTemplatesTab = () => {
                       variant="ghost" 
                       size="icon"
                       onClick={() => handleDuplicate(template)}
-                      title="Duplicate template"
+                      title={template.is_builtin ? "Copy to customize" : "Duplicate template"}
                     >
                       <CopyPlus className="w-4 h-4" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleEditOpen(template)}>
-                      <Edit className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => setDeleteConfirmId(template.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {!template.is_builtin && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => handleEditOpen(template as EmailTemplate)}>
+                          <Edit className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteConfirmId(template.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </CardContent>
