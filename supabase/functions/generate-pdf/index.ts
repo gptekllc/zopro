@@ -1704,9 +1704,9 @@ serve(async (req) => {
         throw new Error("Recipient email is required for email action");
       }
 
-      // Generate customer portal magic link
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const portalBaseUrl = Deno.env.get("APP_BASE_URL") || supabaseUrl.replace('.supabase.co', '.lovable.app');
+      // Generate customer portal magic link - use APP_BASE_URL or fallback to zopro.app
+      const portalBaseUrl = Deno.env.get("APP_BASE_URL") || 'https://zopro.app';
+      console.log("Portal base URL for email placeholders:", portalBaseUrl);
       const customerPortalLink = customer?.email 
         ? `${portalBaseUrl}/portal?email=${encodeURIComponent(customer.email)}&company=${encodeURIComponent(company?.id || '')}`
         : '';
