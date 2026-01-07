@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -211,13 +211,43 @@ export const EmailTemplatesTab = () => {
   };
 
   const [insertTarget, setInsertTarget] = useState<'subject' | 'body'>('body');
+  const subjectRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const cursorPositionRef = useRef<{ subject: number; body: number }>({ subject: 0, body: 0 });
+
+  const updateCursorPosition = (target: 'subject' | 'body') => {
+    if (target === 'subject' && subjectRef.current) {
+      cursorPositionRef.current.subject = subjectRef.current.selectionStart || 0;
+    } else if (target === 'body' && bodyRef.current) {
+      cursorPositionRef.current.body = bodyRef.current.selectionStart || 0;
+    }
+  };
 
   const insertPlaceholder = (variable: string, target: 'subject' | 'body') => {
-    setFormData(prev => ({
-      ...prev,
-      [target]: prev[target] + variable,
-    }));
+    const position = cursorPositionRef.current[target];
+    setFormData(prev => {
+      const currentValue = prev[target];
+      const newValue = currentValue.slice(0, position) + variable + currentValue.slice(position);
+      // Update cursor position for next insert
+      cursorPositionRef.current[target] = position + variable.length;
+      return {
+        ...prev,
+        [target]: newValue,
+      };
+    });
     setEditorTab('edit');
+    
+    // Refocus the field after inserting
+    setTimeout(() => {
+      const newPosition = cursorPositionRef.current[target];
+      if (target === 'subject' && subjectRef.current) {
+        subjectRef.current.focus();
+        subjectRef.current.setSelectionRange(newPosition, newPosition);
+      } else if (target === 'body' && bodyRef.current) {
+        bodyRef.current.focus();
+        bodyRef.current.setSelectionRange(newPosition, newPosition);
+      }
+    }, 0);
   };
 
   const copyPlaceholder = (variable: string) => {
@@ -279,9 +309,13 @@ export const EmailTemplatesTab = () => {
       <div className="space-y-2">
         <Label>Subject *</Label>
         <Input
+          ref={subjectRef}
           value={formData.subject}
           onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
           onFocus={() => setInsertTarget('subject')}
+          onClick={() => updateCursorPosition('subject')}
+          onKeyUp={() => updateCursorPosition('subject')}
+          onSelect={() => updateCursorPosition('subject')}
           placeholder="Email subject line (supports placeholders)"
         />
         {editorTab === 'preview' && (
@@ -311,9 +345,13 @@ export const EmailTemplatesTab = () => {
 
         {editorTab === 'edit' ? (
           <Textarea
+            ref={bodyRef}
             value={formData.body}
             onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
             onFocus={() => setInsertTarget('body')}
+            onClick={() => updateCursorPosition('body')}
+            onKeyUp={() => updateCursorPosition('body')}
+            onSelect={() => updateCursorPosition('body')}
             placeholder="Email message body. Use placeholders like {{customer_name}} for dynamic content."
             rows={10}
           />
