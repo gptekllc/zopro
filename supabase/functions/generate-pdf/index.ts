@@ -1778,6 +1778,8 @@ serve(async (req) => {
           .replace(/\{\{today_date\}\}/g, todayStr)
           .replace(/\{\{customer_portal_link\}\}/g, customerPortalLink)
           .replace(/\{\{payment_link\}\}/g, paymentLink)
+          // Social placeholders - generate HTML for social links enabled in company settings
+          .replace(/\{\{social_links\}\}/g, generateEmailSocialIconsHtml(socialLinks || []))
           // Invoice/reminder placeholders
           .replace(/\{\{invoice_number\}\}/g, type === 'invoice' ? documentNumber : '')
           .replace(/\{\{invoice_total\}\}/g, type === 'invoice' ? totalStr : '')
