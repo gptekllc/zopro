@@ -54,24 +54,54 @@ const TEMPLATE_TYPES: { value: TemplateType; label: string }[] = [
 
 // Sample values for preview mode
 const SAMPLE_VALUES: Record<string, string> = {
+  // Customer placeholders
   '{{customer_name}}': 'John Smith',
+  '{{customer_email}}': 'john.smith@example.com',
+  '{{customer_phone}}': '(555) 123-4567',
+  '{{customer_address}}': '123 Main Street',
+  '{{customer_city}}': 'Springfield',
+  '{{customer_state}}': 'IL',
+  '{{customer_zip}}': '62701',
+  '{{customer_full_address}}': '123 Main Street, Springfield, IL 62701',
+  
+  // Company placeholders
   '{{company_name}}': 'Acme Services LLC',
+  '{{company_email}}': 'info@acmeservices.com',
+  '{{company_phone}}': '(555) 987-6543',
+  '{{company_website}}': 'https://www.acmeservices.com',
+  '{{company_address}}': '456 Business Ave',
+  '{{company_city}}': 'Chicago',
+  '{{company_state}}': 'IL',
+  '{{company_zip}}': '60601',
+  '{{company_full_address}}': '456 Business Ave, Chicago, IL 60601',
+  
+  // Invoice placeholders
   '{{invoice_number}}': 'I-2026-0042',
   '{{invoice_total}}': '$1,250.00',
+  '{{invoice_subtotal}}': '$1,150.00',
+  '{{invoice_tax}}': '$100.00',
   '{{due_date}}': 'January 15, 2026',
+  '{{payment_terms}}': 'Net 30',
+  
+  // Quote placeholders
   '{{quote_number}}': 'Q-2026-0018',
   '{{quote_total}}': '$2,500.00',
   '{{quote_valid_until}}': 'January 20, 2026',
+  
+  // Job placeholders
   '{{job_number}}': 'J-2026-0031',
   '{{job_title}}': 'HVAC System Maintenance',
   '{{job_description}}': 'Annual maintenance and inspection of heating and cooling systems',
   '{{scheduled_date}}': 'January 10, 2026',
   '{{scheduled_time}}': '9:00 AM',
   '{{technician_name}}': 'Mike Johnson',
-  '{{today_date}}': new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-  '{{customer_address}}': '123 Main Street, Springfield, IL 62701',
+  
+  // Links
   '{{customer_portal_link}}': 'https://yourcompany.com/portal?token=abc123',
   '{{payment_link}}': 'https://yourcompany.com/pay?invoice=I-2026-0042',
+  
+  // General
+  '{{today_date}}': new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
 };
 
 interface PlaceholderInfo {
@@ -81,17 +111,38 @@ interface PlaceholderInfo {
 }
 
 const PLACEHOLDER_VARIABLES: PlaceholderInfo[] = [
-  // Common placeholders
+  // Customer placeholders
   { variable: '{{customer_name}}', description: "Customer's full name", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{customer_email}}', description: "Customer's email", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{customer_phone}}', description: "Customer's phone number", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{customer_address}}', description: "Customer's street address", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{customer_city}}', description: "Customer's city", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{customer_state}}', description: "Customer's state", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{customer_zip}}', description: "Customer's zip code", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{customer_full_address}}', description: "Customer's full address", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  
+  // Company placeholders
   { variable: '{{company_name}}', description: 'Your company name', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{company_email}}', description: 'Your company email', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{company_phone}}', description: 'Your company phone', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{company_website}}', description: 'Your company website', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{company_address}}', description: 'Your company street address', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{company_city}}', description: 'Your company city', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{company_state}}', description: 'Your company state', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{company_zip}}', description: 'Your company zip code', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{company_full_address}}', description: 'Your company full address', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  
+  // General placeholders
   { variable: '{{today_date}}', description: 'Current date', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{customer_address}}', description: "Customer's address", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
   { variable: '{{customer_portal_link}}', description: 'Customer portal magic link', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
   
   // Invoice placeholders
   { variable: '{{invoice_number}}', description: 'Invoice number', types: ['invoice', 'reminder'] },
   { variable: '{{invoice_total}}', description: 'Invoice total amount', types: ['invoice', 'reminder'] },
+  { variable: '{{invoice_subtotal}}', description: 'Invoice subtotal (before tax)', types: ['invoice', 'reminder'] },
+  { variable: '{{invoice_tax}}', description: 'Invoice tax amount', types: ['invoice', 'reminder'] },
   { variable: '{{due_date}}', description: 'Invoice due date', types: ['invoice', 'reminder'] },
+  { variable: '{{payment_terms}}', description: 'Payment terms (e.g., Net 30)', types: ['invoice', 'reminder'] },
   { variable: '{{payment_link}}', description: 'Direct payment link', types: ['invoice', 'reminder'] },
   
   // Quote placeholders
