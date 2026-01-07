@@ -101,18 +101,18 @@ export function DocumentListCard({
             <div className="flex items-start gap-4 min-w-0 flex-1">
               {icon}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap text-primary text-[sidebar-primary-foreground]">
                   <h3 className={`font-semibold ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{documentNumber}</h3>
                   {title && <>
                       <span className="text-muted-foreground">•</span>
                       <span className={`font-medium truncate ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{title}</span>
                     </>}
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5 flex-wrap">
+                <div className="flex items-center gap-2 text-sm mt-0.5 flex-wrap font-semibold text-popover-foreground">
                   <span className={`truncate ${isVoided ? 'line-through' : ''}`}>{customerName}</span>
                   {customerEmail && <>
                       <span>•</span>
-                      <span className="truncate">{customerEmail}</span>
+                      <span className="truncate font-light italic">{customerEmail}</span>
                     </>}
                 </div>
               </div>
