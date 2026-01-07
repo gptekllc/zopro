@@ -34,8 +34,6 @@ export const PLATFORM_ICONS: Record<string, string> = {
   
   bbb: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#005A8C"><path d="M3.75 3v18h16.5V3H3.75zm2.25 2h12v14H6V5zm2 2v2h3V7H8zm5 0v2h3V7h-3zm-5 4v2h3v-2H8zm5 0v2h3v-2h-3zm-5 4v2h8v-2H8z"/></svg>')}`,
   
-  craftjack: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FF6B35"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.4-1.4 3.6 3.6 4.6-4.6L18 11l-6 6z"/></svg>')}`,
-  
   porch: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1551 1047"><path fill="#f8d668" d="m56.8 489.8c240.7-163.2 483.5-323.6 722.6-489.2l-0.4 9.5c-6.9 170.7-1.3 341.7-3 512.5c-258.9 172.7-513.8 350.9-774.2 521.1c-0.9-162.6-0.6-325.2-0.4-487.7c-4.8-35 32.7-48.8 55.4-66.2z"/><path fill="#e8b13c" d="m779 10.1c259 168.7 512.2 346.3 770.1 516.5c1 173.2 1.5 346.3-0.2 519.4c-123.9-79.6-244.4-164.5-367-246.1c-134.3-93.9-272.9-181.6-405.9-277.3c1.7-170.8-3.9-341.8 3-512.5z"/></svg>')}`,
 
   thumbtack: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="#2797dd"><circle cx="24" cy="24" r="24"/><rect x="12" y="14" width="24" height="6" fill="#fff"/><path d="M21 20h6v14c0 2-1.5 4-3 4s-3-2-3-4V20z" fill="#fff"/></svg>')}`,
