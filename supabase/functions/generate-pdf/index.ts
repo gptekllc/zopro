@@ -174,13 +174,15 @@ function generateEmailSocialIconsHtml(socialLinks: SocialLink[]): string {
 
   if (visibleLinks.length === 0) return '';
 
-  // Use text-based badges with brand colors for maximum email client compatibility
+  // Use text-based badges with brand colors and platform names for maximum email client compatibility
   // SVG data URIs are not supported in many email clients (Outlook, Gmail, etc.)
   const iconsHtml = visibleLinks.map(link => {
     const color = getPlatformColor(link.platform_name);
     const initial = link.platform_name.charAt(0).toUpperCase();
-    return `<a href="${link.url}" style="display: inline-block; margin-right: 8px; margin-bottom: 8px; text-decoration: none; vertical-align: middle;" title="${link.platform_name}">
-      <span style="display: inline-block; width: 28px; height: 28px; line-height: 28px; text-align: center; background-color: ${color}; color: #ffffff; font-size: 14px; font-weight: bold; border-radius: 4px; font-family: Arial, sans-serif;">${initial}</span>
+    const displayName = link.platform_name.charAt(0).toUpperCase() + link.platform_name.slice(1).toLowerCase();
+    return `<a href="${link.url}" style="display: inline-block; margin-right: 12px; margin-bottom: 12px; text-decoration: none; vertical-align: top; text-align: center;" title="${link.platform_name}">
+      <span style="display: block; width: 32px; height: 32px; line-height: 32px; text-align: center; background-color: ${color}; color: #ffffff; font-size: 16px; font-weight: bold; border-radius: 6px; font-family: Arial, sans-serif; margin: 0 auto;">${initial}</span>
+      <span style="display: block; font-size: 10px; color: #666666; margin-top: 4px; font-family: Arial, sans-serif;">${displayName}</span>
     </a>`;
   }).join('');
 
