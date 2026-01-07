@@ -166,42 +166,48 @@ export default function DashboardPage() {
         </section>}
 
       <section aria-label="Dashboard widgets">
-        {/* Today's Schedule + Time Entries row */}
-        {!isTechnicianDashboardScoped && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
-            <SchedulerWidget jobs={jobs} technicians={technicians} />
-            {canSeeTimeEntriesWidget && <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Clock className="w-5 h-5" />
-                  Today&apos;s Time Entries
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {todayEntries.slice(0, 5).map(entry => <div key={entry.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                      <div>
-                        <p className="font-medium">{entry.user?.full_name || "User"}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(entry.clock_in), "h:mm a")}
-                          {entry.clock_out && ` - ${format(new Date(entry.clock_out), "h:mm a")}`}
-                        </p>
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${entry.clock_out ? "bg-muted text-muted-foreground" : "bg-success/10 text-success"}`}>
-                        {entry.clock_out ? "Completed" : "Active"}
-                      </span>
-                    </div>)}
-                  {todayEntries.length === 0 && <p className="text-center text-muted-foreground py-4">No time entries today</p>}
-                </div>
-              </CardContent>
-            </Card>}
-          </div>
-        )}
-
         <DraggableWidgetContainer 
           storageKey="dashboard-widget-order"
           className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6"
           widgets={[
+            {
+              id: 'todays-schedule',
+              visible: !isTechnicianDashboardScoped,
+              component: (
+                <SchedulerWidget jobs={jobs} technicians={technicians} />
+              )
+            },
+            {
+              id: 'todays-time-entries',
+              visible: canSeeTimeEntriesWidget && !isTechnicianDashboardScoped,
+              component: (
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Clock className="w-5 h-5" />
+                      Today&apos;s Time Entries
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {todayEntries.slice(0, 5).map(entry => <div key={entry.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                          <div>
+                            <p className="font-medium">{entry.user?.full_name || "User"}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {format(new Date(entry.clock_in), "h:mm a")}
+                              {entry.clock_out && ` - ${format(new Date(entry.clock_out), "h:mm a")}`}
+                            </p>
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${entry.clock_out ? "bg-muted text-muted-foreground" : "bg-success/10 text-success"}`}>
+                            {entry.clock_out ? "Completed" : "Active"}
+                          </span>
+                        </div>)}
+                      {todayEntries.length === 0 && <p className="text-center text-muted-foreground py-4">No time entries today</p>}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            },
             {
               id: 'recent-invoices',
               visible: true,
