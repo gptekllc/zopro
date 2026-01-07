@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil, CopyPlus, ChevronDown, User, Building2, FileText, Briefcase, Link2, Send, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, RemoveFormatting, Type, Palette, Highlighter, Share2 } from 'lucide-react';
+import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil, CopyPlus, ChevronDown, User, Building2, FileText, Briefcase, Link2, Send, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, RemoveFormatting, Type, Palette, Highlighter, Share2, ChevronsDownUp, ChevronsUpDown, ALargeSmall } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
@@ -411,8 +411,19 @@ export const EmailTemplatesTab = () => {
     { label: 'None', value: '' },
   ];
 
+  const FONT_SIZE_OPTIONS = [
+    { label: 'Small', value: '12px' },
+    { label: 'Normal', value: '14px' },
+    { label: 'Large', value: '18px' },
+    { label: 'Extra Large', value: '24px' },
+  ];
+
   const applyFont = (fontFamily: string) => {
     insertFormatting(`<span style="font-family: ${fontFamily};">`, '</span>');
+  };
+
+  const applyFontSize = (fontSize: string) => {
+    insertFormatting(`<span style="font-size: ${fontSize};">`, '</span>');
   };
 
   const applyTextColor = (color: string) => {
@@ -499,6 +510,17 @@ export const EmailTemplatesTab = () => {
     company: true,
     sender: true,
   });
+
+  const allCategoriesExpanded = relevantCategories.every(cat => openCategories[cat.id]);
+  
+  const toggleAllCategories = () => {
+    const newState = !allCategoriesExpanded;
+    const newOpenCategories: Record<string, boolean> = {};
+    relevantCategories.forEach(cat => {
+      newOpenCategories[cat.id] = newState;
+    });
+    setOpenCategories(newOpenCategories);
+  };
 
   if (isLoading) {
     return (
@@ -593,6 +615,21 @@ export const EmailTemplatesTab = () => {
                   {FONT_OPTIONS.map((font) => (
                     <SelectItem key={font.value} value={font.value} style={{ fontFamily: font.value }}>
                       {font.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Font Size Selector */}
+              <Select onValueChange={applyFontSize}>
+                <SelectTrigger className="h-7 w-[100px] text-xs border-0 bg-transparent focus:ring-0">
+                  <ALargeSmall className="w-3.5 h-3.5 mr-1" />
+                  <span className="truncate">Size</span>
+                </SelectTrigger>
+                <SelectContent>
+                  {FONT_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size.value} value={size.value} style={{ fontSize: size.value }}>
+                      {size.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -720,9 +757,30 @@ export const EmailTemplatesTab = () => {
           <p className="text-xs font-medium">
             Available Placeholders for {TEMPLATE_TYPES.find(t => t.value === formData.template_type)?.label} templates:
           </p>
-          <Badge variant="secondary" className="text-xs">
-            Insert into: {insertTarget}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs px-2"
+              onClick={toggleAllCategories}
+            >
+              {allCategoriesExpanded ? (
+                <>
+                  <ChevronsDownUp className="w-3 h-3 mr-1" />
+                  Collapse All
+                </>
+              ) : (
+                <>
+                  <ChevronsUpDown className="w-3 h-3 mr-1" />
+                  Expand All
+                </>
+              )}
+            </Button>
+            <Badge variant="secondary" className="text-xs">
+              Insert into: {insertTarget}
+            </Badge>
+          </div>
         </div>
         
         <div className="space-y-1">
