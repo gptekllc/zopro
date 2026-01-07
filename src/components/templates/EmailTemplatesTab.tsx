@@ -48,6 +48,7 @@ import {
   useCreateEmailTemplate, 
   useUpdateEmailTemplate, 
   useDeleteEmailTemplate,
+  useInitializeDefaultTemplates,
   EmailTemplate 
 } from '@/hooks/useEmailTemplates';
 import { toast } from 'sonner';
@@ -226,6 +227,7 @@ export const EmailTemplatesTab = () => {
   const createTemplate = useCreateEmailTemplate();
   const updateTemplate = useUpdateEmailTemplate();
   const deleteTemplate = useDeleteEmailTemplate();
+  const initializeDefaultTemplates = useInitializeDefaultTemplates();
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -856,12 +858,22 @@ export const EmailTemplatesTab = () => {
             <Mail className="w-16 h-16 text-muted-foreground/50 mb-4" />
             <h3 className="text-lg font-medium mb-2">No Email Templates Yet</h3>
             <p className="text-muted-foreground text-center max-w-md mb-4">
-              Create reusable email templates with placeholder variables for invoices, quotes, jobs, and reminders.
+              Get started quickly with our professionally designed default templates, or create your own from scratch.
             </p>
-            <Button onClick={handleCreateOpen}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create Your First Template
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button 
+                onClick={() => initializeDefaultTemplates.mutate()}
+                disabled={initializeDefaultTemplates.isPending}
+              >
+                {initializeDefaultTemplates.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                <Star className="w-4 h-4 mr-2" />
+                Load Default Templates
+              </Button>
+              <Button variant="outline" onClick={handleCreateOpen}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create From Scratch
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (

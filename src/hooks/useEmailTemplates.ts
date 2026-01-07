@@ -166,3 +166,29 @@ export function useDeleteEmailTemplate() {
     },
   });
 }
+
+export function useInitializeDefaultTemplates() {
+  const queryClient = useQueryClient();
+  const { profile, user } = useAuth();
+
+  return useMutation({
+    mutationFn: async () => {
+      if (!profile?.company_id) throw new Error('No company associated');
+
+      // Call the database function to create default templates
+      const { error } = await (supabase as any).rpc('create_default_email_templates', {
+        _company_id: profile.company_id,
+        _created_by: user?.id || null,
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['email-templates'] });
+      toast.success('Default templates created successfully');
+    },
+    onError: (error: any) => {
+      toast.error('Failed to create default templates: ' + error.message);
+    },
+  });
+}
