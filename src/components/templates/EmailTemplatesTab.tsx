@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil, CopyPlus, ChevronDown, User, Building2, FileText, Briefcase, Link2, Send } from 'lucide-react';
+import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil, CopyPlus, ChevronDown, User, Building2, FileText, Briefcase, Link2, Send, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon } from 'lucide-react';
 import { 
   useEmailTemplates, 
   useCreateEmailTemplate, 
@@ -338,6 +338,56 @@ export const EmailTemplatesTab = () => {
     }, 0);
   };
 
+  // Format text with HTML tags
+  const insertFormatting = (openTag: string, closeTag: string) => {
+    if (!bodyRef.current) return;
+    
+    const start = bodyRef.current.selectionStart;
+    const end = bodyRef.current.selectionEnd;
+    const selectedText = formData.body.substring(start, end);
+    
+    const newText = formData.body.substring(0, start) + 
+      openTag + selectedText + closeTag + 
+      formData.body.substring(end);
+    
+    setFormData(prev => ({ ...prev, body: newText }));
+    
+    // Update cursor position
+    const newCursorPos = start + openTag.length + selectedText.length + closeTag.length;
+    cursorPositionRef.current.body = newCursorPos;
+    
+    setTimeout(() => {
+      if (bodyRef.current) {
+        bodyRef.current.focus();
+        // If there was selected text, place cursor after; otherwise place between tags
+        if (selectedText) {
+          bodyRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        } else {
+          const cursorInMiddle = start + openTag.length;
+          bodyRef.current.setSelectionRange(cursorInMiddle, cursorInMiddle);
+        }
+      }
+    }, 0);
+  };
+
+  const formatTools = [
+    { icon: Bold, label: 'Bold', action: () => insertFormatting('<b>', '</b>') },
+    { icon: Italic, label: 'Italic', action: () => insertFormatting('<i>', '</i>') },
+    { icon: Underline, label: 'Underline', action: () => insertFormatting('<u>', '</u>') },
+    { separator: true },
+    { icon: Heading1, label: 'Heading 1', action: () => insertFormatting('<h1>', '</h1>') },
+    { icon: Heading2, label: 'Heading 2', action: () => insertFormatting('<h2>', '</h2>') },
+    { separator: true },
+    { icon: List, label: 'Bullet List', action: () => insertFormatting('<ul>\n  <li>', '</li>\n</ul>') },
+    { icon: ListOrdered, label: 'Numbered List', action: () => insertFormatting('<ol>\n  <li>', '</li>\n</ol>') },
+    { separator: true },
+    { icon: AlignLeft, label: 'Align Left', action: () => insertFormatting('<div style="text-align: left;">', '</div>') },
+    { icon: AlignCenter, label: 'Align Center', action: () => insertFormatting('<div style="text-align: center;">', '</div>') },
+    { icon: AlignRight, label: 'Align Right', action: () => insertFormatting('<div style="text-align: right;">', '</div>') },
+    { separator: true },
+    { icon: LinkIcon, label: 'Insert Link', action: () => insertFormatting('<a href="URL_HERE">', '</a>') },
+  ];
+
   const copyPlaceholder = (variable: string) => {
     navigator.clipboard.writeText(variable);
     toast.success('Copied to clipboard');
@@ -448,28 +498,55 @@ export const EmailTemplatesTab = () => {
         </div>
 
         {editorTab === 'edit' ? (
-          <Textarea
-            ref={bodyRef}
-            value={formData.body}
-            onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
-            onFocus={() => setInsertTarget('body')}
-            onClick={() => updateCursorPosition('body')}
-            onKeyUp={() => updateCursorPosition('body')}
-            onSelect={() => updateCursorPosition('body')}
-            placeholder="Email message body. Use placeholders like {{customer_name}} for dynamic content."
-            rows={10}
-          />
+          <div className="space-y-2">
+            {/* Formatting Toolbar */}
+            <div className="flex flex-wrap items-center gap-0.5 p-1.5 border rounded-md bg-muted/30">
+              {formatTools.map((tool, index) => 
+                tool.separator ? (
+                  <Separator key={index} orientation="vertical" className="h-6 mx-1" />
+                ) : (
+                  <Button
+                    key={index}
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={tool.action}
+                    title={tool.label}
+                  >
+                    {tool.icon && <tool.icon className="w-3.5 h-3.5" />}
+                  </Button>
+                )
+              )}
+            </div>
+            
+            <Textarea
+              ref={bodyRef}
+              value={formData.body}
+              onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
+              onFocus={() => setInsertTarget('body')}
+              onClick={() => updateCursorPosition('body')}
+              onKeyUp={() => updateCursorPosition('body')}
+              onSelect={() => updateCursorPosition('body')}
+              placeholder="Email message body. Use placeholders like {{customer_name}} for dynamic content. Use the toolbar above to format text."
+              rows={10}
+              className="font-mono text-sm"
+            />
+          </div>
         ) : (
           <div className="min-h-[240px] p-4 border rounded-md bg-muted/30">
             <p className="text-xs text-muted-foreground mb-2">
               Preview with sample values:
             </p>
             <Separator className="mb-3" />
-            <div className="whitespace-pre-wrap text-sm">
-              {replacePlaceholdersWithSamples(formData.body) || (
-                <span className="text-muted-foreground italic">No message body yet</span>
-              )}
-            </div>
+            <div 
+              className="text-sm prose prose-sm dark:prose-invert max-w-none"
+              dangerouslySetInnerHTML={{ 
+                __html: replacePlaceholdersWithSamples(formData.body)
+                  .replace(/\n/g, '<br />')
+                  || '<span class="text-muted-foreground italic">No message body yet</span>' 
+              }}
+            />
           </div>
         )}
       </div>
