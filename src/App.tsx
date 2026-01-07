@@ -31,7 +31,13 @@ import StripeConnectRefresh from "./pages/StripeConnectRefresh";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
 
 const AuthedLayout = () => (
   <AppLayout>
