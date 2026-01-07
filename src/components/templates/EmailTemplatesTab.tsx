@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -223,11 +223,20 @@ const replacePlaceholdersWithSamples = (text: string): string => {
 };
 
 export const EmailTemplatesTab = () => {
-  const { data: templates, isLoading } = useEmailTemplates();
+  const { data: templates, isLoading, isFetched } = useEmailTemplates();
   const createTemplate = useCreateEmailTemplate();
   const updateTemplate = useUpdateEmailTemplate();
   const deleteTemplate = useDeleteEmailTemplate();
   const initializeDefaultTemplates = useInitializeDefaultTemplates();
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  // Auto-initialize default templates when there are none
+  useEffect(() => {
+    if (isFetched && !isLoading && templates?.length === 0 && !hasInitialized && !initializeDefaultTemplates.isPending) {
+      setHasInitialized(true);
+      initializeDefaultTemplates.mutate();
+    }
+  }, [isFetched, isLoading, templates, hasInitialized, initializeDefaultTemplates]);
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -852,7 +861,17 @@ export const EmailTemplatesTab = () => {
         </Button>
       </div>
 
-      {!templates || templates.length === 0 ? (
+      {initializeDefaultTemplates.isPending ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
+            <h3 className="text-lg font-medium mb-2">Setting Up Templates</h3>
+            <p className="text-muted-foreground text-center max-w-md">
+              Creating your default email templates...
+            </p>
+          </CardContent>
+        </Card>
+      ) : !templates || templates.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <Mail className="w-16 h-16 text-muted-foreground/50 mb-4" />
