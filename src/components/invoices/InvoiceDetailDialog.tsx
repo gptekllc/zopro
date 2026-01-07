@@ -69,7 +69,7 @@ interface InvoiceDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   onDownload?: (invoiceId: string) => void;
   onEmail?: (invoiceId: string) => void;
-  onEmailCustom?: (invoiceId: string, recipientEmails?: string[]) => void;
+  onEmailCustom?: (invoiceId: string, recipientEmails?: string[], subject?: string, message?: string, cc?: string[], bcc?: string[]) => void;
   onMarkPaid?: (invoiceId: string) => void;
   onEdit?: (invoiceId: string) => void;
   onDuplicate?: (invoiceId: string) => void;
@@ -80,7 +80,7 @@ interface InvoiceDetailDialogProps {
   isCollectingSignature?: boolean;
   onApplyLateFee?: (invoiceId: string) => void;
   isApplyingLateFee?: boolean;
-  onSendReminder?: (invoiceId: string, recipientEmails?: string[]) => void;
+  onSendReminder?: (invoiceId: string, recipientEmails?: string[], subject?: string, message?: string, cc?: string[], bcc?: string[]) => void;
   isSendingReminder?: boolean;
   isSendingEmail?: boolean;
   reminders?: ReminderHistory[];
@@ -319,15 +319,15 @@ export function InvoiceDetailDialog({
     setSplitPaymentDialogOpen(false);
   };
 
-  const handleSendInvoiceEmail = async (emails: string[], _subject: string, _message: string, _cc?: string[], _bcc?: string[]) => {
+  const handleSendInvoiceEmail = async (emails: string[], subject: string, message: string, cc?: string[], bcc?: string[]) => {
     if (emails.length > 0) {
-      await onEmailCustom?.(invoice.id, emails);
+      await onEmailCustom?.(invoice.id, emails, subject, message, cc, bcc);
     }
   };
 
-  const handleSendReminderEmail = async (emails: string[], _subject: string, _message: string, _cc?: string[], _bcc?: string[]) => {
+  const handleSendReminderEmail = async (emails: string[], subject: string, message: string, cc?: string[], bcc?: string[]) => {
     if (emails.length > 0) {
-      await onSendReminder?.(invoice.id, emails);
+      await onSendReminder?.(invoice.id, emails, subject, message, cc, bcc);
     }
   };
 

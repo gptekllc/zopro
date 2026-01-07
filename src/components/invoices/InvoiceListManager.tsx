@@ -352,7 +352,7 @@ export function InvoiceListManager({
     });
   };
 
-  const handleSendPaymentReminder = async (invoice: Invoice, recipientEmails?: string[]) => {
+  const handleSendPaymentReminder = async (invoice: Invoice, recipientEmails?: string[], subject?: string, message?: string, cc?: string[], bcc?: string[]) => {
     try {
       await sendPaymentReminder.mutateAsync({ invoiceId: invoice.id, recipientEmails });
       if (viewingInvoice?.id === invoice.id && invoice.status === 'draft') {
@@ -363,13 +363,17 @@ export function InvoiceListManager({
     }
   };
 
-  const handleEmailInvoice = async (invoiceId: string, recipientEmails?: string[]) => {
+  const handleEmailInvoice = async (invoiceId: string, recipientEmails?: string[], subject?: string, message?: string, cc?: string[], bcc?: string[]) => {
     if (!recipientEmails || recipientEmails.length === 0) return;
     await emailDocument.mutateAsync({ 
       type: 'invoice', 
       documentId: invoiceId, 
       recipientEmail: recipientEmails[0],
-      recipientEmails 
+      recipientEmails,
+      customSubject: subject,
+      customMessage: message,
+      ccEmails: cc,
+      bccEmails: bcc,
     });
   };
 
@@ -561,9 +565,9 @@ export function InvoiceListManager({
           onSendSignatureRequest={() => handleSendSignatureRequest(viewingInvoice)}
           onApplyLateFee={() => handleApplyLateFee(viewingInvoice.id)}
           isApplyingLateFee={applyLateFee.isPending}
-          onSendReminder={(id, emails) => handleSendPaymentReminder(viewingInvoice, emails)}
+          onSendReminder={(id, emails, subject, message, cc, bcc) => handleSendPaymentReminder(viewingInvoice, emails, subject, message, cc, bcc)}
           isSendingReminder={sendPaymentReminder.isPending}
-          onEmailCustom={(id, emails) => handleEmailInvoice(id, emails)}
+          onEmailCustom={(id, emails, subject, message, cc, bcc) => handleEmailInvoice(id, emails, subject, message, cc, bcc)}
           isSendingEmail={emailDocument.isPending}
           reminders={invoiceReminders}
         />
