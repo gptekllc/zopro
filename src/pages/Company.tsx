@@ -264,64 +264,69 @@ const Company = () => {
   }
 
   return (
-    <PageContainer className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Company Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage your company details and preferences</p>
-      </div>
-
+    <PageContainer className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        {/* Mobile: Icon-only tabs */}
-        <TabsList className="sm:hidden w-full grid grid-cols-5">
-          <TabsTrigger value="details" className="flex-col gap-1 py-2">
-            <Building2 className="w-5 h-5" />
-            <span className="text-xs">Details</span>
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="flex-col gap-1 py-2">
-            <Receipt className="w-5 h-5" />
-            <span className="text-xs">Billing</span>
-          </TabsTrigger>
-          <TabsTrigger value="preferences" className="flex-col gap-1 py-2">
-            <Settings className="w-5 h-5" />
-            <span className="text-xs">Prefs</span>
-          </TabsTrigger>
-          <TabsTrigger value="templates" className="flex-col gap-1 py-2">
-            <BookTemplate className="w-5 h-5" />
-            <span className="text-xs">Templates</span>
-          </TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger value="payments" className="flex-col gap-1 py-2">
-              <CreditCard className="w-5 h-5" />
-              <span className="text-xs">Pay</span>
+        {/* Header with tabs */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="shrink-0">
+            <h1 className="text-2xl sm:text-3xl font-bold">Company Settings</h1>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">Manage your company details and preferences</p>
+          </div>
+
+          {/* Mobile: Horizontal scrollable tabs with icons only */}
+          <div className="sm:hidden -mx-4 px-4 overflow-x-auto">
+            <TabsList className="inline-flex w-auto min-w-max gap-1">
+              <TabsTrigger value="details" className="flex items-center gap-1.5 px-3 py-2">
+                <Building2 className="w-4 h-4 shrink-0" />
+                <span className="text-xs whitespace-nowrap">Details</span>
+              </TabsTrigger>
+              <TabsTrigger value="billing" className="flex items-center gap-1.5 px-3 py-2">
+                <Receipt className="w-4 h-4 shrink-0" />
+                <span className="text-xs whitespace-nowrap">Billing</span>
+              </TabsTrigger>
+              <TabsTrigger value="preferences" className="flex items-center gap-1.5 px-3 py-2">
+                <Settings className="w-4 h-4 shrink-0" />
+                <span className="text-xs whitespace-nowrap">Prefs</span>
+              </TabsTrigger>
+              <TabsTrigger value="templates" className="flex items-center gap-1.5 px-3 py-2">
+                <BookTemplate className="w-4 h-4 shrink-0" />
+                <span className="text-xs whitespace-nowrap">Templates</span>
+              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="payments" className="flex items-center gap-1.5 px-3 py-2">
+                  <CreditCard className="w-4 h-4 shrink-0" />
+                  <span className="text-xs whitespace-nowrap">Pay</span>
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </div>
+          
+          {/* Desktop: Full tabs with icons */}
+          <TabsList className="hidden sm:inline-flex shrink-0">
+            <TabsTrigger value="details" className="gap-2">
+              <Building2 className="w-4 h-4" />
+              Details
             </TabsTrigger>
-          )}
-        </TabsList>
-        
-        {/* Desktop: Full tabs with icons */}
-        <TabsList className="hidden sm:inline-flex">
-          <TabsTrigger value="details" className="gap-2">
-            <Building2 className="w-4 h-4" />
-            Details
-          </TabsTrigger>
-          <TabsTrigger value="billing" className="gap-2">
-            <Receipt className="w-4 h-4" />
-            Billing & Tax
-          </TabsTrigger>
-          <TabsTrigger value="preferences" className="gap-2">
-            <Settings className="w-4 h-4" />
-            Preferences
-          </TabsTrigger>
-          <TabsTrigger value="templates" className="gap-2">
-            <BookTemplate className="w-4 h-4" />
-            Templates
-          </TabsTrigger>
-          {isAdmin && (
-            <TabsTrigger value="payments" className="gap-2">
-              <CreditCard className="w-4 h-4" />
-              Payments
+            <TabsTrigger value="billing" className="gap-2">
+              <Receipt className="w-4 h-4" />
+              Billing & Tax
             </TabsTrigger>
-          )}
-        </TabsList>
+            <TabsTrigger value="preferences" className="gap-2">
+              <Settings className="w-4 h-4" />
+              Preferences
+            </TabsTrigger>
+            <TabsTrigger value="templates" className="gap-2">
+              <BookTemplate className="w-4 h-4" />
+              Templates
+            </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="payments" className="gap-2">
+                <CreditCard className="w-4 h-4" />
+                Payments
+              </TabsTrigger>
+            )}
+          </TabsList>
+        </div>
 
         <TabsContent value="details">
           <Card>
