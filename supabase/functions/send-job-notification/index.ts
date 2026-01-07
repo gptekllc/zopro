@@ -162,8 +162,8 @@ Deno.serve(async (req) => {
     expiresAt.setHours(expiresAt.getHours() + 24);
     const signedToken = await generateSignedToken(customerId, expiresAt);
     
-    // Get the app URL from the request origin or use a default
-    const origin = req.headers.get('origin') || 'https://lovable.dev';
+    // Get the app URL from environment or request origin
+    const origin = Deno.env.get('APP_BASE_URL') || req.headers.get('origin') || 'https://lovable.dev';
     const magicLink = `${origin}/customer-portal?token=${encodeURIComponent(signedToken)}&customer=${customerId}`;
 
     console.log('Generated magic link for customer portal');
