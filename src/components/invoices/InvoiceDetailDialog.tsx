@@ -25,6 +25,7 @@ import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto, useUpdateInvoicePhotoType } from '@/hooks/useInvoicePhotos';
 import { usePayments, useDeletePayment, useUpdatePayment, useRefundPayment, useVoidPayment, useCreatePayment, Payment } from '@/hooks/usePayments';
 import { useVoidInvoice } from '@/hooks/useInvoices';
+import { useCompany } from '@/hooks/useCompany';
 import { PAYMENT_METHODS, RecordPaymentDialog, PaymentData } from './RecordPaymentDialog';
 import { SplitPaymentDialog, SplitPaymentData } from './SplitPaymentDialog';
 import { EditPaymentDialog, EditPaymentData } from './EditPaymentDialog';
@@ -146,6 +147,7 @@ export function InvoiceDetailDialog({
   onViewQuote,
   onViewJob,
 }: InvoiceDetailDialogProps) {
+  const { data: company } = useCompany();
   const { data: invoicePhotos = [], isLoading: loadingPhotos } = useInvoicePhotos(invoice?.id || null);
   const uploadPhoto = useUploadInvoicePhoto();
   const deletePhoto = useDeleteInvoicePhoto();
@@ -1075,6 +1077,7 @@ export function InvoiceDetailDialog({
         invoiceNumber={invoice.invoice_number}
         customerName={customerName}
         customerEmail={customerEmail}
+        companyName={company?.name}
         invoiceTotal={totalDue}
         dueDate={invoice.due_date || undefined}
         onSendInvoice={handleSendInvoiceEmail}
