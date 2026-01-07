@@ -121,7 +121,11 @@ export function DocumentEmailDialog({
       .replace(/\{\{job_description\}\}/g, jobDescription || '')
       .replace(/\{\{scheduled_date\}\}/g, scheduledDateStr)
       .replace(/\{\{scheduled_time\}\}/g, scheduledTime || '')
-      .replace(/\{\{technician_name\}\}/g, technicianName || '');
+      .replace(/\{\{technician_name\}\}/g, technicianName || '')
+      // Remove social links placeholder as it's handled by the edge function
+      .replace(/\{\{social_links\}\}/g, '')
+      // Remove any remaining unhandled placeholders
+      .replace(/\{\{[^}]+\}\}/g, '');
   };
 
   const getDefaultSubject = () => {
