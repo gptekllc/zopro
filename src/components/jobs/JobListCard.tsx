@@ -81,13 +81,6 @@ export function JobListCard({
             {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
           </span>
         </>}
-      {job.photos && job.photos.length > 0 && <>
-          {(job.assignee?.full_name || job.scheduled_start) && <span className="hidden sm:inline">•</span>}
-          <span className="hidden sm:flex items-center gap-1">
-            <Image className="w-3 h-3" />
-            {job.photos.length}
-          </span>
-        </>}
     </>;
   const tagsRow = <>
       {job.archived_at && <Badge variant="outline" className="text-muted-foreground text-xs sm:text-sm">Archived</Badge>}
