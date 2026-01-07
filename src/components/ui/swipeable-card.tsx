@@ -200,8 +200,10 @@ export function SwipeableCard({
             return;
           }
           if (translateX !== 0) {
+            e.stopPropagation();
             resetSwipe();
           }
+          // Otherwise, let the click propagate to the card's onClick
         }}
       >
         {children}
