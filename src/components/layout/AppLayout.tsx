@@ -20,7 +20,6 @@ import {
   Receipt,
   Settings,
   LogOut,
-  Wrench,
   UserCog,
   Building2,
   Shield,
@@ -30,6 +29,7 @@ import {
   Loader2,
   BarChart3,
 } from 'lucide-react';
+import zoproLogo from '@/assets/zopro-logo.png';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
@@ -152,7 +152,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
       {/* Mobile header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b z-40 px-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Wrench className="w-6 h-6 text-primary" />
+          <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
           <span className="font-semibold">ZoPro</span>
         </div>
 
@@ -200,8 +200,8 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
         <div className="flex flex-col h-full">
           {/* Sidebar header */}
           <div className="p-6 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-              <Wrench className="w-5 h-5 text-sidebar-primary-foreground" />
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden">
+              <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
             </div>
             <div>
               <h1 className="font-bold text-lg">ZoPro</h1>
