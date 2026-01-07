@@ -209,6 +209,16 @@ export default function DashboardPage() {
               )
             },
             {
+              id: 'recent-transactions',
+              visible: true,
+              component: (
+                <RecentTransactionsWidget 
+                  payments={payments} 
+                  isTechnicianScoped={isTechnicianDashboardScoped} 
+                />
+              )
+            },
+            {
               id: 'recent-invoices',
               visible: true,
               component: (
@@ -237,40 +247,6 @@ export default function DashboardPage() {
                           </div>
                         </div>)}
                       {recentInvoices.length === 0 && <p className="text-center text-muted-foreground py-4">No invoices yet</p>}
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            },
-            {
-              id: 'recent-quotes',
-              visible: true,
-              component: (
-                <Card className="h-full">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5" />
-                      {isTechnicianDashboardScoped ? "My Recent Quotes" : "Recent Quotes"}
-                    </CardTitle>
-                    <Link to="/quotes" className="text-sm text-primary hover:underline">
-                      View all
-                    </Link>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {recentQuotes.map(quote => <div key={quote.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                          <div>
-                            <p className="font-medium">{quote.quote_number}</p>
-                            <p className="text-sm text-muted-foreground">{quote.customer?.name}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium">${Number(quote.total).toLocaleString()}</p>
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${quote.status === "sent" ? "bg-primary/10 text-primary" : quote.status === "rejected" || quote.status === "expired" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
-                              {quote.status}
-                            </span>
-                          </div>
-                        </div>)}
-                      {recentQuotes.length === 0 && <p className="text-center text-muted-foreground py-4">No quotes yet</p>}
                     </div>
                   </CardContent>
                 </Card>
@@ -310,13 +286,37 @@ export default function DashboardPage() {
               )
             },
             {
-              id: 'recent-transactions',
+              id: 'recent-quotes',
               visible: true,
               component: (
-                <RecentTransactionsWidget 
-                  payments={payments} 
-                  isTechnicianScoped={isTechnicianDashboardScoped} 
-                />
+                <Card className="h-full">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      {isTechnicianDashboardScoped ? "My Recent Quotes" : "Recent Quotes"}
+                    </CardTitle>
+                    <Link to="/quotes" className="text-sm text-primary hover:underline">
+                      View all
+                    </Link>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {recentQuotes.map(quote => <div key={quote.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                          <div>
+                            <p className="font-medium">{quote.quote_number}</p>
+                            <p className="text-sm text-muted-foreground">{quote.customer?.name}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium">${Number(quote.total).toLocaleString()}</p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${quote.status === "sent" ? "bg-primary/10 text-primary" : quote.status === "rejected" || quote.status === "expired" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                              {quote.status}
+                            </span>
+                          </div>
+                        </div>)}
+                      {recentQuotes.length === 0 && <p className="text-center text-muted-foreground py-4">No quotes yet</p>}
+                    </div>
+                  </CardContent>
+                </Card>
               )
             }
           ]}
