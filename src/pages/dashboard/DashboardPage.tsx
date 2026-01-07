@@ -124,7 +124,7 @@ export default function DashboardPage() {
       </header>
 
       <section aria-label="Key metrics">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-[20px]">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-[20px] px-0 pt-[10px]">
           {stats.map(stat => <Card key={stat.title} className="overflow-hidden">
               <CardContent className="p-4 sm:p-6">
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
