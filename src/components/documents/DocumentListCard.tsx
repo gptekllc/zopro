@@ -143,7 +143,7 @@ export function DocumentListCard({
               </div>
             </div>
 
-            {/* Right: Total + Actions */}
+            {/* Right: Total */}
             <div className="flex items-center gap-2 shrink-0">
               {total !== undefined && total > 0 && !isVoided && (
                 <span className="text-base font-semibold text-primary">
@@ -154,11 +154,6 @@ export function DocumentListCard({
                 <span className="text-base font-medium text-muted-foreground line-through">
                   Voided
                 </span>
-              )}
-              {actionsMenu && (
-                <div onClick={(e) => e.stopPropagation()}>
-                  {actionsMenu}
-                </div>
               )}
             </div>
           </div>
@@ -172,9 +167,16 @@ export function DocumentListCard({
             </div>
           )}
 
-          {/* Row 3: Tags */}
-          <div className="flex items-center gap-1 flex-wrap" onClick={(e) => e.stopPropagation()}>
-            {tagsRow}
+          {/* Row 3: Tags + Actions */}
+          <div className="flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1 flex-wrap">
+              {tagsRow}
+            </div>
+            {actionsMenu && (
+              <div className="shrink-0">
+                {actionsMenu}
+              </div>
+            )}
           </div>
         </div>
       </CardContent>
