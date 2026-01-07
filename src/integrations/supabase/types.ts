@@ -788,6 +788,42 @@ export type Database = {
           },
         ]
       }
+      job_assignees: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          profile_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_assignees_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_assignees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_feedbacks: {
         Row: {
           company_id: string

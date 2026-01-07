@@ -65,17 +65,26 @@ export function JobListCard({
   onSwipeHintDismiss
 }: JobListCardProps) {
   const signatureId = (job as any).completion_signature_id as string | undefined;
+  
+  // Get assignee names - prefer new assignees array, fallback to single assignee
+  const assigneeNames = job.assignees && job.assignees.length > 0
+    ? job.assignees.map(a => a.profile?.full_name || a.profile?.email || 'Unknown').join(', ')
+    : job.assignee?.full_name || null;
+  
+  const hasOnLeaveAssignee = job.assignees?.some(a => a.profile?.employment_status === 'on_leave') 
+    || job.assignee?.employment_status === 'on_leave';
+  
   const metadataRow = <>
-      {job.assignee?.full_name && <span className="flex items-center gap-1 mx-0 px-[5px] bg-inherit text-primary">
+      {assigneeNames && <span className="flex items-center gap-1 mx-0 px-[5px] bg-inherit text-primary">
           <UserCog className="w-3 h-3" />
-          {job.assignee.full_name}
-          {job.assignee.employment_status === 'on_leave' && <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-[10px] px-1 py-0 ml-1">
+          {assigneeNames}
+          {hasOnLeaveAssignee && <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-[10px] px-1 py-0 ml-1">
               <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
               On Leave
             </Badge>}
         </span>}
       {job.scheduled_start && <>
-          {job.assignee?.full_name && <span>•</span>}
+          {assigneeNames && <span>•</span>}
           <span className="flex items-center gap-1 shrink-0">
             <Calendar className="w-3 h-3" />
             {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}

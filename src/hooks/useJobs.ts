@@ -47,8 +47,17 @@ export interface Job {
   estimated_duration?: number | null;
   customer?: { name: string; email: string | null; phone: string | null; address: string | null; city: string | null; state: string | null; zip: string | null };
   assignee?: { full_name: string | null; employment_status?: string | null };
+  assignees?: JobAssignee[];
   photos?: JobPhoto[];
   items?: JobItem[];
+}
+
+export interface JobAssignee {
+  id: string;
+  job_id: string;
+  profile_id: string;
+  created_at: string;
+  profile?: { id: string; full_name: string | null; email: string; employment_status?: string | null };
 }
 
 export interface JobPhoto {
@@ -152,6 +161,7 @@ export function useJobs(includeArchived: boolean = false) {
           *,
           customer:customers(name, email, phone, address, city, state, zip),
           assignee:profiles!jobs_assigned_to_fkey(full_name, employment_status),
+          assignees:job_assignees(id, job_id, profile_id, created_at, profile:profiles(id, full_name, email, employment_status)),
           photos:job_photos(*),
           items:job_items(*)
         `)
@@ -181,6 +191,7 @@ export function useJob(jobId: string | null) {
           *,
           customer:customers(name, email, phone, address, city, state, zip),
           assignee:profiles!jobs_assigned_to_fkey(full_name, employment_status),
+          assignees:job_assignees(id, job_id, profile_id, created_at, profile:profiles(id, full_name, email, employment_status)),
           photos:job_photos(*),
           items:job_items(*)
         `)
@@ -203,6 +214,7 @@ export function useCreateJob() {
       customer_id: string;
       quote_id?: string | null;
       assigned_to?: string | null;
+      assignee_ids?: string[];
       status?: Job['status'];
       priority?: Job['priority'];
       title: string;
@@ -244,10 +256,15 @@ export function useCreateJob() {
       const tax = afterDiscount * taxRate;
       const total = afterDiscount + tax;
       
+      // Use first assignee for backwards compatibility with assigned_to column
+      const assigneeIds = jobData.assignee_ids || [];
+      const primaryAssignee = assigneeIds.length > 0 ? assigneeIds[0] : (jobData.assigned_to || null);
+      
       const { data, error } = await (supabase as any)
         .from('jobs')
         .insert({
           ...validation.data,
+          assigned_to: primaryAssignee,
           company_id: profile.company_id,
           job_number: jobNumberData,
           created_by: user?.id,
@@ -259,6 +276,20 @@ export function useCreateJob() {
         .single();
       
       if (error) throw error;
+      
+      // Insert job assignees
+      if (assigneeIds.length > 0) {
+        const { error: assigneesError } = await (supabase as any)
+          .from('job_assignees')
+          .insert(
+            assigneeIds.map(profileId => ({
+              job_id: data.id,
+              profile_id: profileId,
+            }))
+          );
+        
+        if (assigneesError) throw assigneesError;
+      }
       
       // Insert job items if any
       if (items.length > 0) {
@@ -296,7 +327,7 @@ export function useUpdateJob() {
   
   return useMutation({
     // Note: items here is the simplified form for input, not the full JobItem type
-    mutationFn: async ({ id, items, ...updates }: Omit<Partial<Job>, 'items'> & { id: string; items?: { description: string; item_description?: string | null; quantity: number; unit_price: number; type?: 'product' | 'service' }[] }) => {
+    mutationFn: async ({ id, items, assignee_ids, ...updates }: Omit<Partial<Job>, 'items' | 'assignees'> & { id: string; items?: { description: string; item_description?: string | null; quantity: number; unit_price: number; type?: 'product' | 'service' }[]; assignee_ids?: string[] }) => {
       // Calculate totals if items are provided
       if (items !== undefined) {
         // Fetch job to get company_id, then fetch tax rate
@@ -346,6 +377,31 @@ export function useUpdateJob() {
             );
           
           if (itemsError) throw itemsError;
+        }
+      }
+      
+      // Update assignees if provided
+      if (assignee_ids !== undefined) {
+        // Update primary assignee for backwards compatibility
+        (updates as any).assigned_to = assignee_ids.length > 0 ? assignee_ids[0] : null;
+        
+        // Delete existing assignees and insert new ones
+        await (supabase as any)
+          .from('job_assignees')
+          .delete()
+          .eq('job_id', id);
+        
+        if (assignee_ids.length > 0) {
+          const { error: assigneesError } = await (supabase as any)
+            .from('job_assignees')
+            .insert(
+              assignee_ids.map(profileId => ({
+                job_id: id,
+                profile_id: profileId,
+              }))
+            );
+          
+          if (assigneesError) throw assigneesError;
         }
       }
       
