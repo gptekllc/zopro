@@ -1078,8 +1078,11 @@ export function InvoiceDetailDialog({
         customerName={customerName}
         customerEmail={customerEmail}
         companyName={company?.name}
+        companyPhone={company?.phone || ''}
+        companyEmail={company?.email || ''}
         invoiceTotal={totalDue}
         dueDate={invoice.due_date || undefined}
+        invoiceId={invoice.id}
         onSendInvoice={handleSendInvoiceEmail}
         onSendReminder={handleSendReminderEmail}
         isSendingInvoice={isSendingEmail}

@@ -41,8 +41,11 @@ interface InvoiceEmailActionDialogProps {
   customerName?: string;
   customerEmail?: string;
   companyName?: string;
+  companyPhone?: string;
+  companyEmail?: string;
   invoiceTotal?: number;
   dueDate?: string;
+  invoiceId?: string;
   onSendInvoice: (emails: string[], subject: string, message: string, cc?: string[], bcc?: string[]) => Promise<void>;
   onSendReminder: (emails: string[], subject: string, message: string, cc?: string[], bcc?: string[]) => Promise<void>;
   isSendingInvoice?: boolean;
@@ -57,8 +60,11 @@ export function InvoiceEmailActionDialog({
   customerName,
   customerEmail,
   companyName = 'Our Company',
+  companyPhone = '',
+  companyEmail: companyEmailProp = '',
   invoiceTotal,
   dueDate,
+  invoiceId,
   onSendInvoice,
   onSendReminder,
   isSendingInvoice = false,
@@ -97,16 +103,29 @@ export function InvoiceEmailActionDialog({
     const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString() : '';
     const todayStr = new Date().toLocaleDateString();
     
+    // Build customer portal link if invoiceId is provided
+    const portalLink = invoiceId 
+      ? `${window.location.origin}/customer-portal?invoiceId=${invoiceId}`
+      : '';
+    
     return text
       .replace(/\{\{customer_name\}\}/g, customerName || '')
       .replace(/\{\{company_name\}\}/g, companyName)
+      .replace(/\{\{company_phone\}\}/g, companyPhone)
+      .replace(/\{\{company_email\}\}/g, companyEmailProp)
       .replace(/\{\{invoice_number\}\}/g, invoiceNumber || '')
       .replace(/\{\{invoice_total\}\}/g, totalStr)
       .replace(/\{\{due_date\}\}/g, dueDateStr)
       .replace(/\{\{today_date\}\}/g, todayStr)
+      .replace(/\{\{customer_portal_link\}\}/g, portalLink)
+      .replace(/\{\{payment_link\}\}/g, portalLink)
+      // Remove social links placeholder as it's handled by the edge function
+      .replace(/\{\{social_links\}\}/g, '')
       // Also handle quote and job numbers if they're in the subject/body
       .replace(/\{\{quote_number\}\}/g, '')
-      .replace(/\{\{job_number\}\}/g, '');
+      .replace(/\{\{job_number\}\}/g, '')
+      // Remove any remaining unhandled placeholders
+      .replace(/\{\{[^}]+\}\}/g, '');
   };
 
   const getDefaultSubject = (type: EmailActionType) => {
