@@ -1706,7 +1706,7 @@ serve(async (req) => {
 
       // Generate customer portal magic link
       const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const portalBaseUrl = supabaseUrl.replace('.supabase.co', '.lovable.app');
+      const portalBaseUrl = Deno.env.get("APP_BASE_URL") || supabaseUrl.replace('.supabase.co', '.lovable.app');
       const customerPortalLink = customer?.email 
         ? `${portalBaseUrl}/portal?email=${encodeURIComponent(customer.email)}&company=${encodeURIComponent(company?.id || '')}`
         : '';
