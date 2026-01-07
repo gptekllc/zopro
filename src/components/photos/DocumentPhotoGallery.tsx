@@ -4,7 +4,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, Plus, Upload, FolderInput } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, Upload, FolderInput } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { compressImageToFile } from '@/lib/imageCompression';
@@ -57,6 +57,8 @@ export function DocumentPhotoGallery({
   const [draggedPhoto, setDraggedPhoto] = useState<DocumentPhoto | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<'before' | 'after' | 'other' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -167,27 +169,105 @@ export function DocumentPhotoGallery({
 
   const handleMouseUp = () => setIsDragging(false);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && onUpload) {
+  // Process files for upload (shared by file input and drag-drop)
+  const processFilesForUpload = async (files: FileList | File[]) => {
+    if (!files || files.length === 0 || !onUpload) return;
+
+    const fileArray = Array.from(files);
+    // Filter to only image files
+    const imageFiles = fileArray.filter(file => 
+      file.type.startsWith('image/') || 
+      file.name.toLowerCase().endsWith('.heic') || 
+      file.name.toLowerCase().endsWith('.heif')
+    );
+
+    if (imageFiles.length === 0) {
+      toast.error('Please select image files only');
+      return;
+    }
+
+    if (imageFiles.length < fileArray.length) {
+      toast.warning(`${fileArray.length - imageFiles.length} non-image file(s) were skipped`);
+    }
+
+    const totalFiles = imageFiles.length;
+    setUploadProgress({ current: 0, total: totalFiles });
+    setIsProcessing(true);
+    
+    let successCount = 0;
+    
+    // Process all images
+    for (let i = 0; i < imageFiles.length; i++) {
+      const file = imageFiles[i];
       try {
-        setIsProcessing(true);
-        // Compress image before upload (300kb max, supports HEIF/HEIC)
-        const compressedFile = await compressImageToFile(file, 300);
-        setIsProcessing(false);
-        await onUpload(compressedFile, selectedPhotoType);
+        // Check if it's an image file that needs compression
+        const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
+        const isCompressibleImage = imageTypes.includes(file.type.toLowerCase());
+        const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+        
+        let fileToUpload = file;
+        if (isCompressibleImage || isHeic) {
+          try {
+            fileToUpload = await compressImageToFile(file, 300);
+          } catch (compressionError) {
+            console.warn('Image compression failed, uploading original:', compressionError);
+            fileToUpload = file;
+          }
+        }
+        
+        await onUpload(fileToUpload, selectedPhotoType);
+        successCount++;
+        setUploadProgress({ current: i + 1, total: totalFiles });
       } catch (error) {
-        console.error('Failed to compress image:', error);
-        toast.error('Failed to process image. Please try a different file.');
-        setIsProcessing(false);
-      }
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      if (cameraInputRef.current) {
-        cameraInputRef.current.value = '';
+        console.error(`Failed to upload image ${file.name}:`, error);
+        toast.error(`Failed to upload ${file.name}`);
       }
     }
+    
+    if (successCount > 0) {
+      toast.success(`${successCount} image${successCount > 1 ? 's' : ''} uploaded`);
+    }
+    
+    setIsProcessing(false);
+    setUploadProgress({ current: 0, total: 0 });
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+    }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    await processFilesForUpload(files);
+  };
+
+  const handleDropZoneDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isUploading && !isProcessing) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDropZoneDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDropZoneDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    if (isUploading || isProcessing) return;
+    
+    const files = e.dataTransfer.files;
+    await processFilesForUpload(files);
   };
 
   const handleDeleteConfirm = async () => {
@@ -256,72 +336,99 @@ export function DocumentPhotoGallery({
 
   return (
     <div className={className}>
-      {/* Upload Section */}
+      {/* Upload Section with Drag & Drop */}
       {editable && onUpload && (
-        <div className="mb-4 p-4 border-2 border-dashed rounded-lg">
-          <div className="flex flex-row items-center gap-3">
-            <Select value={selectedPhotoType} onValueChange={(v) => setSelectedPhotoType(v as 'before' | 'after' | 'other')}>
-              <SelectTrigger className="w-28 sm:w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="before">Before</SelectItem>
-                <SelectItem value="after">After</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button 
-              variant="outline" 
-              onClick={() => cameraInputRef.current?.click()}
-              disabled={isUploading || isProcessing}
-              className="sm:hidden"
-              title="Take Photo"
-            >
-              {isProcessing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Camera className="w-4 h-4" />
-              )}
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading || isProcessing}
-              className="flex-1 sm:flex-none sm:w-auto"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Preparing...
-                </>
-              ) : isUploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload
-                </>
-              )}
-            </Button>
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*,.heic,.heif"
-              capture="environment"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,.heic,.heif"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-          </div>
+        <div 
+          className={`mb-4 p-4 border-2 border-dashed rounded-lg transition-colors ${
+            isDragOver 
+              ? 'border-primary bg-primary/5' 
+              : 'border-muted-foreground/30 hover:border-muted-foreground/50'
+          }`}
+          onDragOver={handleDropZoneDragOver}
+          onDragLeave={handleDropZoneDragLeave}
+          onDrop={handleDropZoneDrop}
+        >
+          {isDragOver ? (
+            <div className="py-6 text-center">
+              <Upload className="w-10 h-10 mx-auto mb-2 text-primary animate-bounce" />
+              <p className="text-sm font-medium text-primary">Drop images here</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                They will be added to "{selectedPhotoType}" category
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-row items-center gap-3">
+                <Select value={selectedPhotoType} onValueChange={(v) => setSelectedPhotoType(v as 'before' | 'after' | 'other')}>
+                  <SelectTrigger className="w-28 sm:w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="before">Before</SelectItem>
+                    <SelectItem value="after">After</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button 
+                  variant="outline" 
+                  onClick={() => cameraInputRef.current?.click()}
+                  disabled={isUploading || isProcessing}
+                  className="sm:hidden"
+                  title="Take Photo"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading || isProcessing}
+                  className="flex-1 sm:flex-none sm:w-auto"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {uploadProgress.total > 1 
+                        ? `${uploadProgress.current}/${uploadProgress.total}`
+                        : 'Processing...'}
+                    </>
+                  ) : isUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload
+                    </>
+                  )}
+                </Button>
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  capture="environment"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2 text-center hidden sm:block">
+                or drag and drop images here
+              </p>
+            </>
+          )}
         </div>
       )}
 
