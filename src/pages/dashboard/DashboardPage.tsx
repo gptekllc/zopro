@@ -211,15 +211,17 @@ export default function DashboardPage() {
     ? [...technicianPerformanceStats].sort((a, b) => b.score - a.score)[0] 
     : null;
 
-  const stats = isTechnicianDashboardScoped ? [{
-    title: "My Total Revenue",
-    value: `$${myTotalRevenue.toLocaleString()}`,
-    subtext: `${myPaidInvoicesCount} paid invoice${myPaidInvoicesCount !== 1 ? 's' : ''}`,
-    icon: DollarSign,
-    iconBg: "bg-success",
-    hasTooltip: true,
-    tooltipText: "Revenue from paid invoices where you are listed as the assigned technician"
-  }, {
+  const stats = isTechnicianDashboardScoped ? [
+    ...(myTotalRevenue > 0 ? [{
+      title: "My Total Revenue",
+      value: `$${myTotalRevenue.toLocaleString()}`,
+      subtext: `${myPaidInvoicesCount} paid invoice${myPaidInvoicesCount !== 1 ? 's' : ''}`,
+      icon: DollarSign,
+      iconBg: "bg-success",
+      hasTooltip: true,
+      tooltipText: "Revenue from paid invoices where you are listed as the assigned technician"
+    }] : []),
+    {
     title: "My Pending Invoices",
     value: filteredPendingInvoices.length,
     subtext: `$${pendingAmount.toLocaleString()}`,
@@ -248,7 +250,8 @@ export default function DashboardPage() {
     value: `$${totalRevenue.toLocaleString()}`,
     icon: DollarSign,
     iconBg: "bg-success"
-  }, {
+  },
+  ...(myTotalRevenue > 0 ? [{
     title: "My Total Revenue",
     value: `$${myTotalRevenue.toLocaleString()}`,
     subtext: `${myPaidInvoicesCount} paid invoice${myPaidInvoicesCount !== 1 ? 's' : ''}`,
@@ -256,7 +259,8 @@ export default function DashboardPage() {
     iconBg: "bg-success",
     hasTooltip: true,
     tooltipText: "Revenue from paid invoices where you are listed as the assigned technician"
-  }, {
+  }] : []),
+  {
     title: "Pending Invoices",
     value: filteredPendingInvoices.length,
     subtext: `$${pendingAmount.toLocaleString()}`,
