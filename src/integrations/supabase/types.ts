@@ -70,6 +70,7 @@ export type Database = {
           business_hours: Json | null
           city: string | null
           created_at: string
+          custom_domain: string | null
           customer_portal_welcome_message: string | null
           default_job_duration: number
           default_job_priority: string
@@ -131,6 +132,7 @@ export type Database = {
           business_hours?: Json | null
           city?: string | null
           created_at?: string
+          custom_domain?: string | null
           customer_portal_welcome_message?: string | null
           default_job_duration?: number
           default_job_priority?: string
@@ -192,6 +194,7 @@ export type Database = {
           business_hours?: Json | null
           city?: string | null
           created_at?: string
+          custom_domain?: string | null
           customer_portal_welcome_message?: string | null
           default_job_duration?: number
           default_job_priority?: string

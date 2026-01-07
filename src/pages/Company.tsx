@@ -85,6 +85,7 @@ const Company = () => {
     // Branding
     brand_primary_color: '#0066CC',
     customer_portal_welcome_message: '',
+    custom_domain: '',
     // Time Clock Preferences
     timeclock_enforce_job_labor: false,
     timeclock_allow_manual_labor_edit: true,
@@ -159,6 +160,7 @@ const Company = () => {
       notify_on_automation_run: company.notify_on_automation_run ?? true,
       brand_primary_color: company.brand_primary_color ?? '#0066CC',
       customer_portal_welcome_message: company.customer_portal_welcome_message ?? '',
+      custom_domain: (company as any).custom_domain ?? '',
       timeclock_enforce_job_labor: (company as any).timeclock_enforce_job_labor ?? false,
       timeclock_allow_manual_labor_edit: (company as any).timeclock_allow_manual_labor_edit ?? true,
       timeclock_require_job_selection: (company as any).timeclock_require_job_selection ?? false,
@@ -231,6 +233,7 @@ const Company = () => {
       pdf_terms_conditions: preferences.pdf_terms_conditions || null,
       pdf_footer_text: preferences.pdf_footer_text || null,
       customer_portal_welcome_message: preferences.customer_portal_welcome_message || null,
+      custom_domain: preferences.custom_domain || null,
       email_job_body: preferences.email_job_body || null,
       email_quote_body: preferences.email_quote_body || null,
       email_invoice_body: preferences.email_invoice_body || null,
@@ -1095,6 +1098,17 @@ const Company = () => {
                           onChange={(e) => setPreferences({ ...preferences, customer_portal_welcome_message: e.target.value })}
                           rows={3}
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Custom Domain URL</Label>
+                        <Input
+                          placeholder="https://yourdomain.com"
+                          value={preferences.custom_domain}
+                          onChange={(e) => setPreferences({ ...preferences, custom_domain: e.target.value })}
+                        />
+                        <p className="text-sm text-muted-foreground">
+                          The base URL for customer portal links in emails (e.g., https://zopro.app). Leave blank to use the default.
+                        </p>
                       </div>
                     </AccordionContent>
                   </AccordionItem>

@@ -59,6 +59,7 @@ export interface Company {
   // Branding
   brand_primary_color: string | null;
   customer_portal_welcome_message: string | null;
+  custom_domain: string | null;
   // Automation notifications
   notify_on_automation_run: boolean | null;
   created_at: string;

@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { FileText, Bell, Mail, X, Plus, Loader2, ArrowLeft, CheckCircle, Send, Save, ChevronDown, Trash2, Star } from 'lucide-react';
 import { useEmailTemplates, useCreateEmailTemplate, useDeleteEmailTemplate, EmailTemplate } from '@/hooks/useEmailTemplates';
+import { useCompany } from '@/hooks/useCompany';
 
 type EmailActionType = 'invoice' | 'reminder';
 type Step = 'select' | 'compose' | 'preview' | 'success';
@@ -94,6 +95,7 @@ export function InvoiceEmailActionDialog({
   const [deleteTemplateId, setDeleteTemplateId] = useState<string | null>(null);
   
   const { data: templates = [] } = useEmailTemplates(actionType);
+  const { data: company } = useCompany();
   const createTemplate = useCreateEmailTemplate();
   const deleteTemplate = useDeleteEmailTemplate();
 
@@ -104,8 +106,8 @@ export function InvoiceEmailActionDialog({
     const todayStr = new Date().toLocaleDateString();
     
     // Build customer portal link if invoiceId is provided
-    // Use production domain for portal links
-    const baseUrl = 'https://zopro.app';
+    // Use company's custom domain or fall back to production domain
+    const baseUrl = company?.custom_domain || 'https://zopro.app';
     const portalLink = invoiceId 
       ? `${baseUrl}/customer-portal?invoiceId=${invoiceId}`
       : '';
