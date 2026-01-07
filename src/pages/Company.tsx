@@ -329,7 +329,7 @@ const Company = () => {
         </div>
 
         <TabsContent value="details">
-          <Card>
+          <Card className="max-w-2xl mx-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Building2 className="w-5 h-5" />
@@ -337,7 +337,7 @@ const Company = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6 max-w-xl">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Logo Upload */}
                 <div className="space-y-2">
                   <Label>Company Logo</Label>
