@@ -17,7 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Loader2, List, CalendarDays, Users, FileText } from 'lucide-react';
+import { Plus, Loader2, List, CalendarDays, Users, FileText, ChevronsUpDown } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import JobCalendar from '@/components/jobs/JobCalendar';
@@ -524,33 +525,47 @@ const Jobs = () => {
                     />
                     <div className="space-y-2">
                       <Label>Assign To</Label>
-                      <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto bg-background">
-                        {availableTechnicians.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No technicians available</p>
-                        ) : (
-                          availableTechnicians.map(t => (
-                            <div key={t.id} className="flex items-center gap-2">
-                              <Checkbox
-                                id={`tech-${t.id}`}
-                                checked={formData.assignee_ids.includes(t.id)}
-                                onCheckedChange={(checked) => {
-                                  if (checked) {
-                                    setFormData({ ...formData, assignee_ids: [...formData.assignee_ids, t.id] });
-                                  } else {
-                                    setFormData({ ...formData, assignee_ids: formData.assignee_ids.filter(id => id !== t.id) });
-                                  }
-                                }}
-                              />
-                              <label htmlFor={`tech-${t.id}`} className="text-sm cursor-pointer">
-                                {t.full_name || t.email}
-                              </label>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      {formData.assignee_ids.length === 0 && (
-                        <p className="text-xs text-muted-foreground">No technicians assigned</p>
-                      )}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-full justify-between font-normal">
+                            <span className="truncate">
+                              {formData.assignee_ids.length === 0 
+                                ? "Select technicians..." 
+                                : formData.assignee_ids.length === 1
+                                  ? availableTechnicians.find(t => t.id === formData.assignee_ids[0])?.full_name || availableTechnicians.find(t => t.id === formData.assignee_ids[0])?.email || "1 selected"
+                                  : `${formData.assignee_ids.length} technicians selected`}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0" align="start">
+                          <div className="p-2 space-y-1 max-h-48 overflow-y-auto">
+                            {availableTechnicians.length === 0 ? (
+                              <p className="text-sm text-muted-foreground p-2">No technicians available</p>
+                            ) : (
+                              availableTechnicians.map(t => (
+                                <div 
+                                  key={t.id} 
+                                  className="flex items-center gap-2 p-2 rounded-md hover:bg-accent cursor-pointer"
+                                  onClick={() => {
+                                    if (formData.assignee_ids.includes(t.id)) {
+                                      setFormData({ ...formData, assignee_ids: formData.assignee_ids.filter(id => id !== t.id) });
+                                    } else {
+                                      setFormData({ ...formData, assignee_ids: [...formData.assignee_ids, t.id] });
+                                    }
+                                  }}
+                                >
+                                  <Checkbox
+                                    checked={formData.assignee_ids.includes(t.id)}
+                                    onCheckedChange={() => {}}
+                                  />
+                                  <span className="text-sm">{t.full_name || t.email}</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
                       {technicians.some(t => t.employment_status === 'on_leave') && (
                         <p className="text-xs text-muted-foreground">Team members on leave are hidden from this list</p>
                       )}
