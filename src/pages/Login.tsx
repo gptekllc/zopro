@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Wrench, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
 
@@ -427,6 +427,14 @@ const Login = () => {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Privacy Policy Link */}
+        <p className="text-xs text-center text-primary-foreground/70 mt-4">
+          By signing in, you agree to our{' '}
+          <Link to="/privacy" className="underline hover:text-primary-foreground">
+            Privacy Policy
+          </Link>
+        </p>
       </div>
     </div>
   );
