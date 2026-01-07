@@ -17,8 +17,8 @@ const MobileFAB = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  // Only show on mobile and on relevant pages
-  const relevantPaths = ['/jobs', '/quotes', '/invoices', '/dashboard', '/customers'];
+  // Only show on mobile and on Jobs, Quotes, Invoices pages
+  const relevantPaths = ['/jobs', '/quotes', '/invoices'];
   const isRelevantPage = relevantPaths.some(path => location.pathname.startsWith(path));
 
   if (!isMobile || !isRelevantPage) return null;
