@@ -428,9 +428,13 @@ const Login = () => {
           </CardContent>
         </Card>
 
-        {/* Privacy Policy Link */}
+        {/* Legal Links */}
         <p className="text-xs text-center text-primary-foreground/70 mt-4">
           By signing in, you agree to our{' '}
+          <Link to="/terms" className="underline hover:text-primary-foreground">
+            Terms of Service
+          </Link>{' '}
+          and{' '}
           <Link to="/privacy" className="underline hover:text-primary-foreground">
             Privacy Policy
           </Link>
