@@ -1,9 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -37,12 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, Edit, Plus, Star, Copy, Eye, Pencil, CopyPlus, ChevronDown, User, Building2, FileText, Briefcase, Link2, Send, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, RemoveFormatting, Type, Palette, Highlighter, Share2, ChevronsDownUp, ChevronsUpDown, ALargeSmall, Mail } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Loader2, Trash2, Edit, Plus, Star, Copy, Eye, Pencil, CopyPlus, ChevronDown, User, Building2, FileText, Briefcase, Link2, Send, Mail, ChevronsDownUp, ChevronsUpDown, Share2 } from 'lucide-react';
 import { 
   useEmailTemplates, 
   useCreateEmailTemplate, 
@@ -51,6 +45,7 @@ import {
   EmailTemplate 
 } from '@/hooks/useEmailTemplates';
 import { toast } from 'sonner';
+import { RichTextEditor, useRichTextEditorInsert } from '@/components/ui/rich-text-editor';
 
 type TemplateType = 'invoice' | 'reminder' | 'quote' | 'job' | 'general';
 
@@ -455,174 +450,44 @@ export const EmailTemplatesTab = () => {
 
   const [insertTarget, setInsertTarget] = useState<'subject' | 'body'>('body');
   const subjectRef = useRef<HTMLInputElement>(null);
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const cursorPositionRef = useRef<{ subject: number; body: number }>({ subject: 0, body: 0 });
+  const cursorPositionRef = useRef<{ subject: number }>({ subject: 0 });
+  const { insertPlaceholder: insertPlaceholderIntoEditor } = useRichTextEditorInsert();
 
-  const updateCursorPosition = (target: 'subject' | 'body') => {
+  const updateCursorPosition = (target: 'subject') => {
     if (target === 'subject' && subjectRef.current) {
       cursorPositionRef.current.subject = subjectRef.current.selectionStart || 0;
-    } else if (target === 'body' && bodyRef.current) {
-      cursorPositionRef.current.body = bodyRef.current.selectionStart || 0;
     }
   };
 
-  const insertPlaceholder = (variable: string, target: 'subject' | 'body') => {
-    const position = cursorPositionRef.current[target];
-    setFormData(prev => {
-      const currentValue = prev[target];
-      const newValue = currentValue.slice(0, position) + variable + currentValue.slice(position);
-      // Update cursor position for next insert
-      cursorPositionRef.current[target] = position + variable.length;
-      return {
-        ...prev,
-        [target]: newValue,
-      };
-    });
-    setEditorTab('edit');
-    
-    // Refocus the field after inserting
-    setTimeout(() => {
-      const newPosition = cursorPositionRef.current[target];
-      if (target === 'subject' && subjectRef.current) {
-        subjectRef.current.focus();
-        subjectRef.current.setSelectionRange(newPosition, newPosition);
-      } else if (target === 'body' && bodyRef.current) {
-        bodyRef.current.focus();
-        bodyRef.current.setSelectionRange(newPosition, newPosition);
-      }
-    }, 0);
-  };
-
-  // Format text with HTML tags
-  const insertFormatting = (openTag: string, closeTag: string) => {
-    if (!bodyRef.current) return;
-    
-    const start = bodyRef.current.selectionStart;
-    const end = bodyRef.current.selectionEnd;
-    const selectedText = formData.body.substring(start, end);
-    
-    const newText = formData.body.substring(0, start) + 
-      openTag + selectedText + closeTag + 
-      formData.body.substring(end);
-    
-    setFormData(prev => ({ ...prev, body: newText }));
-    
-    // Update cursor position
-    const newCursorPos = start + openTag.length + selectedText.length + closeTag.length;
-    cursorPositionRef.current.body = newCursorPos;
-    
-    setTimeout(() => {
-      if (bodyRef.current) {
-        bodyRef.current.focus();
-        // If there was selected text, place cursor after; otherwise place between tags
-        if (selectedText) {
-          bodyRef.current.setSelectionRange(newCursorPos, newCursorPos);
-        } else {
-          const cursorInMiddle = start + openTag.length;
-          bodyRef.current.setSelectionRange(cursorInMiddle, cursorInMiddle);
+  const insertPlaceholder = useCallback((variable: string, target: 'subject' | 'body') => {
+    if (target === 'body') {
+      // Insert into RichTextEditor
+      insertPlaceholderIntoEditor(variable);
+      setInsertTarget('body');
+    } else {
+      // Insert into subject input
+      const position = cursorPositionRef.current.subject;
+      setFormData(prev => {
+        const currentValue = prev.subject;
+        const newValue = currentValue.slice(0, position) + variable + currentValue.slice(position);
+        cursorPositionRef.current.subject = position + variable.length;
+        return {
+          ...prev,
+          subject: newValue,
+        };
+      });
+      setEditorTab('edit');
+      
+      // Refocus the field after inserting
+      setTimeout(() => {
+        const newPosition = cursorPositionRef.current.subject;
+        if (subjectRef.current) {
+          subjectRef.current.focus();
+          subjectRef.current.setSelectionRange(newPosition, newPosition);
         }
-      }
-    }, 0);
-  };
-
-  const FONT_OPTIONS = [
-    { label: 'Arial', value: 'Arial, sans-serif' },
-    { label: 'Georgia', value: 'Georgia, serif' },
-    { label: 'Times New Roman', value: '"Times New Roman", serif' },
-    { label: 'Verdana', value: 'Verdana, sans-serif' },
-    { label: 'Courier New', value: '"Courier New", monospace' },
-  ];
-
-  const TEXT_COLORS = [
-    { label: 'Black', value: '#000000' },
-    { label: 'Gray', value: '#666666' },
-    { label: 'Red', value: '#dc2626' },
-    { label: 'Blue', value: '#2563eb' },
-    { label: 'Green', value: '#16a34a' },
-    { label: 'Orange', value: '#ea580c' },
-    { label: 'Purple', value: '#9333ea' },
-    { label: 'Pink', value: '#db2777' },
-  ];
-
-  const HIGHLIGHT_COLORS = [
-    { label: 'Yellow', value: '#fef08a' },
-    { label: 'Green', value: '#bbf7d0' },
-    { label: 'Blue', value: '#bfdbfe' },
-    { label: 'Pink', value: '#fbcfe8' },
-    { label: 'Orange', value: '#fed7aa' },
-    { label: 'Purple', value: '#e9d5ff' },
-    { label: 'None', value: '' },
-  ];
-
-  const FONT_SIZE_OPTIONS = [
-    { label: 'Small', value: '12px' },
-    { label: 'Normal', value: '14px' },
-    { label: 'Large', value: '18px' },
-    { label: 'Extra Large', value: '24px' },
-  ];
-
-  const applyFont = (fontFamily: string) => {
-    insertFormatting(`<span style="font-family: ${fontFamily};">`, '</span>');
-  };
-
-  const applyFontSize = (fontSize: string) => {
-    insertFormatting(`<span style="font-size: ${fontSize};">`, '</span>');
-  };
-
-  const applyTextColor = (color: string) => {
-    insertFormatting(`<span style="color: ${color};">`, '</span>');
-  };
-
-  const applyHighlight = (color: string) => {
-    if (color) {
-      insertFormatting(`<span style="background-color: ${color};">`, '</span>');
+      }, 0);
     }
-  };
-
-  const clearFormatting = () => {
-    if (!bodyRef.current) return;
-    
-    const start = bodyRef.current.selectionStart;
-    const end = bodyRef.current.selectionEnd;
-    const selectedText = formData.body.substring(start, end);
-    
-    if (!selectedText) {
-      toast.info('Select text to clear formatting');
-      return;
-    }
-    
-    // Remove HTML tags from selected text
-    const cleanText = selectedText.replace(/<[^>]*>/g, '');
-    
-    const newText = formData.body.substring(0, start) + cleanText + formData.body.substring(end);
-    
-    setFormData(prev => ({ ...prev, body: newText }));
-    
-    setTimeout(() => {
-      if (bodyRef.current) {
-        bodyRef.current.focus();
-        bodyRef.current.setSelectionRange(start, start + cleanText.length);
-      }
-    }, 0);
-  };
-
-  const formatTools = [
-    { icon: Bold, label: 'Bold', action: () => insertFormatting('<b>', '</b>') },
-    { icon: Italic, label: 'Italic', action: () => insertFormatting('<i>', '</i>') },
-    { icon: Underline, label: 'Underline', action: () => insertFormatting('<u>', '</u>') },
-    { separator: true },
-    { icon: Heading1, label: 'Heading 1', action: () => insertFormatting('<h1>', '</h1>') },
-    { icon: Heading2, label: 'Heading 2', action: () => insertFormatting('<h2>', '</h2>') },
-    { separator: true },
-    { icon: List, label: 'Bullet List', action: () => insertFormatting('<ul>\n  <li>', '</li>\n</ul>') },
-    { icon: ListOrdered, label: 'Numbered List', action: () => insertFormatting('<ol>\n  <li>', '</li>\n</ol>') },
-    { separator: true },
-    { icon: AlignLeft, label: 'Align Left', action: () => insertFormatting('<div style="text-align: left;">', '</div>') },
-    { icon: AlignCenter, label: 'Align Center', action: () => insertFormatting('<div style="text-align: center;">', '</div>') },
-    { icon: AlignRight, label: 'Align Right', action: () => insertFormatting('<div style="text-align: right;">', '</div>') },
-    { separator: true },
-    { icon: LinkIcon, label: 'Insert Link', action: () => insertFormatting('<a href="URL_HERE">', '</a>') },
-  ];
+  }, [insertPlaceholderIntoEditor]);
 
   const copyPlaceholder = (variable: string) => {
     navigator.clipboard.writeText(variable);
@@ -745,137 +610,12 @@ export const EmailTemplatesTab = () => {
         </div>
 
         {editorTab === 'edit' ? (
-          <div className="space-y-2">
-            {/* Formatting Toolbar */}
-            <div className="flex flex-wrap items-center gap-0.5 p-1.5 border rounded-md bg-muted/30">
-              {/* Font Selector */}
-              <Select onValueChange={applyFont}>
-                <SelectTrigger className="h-7 w-[110px] text-xs border-0 bg-transparent focus:ring-0">
-                  <Type className="w-3.5 h-3.5 mr-1" />
-                  <span className="truncate">Font</span>
-                </SelectTrigger>
-                <SelectContent>
-                  {FONT_OPTIONS.map((font) => (
-                    <SelectItem key={font.value} value={font.value} style={{ fontFamily: font.value }}>
-                      {font.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {/* Font Size Selector */}
-              <Select onValueChange={applyFontSize}>
-                <SelectTrigger className="h-7 w-[100px] text-xs border-0 bg-transparent focus:ring-0">
-                  <ALargeSmall className="w-3.5 h-3.5 mr-1" />
-                  <span className="truncate">Size</span>
-                </SelectTrigger>
-                <SelectContent>
-                  {FONT_SIZE_OPTIONS.map((size) => (
-                    <SelectItem key={size.value} value={size.value} style={{ fontSize: size.value }}>
-                      {size.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Separator orientation="vertical" className="h-6 mx-1" />
-
-              {formatTools.map((tool, index) => 
-                tool.separator ? (
-                  <Separator key={index} orientation="vertical" className="h-6 mx-1" />
-                ) : (
-                  <Button
-                    key={index}
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={tool.action}
-                    title={tool.label}
-                  >
-                    {tool.icon && <tool.icon className="w-3.5 h-3.5" />}
-                  </Button>
-                )
-              )}
-              
-              <Separator orientation="vertical" className="h-6 mx-1" />
-              
-              {/* Text Color Picker */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Text Color">
-                    <Palette className="w-3.5 h-3.5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" align="start">
-                  <div className="grid grid-cols-4 gap-1">
-                    {TEXT_COLORS.map((color) => (
-                      <button
-                        key={color.value}
-                        type="button"
-                        className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
-                        style={{ backgroundColor: color.value }}
-                        onClick={() => applyTextColor(color.value)}
-                        title={color.label}
-                      />
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              
-              {/* Highlight Color Picker */}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Highlight Color">
-                    <Highlighter className="w-3.5 h-3.5" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-2" align="start">
-                  <div className="grid grid-cols-4 gap-1">
-                    {HIGHLIGHT_COLORS.map((color) => (
-                      <button
-                        key={color.value || 'none'}
-                        type="button"
-                        className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform flex items-center justify-center text-xs"
-                        style={{ backgroundColor: color.value || 'transparent' }}
-                        onClick={() => applyHighlight(color.value)}
-                        title={color.label}
-                      >
-                        {!color.value && '✕'}
-                      </button>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-              
-              <Separator orientation="vertical" className="h-6 mx-1" />
-              
-              {/* Clear Formatting */}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                onClick={clearFormatting}
-                title="Clear Formatting"
-              >
-                <RemoveFormatting className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-            
-            <Textarea
-              ref={bodyRef}
-              value={formData.body}
-              onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
-              onFocus={() => setInsertTarget('body')}
-              onClick={() => updateCursorPosition('body')}
-              onKeyUp={() => updateCursorPosition('body')}
-              onSelect={() => updateCursorPosition('body')}
-              placeholder="Email message body. Use placeholders like {{customer_name}} for dynamic content. Use the toolbar above to format text."
-              rows={10}
-              className="font-mono text-sm"
-            />
-          </div>
+          <RichTextEditor
+            value={formData.body}
+            onChange={(value) => setFormData(prev => ({ ...prev, body: value }))}
+            onFocus={() => setInsertTarget('body')}
+            placeholder="Email message body. Use placeholders like {{customer_name}} for dynamic content."
+          />
         ) : (
           <div className="min-h-[240px] p-4 border rounded-md bg-muted/30">
             <p className="text-xs text-muted-foreground mb-2">
@@ -886,7 +626,6 @@ export const EmailTemplatesTab = () => {
               className="text-sm prose prose-sm dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{ 
                 __html: replacePlaceholdersWithSamples(formData.body)
-                  .replace(/\n/g, '<br />')
                   || '<span class="text-muted-foreground italic">No message body yet</span>' 
               }}
             />
