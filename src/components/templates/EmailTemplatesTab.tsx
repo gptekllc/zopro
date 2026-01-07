@@ -37,7 +37,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil, CopyPlus, ChevronDown, User, Building2, FileText, Briefcase, Link2, Send, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon } from 'lucide-react';
+import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil, CopyPlus, ChevronDown, User, Building2, FileText, Briefcase, Link2, Send, Bold, Italic, Underline, List, ListOrdered, Heading1, Heading2, AlignLeft, AlignCenter, AlignRight, Link as LinkIcon, RemoveFormatting, Type, Palette, Highlighter, Share2 } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { 
   useEmailTemplates, 
   useCreateEmailTemplate, 
@@ -109,6 +114,9 @@ const SAMPLE_VALUES: Record<string, string> = {
   '{{customer_portal_link}}': 'https://yourcompany.com/portal?token=abc123',
   '{{payment_link}}': 'https://yourcompany.com/pay?invoice=I-2026-0042',
   
+  // Social
+  '{{social_links}}': '<div style="text-align: center; margin-top: 15px;"><a href="#" style="margin: 0 8px;"><span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #1877F2; color: white; border-radius: 6px; font-weight: bold;">F</span></a><a href="#" style="margin: 0 8px;"><span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #E4405F; color: white; border-radius: 6px; font-weight: bold;">I</span></a></div>',
+  
   // General
   '{{today_date}}': new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
 };
@@ -117,7 +125,7 @@ interface PlaceholderInfo {
   variable: string;
   description: string;
   types: TemplateType[];
-  category: 'customer' | 'company' | 'sender' | 'invoice' | 'quote' | 'job' | 'links' | 'general';
+  category: 'customer' | 'company' | 'sender' | 'invoice' | 'quote' | 'job' | 'links' | 'social' | 'general';
 }
 
 interface PlaceholderCategory {
@@ -134,6 +142,7 @@ const PLACEHOLDER_CATEGORIES: PlaceholderCategory[] = [
   { id: 'quote', label: 'Quote', icon: <FileText className="w-3.5 h-3.5" /> },
   { id: 'job', label: 'Job', icon: <Briefcase className="w-3.5 h-3.5" /> },
   { id: 'links', label: 'Links', icon: <Link2 className="w-3.5 h-3.5" /> },
+  { id: 'social', label: 'Social', icon: <Share2 className="w-3.5 h-3.5" /> },
   { id: 'general', label: 'General', icon: <Mail className="w-3.5 h-3.5" /> },
 ];
 
@@ -169,6 +178,9 @@ const PLACEHOLDER_VARIABLES: PlaceholderInfo[] = [
   // Links placeholders
   { variable: '{{customer_portal_link}}', description: 'Customer portal magic link', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'links' },
   { variable: '{{payment_link}}', description: 'Direct payment link', types: ['invoice', 'reminder'], category: 'links' },
+  
+  // Social placeholders
+  { variable: '{{social_links}}', description: 'Social media icons enabled in Company Settings', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'social' },
   
   // Invoice placeholders
   { variable: '{{invoice_number}}', description: 'Invoice number', types: ['invoice', 'reminder'], category: 'invoice' },
@@ -370,6 +382,76 @@ export const EmailTemplatesTab = () => {
     }, 0);
   };
 
+  const FONT_OPTIONS = [
+    { label: 'Arial', value: 'Arial, sans-serif' },
+    { label: 'Georgia', value: 'Georgia, serif' },
+    { label: 'Times New Roman', value: '"Times New Roman", serif' },
+    { label: 'Verdana', value: 'Verdana, sans-serif' },
+    { label: 'Courier New', value: '"Courier New", monospace' },
+  ];
+
+  const TEXT_COLORS = [
+    { label: 'Black', value: '#000000' },
+    { label: 'Gray', value: '#666666' },
+    { label: 'Red', value: '#dc2626' },
+    { label: 'Blue', value: '#2563eb' },
+    { label: 'Green', value: '#16a34a' },
+    { label: 'Orange', value: '#ea580c' },
+    { label: 'Purple', value: '#9333ea' },
+    { label: 'Pink', value: '#db2777' },
+  ];
+
+  const HIGHLIGHT_COLORS = [
+    { label: 'Yellow', value: '#fef08a' },
+    { label: 'Green', value: '#bbf7d0' },
+    { label: 'Blue', value: '#bfdbfe' },
+    { label: 'Pink', value: '#fbcfe8' },
+    { label: 'Orange', value: '#fed7aa' },
+    { label: 'Purple', value: '#e9d5ff' },
+    { label: 'None', value: '' },
+  ];
+
+  const applyFont = (fontFamily: string) => {
+    insertFormatting(`<span style="font-family: ${fontFamily};">`, '</span>');
+  };
+
+  const applyTextColor = (color: string) => {
+    insertFormatting(`<span style="color: ${color};">`, '</span>');
+  };
+
+  const applyHighlight = (color: string) => {
+    if (color) {
+      insertFormatting(`<span style="background-color: ${color};">`, '</span>');
+    }
+  };
+
+  const clearFormatting = () => {
+    if (!bodyRef.current) return;
+    
+    const start = bodyRef.current.selectionStart;
+    const end = bodyRef.current.selectionEnd;
+    const selectedText = formData.body.substring(start, end);
+    
+    if (!selectedText) {
+      toast.info('Select text to clear formatting');
+      return;
+    }
+    
+    // Remove HTML tags from selected text
+    const cleanText = selectedText.replace(/<[^>]*>/g, '');
+    
+    const newText = formData.body.substring(0, start) + cleanText + formData.body.substring(end);
+    
+    setFormData(prev => ({ ...prev, body: newText }));
+    
+    setTimeout(() => {
+      if (bodyRef.current) {
+        bodyRef.current.focus();
+        bodyRef.current.setSelectionRange(start, start + cleanText.length);
+      }
+    }, 0);
+  };
+
   const formatTools = [
     { icon: Bold, label: 'Bold', action: () => insertFormatting('<b>', '</b>') },
     { icon: Italic, label: 'Italic', action: () => insertFormatting('<i>', '</i>') },
@@ -501,6 +583,23 @@ export const EmailTemplatesTab = () => {
           <div className="space-y-2">
             {/* Formatting Toolbar */}
             <div className="flex flex-wrap items-center gap-0.5 p-1.5 border rounded-md bg-muted/30">
+              {/* Font Selector */}
+              <Select onValueChange={applyFont}>
+                <SelectTrigger className="h-7 w-[110px] text-xs border-0 bg-transparent focus:ring-0">
+                  <Type className="w-3.5 h-3.5 mr-1" />
+                  <span className="truncate">Font</span>
+                </SelectTrigger>
+                <SelectContent>
+                  {FONT_OPTIONS.map((font) => (
+                    <SelectItem key={font.value} value={font.value} style={{ fontFamily: font.value }}>
+                      {font.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Separator orientation="vertical" className="h-6 mx-1" />
+
               {formatTools.map((tool, index) => 
                 tool.separator ? (
                   <Separator key={index} orientation="vertical" className="h-6 mx-1" />
@@ -518,6 +617,70 @@ export const EmailTemplatesTab = () => {
                   </Button>
                 )
               )}
+              
+              <Separator orientation="vertical" className="h-6 mx-1" />
+              
+              {/* Text Color Picker */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Text Color">
+                    <Palette className="w-3.5 h-3.5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" align="start">
+                  <div className="grid grid-cols-4 gap-1">
+                    {TEXT_COLORS.map((color) => (
+                      <button
+                        key={color.value}
+                        type="button"
+                        className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform"
+                        style={{ backgroundColor: color.value }}
+                        onClick={() => applyTextColor(color.value)}
+                        title={color.label}
+                      />
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              {/* Highlight Color Picker */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="ghost" size="sm" className="h-7 w-7 p-0" title="Highlight Color">
+                    <Highlighter className="w-3.5 h-3.5" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-2" align="start">
+                  <div className="grid grid-cols-4 gap-1">
+                    {HIGHLIGHT_COLORS.map((color) => (
+                      <button
+                        key={color.value || 'none'}
+                        type="button"
+                        className="w-6 h-6 rounded border border-border hover:scale-110 transition-transform flex items-center justify-center text-xs"
+                        style={{ backgroundColor: color.value || 'transparent' }}
+                        onClick={() => applyHighlight(color.value)}
+                        title={color.label}
+                      >
+                        {!color.value && '✕'}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              <Separator orientation="vertical" className="h-6 mx-1" />
+              
+              {/* Clear Formatting */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={clearFormatting}
+                title="Clear Formatting"
+              >
+                <RemoveFormatting className="w-3.5 h-3.5" />
+              </Button>
             </div>
             
             <Textarea
