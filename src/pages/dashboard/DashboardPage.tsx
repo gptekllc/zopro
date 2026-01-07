@@ -8,7 +8,7 @@ import { useTimeEntries } from "@/hooks/useTimeEntries";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useAllPayments } from "@/hooks/usePayments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, Briefcase, CheckCircle, Clock, DollarSign, FileText, Filter, Info, Loader2, Percent, TrendingUp } from "lucide-react";
+import { AlertCircle, Briefcase, CheckCircle, Clock, DollarSign, FileText, Filter, Info, Loader2, Percent, Star, TrendingUp } from "lucide-react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subWeeks, subMonths, subYears, isWithinInterval } from "date-fns";
 import { Link } from "react-router-dom";
 import { useDashboardAccess } from "./useDashboardAccess";
@@ -178,6 +178,36 @@ export default function DashboardPage() {
     ? Math.round((convertedQuotes.length / quotesInRange.length) * 100) 
     : 0;
 
+  // Top performer calculation (only for admin/manager view)
+  const topPerformer = !isTechnicianDashboardScoped ? (() => {
+    const technicianStats = technicians.map(tech => {
+      const techPaidInvoices = invoices.filter(i => 
+        i.assigned_to === tech.id && i.status === "paid" && 
+        isWithinDateRange(i.paid_at || i.updated_at, filterStart, filterEnd)
+      );
+      const techRevenue = techPaidInvoices.reduce((sum, i) => sum + Number(i.total), 0);
+      const techCompletedJobs = jobs.filter(j => 
+        j.assigned_to === tech.id && 
+        (j.status === "completed" || j.status === "invoiced" || j.status === "paid") &&
+        isWithinDateRange(j.actual_end || j.updated_at, filterStart, filterEnd)
+      ).length;
+      const techInvoicesCount = techPaidInvoices.length;
+      
+      // Weighted score: revenue (normalized) + jobs * 100 + invoices * 50
+      const score = techRevenue + (techCompletedJobs * 100) + (techInvoicesCount * 50);
+      
+      return {
+        name: tech.full_name || tech.email,
+        revenue: techRevenue,
+        completedJobs: techCompletedJobs,
+        invoicesCount: techInvoicesCount,
+        score
+      };
+    }).filter(t => t.score > 0);
+    
+    return technicianStats.sort((a, b) => b.score - a.score)[0] || null;
+  })() : null;
+
   const stats = isTechnicianDashboardScoped ? [{
     title: "My Total Revenue",
     value: `$${myTotalRevenue.toLocaleString()}`,
@@ -247,7 +277,15 @@ export default function DashboardPage() {
     iconBg: "bg-primary",
     hasTooltip: true,
     tooltipText: "Percentage of quotes converted to jobs or invoices"
-  }];
+  }, ...(topPerformer ? [{
+    title: "Top Performer",
+    value: topPerformer.name,
+    subtext: `$${topPerformer.revenue.toLocaleString()} • ${topPerformer.completedJobs} jobs • ${topPerformer.invoicesCount} invoices`,
+    icon: Star,
+    iconBg: "bg-warning",
+    hasTooltip: true,
+    tooltipText: "Technician with highest combined score based on revenue, completed jobs, and invoices"
+  }] : [])];
 
   if (isLoading) {
     return <div className="flex items-center justify-center py-12">
