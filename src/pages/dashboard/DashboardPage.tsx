@@ -15,6 +15,7 @@ import { useDashboardAccess } from "./useDashboardAccess";
 import { SchedulerWidget } from "@/components/dashboard/SchedulerWidget";
 import { RecentTransactionsWidget } from "@/components/dashboard/RecentTransactionsWidget";
 import { DraggableWidgetContainer } from "@/components/dashboard/DraggableWidgetContainer";
+import { TechnicianLeaderboardWidget } from "@/components/dashboard/TechnicianLeaderboardWidget";
 import PageContainer from "@/components/layout/PageContainer";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -178,35 +179,37 @@ export default function DashboardPage() {
     ? Math.round((convertedQuotes.length / quotesInRange.length) * 100) 
     : 0;
 
-  // Top performer calculation (only for admin/manager view)
-  const topPerformer = !isTechnicianDashboardScoped ? (() => {
-    const technicianStats = technicians.map(tech => {
-      const techPaidInvoices = invoices.filter(i => 
-        i.assigned_to === tech.id && i.status === "paid" && 
-        isWithinDateRange(i.paid_at || i.updated_at, filterStart, filterEnd)
-      );
-      const techRevenue = techPaidInvoices.reduce((sum, i) => sum + Number(i.total), 0);
-      const techCompletedJobs = jobs.filter(j => 
-        j.assigned_to === tech.id && 
-        (j.status === "completed" || j.status === "invoiced" || j.status === "paid") &&
-        isWithinDateRange(j.actual_end || j.updated_at, filterStart, filterEnd)
-      ).length;
-      const techInvoicesCount = techPaidInvoices.length;
-      
-      // Weighted score: revenue (normalized) + jobs * 100 + invoices * 50
-      const score = techRevenue + (techCompletedJobs * 100) + (techInvoicesCount * 50);
-      
-      return {
-        name: tech.full_name || tech.email,
-        revenue: techRevenue,
-        completedJobs: techCompletedJobs,
-        invoicesCount: techInvoicesCount,
-        score
-      };
-    }).filter(t => t.score > 0);
+  // Technician performance stats (for leaderboard and top performer)
+  const technicianPerformanceStats = !isTechnicianDashboardScoped ? technicians.map(tech => {
+    const techPaidInvoices = invoices.filter(i => 
+      i.assigned_to === tech.id && i.status === "paid" && 
+      isWithinDateRange(i.paid_at || i.updated_at, filterStart, filterEnd)
+    );
+    const techRevenue = techPaidInvoices.reduce((sum, i) => sum + Number(i.total), 0);
+    const techCompletedJobs = jobs.filter(j => 
+      j.assigned_to === tech.id && 
+      (j.status === "completed" || j.status === "invoiced" || j.status === "paid") &&
+      isWithinDateRange(j.actual_end || j.updated_at, filterStart, filterEnd)
+    ).length;
+    const techInvoicesCount = techPaidInvoices.length;
     
-    return technicianStats.sort((a, b) => b.score - a.score)[0] || null;
-  })() : null;
+    // Weighted score: revenue (normalized) + jobs * 100 + invoices * 50
+    const score = techRevenue + (techCompletedJobs * 100) + (techInvoicesCount * 50);
+    
+    return {
+      id: tech.id,
+      name: tech.full_name || tech.email,
+      avatarUrl: tech.avatar_url,
+      revenue: techRevenue,
+      completedJobs: techCompletedJobs,
+      invoicesCount: techInvoicesCount,
+      score
+    };
+  }).filter(t => t.score > 0) : [];
+
+  const topPerformer = technicianPerformanceStats.length > 0 
+    ? [...technicianPerformanceStats].sort((a, b) => b.score - a.score)[0] 
+    : null;
 
   const stats = isTechnicianDashboardScoped ? [{
     title: "My Total Revenue",
@@ -433,6 +436,13 @@ export default function DashboardPage() {
                   payments={payments} 
                   isTechnicianScoped={isTechnicianDashboardScoped} 
                 />
+              )
+            },
+            {
+              id: 'technician-leaderboard',
+              visible: !isTechnicianDashboardScoped,
+              component: (
+                <TechnicianLeaderboardWidget technicians={technicianPerformanceStats} />
               )
             },
             {
