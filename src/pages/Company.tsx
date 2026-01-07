@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
@@ -14,7 +14,7 @@ import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileTex
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
-import SocialLinksManager from '@/components/company/SocialLinksManager';
+import SocialLinksManager, { SocialLinksManagerRef } from '@/components/company/SocialLinksManager';
 import { TIMEZONES } from '@/lib/timezones';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -96,6 +96,7 @@ const Company = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formInitialized, setFormInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
+  const socialLinksRef = useRef<SocialLinksManagerRef>(null);
   
   const defaultBusinessHours = {
     monday: { open: '09:00', close: '17:00', closed: false },
@@ -172,6 +173,13 @@ const Company = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!company) return;
+    
+    // Save social links first
+    if (socialLinksRef.current) {
+      const socialLinksSuccess = await socialLinksRef.current.save();
+      if (!socialLinksSuccess) return; // Stop if social links save failed
+    }
+    
     await updateCompany.mutateAsync({ 
       id: company.id, 
       ...formData,
@@ -452,7 +460,7 @@ const Company = () => {
 
                 {/* Social Links Manager */}
                 <div className="pt-4 border-t">
-                  <SocialLinksManager companyId={company.id} />
+                  <SocialLinksManager ref={socialLinksRef} companyId={company.id} />
                 </div>
 
                 {/* Timezone Selection */}
