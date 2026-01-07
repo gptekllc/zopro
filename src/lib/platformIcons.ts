@@ -43,6 +43,8 @@ export const PLATFORM_ICONS: Record<string, string> = {
   thumbtack: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="#2797dd"><circle cx="24" cy="24" r="24"/><rect x="12" y="14" width="24" height="6" fill="#fff"/><path d="M21 20h6v14c0 2-1.5 4-3 4s-3-2-3-4V20z" fill="#fff"/></svg>')}`,
   
   homeadvisor: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#455a64" d="M30.899,23L18.548,10.668L9,20.201v10.189c0,1.408,1.155,2.564,2.564,2.564l11.317,0.015l9.081,9.968L32,33l4.374-0.031c1.408,0,2.564-1.155,2.564-2.564V23H30.899z"/><polygon fill="#fb8c00" points="31.619,6 16.381,6 1,21 5.369,21 18.548,7.842 31.727,21 47,21"/></svg>')}`,
+  
+  angi: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 220"><path fill="#FF6153" d="M65.4 4.6l27.5 171.2H64.1l-1.5-11.1c-2.6-19.9-13.1-38.2-30.4-42.3-.6 7-4 30.8-5.4 37-.01-.01.01-.03.01-.05-2.6 13-8.2 27.2-25.1 33a33.5 33.5 0 01-11 1.8c-9.4 0-18.7-3.9-25.5-11C-42.9 175.3-47.1 165.7-47.2 153.4c-.3-29.5 24.1-55.9 55.4-60.1.3 0 .6-.1.9-.1l14.2-88.5h21zM5 122.1c-12.8 4.5-24.4 16.1-24.3 30.9.1 5.3 1.6 8.4 4.3 11.2 2.1 2.2 5.2 3.1 7.7 2.2 4.2-1.4 6.1-6.4 7.6-14.8zm49.3-19.8l-9.2-70.7h-1L35.9 95c6.4 1.7 12.6 4.2 18.5 7.3z"/></svg>')}`,
 };
 
 // Platform name aliases (case-insensitive matching)
