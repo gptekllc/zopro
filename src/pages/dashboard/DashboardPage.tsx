@@ -8,7 +8,7 @@ import { useTimeEntries } from "@/hooks/useTimeEntries";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useAllPayments } from "@/hooks/usePayments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, Briefcase, CheckCircle, Clock, DollarSign, FileText, Filter, Info, Loader2, TrendingUp } from "lucide-react";
+import { AlertCircle, Briefcase, CheckCircle, Clock, DollarSign, FileText, Filter, Info, Loader2, Percent, TrendingUp } from "lucide-react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subWeeks, subMonths, subYears, isWithinInterval } from "date-fns";
 import { Link } from "react-router-dom";
 import { useDashboardAccess } from "./useDashboardAccess";
@@ -164,6 +164,20 @@ export default function DashboardPage() {
     isWithinDateRange(j.actual_end || j.updated_at, filterStart, filterEnd)
   );
 
+  // Quote conversion rate: quotes that have been converted to jobs or invoices
+  const visibleQuotesForConversion = isTechnicianDashboardScoped 
+    ? quotes.filter(q => q.created_by === user?.id)
+    : quotes;
+  const quotesInRange = visibleQuotesForConversion.filter(q => 
+    isWithinDateRange(q.created_at, filterStart, filterEnd)
+  );
+  const convertedQuotes = quotesInRange.filter(q => 
+    q.job_id !== null || invoices.some(inv => inv.quote_id === q.id)
+  );
+  const conversionRate = quotesInRange.length > 0 
+    ? Math.round((convertedQuotes.length / quotesInRange.length) * 100) 
+    : 0;
+
   const stats = isTechnicianDashboardScoped ? [{
     title: "My Total Revenue",
     value: `$${myTotalRevenue.toLocaleString()}`,
@@ -188,6 +202,14 @@ export default function DashboardPage() {
     value: completedJobs.length,
     icon: CheckCircle,
     iconBg: "bg-success"
+  }, {
+    title: "Quote Conversion",
+    value: `${conversionRate}%`,
+    subtext: `${convertedQuotes.length} of ${quotesInRange.length} quotes`,
+    icon: Percent,
+    iconBg: "bg-primary",
+    hasTooltip: true,
+    tooltipText: "Percentage of quotes converted to jobs or invoices"
   }] : [{
     title: "Total Revenue",
     value: `$${totalRevenue.toLocaleString()}`,
@@ -217,6 +239,14 @@ export default function DashboardPage() {
     value: completedJobs.length,
     icon: CheckCircle,
     iconBg: "bg-success"
+  }, {
+    title: "Quote Conversion",
+    value: `${conversionRate}%`,
+    subtext: `${convertedQuotes.length} of ${quotesInRange.length} quotes`,
+    icon: Percent,
+    iconBg: "bg-primary",
+    hasTooltip: true,
+    tooltipText: "Percentage of quotes converted to jobs or invoices"
   }];
 
   if (isLoading) {
