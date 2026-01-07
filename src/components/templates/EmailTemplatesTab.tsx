@@ -239,8 +239,8 @@ const SAMPLE_VALUES: Record<string, string> = {
   '{{technician_name}}': 'Mike Johnson',
   
   // Links
-  '{{customer_portal_link}}': 'https://yourcompany.com/portal?token=abc123',
-  '{{payment_link}}': 'https://yourcompany.com/pay?invoice=I-2026-0042',
+  '{{customer_portal_link}}': 'https://zopro.app/customer-portal?token=abc123',
+  '{{payment_link}}': 'https://zopro.app/customer-portal?token=abc123&pay=true',
   
   // Social
   '{{social_links}}': '<div style="text-align: center; margin-top: 15px;"><a href="#" style="margin: 0 8px;"><span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #1877F2; color: white; border-radius: 6px; font-weight: bold;">F</span></a><a href="#" style="margin: 0 8px;"><span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #E4405F; color: white; border-radius: 6px; font-weight: bold;">I</span></a></div>',
