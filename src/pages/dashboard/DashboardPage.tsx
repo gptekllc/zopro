@@ -164,6 +164,11 @@ export default function DashboardPage() {
     (j.status === "completed" || j.status === "invoiced" || j.status === "paid") && 
     isWithinDateRange(j.actual_end || j.updated_at, filterStart, filterEnd)
   );
+  const myCompletedJobs = jobs.filter(j => 
+    j.assigned_to === user?.id && 
+    (j.status === "completed" || j.status === "invoiced" || j.status === "paid") && 
+    isWithinDateRange(j.actual_end || j.updated_at, filterStart, filterEnd)
+  );
 
   // Quote conversion rate: quotes that have been converted to jobs or invoices
   const visibleQuotesForConversion = isTechnicianDashboardScoped 
@@ -274,6 +279,7 @@ export default function DashboardPage() {
   }, {
     title: "Jobs Completed",
     value: completedJobs.length,
+    subtext: myCompletedJobs.length > 0 ? `My total: ${myCompletedJobs.length}` : undefined,
     icon: CheckCircle,
     iconBg: "bg-success"
   }, {
