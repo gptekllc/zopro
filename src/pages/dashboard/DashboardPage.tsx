@@ -73,9 +73,11 @@ export default function DashboardPage() {
   const recentInvoices = isTechnicianDashboardScoped ? invoices.filter(i => i.created_by === user?.id).slice(0, 5) : invoices.slice(0, 5);
   const recentQuotes = isTechnicianDashboardScoped ? quotes.filter(q => q.created_by === user?.id).slice(0, 5) : quotes.slice(0, 5);
   const recentJobs = isTechnicianDashboardScoped ? jobs.filter(j => j.created_by === user?.id || j.assigned_to === user?.id).slice(0, 5) : jobs.slice(0, 5);
+  const paidInvoicesCount = visibleInvoices.filter(i => i.status === "paid").length;
   const stats = isTechnicianDashboardScoped ? [{
     title: "My Revenue",
     value: `$${totalRevenue.toLocaleString()}`,
+    subtext: `${paidInvoicesCount} paid invoice${paidInvoicesCount !== 1 ? 's' : ''}`,
     icon: DollarSign,
     iconBg: "bg-success"
   }, {
