@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
     const signedToken = await generateSignedToken(customerId, expiresAt);
     
     // Get the app URL from environment or request origin
-    const origin = Deno.env.get('APP_BASE_URL') || req.headers.get('origin') || 'https://lovable.dev';
+    const origin = Deno.env.get('APP_BASE_URL') || 'https://zopro.app';
     
     // Build the magic link - the customer portal will handle the document
     const magicLink = `${origin}/customer-portal?token=${encodeURIComponent(signedToken)}&customer=${customerId}&sign=${documentType}&doc=${documentId}`;
