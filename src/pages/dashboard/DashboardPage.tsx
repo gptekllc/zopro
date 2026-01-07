@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useInvoices } from "@/hooks/useInvoices";
@@ -7,15 +8,70 @@ import { useTimeEntries } from "@/hooks/useTimeEntries";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useAllPayments } from "@/hooks/usePayments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, Briefcase, Clock, DollarSign, FileText, Loader2, TrendingUp, Users } from "lucide-react";
-import { format } from "date-fns";
+import { AlertCircle, Briefcase, Clock, DollarSign, FileText, Filter, Info, Loader2, TrendingUp } from "lucide-react";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subWeeks, subMonths, subYears, isWithinInterval } from "date-fns";
 import { Link } from "react-router-dom";
 import { useDashboardAccess } from "./useDashboardAccess";
 import { SchedulerWidget } from "@/components/dashboard/SchedulerWidget";
 import { RecentTransactionsWidget } from "@/components/dashboard/RecentTransactionsWidget";
 import { DraggableWidgetContainer } from "@/components/dashboard/DraggableWidgetContainer";
 import PageContainer from "@/components/layout/PageContainer";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+type DateFilter = "this-week" | "last-week" | "this-month" | "last-month" | "last-3-months" | "this-year" | "last-year" | "all-time";
+
+const DATE_FILTER_LABELS: Record<DateFilter, string> = {
+  "this-week": "This Week",
+  "last-week": "Last Week",
+  "this-month": "This Month",
+  "last-month": "Last Month",
+  "last-3-months": "Last 3 Months",
+  "this-year": "This Year",
+  "last-year": "Last Year",
+  "all-time": "All Time",
+};
+
+function getDateRange(filter: DateFilter): { start: Date | null; end: Date | null } {
+  const now = new Date();
+  
+  switch (filter) {
+    case "this-week":
+      return { start: startOfWeek(now, { weekStartsOn: 0 }), end: endOfWeek(now, { weekStartsOn: 0 }) };
+    case "last-week": {
+      const lastWeek = subWeeks(now, 1);
+      return { start: startOfWeek(lastWeek, { weekStartsOn: 0 }), end: endOfWeek(lastWeek, { weekStartsOn: 0 }) };
+    }
+    case "this-month":
+      return { start: startOfMonth(now), end: endOfMonth(now) };
+    case "last-month": {
+      const lastMonth = subMonths(now, 1);
+      return { start: startOfMonth(lastMonth), end: endOfMonth(lastMonth) };
+    }
+    case "last-3-months":
+      return { start: startOfMonth(subMonths(now, 2)), end: endOfMonth(now) };
+    case "this-year":
+      return { start: startOfYear(now), end: endOfYear(now) };
+    case "last-year": {
+      const lastYear = subYears(now, 1);
+      return { start: startOfYear(lastYear), end: endOfYear(lastYear) };
+    }
+    case "all-time":
+    default:
+      return { start: null, end: null };
+  }
+}
+
+function isWithinDateRange(dateStr: string | null | undefined, start: Date | null, end: Date | null): boolean {
+  if (!dateStr) return false;
+  if (!start || !end) return true; // All time
+  const date = new Date(dateStr);
+  return isWithinInterval(date, { start, end });
+}
+
 export default function DashboardPage() {
+  const [dateFilter, setDateFilter] = useState<DateFilter>("all-time");
   const {
     profile,
     user,
@@ -56,13 +112,31 @@ export default function DashboardPage() {
   const isLoading = authLoading || loadingInvoices || loadingQuotes || loadingCustomers || loadingTime || loadingJobs || loadingPayments;
 
   // Dashboard scoping rules:
-  // - Technicians: dashboard shows only “my” items.
+  // - Technicians: dashboard shows only "my" items.
   // - Admin/Manager: dashboard shows all items.
+  
+  // Date filter range
+  const { start: filterStart, end: filterEnd } = getDateRange(dateFilter);
+  
   const visibleInvoices = isTechnicianDashboardScoped ? invoices.filter(i => i.created_by === user?.id) : invoices;
-  const totalRevenue = visibleInvoices.filter(i => i.status === "paid").reduce((sum, i) => sum + Number(i.total), 0);
-  const pendingInvoices = visibleInvoices.filter(i => i.status === "sent" || i.status === "overdue");
-  const pendingAmount = pendingInvoices.reduce((sum, inv) => sum + Number(inv.total), 0);
-  const activeQuotes = isTechnicianDashboardScoped ? quotes.filter(q => (q.status === "sent" || q.status === "draft") && q.created_by === user?.id) : quotes.filter(q => q.status === "sent" || q.status === "draft");
+  
+  // Filtered stats based on date range
+  const filteredPaidInvoices = visibleInvoices.filter(i => 
+    i.status === "paid" && isWithinDateRange(i.paid_at || i.updated_at, filterStart, filterEnd)
+  );
+  const totalRevenue = filteredPaidInvoices.reduce((sum, i) => sum + Number(i.total), 0);
+  
+  const filteredPendingInvoices = visibleInvoices.filter(i => 
+    (i.status === "sent" || i.status === "overdue") && isWithinDateRange(i.created_at, filterStart, filterEnd)
+  );
+  const pendingAmount = filteredPendingInvoices.reduce((sum, inv) => sum + Number(inv.total), 0);
+  
+  const filteredActiveQuotes = (isTechnicianDashboardScoped 
+    ? quotes.filter(q => (q.status === "sent" || q.status === "draft") && q.created_by === user?.id)
+    : quotes.filter(q => q.status === "sent" || q.status === "draft")
+  ).filter(q => isWithinDateRange(q.created_at, filterStart, filterEnd));
+  
+  // Non-filtered for other uses
   const overdueInvoices = visibleInvoices.filter(i => i.status === "overdue");
   const today = new Date();
   const visibleTimeEntries = isTechnicianDashboardScoped ? timeEntries.filter(e => e.user_id === user?.id) : timeEntries;
@@ -73,8 +147,11 @@ export default function DashboardPage() {
   const recentInvoices = isTechnicianDashboardScoped ? invoices.filter(i => i.created_by === user?.id).slice(0, 5) : invoices.slice(0, 5);
   const recentQuotes = isTechnicianDashboardScoped ? quotes.filter(q => q.created_by === user?.id).slice(0, 5) : quotes.slice(0, 5);
   const recentJobs = isTechnicianDashboardScoped ? jobs.filter(j => j.created_by === user?.id || j.assigned_to === user?.id).slice(0, 5) : jobs.slice(0, 5);
-  // My Revenue: paid invoices where user is the assigned technician
-  const myAssignedPaidInvoices = invoices.filter(i => i.assigned_to === user?.id && i.status === "paid");
+  
+  // My Revenue: paid invoices where user is the assigned technician (filtered by date)
+  const myAssignedPaidInvoices = invoices.filter(i => 
+    i.assigned_to === user?.id && i.status === "paid" && isWithinDateRange(i.paid_at || i.updated_at, filterStart, filterEnd)
+  );
   const myTotalRevenue = myAssignedPaidInvoices.reduce((sum, i) => sum + Number(i.total), 0);
   const myPaidInvoicesCount = myAssignedPaidInvoices.length;
 
@@ -83,16 +160,18 @@ export default function DashboardPage() {
     value: `$${myTotalRevenue.toLocaleString()}`,
     subtext: `${myPaidInvoicesCount} paid invoice${myPaidInvoicesCount !== 1 ? 's' : ''}`,
     icon: DollarSign,
-    iconBg: "bg-success"
+    iconBg: "bg-success",
+    hasTooltip: true,
+    tooltipText: "Revenue from paid invoices where you are listed as the assigned technician"
   }, {
     title: "My Pending Invoices",
-    value: pendingInvoices.length,
+    value: filteredPendingInvoices.length,
     subtext: `$${pendingAmount.toLocaleString()}`,
     icon: FileText,
     iconBg: "bg-warning"
   }, {
     title: "My Active Quotes",
-    value: activeQuotes.length,
+    value: filteredActiveQuotes.length,
     icon: TrendingUp,
     iconBg: "bg-primary"
   }, {
@@ -110,53 +189,96 @@ export default function DashboardPage() {
     value: `$${myTotalRevenue.toLocaleString()}`,
     subtext: `${myPaidInvoicesCount} paid invoice${myPaidInvoicesCount !== 1 ? 's' : ''}`,
     icon: DollarSign,
-    iconBg: "bg-success"
+    iconBg: "bg-success",
+    hasTooltip: true,
+    tooltipText: "Revenue from paid invoices where you are listed as the assigned technician"
   }, {
     title: "Pending Invoices",
-    value: pendingInvoices.length,
+    value: filteredPendingInvoices.length,
     subtext: `$${pendingAmount.toLocaleString()}`,
     icon: FileText,
     iconBg: "bg-warning"
   }, {
     title: "Active Quotes",
-    value: activeQuotes.length,
+    value: filteredActiveQuotes.length,
     icon: TrendingUp,
     iconBg: "bg-primary"
   }];
+
   if (isLoading) {
     return <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>;
   }
-  return <PageContainer>
-      <header>
-        <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-          Welcome back, {profile?.full_name || "User"}.
-          {isTechnicianDashboardScoped ? " Here's your personal summary." : " Here's what's happening today."}
-        </p>
+
+  return (
+    <PageContainer>
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+            Welcome back, {profile?.full_name || "User"}.
+            {isTechnicianDashboardScoped ? " Here's your personal summary." : " Here's what's happening today."}
+          </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2 self-start">
+              <Filter className="w-4 h-4" />
+              {DATE_FILTER_LABELS[dateFilter]}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {(Object.keys(DATE_FILTER_LABELS) as DateFilter[]).map((key) => (
+              <DropdownMenuItem
+                key={key}
+                onClick={() => setDateFilter(key)}
+                className={dateFilter === key ? "bg-accent" : ""}
+              >
+                {DATE_FILTER_LABELS[key]}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
 
       <section aria-label="Key metrics">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-[20px] px-0 pt-[10px]">
-          {stats.map(stat => <Card key={stat.title} className="overflow-hidden">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                  <div className="order-2 sm:order-1">
-                    <p className="text-xs sm:text-sm font-medium text-muted-foreground">{stat.title}</p>
-                    <p className="text-xl sm:text-2xl font-bold mt-1 sm:mt-2">{stat.value}</p>
-                    {stat.subtext && <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">{stat.subtext}</p>}
+        <TooltipProvider>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-[20px] px-0 pt-[10px]">
+            {stats.map(stat => (
+              <Card key={stat.title} className="overflow-hidden">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                    <div className="order-2 sm:order-1">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1">
+                        {stat.title}
+                        {stat.hasTooltip && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="w-3 h-3 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[250px]">
+                              <p>{stat.tooltipText}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </p>
+                      <p className="text-xl sm:text-2xl font-bold mt-1 sm:mt-2">{stat.value}</p>
+                      {stat.subtext && <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">{stat.subtext}</p>}
+                    </div>
+                    <div className={`p-2 sm:p-3 rounded-xl ${stat.iconBg} order-1 sm:order-2 self-start`}>
+                      <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+                    </div>
                   </div>
-                  <div className={`p-2 sm:p-3 rounded-xl ${stat.iconBg} order-1 sm:order-2 self-start`}>
-                    <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>)}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TooltipProvider>
       </section>
 
-      {overdueInvoices.length > 0 && <section aria-label="Overdue invoices">
+      {overdueInvoices.length > 0 && (
+        <section aria-label="Overdue invoices">
           <Card className="border-destructive/50 bg-destructive/5">
             <CardContent className="p-4">
               <div className="flex items-start gap-3">
@@ -170,7 +292,8 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
-        </section>}
+        </section>
+      )}
 
       <section aria-label="Dashboard widgets">
         <DraggableWidgetContainer 
@@ -200,7 +323,8 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {todayEntries.slice(0, 5).map(entry => <div key={entry.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      {todayEntries.slice(0, 5).map(entry => (
+                        <div key={entry.id} className="flex items-center justify-between py-2 border-b last:border-0">
                           <div>
                             <p className="font-medium">{entry.user?.full_name || "User"}</p>
                             <p className="text-sm text-muted-foreground">
@@ -211,7 +335,8 @@ export default function DashboardPage() {
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${entry.clock_out ? "bg-muted text-muted-foreground" : "bg-success/10 text-success"}`}>
                             {entry.clock_out ? "Completed" : "Active"}
                           </span>
-                        </div>)}
+                        </div>
+                      ))}
                       {todayEntries.length === 0 && <p className="text-center text-muted-foreground py-4">No time entries today</p>}
                     </div>
                   </CardContent>
@@ -244,7 +369,8 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {recentInvoices.map(invoice => <div key={invoice.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      {recentInvoices.map(invoice => (
+                        <div key={invoice.id} className="flex items-center justify-between py-2 border-b last:border-0">
                           <div>
                             <p className="font-medium">{invoice.invoice_number}</p>
                             <p className="text-sm text-muted-foreground">{invoice.customer?.name}</p>
@@ -255,7 +381,8 @@ export default function DashboardPage() {
                               {invoice.status.replace('_', ' ')}
                             </span>
                           </div>
-                        </div>)}
+                        </div>
+                      ))}
                       {recentInvoices.length === 0 && <p className="text-center text-muted-foreground py-4">No invoices yet</p>}
                     </div>
                   </CardContent>
@@ -278,7 +405,8 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {recentJobs.map(job => <div key={job.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      {recentJobs.map(job => (
+                        <div key={job.id} className="flex items-center justify-between py-2 border-b last:border-0">
                           <div>
                             <p className="font-medium">{job.job_number}</p>
                             <p className="text-sm text-muted-foreground">{job.title}</p>
@@ -288,7 +416,8 @@ export default function DashboardPage() {
                               {job.status.replace("_", " ")}
                             </span>
                           </div>
-                        </div>)}
+                        </div>
+                      ))}
                       {recentJobs.length === 0 && <p className="text-center text-muted-foreground py-4">No jobs yet</p>}
                     </div>
                   </CardContent>
@@ -311,7 +440,8 @@ export default function DashboardPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {recentQuotes.map(quote => <div key={quote.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                      {recentQuotes.map(quote => (
+                        <div key={quote.id} className="flex items-center justify-between py-2 border-b last:border-0">
                           <div>
                             <p className="font-medium">{quote.quote_number}</p>
                             <p className="text-sm text-muted-foreground">{quote.customer?.name}</p>
@@ -322,7 +452,8 @@ export default function DashboardPage() {
                               {quote.status}
                             </span>
                           </div>
-                        </div>)}
+                        </div>
+                      ))}
                       {recentQuotes.length === 0 && <p className="text-center text-muted-foreground py-4">No quotes yet</p>}
                     </div>
                   </CardContent>
@@ -332,5 +463,6 @@ export default function DashboardPage() {
           ]}
         />
       </section>
-    </PageContainer>;
+    </PageContainer>
+  );
 }
