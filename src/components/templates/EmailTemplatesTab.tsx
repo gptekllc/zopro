@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,8 +42,11 @@ import {
   useCreateEmailTemplate, 
   useUpdateEmailTemplate, 
   useDeleteEmailTemplate,
+  useInitializeDefaultTemplates,
   EmailTemplate 
 } from '@/hooks/useEmailTemplates';
+import { useCompany } from '@/hooks/useCompany';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { RichTextEditor, useRichTextEditorInsert } from '@/components/ui/rich-text-editor';
 
@@ -57,22 +60,11 @@ const TEMPLATE_TYPES: { value: TemplateType; label: string }[] = [
   { value: 'general', label: 'General' },
 ];
 
-// Built-in default templates that come with the software
-interface BuiltInTemplate {
-  id: string;
-  name: string;
-  template_type: TemplateType;
-  subject: string;
-  body: string;
-  is_default: boolean;
-  is_builtin: true;
-}
-
-const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
+// Default templates to create when a company has none
+const DEFAULT_TEMPLATES = [
   {
-    id: 'builtin-invoice-default',
     name: 'Invoice (Default)',
-    template_type: 'invoice',
+    template_type: 'invoice' as TemplateType,
     subject: 'Invoice {{invoice_number}} from {{company_name}}',
     body: `<p>Hi {{customer_name}},</p>
 
@@ -94,12 +86,10 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
 
 {{social_links}}`,
     is_default: true,
-    is_builtin: true,
   },
   {
-    id: 'builtin-reminder-default',
     name: 'Payment Reminder (Default)',
-    template_type: 'reminder',
+    template_type: 'reminder' as TemplateType,
     subject: 'Reminder: Invoice {{invoice_number}} is past due',
     body: `<p>Hi {{customer_name}},</p>
 
@@ -116,12 +106,10 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
 {{company_name}}<br>
 {{company_phone}}</p>`,
     is_default: true,
-    is_builtin: true,
   },
   {
-    id: 'builtin-quote-default',
     name: 'Quote (Default)',
-    template_type: 'quote',
+    template_type: 'quote' as TemplateType,
     subject: 'Quote {{quote_number}} from {{company_name}}',
     body: `<p>Hi {{customer_name}},</p>
 
@@ -141,12 +129,10 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
 
 {{social_links}}`,
     is_default: true,
-    is_builtin: true,
   },
   {
-    id: 'builtin-job-scheduled',
     name: 'Job Scheduled (Default)',
-    template_type: 'job',
+    template_type: 'job' as TemplateType,
     subject: 'Your appointment is confirmed - {{job_title}}',
     body: `<p>Hi {{customer_name}},</p>
 
@@ -166,12 +152,10 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
 {{company_name}}<br>
 {{company_phone}}</p>`,
     is_default: true,
-    is_builtin: true,
   },
   {
-    id: 'builtin-general-default',
     name: 'General Message (Default)',
-    template_type: 'general',
+    template_type: 'general' as TemplateType,
     subject: 'Message from {{company_name}}',
     body: `<p>Hi {{customer_name}},</p>
 
@@ -186,68 +170,8 @@ const BUILTIN_TEMPLATES: BuiltInTemplate[] = [
 
 {{social_links}}`,
     is_default: true,
-    is_builtin: true,
   },
 ];
-
-// Sample values for preview mode
-const SAMPLE_VALUES: Record<string, string> = {
-  // Customer placeholders
-  '{{customer_name}}': 'John Smith',
-  '{{customer_email}}': 'john.smith@example.com',
-  '{{customer_phone}}': '(555) 123-4567',
-  '{{customer_address}}': '123 Main Street',
-  '{{customer_city}}': 'Springfield',
-  '{{customer_state}}': 'IL',
-  '{{customer_zip}}': '62701',
-  '{{customer_full_address}}': '123 Main Street, Springfield, IL 62701',
-  
-  // Company placeholders
-  '{{company_name}}': 'Acme Services LLC',
-  '{{company_email}}': 'info@acmeservices.com',
-  '{{company_phone}}': '(555) 987-6543',
-  '{{company_website}}': 'https://www.acmeservices.com',
-  '{{company_address}}': '456 Business Ave',
-  '{{company_city}}': 'Chicago',
-  '{{company_state}}': 'IL',
-  '{{company_zip}}': '60601',
-  '{{company_full_address}}': '456 Business Ave, Chicago, IL 60601',
-  
-  // Sender placeholders
-  '{{sender_name}}': 'Sarah Johnson',
-  '{{sender_email}}': 'noreply@email.zopro.app',
-  
-  // Invoice placeholders
-  '{{invoice_number}}': 'I-2026-0042',
-  '{{invoice_total}}': '$1,250.00',
-  '{{invoice_subtotal}}': '$1,150.00',
-  '{{invoice_tax}}': '$100.00',
-  '{{due_date}}': 'January 15, 2026',
-  '{{payment_terms}}': 'Net 30',
-  
-  // Quote placeholders
-  '{{quote_number}}': 'Q-2026-0018',
-  '{{quote_total}}': '$2,500.00',
-  '{{quote_valid_until}}': 'January 20, 2026',
-  
-  // Job placeholders
-  '{{job_number}}': 'J-2026-0031',
-  '{{job_title}}': 'HVAC System Maintenance',
-  '{{job_description}}': 'Annual maintenance and inspection of heating and cooling systems',
-  '{{scheduled_date}}': 'January 10, 2026',
-  '{{scheduled_time}}': '9:00 AM',
-  '{{technician_name}}': 'Mike Johnson',
-  
-  // Links
-  '{{customer_portal_link}}': 'https://zopro.app/customer-portal?token=abc123',
-  '{{payment_link}}': 'https://zopro.app/customer-portal?token=abc123&pay=true',
-  
-  // Social
-  '{{social_links}}': '<div style="text-align: center; margin-top: 15px;"><a href="#" style="margin: 0 8px;"><span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #1877F2; color: white; border-radius: 6px; font-weight: bold;">F</span></a><a href="#" style="margin: 0 8px;"><span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #E4405F; color: white; border-radius: 6px; font-weight: bold;">I</span></a></div>',
-  
-  // General
-  '{{today_date}}': new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-};
 
 interface PlaceholderInfo {
   variable: string;
@@ -340,32 +264,117 @@ const typeColors: Record<string, string> = {
   general: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
 };
 
-// Replace placeholders with sample values for preview
-const replacePlaceholdersWithSamples = (text: string): string => {
-  let result = text;
-  Object.entries(SAMPLE_VALUES).forEach(([placeholder, value]) => {
-    result = result.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value);
-  });
-  return result;
-};
-
-// Extended template type that includes built-in flag
-type DisplayTemplate = (EmailTemplate & { is_builtin?: false }) | BuiltInTemplate;
-
 export const EmailTemplatesTab = () => {
   const { data: templates, isLoading } = useEmailTemplates();
+  const { data: company } = useCompany();
+  const { profile } = useAuth();
   const createTemplate = useCreateEmailTemplate();
   const updateTemplate = useUpdateEmailTemplate();
   const deleteTemplate = useDeleteEmailTemplate();
+  const initializeTemplates = useInitializeDefaultTemplates();
 
-  // Combine built-in templates with user-created templates
-  const allTemplates: DisplayTemplate[] = [
-    ...BUILTIN_TEMPLATES,
-    ...(templates?.map(t => ({ ...t, is_builtin: false as const })) || []),
-  ];
+  // Auto-initialize default templates if company has none
+  const [hasInitialized, setHasInitialized] = useState(false);
+  
+  useEffect(() => {
+    if (!isLoading && templates && templates.length === 0 && !hasInitialized && profile?.company_id) {
+      setHasInitialized(true);
+      // Create default templates
+      DEFAULT_TEMPLATES.forEach(async (template) => {
+        try {
+          await createTemplate.mutateAsync(template);
+        } catch (error) {
+          console.error('Failed to create default template:', error);
+        }
+      });
+    }
+  }, [isLoading, templates, hasInitialized, profile?.company_id]);
+
+  // Build sample values using real company data
+  const sampleValues = useMemo(() => {
+    const companyName = company?.name || 'Your Company';
+    const companyEmail = company?.email || 'info@yourcompany.com';
+    const companyPhone = company?.phone || '(555) 123-4567';
+    const companyWebsite = company?.website || 'https://www.yourcompany.com';
+    const companyAddress = company?.address || '123 Business Ave';
+    const companyCity = company?.city || 'Your City';
+    const companyState = company?.state || 'ST';
+    const companyZip = company?.zip || '12345';
+    const companyFullAddress = [companyAddress, companyCity, companyState, companyZip].filter(Boolean).join(', ');
+    
+    const senderName = profile?.full_name || 'Your Name';
+    const senderEmail = 'noreply@email.zopro.app';
+
+    return {
+      // Customer placeholders
+      '{{customer_name}}': 'John Smith',
+      '{{customer_email}}': 'john.smith@example.com',
+      '{{customer_phone}}': '(555) 123-4567',
+      '{{customer_address}}': '123 Main Street',
+      '{{customer_city}}': 'Springfield',
+      '{{customer_state}}': 'IL',
+      '{{customer_zip}}': '62701',
+      '{{customer_full_address}}': '123 Main Street, Springfield, IL 62701',
+      
+      // Company placeholders - USE REAL DATA
+      '{{company_name}}': companyName,
+      '{{company_email}}': companyEmail,
+      '{{company_phone}}': companyPhone,
+      '{{company_website}}': companyWebsite,
+      '{{company_address}}': companyAddress,
+      '{{company_city}}': companyCity,
+      '{{company_state}}': companyState,
+      '{{company_zip}}': companyZip,
+      '{{company_full_address}}': companyFullAddress,
+      
+      // Sender placeholders
+      '{{sender_name}}': senderName,
+      '{{sender_email}}': senderEmail,
+      
+      // Invoice placeholders
+      '{{invoice_number}}': 'I-2026-0042',
+      '{{invoice_total}}': '$1,250.00',
+      '{{invoice_subtotal}}': '$1,150.00',
+      '{{invoice_tax}}': '$100.00',
+      '{{due_date}}': 'January 15, 2026',
+      '{{payment_terms}}': 'Net 30',
+      
+      // Quote placeholders
+      '{{quote_number}}': 'Q-2026-0018',
+      '{{quote_total}}': '$2,500.00',
+      '{{quote_valid_until}}': 'January 20, 2026',
+      
+      // Job placeholders
+      '{{job_number}}': 'J-2026-0031',
+      '{{job_title}}': 'HVAC System Maintenance',
+      '{{job_description}}': 'Annual maintenance and inspection of heating and cooling systems',
+      '{{scheduled_date}}': 'January 10, 2026',
+      '{{scheduled_time}}': '9:00 AM',
+      '{{technician_name}}': 'Mike Johnson',
+      
+      // Links
+      '{{customer_portal_link}}': 'https://zopro.app/customer-portal?token=abc123',
+      '{{payment_link}}': 'https://zopro.app/customer-portal?token=abc123&pay=true',
+      
+      // Social
+      '{{social_links}}': '<div style="text-align: center; margin-top: 15px;"><a href="#" style="margin: 0 8px;"><span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #1877F2; color: white; border-radius: 6px; font-weight: bold;">F</span></a><a href="#" style="margin: 0 8px;"><span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #E4405F; color: white; border-radius: 6px; font-weight: bold;">I</span></a></div>',
+      
+      // General
+      '{{today_date}}': new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    };
+  }, [company, profile]);
+
+  // Replace placeholders with sample values for preview
+  const replacePlaceholdersWithSamples = useCallback((text: string): string => {
+    let result = text;
+    Object.entries(sampleValues).forEach(([placeholder, value]) => {
+      result = result.replace(new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g'), value);
+    });
+    return result;
+  }, [sampleValues]);
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [viewingTemplate, setViewingTemplate] = useState<DisplayTemplate | null>(null);
+  const [viewingTemplate, setViewingTemplate] = useState<EmailTemplate | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [formData, setFormData] = useState({
@@ -436,9 +445,9 @@ export const EmailTemplatesTab = () => {
     setEditingTemplate(null);
   };
 
-  const handleDuplicate = (template: DisplayTemplate) => {
+  const handleDuplicate = (template: EmailTemplate) => {
     setFormData({
-      name: template.is_builtin ? template.name.replace(' (Default)', '') : `${template.name} (Copy)`,
+      name: `${template.name} (Copy)`,
       template_type: template.template_type as TemplateType,
       subject: template.subject,
       body: template.body,
@@ -619,7 +628,7 @@ export const EmailTemplatesTab = () => {
         ) : (
           <div className="min-h-[240px] p-4 border rounded-md bg-muted/30">
             <p className="text-xs text-muted-foreground mb-2">
-              Preview with sample values:
+              Preview with your company information:
             </p>
             <Separator className="mb-3" />
             <div 
@@ -739,9 +748,23 @@ export const EmailTemplatesTab = () => {
             <h3 className="text-lg font-medium mb-2">Loading Templates</h3>
           </CardContent>
         </Card>
+      ) : templates && templates.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Mail className="w-12 h-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No Email Templates</h3>
+            <p className="text-muted-foreground text-center mb-4">
+              Create your first email template to get started.
+            </p>
+            <Button onClick={handleCreateOpen}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Template
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid gap-4">
-          {allTemplates.map((template) => (
+          {templates?.map((template) => (
             <Card 
               key={template.id} 
               className="hover:shadow-md transition-shadow cursor-pointer"
@@ -752,12 +775,7 @@ export const EmailTemplatesTab = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
                       <h3 className="font-semibold text-lg">{template.name}</h3>
-                      {template.is_builtin && (
-                        <Badge variant="secondary" className="flex items-center gap-1 bg-primary/10 text-primary">
-                          Built-in
-                        </Badge>
-                      )}
-                      {template.is_default && !template.is_builtin && (
+                      {template.is_default && (
                         <Badge variant="secondary" className="flex items-center gap-1">
                           <Star className="w-3 h-3 text-yellow-500" />
                           Default
@@ -778,26 +796,22 @@ export const EmailTemplatesTab = () => {
                       variant="ghost" 
                       size="icon"
                       onClick={() => handleDuplicate(template)}
-                      title={template.is_builtin ? "Copy to customize" : "Duplicate template"}
+                      title="Duplicate template"
                     >
                       <CopyPlus className="w-4 h-4" />
                     </Button>
-                    {!template.is_builtin && (
-                      <>
-                        <Button variant="outline" size="sm" onClick={() => handleEditOpen(template as EmailTemplate)}>
-                          <Edit className="w-4 h-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeleteConfirmId(template.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
+                    <Button variant="outline" size="sm" onClick={() => handleEditOpen(template)}>
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => setDeleteConfirmId(template.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
               </CardContent>
@@ -863,19 +877,11 @@ export const EmailTemplatesTab = () => {
           {viewingTemplate && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                {viewingTemplate.is_builtin ? (
-                  <Badge variant="secondary" className="bg-primary/10 text-primary">
-                    Built-in Template
+                {viewingTemplate.is_default && (
+                  <Badge variant="secondary" className="flex items-center gap-1">
+                    <Star className="w-3 h-3 text-yellow-500" />
+                    Default
                   </Badge>
-                ) : (
-                  <>
-                    {viewingTemplate.is_default && (
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <Star className="w-3 h-3 text-yellow-500" />
-                        Default
-                      </Badge>
-                    )}
-                  </>
                 )}
                 <Badge variant="outline" className={typeColors[viewingTemplate.template_type] || typeColors.general}>
                   {viewingTemplate.template_type}
@@ -896,7 +902,7 @@ export const EmailTemplatesTab = () => {
                 </TabsList>
                 <TabsContent value="preview">
                   <div className="p-4 border rounded-md min-h-[200px] max-h-[300px] overflow-auto bg-background">
-                    <p className="text-xs text-muted-foreground mb-2">Preview with sample values:</p>
+                    <p className="text-xs text-muted-foreground mb-2">Preview with your company information:</p>
                     <Separator className="mb-3" />
                     <div 
                       className="prose prose-sm dark:prose-invert max-w-none text-sm"
@@ -912,14 +918,6 @@ export const EmailTemplatesTab = () => {
                   </div>
                 </TabsContent>
               </Tabs>
-              
-              {viewingTemplate.is_builtin && (
-                <div className="p-3 bg-muted/30 rounded-lg">
-                  <p className="text-xs text-muted-foreground">
-                    <strong>Note:</strong> Built-in templates cannot be edited directly. Click "Copy to Customize" to create your own editable version.
-                  </p>
-                </div>
-              )}
             </div>
           )}
           
@@ -927,11 +925,11 @@ export const EmailTemplatesTab = () => {
             <Button variant="outline" onClick={() => setViewingTemplate(null)}>
               Close
             </Button>
-            {viewingTemplate && !viewingTemplate.is_builtin && (
+            {viewingTemplate && (
               <Button 
                 variant="outline"
                 onClick={() => {
-                  handleEditOpen(viewingTemplate as EmailTemplate);
+                  handleEditOpen(viewingTemplate);
                   setViewingTemplate(null);
                 }}
               >
@@ -948,7 +946,7 @@ export const EmailTemplatesTab = () => {
               }}
             >
               <CopyPlus className="w-4 h-4 mr-2" />
-              {viewingTemplate?.is_builtin ? 'Copy to Customize' : 'Duplicate'}
+              Duplicate
             </Button>
           </DialogFooter>
         </DialogContent>
