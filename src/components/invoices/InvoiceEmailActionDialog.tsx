@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Separator } from '@/components/ui/separator';
 import { 
   Select,
@@ -511,12 +511,11 @@ export function InvoiceEmailActionDialog({
 
             <div className="space-y-2">
               <Label>Message</Label>
-              <Textarea
+              <RichTextEditor
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={setMessage}
                 placeholder="Email message"
-                rows={6}
-                className="text-sm"
+                className="min-h-[150px]"
               />
               <p className="text-xs text-muted-foreground">
                 The invoice PDF will be attached automatically.
@@ -607,7 +606,10 @@ export function InvoiceEmailActionDialog({
               
               <div>
                 <Label className="text-xs text-muted-foreground">Message</Label>
-                <p className="mt-1 whitespace-pre-wrap">{message}</p>
+                <div 
+                  className="mt-1 prose prose-sm dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: message }}
+                />
               </div>
               
               <Separator />
