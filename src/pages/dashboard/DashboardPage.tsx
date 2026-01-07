@@ -182,11 +182,14 @@ export default function DashboardPage() {
               visible: canSeeTimeEntriesWidget && !isTechnicianDashboardScoped,
               component: (
                 <Card className="h-full">
-                  <CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <Clock className="w-5 h-5" />
                       Today&apos;s Time Entries
                     </CardTitle>
+                    <Link to="/timeclock" className="text-sm text-primary hover:underline">
+                      View all
+                    </Link>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
