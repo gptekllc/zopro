@@ -136,10 +136,10 @@ const Settings = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
-            <p><strong>App:</strong> Service App</p>
+            <p><strong>App:</strong> ZoPro</p>
             <p><strong>Version:</strong> 1.0.0</p>
             <p className="text-muted-foreground">
-              Multi-tenant service management platform for plumbing, HVAC, electrical, and general service companies.
+              Field service management platform for plumbing, HVAC, electrical, and general service companies.
             </p>
           </div>
         </CardContent>

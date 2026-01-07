@@ -210,12 +210,23 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
       <div className="w-full max-w-md animate-scale-in">
+        {/* Back to main site link */}
+        <div className="mb-4">
+          <a 
+            href="https://zopro.app" 
+            className="text-primary-foreground/80 hover:text-primary-foreground text-sm flex items-center gap-1"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to zopro.app
+          </a>
+        </div>
+
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-card mb-4 shadow-lg">
             <Wrench className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-primary-foreground">Service App</h1>
-          <p className="text-primary-foreground/80 mt-2">Multi-tenant service management</p>
+          <h1 className="text-3xl font-bold text-primary-foreground">ZoPro</h1>
+          <p className="text-primary-foreground/80 mt-2">Field Service Management Platform</p>
         </div>
 
         <Card className="shadow-lg border-0">
@@ -336,6 +347,21 @@ const Login = () => {
               </TabsContent>
             </CardContent>
           </Tabs>
+        </Card>
+
+        {/* Customer Portal Link */}
+        <Card className="mt-4 shadow-lg border-0">
+          <CardContent className="py-4 text-center">
+            <p className="text-sm text-muted-foreground mb-2">Are you a customer?</p>
+            <p className="text-xs text-muted-foreground mb-3">Access your invoices, quotes, and documents</p>
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => navigate('/customer-portal')}
+            >
+              Customer Portal
+            </Button>
+          </CardContent>
         </Card>
       </div>
     </div>

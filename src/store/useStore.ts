@@ -56,10 +56,10 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 // Demo data
 const demoCompany: Company = {
   id: 'demo-company',
-  name: 'Service App Demo',
+  name: 'ZoPro Demo',
   address: '123 Service Street, Business City, ST 12345',
   phone: '(555) 123-4567',
-  email: 'contact@serviceapp.com',
+  email: 'contact@zopro.app',
   industry: 'general',
   createdAt: new Date(),
 };
