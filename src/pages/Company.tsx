@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link, Clock, BookTemplate } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link, Clock, BookTemplate, CalendarClock } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -96,6 +96,18 @@ const Company = () => {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formInitialized, setFormInitialized] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
+  
+  const defaultBusinessHours = {
+    monday: { open: '09:00', close: '17:00', closed: false },
+    tuesday: { open: '09:00', close: '17:00', closed: false },
+    wednesday: { open: '09:00', close: '17:00', closed: false },
+    thursday: { open: '09:00', close: '17:00', closed: false },
+    friday: { open: '09:00', close: '17:00', closed: false },
+    saturday: { open: '09:00', close: '13:00', closed: true },
+    sunday: { open: '09:00', close: '13:00', closed: true },
+  };
+  
+  const [businessHours, setBusinessHours] = useState<Record<string, { open: string; close: string; closed: boolean }>>(defaultBusinessHours);
 
   // Initialize form when company loads
   if (company && !formInitialized) {
@@ -152,6 +164,7 @@ const Company = () => {
       timeclock_auto_start_break_reminder: (company as any).timeclock_auto_start_break_reminder ?? 240,
       timeclock_max_shift_hours: (company as any).timeclock_max_shift_hours ?? 12,
     });
+    setBusinessHours((company as any).business_hours ?? defaultBusinessHours);
     setLogoUrl(company.logo_url || null);
     setFormInitialized(true);
   }
@@ -163,6 +176,7 @@ const Company = () => {
       id: company.id, 
       ...formData,
       website: formData.website || null,
+      business_hours: businessHours,
     } as any);
   };
 
@@ -467,6 +481,64 @@ const Company = () => {
                   </p>
                 </div>
 
+                {/* Business Hours */}
+                <div className="space-y-4 pt-4 border-t">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <CalendarClock className="w-4 h-4" />
+                    Business Hours
+                  </h3>
+                  <div className="space-y-3">
+                    {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((day) => (
+                      <div key={day} className="flex items-center gap-3">
+                        <div className="w-24 shrink-0">
+                          <Label className="capitalize text-sm">{day}</Label>
+                        </div>
+                        <Switch
+                          checked={!businessHours[day]?.closed}
+                          onCheckedChange={(checked) => 
+                            setBusinessHours(prev => ({
+                              ...prev,
+                              [day]: { ...prev[day], closed: !checked }
+                            }))
+                          }
+                        />
+                        {!businessHours[day]?.closed ? (
+                          <div className="flex items-center gap-2 flex-1">
+                            <Input
+                              type="time"
+                              value={businessHours[day]?.open || '09:00'}
+                              onChange={(e) => 
+                                setBusinessHours(prev => ({
+                                  ...prev,
+                                  [day]: { ...prev[day], open: e.target.value }
+                                }))
+                              }
+                              className="w-auto"
+                            />
+                            <span className="text-muted-foreground text-sm">to</span>
+                            <Input
+                              type="time"
+                              value={businessHours[day]?.close || '17:00'}
+                              onChange={(e) => 
+                                setBusinessHours(prev => ({
+                                  ...prev,
+                                  [day]: { ...prev[day], close: e.target.value }
+                                }))
+                              }
+                              className="w-auto"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">Closed</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Set your company's operating hours for each day of the week
+                  </p>
+                </div>
+
                 <div className="flex flex-col sm:flex-row gap-3">
                   <Button type="submit" className="gap-2" disabled={updateCompany.isPending}>
                     {updateCompany.isPending ? (
@@ -498,7 +570,7 @@ const Company = () => {
         </TabsContent>
 
         <TabsContent value="billing">
-          <Card>
+          <Card className="max-w-2xl mx-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Receipt className="w-5 h-5" />
@@ -506,7 +578,7 @@ const Company = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleBillingSubmit} className="space-y-6 max-w-xl">
+              <form onSubmit={handleBillingSubmit} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="tax_rate">Default Tax Rate (%)</Label>
                   <Input
