@@ -128,41 +128,13 @@ export function InvoiceEmailActionDialog({
       .replace(/\{\{[^}]+\}\}/g, '');
   };
 
+  // No static default messages - use templates only
   const getDefaultSubject = (type: EmailActionType) => {
-    if (type === 'invoice') {
-      return `Invoice ${invoiceNumber || ''} from ${companyName}`;
-    }
-    return `Payment Reminder: Invoice ${invoiceNumber || ''} from ${companyName}`;
+    return '';
   };
 
   const getDefaultMessage = (type: EmailActionType) => {
-    const greeting = customerName ? `Dear ${customerName},` : 'Hello,';
-    const totalStr = invoiceTotal ? `$${invoiceTotal.toFixed(2)}` : '';
-    const dueDateStr = dueDate ? new Date(dueDate).toLocaleDateString() : '';
-
-    if (type === 'invoice') {
-      return `${greeting}
-
-Please find attached invoice ${invoiceNumber || ''}${totalStr ? ` for ${totalStr}` : ''}.${dueDateStr ? ` Payment is due by ${dueDateStr}.` : ''}
-
-If you have any questions, please don't hesitate to reach out.
-
-Thank you for your business!
-
-Best regards,
-${companyName}`;
-    }
-    
-    return `${greeting}
-
-This is a friendly reminder that invoice ${invoiceNumber || ''}${totalStr ? ` for ${totalStr}` : ''} is ${dueDateStr ? `due on ${dueDateStr}` : 'outstanding'}.
-
-We would appreciate your prompt attention to this matter. If you have already made payment, please disregard this reminder.
-
-If you have any questions, please contact us.
-
-Thank you,
-${companyName}`;
+    return '';
   };
 
   useEffect(() => {
@@ -212,16 +184,11 @@ ${companyName}`;
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
-    if (templateId === 'default') {
-      setSubject(getDefaultSubject(actionType));
-      setMessage(getDefaultMessage(actionType));
-    } else {
-      const template = templates.find(t => t.id === templateId);
-      if (template) {
-        // Replace placeholders with actual values when loading template
-        setSubject(replacePlaceholders(template.subject));
-        setMessage(replacePlaceholders(template.body));
-      }
+    const template = templates.find(t => t.id === templateId);
+    if (template) {
+      // Replace placeholders with actual values when loading template
+      setSubject(replacePlaceholders(template.subject));
+      setMessage(replacePlaceholders(template.body));
     }
   };
 
@@ -398,12 +365,11 @@ ${companyName}`;
                   Save as Template
                 </Button>
               </div>
-              <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
+                <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a template or use default" />
+                  <SelectValue placeholder="Select a template" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="default">Default Template</SelectItem>
                   {templates.map((template) => (
                     <SelectItem key={template.id} value={template.id}>
                       <div className="flex items-center gap-2">
