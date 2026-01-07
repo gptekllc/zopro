@@ -34,8 +34,6 @@ export const PLATFORM_ICONS: Record<string, string> = {
   
   bbb: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#005A8C"><path d="M3.75 3v18h16.5V3H3.75zm2.25 2h12v14H6V5zm2 2v2h3V7H8zm5 0v2h3V7h-3zm-5 4v2h3v-2H8zm5 0v2h3v-2h-3zm-5 4v2h8v-2H8z"/></svg>')}`,
   
-  houzz: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4DBC15"><path d="M.5.5v23h12.5V12H5.5V.5H.5zm6.5 12v11h16.5v-23H18v12H7z"/></svg>')}`,
-  
   craftjack: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FF6B35"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.4-1.4 3.6 3.6 4.6-4.6L18 11l-6 6z"/></svg>')}`,
   
   porch: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#00C16E"><path d="M12 3L2 9v12h20V9L12 3zm0 2.5l7 4.5v9H5v-9l7-4.5zM7 13v5h2v-5H7zm4 0v5h2v-5h-2zm4 0v5h2v-5h-2z"/></svg>')}`,
