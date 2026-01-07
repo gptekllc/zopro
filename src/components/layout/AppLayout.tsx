@@ -153,7 +153,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b z-40 px-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Wrench className="w-6 h-6 text-primary" />
-          <span className="font-semibold">Service App</span>
+          <span className="font-semibold">ZoPro</span>
         </div>
 
         <div className="flex items-center gap-1">
@@ -204,7 +204,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
               <Wrench className="w-5 h-5 text-sidebar-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-bold text-lg">Service App</h1>
+              <h1 className="font-bold text-lg">ZoPro</h1>
               <p className="text-xs text-sidebar-foreground/60">{company?.name || 'No Company'}</p>
             </div>
           </div>

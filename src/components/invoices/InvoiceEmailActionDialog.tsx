@@ -107,7 +107,7 @@ export function InvoiceEmailActionDialog({
     
     // Build customer portal link if invoiceId is provided
     // Use company's custom domain or fall back to production domain
-    const baseUrl = company?.custom_domain || 'https://zopro.app';
+    const baseUrl = company?.custom_domain || 'https://fsm.zopro.app';
     const portalLink = invoiceId 
       ? `${baseUrl}/customer-portal?invoiceId=${invoiceId}`
       : '';
