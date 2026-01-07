@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Trash2, Loader2, Save, GripVertical, Image } from 'lucide-react';
+import { Plus, Trash2, Loader2, GripVertical, Image } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getDefaultPlatformIcon, getAvailablePlatforms, PLATFORM_ICONS } from '@/lib/platformIcons';
@@ -47,6 +47,11 @@ interface SocialLink {
 
 interface SocialLinksManagerProps {
   companyId: string;
+}
+
+export interface SocialLinksManagerRef {
+  save: () => Promise<boolean>;
+  hasChanges: () => boolean;
 }
 
 const MAX_LINKS = 7;
@@ -125,8 +130,7 @@ const SortableLinkCard = ({
               <datalist id={`platforms-${index}`}>
                 {getAvailablePlatforms().map((platform) => (
                   <option key={platform} value={platform} />
-                ))}
-              </datalist>
+                ))}</datalist>
             </div>
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">URL</Label>
@@ -229,255 +233,252 @@ const IconPickerDialog = ({
   );
 };
 
-const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
-  const [links, setLinks] = useState<SocialLink[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [iconPickerOpen, setIconPickerOpen] = useState(false);
-  const [iconPickerIndex, setIconPickerIndex] = useState<number | null>(null);
+const SocialLinksManager = forwardRef<SocialLinksManagerRef, SocialLinksManagerProps>(
+  ({ companyId }, ref) => {
+    const [links, setLinks] = useState<SocialLink[]>([]);
+    const [originalLinks, setOriginalLinks] = useState<SocialLink[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [iconPickerOpen, setIconPickerOpen] = useState(false);
+    const [iconPickerIndex, setIconPickerIndex] = useState<number | null>(null);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+    const sensors = useSensors(
+      useSensor(PointerSensor),
+      useSensor(KeyboardSensor, {
+        coordinateGetter: sortableKeyboardCoordinates,
+      })
+    );
 
-  useEffect(() => {
-    fetchLinks();
-  }, [companyId]);
+    useEffect(() => {
+      fetchLinks();
+    }, [companyId]);
 
-  const fetchLinks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('company_social_links')
-        .select('*')
-        .eq('company_id', companyId)
-        .order('display_order');
-
-      if (error) throw error;
-      setLinks(data || []);
-    } catch (error) {
-      console.error('Error fetching social links:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addLink = () => {
-    if (links.length >= MAX_LINKS) {
-      toast.error(`Maximum ${MAX_LINKS} social links allowed`);
-      return;
-    }
-
-    setLinks([
-      ...links,
-      {
-        platform_name: '',
-        url: '',
-        icon_url: null,
-        show_on_invoice: true,
-        show_on_quote: true,
-        show_on_job: true,
-        show_on_email: true,
-        display_order: links.length,
-      },
-    ]);
-  };
-
-  const removeLink = async (index: number) => {
-    const link = links[index];
-    if (link.id) {
+    const fetchLinks = async () => {
       try {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('company_social_links')
-          .delete()
-          .eq('id', link.id);
+          .select('*')
+          .eq('company_id', companyId)
+          .order('display_order');
 
         if (error) throw error;
+        setLinks(data || []);
+        setOriginalLinks(data || []);
       } catch (error) {
-        console.error('Error deleting link:', error);
-        toast.error('Failed to delete link');
+        console.error('Error fetching social links:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Expose save method via ref
+    useImperativeHandle(ref, () => ({
+      save: async () => {
+        try {
+          // Validate all links have platform name and URL
+          for (const link of links) {
+            if (!link.platform_name.trim() || !link.url.trim()) {
+              toast.error('All social links must have a platform name and URL');
+              return false;
+            }
+          }
+
+          // Delete existing links and insert new ones
+          await supabase
+            .from('company_social_links')
+            .delete()
+            .eq('company_id', companyId);
+
+          if (links.length > 0) {
+            const linksToInsert = links.map((link, index) => ({
+              company_id: companyId,
+              platform_name: link.platform_name,
+              url: link.url,
+              icon_url: link.icon_url,
+              show_on_invoice: link.show_on_invoice,
+              show_on_quote: link.show_on_quote,
+              show_on_job: link.show_on_job,
+              show_on_email: link.show_on_email,
+              display_order: index,
+            }));
+
+            const { error } = await supabase
+              .from('company_social_links')
+              .insert(linksToInsert);
+
+            if (error) throw error;
+          }
+
+          setOriginalLinks([...links]);
+          return true;
+        } catch (error) {
+          console.error('Error saving social links:', error);
+          toast.error('Failed to save social links');
+          return false;
+        }
+      },
+      hasChanges: () => {
+        return JSON.stringify(links) !== JSON.stringify(originalLinks);
+      }
+    }));
+
+    const addLink = () => {
+      if (links.length >= MAX_LINKS) {
+        toast.error(`Maximum ${MAX_LINKS} social links allowed`);
         return;
       }
-    }
-    setLinks(links.filter((_, i) => i !== index));
-    toast.success('Social link removed');
-  };
 
-  const updateLink = (index: number, updates: Partial<SocialLink>) => {
-    setLinks(links.map((link, i) => (i === index ? { ...link, ...updates } : link)));
-  };
+      setLinks([
+        ...links,
+        {
+          platform_name: '',
+          url: '',
+          icon_url: null,
+          show_on_invoice: true,
+          show_on_quote: true,
+          show_on_job: true,
+          show_on_email: true,
+          display_order: links.length,
+        },
+      ]);
+    };
 
-  const getDisplayIcon = (link: SocialLink): string | null => {
-    // Custom uploaded icon takes priority
-    if (link.icon_url) return link.icon_url;
-    // Otherwise, use default platform icon
-    return getDefaultPlatformIcon(link.platform_name);
-  };
+    const removeLink = async (index: number) => {
+      const link = links[index];
+      if (link.id) {
+        try {
+          const { error } = await supabase
+            .from('company_social_links')
+            .delete()
+            .eq('id', link.id);
 
-  const openIconPicker = (index: number) => {
-    setIconPickerIndex(index);
-    setIconPickerOpen(true);
-  };
-
-  const handleIconSelect = (platformName: string, iconUrl: string) => {
-    if (iconPickerIndex !== null) {
-      // Set platform name and clear custom icon (will use default)
-      updateLink(iconPickerIndex, { 
-        platform_name: platformName.charAt(0).toUpperCase() + platformName.slice(1),
-        icon_url: null 
-      });
-    }
-    setIconPickerOpen(false);
-    setIconPickerIndex(null);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
-      setLinks((items) => {
-        const oldIndex = items.findIndex((item) => (item.id || `new-${items.indexOf(item)}`) === active.id);
-        const newIndex = items.findIndex((item) => (item.id || `new-${items.indexOf(item)}`) === over.id);
-        return arrayMove(items, oldIndex, newIndex);
-      });
-    }
-  };
-
-  const saveLinks = async () => {
-    setSaving(true);
-    try {
-      // Validate all links have platform name and URL
-      for (const link of links) {
-        if (!link.platform_name.trim() || !link.url.trim()) {
-          toast.error('All links must have a platform name and URL');
-          setSaving(false);
+          if (error) throw error;
+        } catch (error) {
+          console.error('Error deleting link:', error);
+          toast.error('Failed to delete link');
           return;
         }
       }
+      setLinks(links.filter((_, i) => i !== index));
+      toast.success('Social link removed');
+    };
 
-      // Delete existing links and insert new ones
-      await supabase
-        .from('company_social_links')
-        .delete()
-        .eq('company_id', companyId);
+    const updateLink = (index: number, updates: Partial<SocialLink>) => {
+      setLinks(links.map((link, i) => (i === index ? { ...link, ...updates } : link)));
+    };
 
-      if (links.length > 0) {
-        const linksToInsert = links.map((link, index) => ({
-          company_id: companyId,
-          platform_name: link.platform_name,
-          url: link.url,
-          icon_url: link.icon_url,
-          show_on_invoice: link.show_on_invoice,
-          show_on_quote: link.show_on_quote,
-          show_on_job: link.show_on_job,
-          show_on_email: link.show_on_email,
-          display_order: index,
-        }));
+    const getDisplayIcon = (link: SocialLink): string | null => {
+      // Custom uploaded icon takes priority
+      if (link.icon_url) return link.icon_url;
+      // Otherwise, use default platform icon
+      return getDefaultPlatformIcon(link.platform_name);
+    };
 
-        const { error } = await supabase
-          .from('company_social_links')
-          .insert(linksToInsert);
+    const openIconPicker = (index: number) => {
+      setIconPickerIndex(index);
+      setIconPickerOpen(true);
+    };
 
-        if (error) throw error;
+    const handleIconSelect = (platformName: string, iconUrl: string) => {
+      if (iconPickerIndex !== null) {
+        // Set platform name and clear custom icon (will use default)
+        updateLink(iconPickerIndex, { 
+          platform_name: platformName.charAt(0).toUpperCase() + platformName.slice(1),
+          icon_url: null 
+        });
       }
+      setIconPickerOpen(false);
+      setIconPickerIndex(null);
+    };
 
-      toast.success('Social links saved');
-      fetchLinks();
-    } catch (error) {
-      console.error('Error saving links:', error);
-      toast.error('Failed to save social links');
-    } finally {
-      setSaving(false);
+    const handleDragEnd = (event: DragEndEvent) => {
+      const { active, over } = event;
+
+      if (over && active.id !== over.id) {
+        setLinks((items) => {
+          const oldIndex = items.findIndex((item) => (item.id || `new-${items.indexOf(item)}`) === active.id);
+          const newIndex = items.findIndex((item) => (item.id || `new-${items.indexOf(item)}`) === over.id);
+          return arrayMove(items, oldIndex, newIndex);
+        });
+      }
+    };
+
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      );
     }
-  };
 
-  if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-medium">Social Media Links</h3>
+            <p className="text-sm text-muted-foreground">
+              Add up to {MAX_LINKS} social links. Drag to reorder.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addLink}
+            disabled={links.length >= MAX_LINKS}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add Link
+          </Button>
+        </div>
+
+        {links.length === 0 ? (
+          <div className="text-center py-8 border-2 border-dashed rounded-lg">
+            <p className="text-muted-foreground mb-2">No social links added yet</p>
+            <Button type="button" variant="outline" size="sm" onClick={addLink}>
+              <Plus className="w-4 h-4 mr-1" />
+              Add Your First Link
+            </Button>
+          </div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={links.map((link, index) => link.id || `new-${index}`)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-3">
+                {links.map((link, index) => (
+                  <SortableLinkCard
+                    key={link.id || `new-${index}`}
+                    link={link}
+                    index={index}
+                    onUpdate={updateLink}
+                    onRemove={removeLink}
+                    onOpenIconPicker={openIconPicker}
+                    getDisplayIcon={getDisplayIcon}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+
+        <IconPickerDialog
+          open={iconPickerOpen}
+          onClose={() => {
+            setIconPickerOpen(false);
+            setIconPickerIndex(null);
+          }}
+          onSelect={handleIconSelect}
+        />
       </div>
     );
   }
+);
 
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-medium">Social Media Links</h3>
-          <p className="text-sm text-muted-foreground">
-            Add up to {MAX_LINKS} social links. Drag to reorder. Pick from defaults or upload custom icons.
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={addLink}
-          disabled={links.length >= MAX_LINKS}
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Add Link
-        </Button>
-      </div>
-
-      {links.length === 0 ? (
-        <div className="text-center py-8 border-2 border-dashed rounded-lg">
-          <p className="text-muted-foreground mb-2">No social links added yet</p>
-          <Button type="button" variant="outline" size="sm" onClick={addLink}>
-            <Plus className="w-4 h-4 mr-1" />
-            Add Your First Link
-          </Button>
-        </div>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={links.map((link, index) => link.id || `new-${index}`)}
-            strategy={verticalListSortingStrategy}
-          >
-            <div className="space-y-3">
-              {links.map((link, index) => (
-                <SortableLinkCard
-                  key={link.id || `new-${index}`}
-                  link={link}
-                  index={index}
-                  onUpdate={updateLink}
-                  onRemove={removeLink}
-                  onOpenIconPicker={openIconPicker}
-                  getDisplayIcon={getDisplayIcon}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      )}
-
-      {links.length > 0 && (
-        <Button type="button" onClick={saveLinks} disabled={saving} className="gap-2">
-          {saving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
-          Save Social Links
-        </Button>
-      )}
-
-      <IconPickerDialog
-        open={iconPickerOpen}
-        onClose={() => {
-          setIconPickerOpen(false);
-          setIconPickerIndex(null);
-        }}
-        onSelect={handleIconSelect}
-      />
-    </div>
-  );
-};
+SocialLinksManager.displayName = 'SocialLinksManager';
 
 export default SocialLinksManager;
