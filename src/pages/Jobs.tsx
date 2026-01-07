@@ -86,7 +86,7 @@ const Jobs = () => {
   const [formData, setFormData] = useState({
     customer_id: '',
     quote_id: '' as string | null,
-    assigned_to: '' as string | null,
+    assignee_ids: [] as string[],
     title: '',
     description: '',
     priority: 'medium' as Job['priority'],
@@ -189,7 +189,7 @@ const Jobs = () => {
         setFormData({
           customer_id: quote.customer_id,
           quote_id: quote.id,
-          assigned_to: null,
+          assignee_ids: [],
           title: `Job from Quote ${quote.quote_number}`,
           description: quote.notes || '',
           priority: 'medium',
@@ -223,7 +223,7 @@ const Jobs = () => {
     setFormData({
       customer_id: '',
       quote_id: null,
-      assigned_to: null,
+      assignee_ids: [],
       title: '',
       description: '',
       priority: 'medium',
@@ -266,7 +266,7 @@ const Jobs = () => {
     const jobData = {
       customer_id: formData.customer_id,
       quote_id: formData.quote_id || null,
-      assigned_to: formData.assigned_to || null,
+      assignee_ids: formData.assignee_ids,
       title: formData.title,
       description: formData.description || null,
       priority: formData.priority,
@@ -300,10 +300,12 @@ const Jobs = () => {
   };
 
   const handleEdit = (job: Job) => {
+    // Get assignee IDs from job_assignees or fallback to assigned_to
+    const assigneeIds = job.assignees?.map(a => a.profile_id) || (job.assigned_to ? [job.assigned_to] : []);
     setFormData({
       customer_id: job.customer_id,
       quote_id: job.quote_id,
-      assigned_to: job.assigned_to,
+      assignee_ids: assigneeIds,
       title: job.title,
       description: job.description || '',
       priority: job.priority,
@@ -332,10 +334,11 @@ const Jobs = () => {
   };
 
   const handleDuplicate = (job: Job) => {
+    const assigneeIds = job.assignees?.map(a => a.profile_id) || (job.assigned_to ? [job.assigned_to] : []);
     setFormData({
       customer_id: job.customer_id,
       quote_id: null,
-      assigned_to: job.assigned_to,
+      assignee_ids: assigneeIds,
       title: `${job.title} (Copy)`,
       description: job.description || '',
       priority: job.priority,
@@ -521,17 +524,33 @@ const Jobs = () => {
                     />
                     <div className="space-y-2">
                       <Label>Assign To</Label>
-                      <Select value={formData.assigned_to || 'unassigned'} onValueChange={value => setFormData({ ...formData, assigned_to: value === 'unassigned' ? null : value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select technician" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="unassigned">Unassigned</SelectItem>
-                          {availableTechnicians.map(t => (
-                            <SelectItem key={t.id} value={t.id}>{t.full_name || t.email}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="border rounded-md p-3 space-y-2 max-h-40 overflow-y-auto bg-background">
+                        {availableTechnicians.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No technicians available</p>
+                        ) : (
+                          availableTechnicians.map(t => (
+                            <div key={t.id} className="flex items-center gap-2">
+                              <Checkbox
+                                id={`tech-${t.id}`}
+                                checked={formData.assignee_ids.includes(t.id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setFormData({ ...formData, assignee_ids: [...formData.assignee_ids, t.id] });
+                                  } else {
+                                    setFormData({ ...formData, assignee_ids: formData.assignee_ids.filter(id => id !== t.id) });
+                                  }
+                                }}
+                              />
+                              <label htmlFor={`tech-${t.id}`} className="text-sm cursor-pointer">
+                                {t.full_name || t.email}
+                              </label>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      {formData.assignee_ids.length === 0 && (
+                        <p className="text-xs text-muted-foreground">No technicians assigned</p>
+                      )}
                       {technicians.some(t => t.employment_status === 'on_leave') && (
                         <p className="text-xs text-muted-foreground">Team members on leave are hidden from this list</p>
                       )}
