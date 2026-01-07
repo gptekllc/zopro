@@ -36,6 +36,8 @@ export const PLATFORM_ICONS: Record<string, string> = {
   
   craftjack: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#FF6B35"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.4-1.4 3.6 3.6 4.6-4.6L18 11l-6 6z"/></svg>')}`,
   
+  porch: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1551 1047"><path fill="#f8d668" d="m56.8 489.8c240.7-163.2 483.5-323.6 722.6-489.2l-0.4 9.5c-6.9 170.7-1.3 341.7-3 512.5c-258.9 172.7-513.8 350.9-774.2 521.1c-0.9-162.6-0.6-325.2-0.4-487.7c-4.8-35 32.7-48.8 55.4-66.2z"/><path fill="#e8b13c" d="m779 10.1c259 168.7 512.2 346.3 770.1 516.5c1 173.2 1.5 346.3-0.2 519.4c-123.9-79.6-244.4-164.5-367-246.1c-134.3-93.9-272.9-181.6-405.9-277.3c1.7-170.8-3.9-341.8 3-512.5z"/></svg>')}`,
+
   thumbtack: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="#2797dd"><circle cx="24" cy="24" r="24"/><rect x="12" y="14" width="24" height="6" fill="#fff"/><path d="M21 20h6v14c0 2-1.5 4-3 4s-3-2-3-4V20z" fill="#fff"/></svg>')}`,
   
   homeadvisor: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#455a64" d="M30.899,23L18.548,10.668L9,20.201v10.189c0,1.408,1.155,2.564,2.564,2.564l11.317,0.015l9.081,9.968L32,33l4.374-0.031c1.408,0,2.564-1.155,2.564-2.564V23H30.899z"/><polygon fill="#fb8c00" points="31.619,6 16.381,6 1,21 5.369,21 18.548,7.842 31.727,21 47,21"/></svg>')}`,
