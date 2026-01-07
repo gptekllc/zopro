@@ -50,14 +50,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { RichTextEditor, useRichTextEditorInsert } from '@/components/ui/rich-text-editor';
 
-type TemplateType = 'invoice' | 'reminder' | 'quote' | 'job' | 'general';
+type TemplateType = 'invoice' | 'reminder';
 
 const TEMPLATE_TYPES: { value: TemplateType; label: string }[] = [
   { value: 'invoice', label: 'Invoice' },
-  { value: 'reminder', label: 'Reminder' },
-  { value: 'quote', label: 'Quote' },
-  { value: 'job', label: 'Job' },
-  { value: 'general', label: 'General' },
+  { value: 'reminder', label: 'Payment Reminder' },
 ];
 
 // Default templates to create when a company has none
@@ -107,77 +104,13 @@ const DEFAULT_TEMPLATES = [
 {{company_phone}}</p>`,
     is_default: true,
   },
-  {
-    name: 'Quote (Default)',
-    template_type: 'quote' as TemplateType,
-    subject: 'Quote {{quote_number}} from {{company_name}}',
-    body: `<p>Hi {{customer_name}},</p>
-
-<p>Thank you for your interest! Please find attached your quote <strong>{{quote_number}}</strong> for <strong>{{quote_total}}</strong>.</p>
-
-<p>This quote is valid until <strong>{{quote_valid_until}}</strong>.</p>
-
-<p>You can review and approve the quote online:</p>
-<p><a href="{{customer_portal_link}}">View Quote</a></p>
-
-<p>If you have any questions or would like to proceed, please let us know.</p>
-
-<p>Best regards,<br>
-{{company_name}}<br>
-{{company_phone}}<br>
-{{company_email}}</p>
-
-{{social_links}}`,
-    is_default: true,
-  },
-  {
-    name: 'Job Scheduled (Default)',
-    template_type: 'job' as TemplateType,
-    subject: 'Your appointment is confirmed - {{job_title}}',
-    body: `<p>Hi {{customer_name}},</p>
-
-<p>Your service appointment has been scheduled!</p>
-
-<p><strong>Job:</strong> {{job_title}}<br>
-<strong>Job #:</strong> {{job_number}}<br>
-<strong>Date:</strong> {{scheduled_date}}<br>
-<strong>Time:</strong> {{scheduled_time}}<br>
-<strong>Technician:</strong> {{technician_name}}</p>
-
-<p>If you need to reschedule or have any questions, please contact us.</p>
-
-<p>We look forward to serving you!</p>
-
-<p>Best regards,<br>
-{{company_name}}<br>
-{{company_phone}}</p>`,
-    is_default: true,
-  },
-  {
-    name: 'General Message (Default)',
-    template_type: 'general' as TemplateType,
-    subject: 'Message from {{company_name}}',
-    body: `<p>Hi {{customer_name}},</p>
-
-<p>[Your message here]</p>
-
-<p>If you have any questions, please don't hesitate to contact us.</p>
-
-<p>Best regards,<br>
-{{company_name}}<br>
-{{company_phone}}<br>
-{{company_email}}</p>
-
-{{social_links}}`,
-    is_default: true,
-  },
 ];
 
 interface PlaceholderInfo {
   variable: string;
   description: string;
   types: TemplateType[];
-  category: 'customer' | 'company' | 'sender' | 'invoice' | 'quote' | 'job' | 'links' | 'social' | 'general';
+  category: 'customer' | 'company' | 'sender' | 'invoice' | 'links' | 'social' | 'general';
 }
 
 interface PlaceholderCategory {
@@ -191,8 +124,6 @@ const PLACEHOLDER_CATEGORIES: PlaceholderCategory[] = [
   { id: 'company', label: 'Company', icon: <Building2 className="w-3.5 h-3.5" /> },
   { id: 'sender', label: 'Sender', icon: <Send className="w-3.5 h-3.5" /> },
   { id: 'invoice', label: 'Invoice', icon: <FileText className="w-3.5 h-3.5" /> },
-  { id: 'quote', label: 'Quote', icon: <FileText className="w-3.5 h-3.5" /> },
-  { id: 'job', label: 'Job', icon: <Briefcase className="w-3.5 h-3.5" /> },
   { id: 'links', label: 'Links', icon: <Link2 className="w-3.5 h-3.5" /> },
   { id: 'social', label: 'Social', icon: <Share2 className="w-3.5 h-3.5" /> },
   { id: 'general', label: 'General', icon: <Mail className="w-3.5 h-3.5" /> },
@@ -200,39 +131,39 @@ const PLACEHOLDER_CATEGORIES: PlaceholderCategory[] = [
 
 const PLACEHOLDER_VARIABLES: PlaceholderInfo[] = [
   // Customer placeholders
-  { variable: '{{customer_name}}', description: "Customer's full name", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
-  { variable: '{{customer_email}}', description: "Customer's email", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
-  { variable: '{{customer_phone}}', description: "Customer's phone number", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
-  { variable: '{{customer_address}}', description: "Customer's street address", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
-  { variable: '{{customer_city}}', description: "Customer's city", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
-  { variable: '{{customer_state}}', description: "Customer's state", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
-  { variable: '{{customer_zip}}', description: "Customer's zip code", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
-  { variable: '{{customer_full_address}}', description: "Customer's full address", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
+  { variable: '{{customer_name}}', description: "Customer's full name", types: ['invoice', 'reminder'], category: 'customer' },
+  { variable: '{{customer_email}}', description: "Customer's email", types: ['invoice', 'reminder'], category: 'customer' },
+  { variable: '{{customer_phone}}', description: "Customer's phone number", types: ['invoice', 'reminder'], category: 'customer' },
+  { variable: '{{customer_address}}', description: "Customer's street address", types: ['invoice', 'reminder'], category: 'customer' },
+  { variable: '{{customer_city}}', description: "Customer's city", types: ['invoice', 'reminder'], category: 'customer' },
+  { variable: '{{customer_state}}', description: "Customer's state", types: ['invoice', 'reminder'], category: 'customer' },
+  { variable: '{{customer_zip}}', description: "Customer's zip code", types: ['invoice', 'reminder'], category: 'customer' },
+  { variable: '{{customer_full_address}}', description: "Customer's full address", types: ['invoice', 'reminder'], category: 'customer' },
   
   // Company placeholders
-  { variable: '{{company_name}}', description: 'Your company name', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
-  { variable: '{{company_email}}', description: 'Your company email', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
-  { variable: '{{company_phone}}', description: 'Your company phone', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
-  { variable: '{{company_website}}', description: 'Your company website', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
-  { variable: '{{company_address}}', description: 'Your company street address', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
-  { variable: '{{company_city}}', description: 'Your company city', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
-  { variable: '{{company_state}}', description: 'Your company state', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
-  { variable: '{{company_zip}}', description: 'Your company zip code', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
-  { variable: '{{company_full_address}}', description: 'Your company full address', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
+  { variable: '{{company_name}}', description: 'Your company name', types: ['invoice', 'reminder'], category: 'company' },
+  { variable: '{{company_email}}', description: 'Your company email', types: ['invoice', 'reminder'], category: 'company' },
+  { variable: '{{company_phone}}', description: 'Your company phone', types: ['invoice', 'reminder'], category: 'company' },
+  { variable: '{{company_website}}', description: 'Your company website', types: ['invoice', 'reminder'], category: 'company' },
+  { variable: '{{company_address}}', description: 'Your company street address', types: ['invoice', 'reminder'], category: 'company' },
+  { variable: '{{company_city}}', description: 'Your company city', types: ['invoice', 'reminder'], category: 'company' },
+  { variable: '{{company_state}}', description: 'Your company state', types: ['invoice', 'reminder'], category: 'company' },
+  { variable: '{{company_zip}}', description: 'Your company zip code', types: ['invoice', 'reminder'], category: 'company' },
+  { variable: '{{company_full_address}}', description: 'Your company full address', types: ['invoice', 'reminder'], category: 'company' },
   
   // Sender placeholders
-  { variable: '{{sender_name}}', description: 'Name of person sending the email', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'sender' },
-  { variable: '{{sender_email}}', description: 'Email sender address', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'sender' },
+  { variable: '{{sender_name}}', description: 'Name of person sending the email', types: ['invoice', 'reminder'], category: 'sender' },
+  { variable: '{{sender_email}}', description: 'Email sender address', types: ['invoice', 'reminder'], category: 'sender' },
   
   // General placeholders
-  { variable: '{{today_date}}', description: 'Current date', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'general' },
+  { variable: '{{today_date}}', description: 'Current date', types: ['invoice', 'reminder'], category: 'general' },
   
   // Links placeholders
-  { variable: '{{customer_portal_link}}', description: 'Customer portal magic link', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'links' },
+  { variable: '{{customer_portal_link}}', description: 'Customer portal magic link', types: ['invoice', 'reminder'], category: 'links' },
   { variable: '{{payment_link}}', description: 'Direct payment link', types: ['invoice', 'reminder'], category: 'links' },
   
   // Social placeholders
-  { variable: '{{social_links}}', description: 'Social media icons enabled in Company Settings', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'social' },
+  { variable: '{{social_links}}', description: 'Social media icons enabled in Company Settings', types: ['invoice', 'reminder'], category: 'social' },
   
   // Invoice placeholders
   { variable: '{{invoice_number}}', description: 'Invoice number', types: ['invoice', 'reminder'], category: 'invoice' },
@@ -241,27 +172,11 @@ const PLACEHOLDER_VARIABLES: PlaceholderInfo[] = [
   { variable: '{{invoice_tax}}', description: 'Invoice tax amount', types: ['invoice', 'reminder'], category: 'invoice' },
   { variable: '{{due_date}}', description: 'Invoice due date', types: ['invoice', 'reminder'], category: 'invoice' },
   { variable: '{{payment_terms}}', description: 'Payment terms (e.g., Net 30)', types: ['invoice', 'reminder'], category: 'invoice' },
-  
-  // Quote placeholders
-  { variable: '{{quote_number}}', description: 'Quote number', types: ['quote'], category: 'quote' },
-  { variable: '{{quote_total}}', description: 'Quote total amount', types: ['quote'], category: 'quote' },
-  { variable: '{{quote_valid_until}}', description: 'Quote expiration date', types: ['quote'], category: 'quote' },
-  
-  // Job placeholders
-  { variable: '{{job_number}}', description: 'Job number', types: ['job'], category: 'job' },
-  { variable: '{{job_title}}', description: 'Job title', types: ['job'], category: 'job' },
-  { variable: '{{job_description}}', description: 'Job description', types: ['job'], category: 'job' },
-  { variable: '{{scheduled_date}}', description: 'Scheduled date', types: ['job'], category: 'job' },
-  { variable: '{{scheduled_time}}', description: 'Scheduled time', types: ['job'], category: 'job' },
-  { variable: '{{technician_name}}', description: 'Assigned technician', types: ['job'], category: 'job' },
 ];
 
 const typeColors: Record<string, string> = {
   invoice: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   reminder: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  quote: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  job: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  general: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400',
 };
 
 export const EmailTemplatesTab = () => {
@@ -506,7 +421,7 @@ export const EmailTemplatesTab = () => {
   // Get placeholders relevant to current template type, grouped by category
   const getRelevantPlaceholders = () => {
     return PLACEHOLDER_VARIABLES.filter(p => 
-      p.types.includes(formData.template_type) || p.types.includes('general')
+      p.types.includes(formData.template_type)
     );
   };
 
