@@ -32,6 +32,8 @@ export const PLATFORM_ICONS: Record<string, string> = {
   // Home Services Platforms
   yelp: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#DC0000"><path d="M10.1 16.9l-3.3 4c-.5.6-.2 1.4.4 1.7l3.2 1.3c.7.3 1.5-.2 1.5-1l.1-5.3c0-1-.9-1.5-1.7-.7zM9.5 12.9l-4.9-1.8c-.7-.2-1.4.3-1.4 1l-.1 3.5c0 .7.7 1.3 1.4 1.1l5-1.6c1-.3 1.1-1.8 0-2.2zM15.1 13.5l5-1.4c.7-.2 1-.9.6-1.6l-1.9-2.9c-.4-.6-1.3-.7-1.8 0l-3.1 4.2c-.7.9.1 2 1.2 1.7zM11.5 1.3c0-.9-.8-1.5-1.6-1.3l-4 1.1c-.9.2-1.2 1.2-.7 2l4.5 7.9c.1.1.1.1.1.2.7.8 1.9.5 2.2-.4.1-.2.1-.3.1-.5l-.6-9zM20.2 17.1l-5-1.5c-1-.3-1.8.8-1.2 1.7l3 4.2c.4.6 1.3.6 1.7 0l2.1-2.8c.5-.5.3-1.3-.6-1.6z"/></svg>')}`,
   
+  bbb: `/icons/bbb.svg`,
+
   porch: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1551 1047"><path fill="#f8d668" d="m56.8 489.8c240.7-163.2 483.5-323.6 722.6-489.2l-0.4 9.5c-6.9 170.7-1.3 341.7-3 512.5c-258.9 172.7-513.8 350.9-774.2 521.1c-0.9-162.6-0.6-325.2-0.4-487.7c-4.8-35 32.7-48.8 55.4-66.2z"/><path fill="#e8b13c" d="m779 10.1c259 168.7 512.2 346.3 770.1 516.5c1 173.2 1.5 346.3-0.2 519.4c-123.9-79.6-244.4-164.5-367-246.1c-134.3-93.9-272.9-181.6-405.9-277.3c1.7-170.8-3.9-341.8 3-512.5z"/></svg>')}`,
 
   thumbtack: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="#2797dd"><circle cx="24" cy="24" r="24"/><rect x="12" y="14" width="24" height="6" fill="#fff"/><path d="M21 20h6v14c0 2-1.5 4-3 4s-3-2-3-4V20z" fill="#fff"/></svg>')}`,
