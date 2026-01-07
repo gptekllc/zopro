@@ -70,6 +70,8 @@ const SAMPLE_VALUES: Record<string, string> = {
   '{{technician_name}}': 'Mike Johnson',
   '{{today_date}}': new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
   '{{customer_address}}': '123 Main Street, Springfield, IL 62701',
+  '{{customer_portal_link}}': 'https://yourcompany.com/portal?token=abc123',
+  '{{payment_link}}': 'https://yourcompany.com/pay?invoice=I-2026-0042',
 };
 
 interface PlaceholderInfo {
@@ -84,11 +86,13 @@ const PLACEHOLDER_VARIABLES: PlaceholderInfo[] = [
   { variable: '{{company_name}}', description: 'Your company name', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
   { variable: '{{today_date}}', description: 'Current date', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
   { variable: '{{customer_address}}', description: "Customer's address", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{customer_portal_link}}', description: 'Customer portal magic link', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
   
   // Invoice placeholders
   { variable: '{{invoice_number}}', description: 'Invoice number', types: ['invoice', 'reminder'] },
   { variable: '{{invoice_total}}', description: 'Invoice total amount', types: ['invoice', 'reminder'] },
   { variable: '{{due_date}}', description: 'Invoice due date', types: ['invoice', 'reminder'] },
+  { variable: '{{payment_link}}', description: 'Direct payment link', types: ['invoice', 'reminder'] },
   
   // Quote placeholders
   { variable: '{{quote_number}}', description: 'Quote number', types: ['quote'] },

@@ -145,13 +145,17 @@ interface EmailDocumentParams {
   documentId: string;
   recipientEmail: string;
   recipientEmails?: string[];
+  customSubject?: string;
+  customMessage?: string;
+  ccEmails?: string[];
+  bccEmails?: string[];
 }
 
 export function useEmailDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ type, documentId, recipientEmail, recipientEmails }: EmailDocumentParams) => {
+    mutationFn: async ({ type, documentId, recipientEmail, recipientEmails, customSubject, customMessage, ccEmails, bccEmails }: EmailDocumentParams) => {
       // Use recipientEmails array if provided, otherwise fall back to single recipientEmail
       const emails = recipientEmails && recipientEmails.length > 0 
         ? recipientEmails 
@@ -166,6 +170,10 @@ export function useEmailDocument() {
               documentId,
               action: 'email',
               recipientEmail: email,
+              customSubject,
+              customMessage,
+              ccEmails,
+              bccEmails,
             },
           });
 

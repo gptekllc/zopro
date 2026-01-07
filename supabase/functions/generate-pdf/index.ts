@@ -45,6 +45,10 @@ interface GeneratePDFRequest {
   documentId: string;
   action: "download" | "email";
   recipientEmail?: string;
+  customSubject?: string;
+  customMessage?: string;
+  ccEmails?: string[];
+  bccEmails?: string[];
 }
 
 function getPaymentMethodLabel(method: string | null): string {
@@ -1427,7 +1431,7 @@ serve(async (req) => {
   }
 
   try {
-    const { type, documentId, action, recipientEmail }: GeneratePDFRequest = await req.json();
+    const { type, documentId, action, recipientEmail, customSubject, customMessage, ccEmails, bccEmails }: GeneratePDFRequest = await req.json();
 
     console.log(`Processing ${action} request for ${type} ${documentId}`);
 
@@ -1699,17 +1703,81 @@ serve(async (req) => {
         throw new Error("Recipient email is required for email action");
       }
 
+      // Generate customer portal magic link
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const portalBaseUrl = supabaseUrl.replace('.supabase.co', '.lovable.app');
+      const customerPortalLink = customer?.email 
+        ? `${portalBaseUrl}/portal?email=${encodeURIComponent(customer.email)}&company=${encodeURIComponent(company?.id || '')}`
+        : '';
+      
+      // Generate payment link (for invoices)
+      const paymentLink = type === 'invoice' && documentId
+        ? `${portalBaseUrl}/portal?invoice=${encodeURIComponent(documentId)}&email=${encodeURIComponent(customer?.email || '')}`
+        : '';
+
+      // Helper function to replace all placeholders in text
+      const replacePlaceholders = (text: string): string => {
+        const totalStr = document.total ? `$${Number(document.total).toLocaleString()}` : '';
+        const dueDateStr = document.due_date ? new Date(document.due_date).toLocaleDateString() : '';
+        const validUntilStr = document.valid_until ? new Date(document.valid_until).toLocaleDateString() : '';
+        const scheduledDateStr = document.scheduled_start ? new Date(document.scheduled_start).toLocaleDateString() : '';
+        const scheduledTimeStr = document.scheduled_start ? new Date(document.scheduled_start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+        const todayStr = new Date().toLocaleDateString();
+        
+        // Build customer address string
+        const customerAddress = [
+          customer?.address,
+          customer?.city,
+          customer?.state,
+          customer?.zip
+        ].filter(Boolean).join(', ');
+        
+        return text
+          .replace(/\{\{customer_name\}\}/g, customer?.name || '')
+          .replace(/\{\{company_name\}\}/g, company?.name || '')
+          .replace(/\{\{today_date\}\}/g, todayStr)
+          .replace(/\{\{customer_address\}\}/g, customerAddress)
+          .replace(/\{\{customer_portal_link\}\}/g, customerPortalLink)
+          .replace(/\{\{payment_link\}\}/g, paymentLink)
+          // Invoice/reminder placeholders
+          .replace(/\{\{invoice_number\}\}/g, type === 'invoice' ? documentNumber : '')
+          .replace(/\{\{invoice_total\}\}/g, type === 'invoice' ? totalStr : '')
+          .replace(/\{\{due_date\}\}/g, dueDateStr)
+          // Quote placeholders
+          .replace(/\{\{quote_number\}\}/g, type === 'quote' ? documentNumber : '')
+          .replace(/\{\{quote_total\}\}/g, type === 'quote' ? totalStr : '')
+          .replace(/\{\{quote_valid_until\}\}/g, validUntilStr)
+          // Job placeholders
+          .replace(/\{\{job_number\}\}/g, type === 'job' ? documentNumber : '')
+          .replace(/\{\{job_title\}\}/g, document.title || '')
+          .replace(/\{\{job_description\}\}/g, document.description || '')
+          .replace(/\{\{scheduled_date\}\}/g, scheduledDateStr)
+          .replace(/\{\{scheduled_time\}\}/g, scheduledTimeStr)
+          .replace(/\{\{technician_name\}\}/g, assignee?.full_name || '');
+      };
+
       let subject: string;
-      let customEmailBody: string;
-      if (type === "quote") {
+      let emailBody: string;
+      
+      // Use custom subject/message if provided, otherwise use defaults
+      if (customSubject) {
+        subject = replacePlaceholders(customSubject);
+      } else if (type === "quote") {
         subject = `Quote ${documentNumber} from ${company?.name || "Our Company"}`;
-        customEmailBody = company?.email_quote_body || "Please find your quote attached. We appreciate the opportunity to serve you. This quote is valid for the period indicated.";
       } else if (type === "invoice") {
         subject = `Invoice ${documentNumber} from ${company?.name || "Our Company"}`;
-        customEmailBody = company?.email_invoice_body || "Please find your invoice attached. We appreciate your business. Payment is due by the date indicated on the invoice.";
       } else {
         subject = `Job Summary ${documentNumber} from ${company?.name || "The Team"}`;
-        customEmailBody = company?.email_job_body || "Please find your job summary attached. We appreciate your business and look forward to serving you.";
+      }
+      
+      if (customMessage) {
+        emailBody = replacePlaceholders(customMessage);
+      } else if (type === "quote") {
+        emailBody = company?.email_quote_body || "Please find your quote attached. We appreciate the opportunity to serve you. This quote is valid for the period indicated.";
+      } else if (type === "invoice") {
+        emailBody = company?.email_invoice_body || "Please find your invoice attached. We appreciate your business. Payment is due by the date indicated on the invoice.";
+      } else {
+        emailBody = company?.email_job_body || "Please find your job summary attached. We appreciate your business and look forward to serving you.";
       }
 
       // Payment info for email
@@ -1731,7 +1799,7 @@ serve(async (req) => {
       const emailHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2>Hello ${customer?.name || ""},</h2>
-          <p style="white-space: pre-wrap;">${customEmailBody}</p>
+          <p style="white-space: pre-wrap;">${emailBody}</p>
           <p><strong>${type === "quote" ? "Quote" : type === "invoice" ? "Invoice" : "Job"} Number:</strong> ${documentNumber}</p>
           ${document.total ? `<p><strong>Total Amount:</strong> $${Number(document.total).toLocaleString()}</p>` : ""}
           ${type === "invoice" && document.due_date ? `<p><strong>Due Date:</strong> ${new Date(document.due_date).toLocaleDateString()}</p>` : ""}
@@ -1760,6 +1828,8 @@ serve(async (req) => {
       const { data: emailData, error: emailError } = await resend.emails.send({
         from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [recipientEmail],
+        cc: ccEmails && ccEmails.length > 0 ? ccEmails : undefined,
+        bcc: bccEmails && bccEmails.length > 0 ? bccEmails : undefined,
         reply_to: company?.email || undefined,
         subject,
         html: emailHtml,
