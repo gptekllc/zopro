@@ -9,6 +9,11 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -32,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil, CopyPlus } from 'lucide-react';
+import { Loader2, Trash2, Edit, Plus, Mail, Star, Copy, Eye, Pencil, CopyPlus, ChevronDown, User, Building2, FileText, Briefcase, Link2, Send } from 'lucide-react';
 import { 
   useEmailTemplates, 
   useCreateEmailTemplate, 
@@ -75,7 +80,8 @@ const SAMPLE_VALUES: Record<string, string> = {
   '{{company_zip}}': '60601',
   '{{company_full_address}}': '456 Business Ave, Chicago, IL 60601',
   
-  // Sender placeholder
+  // Sender placeholders
+  '{{sender_name}}': 'Sarah Johnson',
   '{{sender_email}}': 'noreply@email.zopro.app',
   
   // Invoice placeholders
@@ -111,58 +117,79 @@ interface PlaceholderInfo {
   variable: string;
   description: string;
   types: TemplateType[];
+  category: 'customer' | 'company' | 'sender' | 'invoice' | 'quote' | 'job' | 'links' | 'general';
 }
+
+interface PlaceholderCategory {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+}
+
+const PLACEHOLDER_CATEGORIES: PlaceholderCategory[] = [
+  { id: 'customer', label: 'Customer', icon: <User className="w-3.5 h-3.5" /> },
+  { id: 'company', label: 'Company', icon: <Building2 className="w-3.5 h-3.5" /> },
+  { id: 'sender', label: 'Sender', icon: <Send className="w-3.5 h-3.5" /> },
+  { id: 'invoice', label: 'Invoice', icon: <FileText className="w-3.5 h-3.5" /> },
+  { id: 'quote', label: 'Quote', icon: <FileText className="w-3.5 h-3.5" /> },
+  { id: 'job', label: 'Job', icon: <Briefcase className="w-3.5 h-3.5" /> },
+  { id: 'links', label: 'Links', icon: <Link2 className="w-3.5 h-3.5" /> },
+  { id: 'general', label: 'General', icon: <Mail className="w-3.5 h-3.5" /> },
+];
 
 const PLACEHOLDER_VARIABLES: PlaceholderInfo[] = [
   // Customer placeholders
-  { variable: '{{customer_name}}', description: "Customer's full name", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{customer_email}}', description: "Customer's email", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{customer_phone}}', description: "Customer's phone number", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{customer_address}}', description: "Customer's street address", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{customer_city}}', description: "Customer's city", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{customer_state}}', description: "Customer's state", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{customer_zip}}', description: "Customer's zip code", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{customer_full_address}}', description: "Customer's full address", types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{customer_name}}', description: "Customer's full name", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
+  { variable: '{{customer_email}}', description: "Customer's email", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
+  { variable: '{{customer_phone}}', description: "Customer's phone number", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
+  { variable: '{{customer_address}}', description: "Customer's street address", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
+  { variable: '{{customer_city}}', description: "Customer's city", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
+  { variable: '{{customer_state}}', description: "Customer's state", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
+  { variable: '{{customer_zip}}', description: "Customer's zip code", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
+  { variable: '{{customer_full_address}}', description: "Customer's full address", types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'customer' },
   
   // Company placeholders
-  { variable: '{{company_name}}', description: 'Your company name', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{company_email}}', description: 'Your company email', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{company_phone}}', description: 'Your company phone', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{company_website}}', description: 'Your company website', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{company_address}}', description: 'Your company street address', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{company_city}}', description: 'Your company city', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{company_state}}', description: 'Your company state', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{company_zip}}', description: 'Your company zip code', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{company_full_address}}', description: 'Your company full address', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{company_name}}', description: 'Your company name', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
+  { variable: '{{company_email}}', description: 'Your company email', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
+  { variable: '{{company_phone}}', description: 'Your company phone', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
+  { variable: '{{company_website}}', description: 'Your company website', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
+  { variable: '{{company_address}}', description: 'Your company street address', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
+  { variable: '{{company_city}}', description: 'Your company city', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
+  { variable: '{{company_state}}', description: 'Your company state', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
+  { variable: '{{company_zip}}', description: 'Your company zip code', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
+  { variable: '{{company_full_address}}', description: 'Your company full address', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'company' },
   
-  // Sender placeholder
-  { variable: '{{sender_email}}', description: 'Email sender address', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  // Sender placeholders
+  { variable: '{{sender_name}}', description: 'Name of person sending the email', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'sender' },
+  { variable: '{{sender_email}}', description: 'Email sender address', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'sender' },
   
   // General placeholders
-  { variable: '{{today_date}}', description: 'Current date', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
-  { variable: '{{customer_portal_link}}', description: 'Customer portal magic link', types: ['invoice', 'reminder', 'quote', 'job', 'general'] },
+  { variable: '{{today_date}}', description: 'Current date', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'general' },
+  
+  // Links placeholders
+  { variable: '{{customer_portal_link}}', description: 'Customer portal magic link', types: ['invoice', 'reminder', 'quote', 'job', 'general'], category: 'links' },
+  { variable: '{{payment_link}}', description: 'Direct payment link', types: ['invoice', 'reminder'], category: 'links' },
   
   // Invoice placeholders
-  { variable: '{{invoice_number}}', description: 'Invoice number', types: ['invoice', 'reminder'] },
-  { variable: '{{invoice_total}}', description: 'Invoice total amount', types: ['invoice', 'reminder'] },
-  { variable: '{{invoice_subtotal}}', description: 'Invoice subtotal (before tax)', types: ['invoice', 'reminder'] },
-  { variable: '{{invoice_tax}}', description: 'Invoice tax amount', types: ['invoice', 'reminder'] },
-  { variable: '{{due_date}}', description: 'Invoice due date', types: ['invoice', 'reminder'] },
-  { variable: '{{payment_terms}}', description: 'Payment terms (e.g., Net 30)', types: ['invoice', 'reminder'] },
-  { variable: '{{payment_link}}', description: 'Direct payment link', types: ['invoice', 'reminder'] },
+  { variable: '{{invoice_number}}', description: 'Invoice number', types: ['invoice', 'reminder'], category: 'invoice' },
+  { variable: '{{invoice_total}}', description: 'Invoice total amount', types: ['invoice', 'reminder'], category: 'invoice' },
+  { variable: '{{invoice_subtotal}}', description: 'Invoice subtotal (before tax)', types: ['invoice', 'reminder'], category: 'invoice' },
+  { variable: '{{invoice_tax}}', description: 'Invoice tax amount', types: ['invoice', 'reminder'], category: 'invoice' },
+  { variable: '{{due_date}}', description: 'Invoice due date', types: ['invoice', 'reminder'], category: 'invoice' },
+  { variable: '{{payment_terms}}', description: 'Payment terms (e.g., Net 30)', types: ['invoice', 'reminder'], category: 'invoice' },
   
   // Quote placeholders
-  { variable: '{{quote_number}}', description: 'Quote number', types: ['quote'] },
-  { variable: '{{quote_total}}', description: 'Quote total amount', types: ['quote'] },
-  { variable: '{{quote_valid_until}}', description: 'Quote expiration date', types: ['quote'] },
+  { variable: '{{quote_number}}', description: 'Quote number', types: ['quote'], category: 'quote' },
+  { variable: '{{quote_total}}', description: 'Quote total amount', types: ['quote'], category: 'quote' },
+  { variable: '{{quote_valid_until}}', description: 'Quote expiration date', types: ['quote'], category: 'quote' },
   
   // Job placeholders
-  { variable: '{{job_number}}', description: 'Job number', types: ['job'] },
-  { variable: '{{job_title}}', description: 'Job title', types: ['job'] },
-  { variable: '{{job_description}}', description: 'Job description', types: ['job'] },
-  { variable: '{{scheduled_date}}', description: 'Scheduled date', types: ['job'] },
-  { variable: '{{scheduled_time}}', description: 'Scheduled time', types: ['job'] },
-  { variable: '{{technician_name}}', description: 'Assigned technician', types: ['job'] },
+  { variable: '{{job_number}}', description: 'Job number', types: ['job'], category: 'job' },
+  { variable: '{{job_title}}', description: 'Job title', types: ['job'], category: 'job' },
+  { variable: '{{job_description}}', description: 'Job description', types: ['job'], category: 'job' },
+  { variable: '{{scheduled_date}}', description: 'Scheduled date', types: ['job'], category: 'job' },
+  { variable: '{{scheduled_time}}', description: 'Scheduled time', types: ['job'], category: 'job' },
+  { variable: '{{technician_name}}', description: 'Assigned technician', types: ['job'], category: 'job' },
 ];
 
 const typeColors: Record<string, string> = {
@@ -316,7 +343,7 @@ export const EmailTemplatesTab = () => {
     toast.success('Copied to clipboard');
   };
 
-  // Get placeholders relevant to current template type
+  // Get placeholders relevant to current template type, grouped by category
   const getRelevantPlaceholders = () => {
     return PLACEHOLDER_VARIABLES.filter(p => 
       p.types.includes(formData.template_type) || p.types.includes('general')
@@ -324,6 +351,22 @@ export const EmailTemplatesTab = () => {
   };
 
   const relevantPlaceholders = getRelevantPlaceholders();
+  
+  // Group placeholders by category
+  const getPlaceholdersByCategory = (categoryId: string) => {
+    return relevantPlaceholders.filter(p => p.category === categoryId);
+  };
+  
+  // Get categories that have relevant placeholders
+  const relevantCategories = PLACEHOLDER_CATEGORIES.filter(cat => 
+    getPlaceholdersByCategory(cat.id).length > 0
+  );
+
+  const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
+    customer: true,
+    company: true,
+    sender: true,
+  });
 
   if (isLoading) {
     return (
@@ -431,9 +474,9 @@ export const EmailTemplatesTab = () => {
         )}
       </div>
 
-      {/* Placeholder reference */}
-      <div className="p-3 bg-muted/50 rounded-lg">
-        <div className="flex items-center justify-between mb-2">
+      {/* Placeholder reference - Collapsible categories */}
+      <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+        <div className="flex items-center justify-between">
           <p className="text-xs font-medium">
             Available Placeholders for {TEMPLATE_TYPES.find(t => t.value === formData.template_type)?.label} templates:
           </p>
@@ -441,21 +484,48 @@ export const EmailTemplatesTab = () => {
             Insert into: {insertTarget}
           </Badge>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          {relevantPlaceholders.map((p) => (
-            <Badge
-              key={p.variable}
-              variant="outline"
-              className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs transition-colors"
-              onClick={() => insertPlaceholder(p.variable, insertTarget)}
-              title={p.description}
-            >
-              <Copy className="w-2.5 h-2.5 mr-1" />
-              {p.variable}
-            </Badge>
-          ))}
+        
+        <div className="space-y-1">
+          {relevantCategories.map((category) => {
+            const categoryPlaceholders = getPlaceholdersByCategory(category.id);
+            const isOpen = openCategories[category.id] ?? false;
+            
+            return (
+              <Collapsible
+                key={category.id}
+                open={isOpen}
+                onOpenChange={(open) => setOpenCategories(prev => ({ ...prev, [category.id]: open }))}
+              >
+                <CollapsibleTrigger className="flex items-center gap-2 w-full p-2 rounded-md hover:bg-muted/80 transition-colors text-left">
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+                  {category.icon}
+                  <span className="text-xs font-medium flex-1">{category.label}</span>
+                  <Badge variant="outline" className="text-[10px] h-4 px-1.5">
+                    {categoryPlaceholders.length}
+                  </Badge>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pl-6 pt-1 pb-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {categoryPlaceholders.map((p) => (
+                      <Badge
+                        key={p.variable}
+                        variant="outline"
+                        className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs transition-colors"
+                        onClick={() => insertPlaceholder(p.variable, insertTarget)}
+                        title={p.description}
+                      >
+                        <Copy className="w-2.5 h-2.5 mr-1" />
+                        {p.variable}
+                      </Badge>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
+        
+        <p className="text-xs text-muted-foreground pt-1">
           Click subject or body field first, then click a placeholder to insert it.
         </p>
       </div>
