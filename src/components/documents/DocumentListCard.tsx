@@ -158,12 +158,10 @@ export function DocumentListCard({
             </div>
           </div>
 
-          {/* Row 2: Metadata + Notes */}
-          {(metadataRow || notes) && (
+          {/* Row 2: Metadata */}
+          {metadataRow && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
               {metadataRow}
-              {metadataRow && notes && <span>•</span>}
-              {notes && <span className="truncate">{notes}</span>}
             </div>
           )}
 

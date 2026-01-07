@@ -123,15 +123,6 @@ export function JobListCard({
           </span>
         </>
       )}
-      {job.photos && job.photos.length > 0 && (
-        <>
-          {(job.assignee?.full_name || job.scheduled_start) && <span className="hidden sm:inline">•</span>}
-          <span className="hidden sm:flex items-center gap-1">
-            <Image className="w-3 h-3" />
-            {job.photos.length}
-          </span>
-        </>
-      )}
     </>
   );
 
