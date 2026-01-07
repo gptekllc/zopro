@@ -49,6 +49,7 @@ interface GeneratePDFRequest {
   customMessage?: string;
   ccEmails?: string[];
   bccEmails?: string[];
+  senderName?: string;
 }
 
 function getPaymentMethodLabel(method: string | null): string {
@@ -1431,7 +1432,7 @@ serve(async (req) => {
   }
 
   try {
-    const { type, documentId, action, recipientEmail, customSubject, customMessage, ccEmails, bccEmails }: GeneratePDFRequest = await req.json();
+    const { type, documentId, action, recipientEmail, customSubject, customMessage, ccEmails, bccEmails, senderName }: GeneratePDFRequest = await req.json();
 
     console.log(`Processing ${action} request for ${type} ${documentId}`);
 
@@ -1770,7 +1771,8 @@ serve(async (req) => {
           .replace(/\{\{company_state\}\}/g, company?.state || '')
           .replace(/\{\{company_zip\}\}/g, company?.zip || '')
           .replace(/\{\{company_full_address\}\}/g, companyFullAddress)
-          // Sender placeholder
+          // Sender placeholders
+          .replace(/\{\{sender_name\}\}/g, senderName || '')
           .replace(/\{\{sender_email\}\}/g, senderEmail)
           // General placeholders
           .replace(/\{\{today_date\}\}/g, todayStr)

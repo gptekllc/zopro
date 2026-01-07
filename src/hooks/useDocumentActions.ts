@@ -149,17 +149,22 @@ interface EmailDocumentParams {
   customMessage?: string;
   ccEmails?: string[];
   bccEmails?: string[];
+  senderName?: string;
 }
 
 export function useEmailDocument() {
   const queryClient = useQueryClient();
+  const { profile } = useAuth();
 
   return useMutation({
-    mutationFn: async ({ type, documentId, recipientEmail, recipientEmails, customSubject, customMessage, ccEmails, bccEmails }: EmailDocumentParams) => {
+    mutationFn: async ({ type, documentId, recipientEmail, recipientEmails, customSubject, customMessage, ccEmails, bccEmails, senderName }: EmailDocumentParams) => {
       // Use recipientEmails array if provided, otherwise fall back to single recipientEmail
       const emails = recipientEmails && recipientEmails.length > 0 
         ? recipientEmails 
         : [recipientEmail].filter(Boolean);
+      
+      // Use provided senderName or fall back to current user's name
+      const actualSenderName = senderName || profile?.full_name || '';
       
       // Send to each recipient
       const results = await Promise.all(
@@ -174,6 +179,7 @@ export function useEmailDocument() {
               customMessage,
               ccEmails,
               bccEmails,
+              senderName: actualSenderName,
             },
           });
 
