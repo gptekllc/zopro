@@ -5,6 +5,7 @@ interface DocumentListCardProps {
   onClick?: () => void;
   isArchived?: boolean;
   isVoided?: boolean;
+  isOverdue?: boolean;
   // Row 1: Document info on the left, total + optional actions on the right
   documentNumber: string;
   title?: string;
@@ -31,6 +32,7 @@ export function DocumentListCard({
   onClick,
   isArchived = false,
   isVoided = false,
+  isOverdue = false,
   documentNumber,
   title,
   customerName,
@@ -47,7 +49,7 @@ export function DocumentListCard({
   onSwipeHintDismiss
 }: DocumentListCardProps) {
   const hasSwipeActions = swipeLeftActions.length > 0 || swipeRightActions.length > 0;
-  const cardContent = <Card className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${isArchived ? 'opacity-60 border-dashed' : ''} ${isVoided ? 'opacity-70' : ''}`} onClick={onClick}>
+  const cardContent = <Card className={`overflow-hidden hover:shadow-md transition-shadow cursor-pointer ${isArchived ? 'opacity-60 border-dashed' : ''} ${isVoided ? 'opacity-70' : ''} ${isOverdue ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : ''}`} onClick={onClick}>
       <CardContent className="p-4 sm:p-5">
         {/* Mobile Layout */}
         <div className="flex flex-col gap-2 sm:hidden">

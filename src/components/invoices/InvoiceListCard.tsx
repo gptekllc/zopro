@@ -293,6 +293,7 @@ export function InvoiceListCard({
       onClick={() => onOpen(invoice)}
       isArchived={!!archivedAt}
       isVoided={isVoided}
+      isOverdue={isInvoiceOverdue(invoice)}
       documentNumber={invoice.invoice_number}
       customerName={customerName}
       customerEmail={customerEmail}
