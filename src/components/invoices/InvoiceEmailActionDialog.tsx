@@ -184,12 +184,12 @@ ${companyName}`;
     applyDefaultTemplate(type);
   };
 
-  // Re-apply template if templates load after entering compose
+  // Re-apply template if templates load after entering compose and fields are empty
   useEffect(() => {
-    if (step === 'compose' && templates.length > 0 && !selectedTemplateId) {
+    if (step === 'compose' && templates.length > 0 && !selectedTemplateId && !subject && !message) {
       applyDefaultTemplate(actionType);
     }
-  }, [templates]);
+  }, [templates, step, selectedTemplateId, subject, message, actionType]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
