@@ -295,36 +295,36 @@ const Company = () => {
             <p className="text-muted-foreground mt-1 text-sm sm:text-base">Manage your company details and preferences</p>
           </div>
 
-          {/* Mobile: Horizontal scrollable tabs with icons only */}
-          <div className="sm:hidden -mx-4 px-4 overflow-x-auto">
+          {/* Mobile/Tablet: Horizontal scrollable tabs */}
+          <div className="lg:hidden -mx-4 px-4 overflow-x-auto scrollbar-hide">
             <TabsList className="inline-flex w-auto min-w-max gap-1">
               <TabsTrigger value="details" className="flex items-center gap-1.5 px-3 py-2">
                 <Building2 className="w-4 h-4 shrink-0" />
-                <span className="text-xs whitespace-nowrap">Details</span>
+                <span className="text-xs sm:text-sm whitespace-nowrap">Details</span>
               </TabsTrigger>
               <TabsTrigger value="billing" className="flex items-center gap-1.5 px-3 py-2">
                 <Receipt className="w-4 h-4 shrink-0" />
-                <span className="text-xs whitespace-nowrap">Billing</span>
+                <span className="text-xs sm:text-sm whitespace-nowrap">Billing</span>
               </TabsTrigger>
               <TabsTrigger value="preferences" className="flex items-center gap-1.5 px-3 py-2">
                 <Settings className="w-4 h-4 shrink-0" />
-                <span className="text-xs whitespace-nowrap">Prefs</span>
+                <span className="text-xs sm:text-sm whitespace-nowrap">Preferences</span>
               </TabsTrigger>
               <TabsTrigger value="templates" className="flex items-center gap-1.5 px-3 py-2">
                 <BookTemplate className="w-4 h-4 shrink-0" />
-                <span className="text-xs whitespace-nowrap">Templates</span>
+                <span className="text-xs sm:text-sm whitespace-nowrap">Templates</span>
               </TabsTrigger>
               {isAdmin && (
                 <TabsTrigger value="payments" className="flex items-center gap-1.5 px-3 py-2">
                   <CreditCard className="w-4 h-4 shrink-0" />
-                  <span className="text-xs whitespace-nowrap">Pay</span>
+                  <span className="text-xs sm:text-sm whitespace-nowrap">Payments</span>
                 </TabsTrigger>
               )}
             </TabsList>
           </div>
           
           {/* Desktop: Full tabs with icons */}
-          <TabsList className="hidden sm:inline-flex shrink-0">
+          <TabsList className="hidden lg:inline-flex shrink-0">
             <TabsTrigger value="details" className="gap-2">
               <Building2 className="w-4 h-4" />
               Details
