@@ -73,11 +73,15 @@ export default function DashboardPage() {
   const recentInvoices = isTechnicianDashboardScoped ? invoices.filter(i => i.created_by === user?.id).slice(0, 5) : invoices.slice(0, 5);
   const recentQuotes = isTechnicianDashboardScoped ? quotes.filter(q => q.created_by === user?.id).slice(0, 5) : quotes.slice(0, 5);
   const recentJobs = isTechnicianDashboardScoped ? jobs.filter(j => j.created_by === user?.id || j.assigned_to === user?.id).slice(0, 5) : jobs.slice(0, 5);
-  const paidInvoicesCount = visibleInvoices.filter(i => i.status === "paid").length;
+  // My Revenue: paid invoices where user is the assigned technician
+  const myAssignedPaidInvoices = invoices.filter(i => i.assigned_to === user?.id && i.status === "paid");
+  const myTotalRevenue = myAssignedPaidInvoices.reduce((sum, i) => sum + Number(i.total), 0);
+  const myPaidInvoicesCount = myAssignedPaidInvoices.length;
+
   const stats = isTechnicianDashboardScoped ? [{
-    title: "My Revenue",
-    value: `$${totalRevenue.toLocaleString()}`,
-    subtext: `${paidInvoicesCount} paid invoice${paidInvoicesCount !== 1 ? 's' : ''}`,
+    title: "My Total Revenue",
+    value: `$${myTotalRevenue.toLocaleString()}`,
+    subtext: `${myPaidInvoicesCount} paid invoice${myPaidInvoicesCount !== 1 ? 's' : ''}`,
     icon: DollarSign,
     iconBg: "bg-success"
   }, {
@@ -102,6 +106,12 @@ export default function DashboardPage() {
     icon: DollarSign,
     iconBg: "bg-success"
   }, {
+    title: "My Total Revenue",
+    value: `$${myTotalRevenue.toLocaleString()}`,
+    subtext: `${myPaidInvoicesCount} paid invoice${myPaidInvoicesCount !== 1 ? 's' : ''}`,
+    icon: DollarSign,
+    iconBg: "bg-success"
+  }, {
     title: "Pending Invoices",
     value: pendingInvoices.length,
     subtext: `$${pendingAmount.toLocaleString()}`,
@@ -112,11 +122,6 @@ export default function DashboardPage() {
     value: activeQuotes.length,
     icon: TrendingUp,
     iconBg: "bg-primary"
-  }, {
-    title: "Total Customers",
-    value: customers.length,
-    icon: Users,
-    iconBg: "bg-accent"
   }];
   if (isLoading) {
     return <div className="flex items-center justify-center py-12">
