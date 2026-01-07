@@ -370,6 +370,7 @@ export const EmailTemplatesTab = () => {
   ];
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [viewingBuiltinTemplate, setViewingBuiltinTemplate] = useState<BuiltInTemplate | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [formData, setFormData] = useState({
@@ -1030,6 +1031,17 @@ export const EmailTemplatesTab = () => {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
+                    {template.is_builtin && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setViewingBuiltinTemplate(template as BuiltInTemplate)}
+                        title="View template"
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View
+                      </Button>
+                    )}
                     <Button 
                       variant="ghost" 
                       size="icon"
@@ -1101,6 +1113,85 @@ export const EmailTemplatesTab = () => {
             >
               {updateTemplate.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Built-in Template Dialog */}
+      <Dialog open={!!viewingBuiltinTemplate} onOpenChange={(open) => !open && setViewingBuiltinTemplate(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5" />
+              {viewingBuiltinTemplate?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {viewingBuiltinTemplate && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="bg-primary/10 text-primary">
+                  Built-in Template
+                </Badge>
+                <Badge variant="outline" className={typeColors[viewingBuiltinTemplate.template_type] || typeColors.general}>
+                  {viewingBuiltinTemplate.template_type}
+                </Badge>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-xs uppercase tracking-wide">Subject</Label>
+                <div className="p-3 bg-muted/50 rounded-md border">
+                  <p className="text-sm font-medium">{viewingBuiltinTemplate.subject}</p>
+                </div>
+              </div>
+              
+              <Tabs defaultValue="source" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="source" className="text-xs">Source</TabsTrigger>
+                  <TabsTrigger value="preview" className="text-xs">Preview</TabsTrigger>
+                </TabsList>
+                <TabsContent value="source">
+                  <div className="p-3 bg-muted/50 rounded-md border min-h-[200px] max-h-[300px] overflow-auto">
+                    <pre className="text-xs font-mono whitespace-pre-wrap">{viewingBuiltinTemplate.body}</pre>
+                  </div>
+                </TabsContent>
+                <TabsContent value="preview">
+                  <div className="p-4 border rounded-md min-h-[200px] max-h-[300px] overflow-auto bg-background">
+                    <p className="text-xs text-muted-foreground mb-2">Preview with sample values:</p>
+                    <Separator className="mb-3" />
+                    <div 
+                      className="prose prose-sm dark:prose-invert max-w-none text-sm"
+                      dangerouslySetInnerHTML={{ 
+                        __html: replacePlaceholdersWithSamples(viewingBuiltinTemplate.body)
+                      }}
+                    />
+                  </div>
+                </TabsContent>
+              </Tabs>
+              
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  <strong>Note:</strong> Built-in templates cannot be edited directly. Click "Copy to Customize" to create your own editable version.
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setViewingBuiltinTemplate(null)}>
+              Close
+            </Button>
+            <Button 
+              onClick={() => {
+                if (viewingBuiltinTemplate) {
+                  handleDuplicate(viewingBuiltinTemplate);
+                  setViewingBuiltinTemplate(null);
+                }
+              }}
+            >
+              <CopyPlus className="w-4 h-4 mr-2" />
+              Copy to Customize
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -162,7 +162,7 @@ Thank you,
 ${companyName}`;
   };
 
-  // Reset state and apply default template when dialog opens
+  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setStep('compose');
@@ -174,8 +174,15 @@ ${companyName}`;
       setNewCcEmail('');
       setNewBccEmail('');
       setShowCcBcc(false);
-      
-      // Apply default template immediately
+      setSelectedTemplateId('');
+      setSubject('');
+      setMessage('');
+    }
+  }, [open, customerEmail]);
+
+  // Apply default template when templates are loaded and no template is selected yet
+  useEffect(() => {
+    if (open && templates.length > 0 && !selectedTemplateId && !subject && !message) {
       const defaultTemplate = templates.find(t => t.template_type === templateType && t.is_default);
       if (defaultTemplate) {
         setSubject(replacePlaceholders(defaultTemplate.subject));
@@ -184,10 +191,9 @@ ${companyName}`;
       } else {
         setSubject(getDefaultSubject());
         setMessage(getDefaultMessage());
-        setSelectedTemplateId('');
       }
     }
-  }, [open, customerEmail, templates, templateType]);
+  }, [open, templates, templateType, selectedTemplateId, subject, message]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
