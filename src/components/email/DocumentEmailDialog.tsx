@@ -42,6 +42,8 @@ interface DocumentEmailDialogProps {
   customerName?: string;
   customerEmail?: string;
   companyName?: string;
+  companyPhone?: string;
+  companyEmail?: string;
   documentTotal?: number;
   validUntil?: string; // For quotes
   scheduledDate?: string; // For jobs
@@ -62,6 +64,8 @@ export function DocumentEmailDialog({
   customerName,
   customerEmail,
   companyName = 'Our Company',
+  companyPhone = '',
+  companyEmail: companyEmailProp = '',
   documentTotal,
   validUntil,
   scheduledDate,
@@ -109,6 +113,8 @@ export function DocumentEmailDialog({
     return text
       .replace(/\{\{customer_name\}\}/g, customerName || '')
       .replace(/\{\{company_name\}\}/g, companyName)
+      .replace(/\{\{company_phone\}\}/g, companyPhone)
+      .replace(/\{\{company_email\}\}/g, companyEmailProp)
       .replace(/\{\{today_date\}\}/g, todayStr)
       .replace(/\{\{customer_address\}\}/g, customerAddress || '')
       // Quote placeholders

@@ -491,6 +491,8 @@ export function QuoteListManager({
         customerName={selectedQuoteForEmail ? getCustomerName(selectedQuoteForEmail.customer_id) : undefined}
         customerEmail={selectedQuoteForEmail ? getCustomerEmail(selectedQuoteForEmail.customer_id) : undefined}
         companyName={company?.name}
+        companyPhone={company?.phone || ''}
+        companyEmail={company?.email || ''}
         documentTotal={selectedQuoteForEmail?.total}
         validUntil={selectedQuoteForEmail?.valid_until || undefined}
         onSend={handleSendQuoteEmail}

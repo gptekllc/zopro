@@ -537,6 +537,8 @@ export function JobListManager({
         customerName={selectedJobForEmail ? getCustomerName(selectedJobForEmail.customer_id) : undefined}
         customerEmail={selectedJobForEmail ? getCustomerEmail(selectedJobForEmail.customer_id) : undefined}
         companyName={company?.name}
+        companyPhone={company?.phone || ''}
+        companyEmail={company?.email || ''}
         jobTitle={selectedJobForEmail?.title}
         jobDescription={selectedJobForEmail?.description || undefined}
         scheduledDate={selectedJobForEmail?.scheduled_start || undefined}
