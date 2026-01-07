@@ -267,9 +267,9 @@ export const EmailTemplatesTab = () => {
       '{{scheduled_time}}': '9:00 AM',
       '{{technician_name}}': 'Mike Johnson',
       
-      // Links
-      '{{customer_portal_link}}': 'https://zopro.app/customer-portal?token=abc123',
-      '{{payment_link}}': 'https://zopro.app/customer-portal?token=abc123&pay=true',
+      // Links - use company's custom domain or fall back to production domain
+      '{{customer_portal_link}}': `${company?.custom_domain || 'https://zopro.app'}/customer-portal?token=abc123`,
+      '{{payment_link}}': `${company?.custom_domain || 'https://zopro.app'}/customer-portal?token=abc123&pay=true`,
       
       // Social
       '{{social_links}}': '<div style="text-align: center; margin-top: 15px;"><a href="#" style="margin: 0 8px;"><span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #1877F2; color: white; border-radius: 6px; font-weight: bold;">F</span></a><a href="#" style="margin: 0 8px;"><span style="display: inline-block; width: 32px; height: 32px; line-height: 32px; background: #E4405F; color: white; border-radius: 6px; font-weight: bold;">I</span></a></div>',
