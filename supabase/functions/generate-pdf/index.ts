@@ -120,18 +120,53 @@ function generateSocialIconsHtml(socialLinks: SocialLink[], documentType: 'invoi
 
   if (visibleLinks.length === 0) return '';
 
+  // Use text-based badges with brand colors for consistent rendering
   const iconsHtml = visibleLinks.map(link => {
-    const iconUrl = link.icon_url || getDefaultPlatformIcon(link.platform_name);
-    if (iconUrl) {
-      return `<a href="${link.url}" style="display: inline-block; margin-right: 12px; text-decoration: none;" title="${link.platform_name}">
-        <img src="${iconUrl}" alt="${link.platform_name}" style="width: 24px; height: 24px; object-fit: contain;" />
-      </a>`;
-    } else {
-      return `<a href="${link.url}" style="color: #2563eb; text-decoration: none; margin-right: 12px;">${link.platform_name}</a>`;
-    }
+    const color = getPlatformColor(link.platform_name);
+    const initial = link.platform_name.charAt(0).toUpperCase();
+    return `<a href="${link.url}" style="display: inline-block; margin-right: 8px; margin-bottom: 8px; text-decoration: none;" title="${link.platform_name}">
+      <span style="display: inline-block; width: 24px; height: 24px; line-height: 24px; text-align: center; background-color: ${color}; color: #ffffff; font-size: 12px; font-weight: bold; border-radius: 4px; font-family: Arial, sans-serif;">${initial}</span>
+    </a>`;
   }).join('');
 
   return `<div style="margin-top: 10px;">${iconsHtml}</div>`;
+}
+
+// Platform brand colors for email badges
+const PLATFORM_COLORS: Record<string, string> = {
+  facebook: '#1877F2',
+  instagram: '#E4405F',
+  linkedin: '#0A66C2',
+  twitter: '#1DA1F2',
+  x: '#000000',
+  youtube: '#FF0000',
+  tiktok: '#000000',
+  whatsapp: '#25D366',
+  messenger: '#0084FF',
+  telegram: '#0088CC',
+  viber: '#7360F2',
+  threads: '#000000',
+  pinterest: '#BD081C',
+  google: '#4285F4',
+  thumbtack: '#009FD9',
+  yelp: '#D32323',
+  angi: '#FF6153',
+  homeadvisor: '#F68315',
+  bbb: '#005A8C',
+  nextdoor: '#8ED500',
+  networx: '#00B2A9',
+  houzz: '#4DBC15',
+  craftjack: '#FF6B35',
+  porch: '#00C16E',
+};
+
+function getPlatformColor(platformName: string): string {
+  const normalized = platformName.toLowerCase().trim();
+  if (PLATFORM_COLORS[normalized]) return PLATFORM_COLORS[normalized];
+  for (const [key, color] of Object.entries(PLATFORM_COLORS)) {
+    if (normalized.includes(key)) return color;
+  }
+  return '#2563eb'; // Default blue
 }
 
 function generateEmailSocialIconsHtml(socialLinks: SocialLink[]): string {
@@ -139,18 +174,17 @@ function generateEmailSocialIconsHtml(socialLinks: SocialLink[]): string {
 
   if (visibleLinks.length === 0) return '';
 
+  // Use text-based badges with brand colors for maximum email client compatibility
+  // SVG data URIs are not supported in many email clients (Outlook, Gmail, etc.)
   const iconsHtml = visibleLinks.map(link => {
-    const iconUrl = link.icon_url || getDefaultPlatformIcon(link.platform_name);
-    if (iconUrl) {
-      return `<a href="${link.url}" style="display: inline-block; margin-right: 12px; text-decoration: none;" title="${link.platform_name}">
-        <img src="${iconUrl}" alt="${link.platform_name}" style="width: 24px; height: 24px; object-fit: contain; vertical-align: middle;" />
-      </a>`;
-    } else {
-      return `<a href="${link.url}" style="color: #2563eb; text-decoration: none; margin-right: 15px;">${link.platform_name}</a>`;
-    }
+    const color = getPlatformColor(link.platform_name);
+    const initial = link.platform_name.charAt(0).toUpperCase();
+    return `<a href="${link.url}" style="display: inline-block; margin-right: 8px; margin-bottom: 8px; text-decoration: none; vertical-align: middle;" title="${link.platform_name}">
+      <span style="display: inline-block; width: 28px; height: 28px; line-height: 28px; text-align: center; background-color: ${color}; color: #ffffff; font-size: 14px; font-weight: bold; border-radius: 4px; font-family: Arial, sans-serif;">${initial}</span>
+    </a>`;
   }).join('');
 
-  return `<div style="margin-top: 10px; text-align: center;">${iconsHtml}</div>`;
+  return `<div style="margin-top: 15px; text-align: center;">${iconsHtml}</div>`;
 }
 
 // Helper: check for absolute URL
