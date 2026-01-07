@@ -104,8 +104,10 @@ export function InvoiceEmailActionDialog({
     const todayStr = new Date().toLocaleDateString();
     
     // Build customer portal link if invoiceId is provided
+    // Use production domain for portal links
+    const baseUrl = 'https://zopro.app';
     const portalLink = invoiceId 
-      ? `${window.location.origin}/customer-portal?invoiceId=${invoiceId}`
+      ? `${baseUrl}/customer-portal?invoiceId=${invoiceId}`
       : '';
     
     return text
