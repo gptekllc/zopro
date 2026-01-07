@@ -885,16 +885,11 @@ export const EmailTemplatesTab = () => {
                 </div>
               </div>
               
-              <Tabs defaultValue="source" className="w-full">
+              <Tabs defaultValue="preview" className="w-full">
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="source" className="text-xs">Source</TabsTrigger>
                   <TabsTrigger value="preview" className="text-xs">Preview</TabsTrigger>
+                  <TabsTrigger value="source" className="text-xs">Source (HTML)</TabsTrigger>
                 </TabsList>
-                <TabsContent value="source">
-                  <div className="p-3 bg-muted/50 rounded-md border min-h-[200px] max-h-[300px] overflow-auto">
-                    <pre className="text-xs font-mono whitespace-pre-wrap">{viewingBuiltinTemplate.body}</pre>
-                  </div>
-                </TabsContent>
                 <TabsContent value="preview">
                   <div className="p-4 border rounded-md min-h-[200px] max-h-[300px] overflow-auto bg-background">
                     <p className="text-xs text-muted-foreground mb-2">Preview with sample values:</p>
@@ -905,6 +900,11 @@ export const EmailTemplatesTab = () => {
                         __html: replacePlaceholdersWithSamples(viewingBuiltinTemplate.body)
                       }}
                     />
+                  </div>
+                </TabsContent>
+                <TabsContent value="source">
+                  <div className="p-3 bg-muted/50 rounded-md border min-h-[200px] max-h-[300px] overflow-auto">
+                    <pre className="text-xs font-mono whitespace-pre-wrap">{viewingBuiltinTemplate.body}</pre>
                   </div>
                 </TabsContent>
               </Tabs>
