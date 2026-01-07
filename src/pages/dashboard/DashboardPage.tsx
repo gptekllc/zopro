@@ -8,7 +8,7 @@ import { useTimeEntries } from "@/hooks/useTimeEntries";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useAllPayments } from "@/hooks/usePayments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, Briefcase, Clock, DollarSign, FileText, Filter, Info, Loader2, TrendingUp } from "lucide-react";
+import { AlertCircle, Briefcase, CheckCircle, Clock, DollarSign, FileText, Filter, Info, Loader2, TrendingUp } from "lucide-react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subWeeks, subMonths, subYears, isWithinInterval } from "date-fns";
 import { Link } from "react-router-dom";
 import { useDashboardAccess } from "./useDashboardAccess";
@@ -155,6 +155,15 @@ export default function DashboardPage() {
   const myTotalRevenue = myAssignedPaidInvoices.reduce((sum, i) => sum + Number(i.total), 0);
   const myPaidInvoicesCount = myAssignedPaidInvoices.length;
 
+  // Jobs completed within the date range
+  const visibleJobs = isTechnicianDashboardScoped 
+    ? jobs.filter(j => j.created_by === user?.id || j.assigned_to === user?.id)
+    : jobs;
+  const completedJobs = visibleJobs.filter(j => 
+    (j.status === "completed" || j.status === "invoiced" || j.status === "paid") && 
+    isWithinDateRange(j.actual_end || j.updated_at, filterStart, filterEnd)
+  );
+
   const stats = isTechnicianDashboardScoped ? [{
     title: "My Total Revenue",
     value: `$${myTotalRevenue.toLocaleString()}`,
@@ -175,10 +184,10 @@ export default function DashboardPage() {
     icon: TrendingUp,
     iconBg: "bg-primary"
   }, {
-    title: "My Jobs",
-    value: jobs.filter(j => j.created_by === user?.id || j.assigned_to === user?.id).length,
-    icon: Briefcase,
-    iconBg: "bg-accent"
+    title: "Jobs Completed",
+    value: completedJobs.length,
+    icon: CheckCircle,
+    iconBg: "bg-success"
   }] : [{
     title: "Total Revenue",
     value: `$${totalRevenue.toLocaleString()}`,
@@ -203,6 +212,11 @@ export default function DashboardPage() {
     value: filteredActiveQuotes.length,
     icon: TrendingUp,
     iconBg: "bg-primary"
+  }, {
+    title: "Jobs Completed",
+    value: completedJobs.length,
+    icon: CheckCircle,
+    iconBg: "bg-success"
   }];
 
   if (isLoading) {
