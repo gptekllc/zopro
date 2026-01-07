@@ -193,17 +193,15 @@ export function SwipeableCard({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        onClick={(e) => {
+        onClick={() => {
+          // Clicking the card should always behave like a normal click (open details),
+          // even if the swipe hint is visible or the card is slightly offset.
           if (showTooltip) {
-            e.stopPropagation();
             dismissTooltip();
-            return;
           }
           if (translateX !== 0) {
-            e.stopPropagation();
             resetSwipe();
           }
-          // Otherwise, let the click propagate to the card's onClick
         }}
       >
         {children}
