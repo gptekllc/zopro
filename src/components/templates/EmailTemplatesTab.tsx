@@ -210,10 +210,12 @@ export const EmailTemplatesTab = () => {
     setIsCreateOpen(true);
   };
 
-  const insertPlaceholder = (variable: string) => {
+  const [insertTarget, setInsertTarget] = useState<'subject' | 'body'>('body');
+
+  const insertPlaceholder = (variable: string, target: 'subject' | 'body') => {
     setFormData(prev => ({
       ...prev,
-      body: prev.body + variable,
+      [target]: prev[target] + variable,
     }));
     setEditorTab('edit');
   };
@@ -230,6 +232,8 @@ export const EmailTemplatesTab = () => {
     );
   };
 
+  const relevantPlaceholders = getRelevantPlaceholders();
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -238,134 +242,137 @@ export const EmailTemplatesTab = () => {
     );
   }
 
-  const TemplateForm = () => {
-    const relevantPlaceholders = getRelevantPlaceholders();
-    
-    return (
-      <div className="space-y-4 py-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Template Name *</Label>
-            <Input
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Standard Invoice Email"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Type</Label>
-            <Select
-              value={formData.template_type}
-              onValueChange={(value: TemplateType) =>
-                setFormData({ ...formData, template_type: value })
-              }
-              disabled={!!editingTemplate}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TEMPLATE_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
+  const TemplateFormContent = (
+    <div className="space-y-4 py-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Subject *</Label>
+          <Label>Template Name *</Label>
           <Input
-            value={formData.subject}
-            onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-            placeholder="Email subject line"
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            placeholder="e.g., Standard Invoice Email"
           />
-          {editorTab === 'preview' && (
-            <div className="p-2 bg-muted/50 rounded text-sm mt-1">
-              <span className="text-muted-foreground text-xs">Preview:</span>
-              <p className="font-medium">{replacePlaceholdersWithSamples(formData.subject)}</p>
-            </div>
-          )}
         </div>
-
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Message Body</Label>
-            <Tabs value={editorTab} onValueChange={(v) => setEditorTab(v as 'edit' | 'preview')}>
-              <TabsList className="h-8">
-                <TabsTrigger value="edit" className="text-xs h-7 px-2">
-                  <Pencil className="w-3 h-3 mr-1" />
-                  Edit
-                </TabsTrigger>
-                <TabsTrigger value="preview" className="text-xs h-7 px-2">
-                  <Eye className="w-3 h-3 mr-1" />
-                  Preview
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-
-          {editorTab === 'edit' ? (
-            <Textarea
-              value={formData.body}
-              onChange={(e) => setFormData({ ...formData, body: e.target.value })}
-              placeholder="Email message body. Use placeholders like {{customer_name}} for dynamic content."
-              rows={10}
-            />
-          ) : (
-            <div className="min-h-[240px] p-4 border rounded-md bg-muted/30">
-              <p className="text-xs text-muted-foreground mb-2">
-                Preview with sample values:
-              </p>
-              <Separator className="mb-3" />
-              <div className="whitespace-pre-wrap text-sm">
-                {replacePlaceholdersWithSamples(formData.body) || (
-                  <span className="text-muted-foreground italic">No message body yet</span>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Placeholder reference */}
-        <div className="p-3 bg-muted/50 rounded-lg">
-          <p className="text-xs font-medium mb-2">
-            Available Placeholders for {TEMPLATE_TYPES.find(t => t.value === formData.template_type)?.label} templates (click to insert):
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {relevantPlaceholders.map((p) => (
-              <Badge
-                key={p.variable}
-                variant="outline"
-                className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs transition-colors"
-                onClick={() => insertPlaceholder(p.variable)}
-                title={p.description}
-              >
-                <Copy className="w-2.5 h-2.5 mr-1" />
-                {p.variable}
-              </Badge>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            Click a placeholder to insert it at the end of the message body, or copy and paste manually.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Switch
-            id="is-default"
-            checked={formData.is_default}
-            onCheckedChange={(checked) => setFormData({ ...formData, is_default: checked })}
-          />
-          <Label htmlFor="is-default" className="font-normal cursor-pointer">
-            Set as default template for {formData.template_type} emails
-          </Label>
+          <Label>Type</Label>
+          <Select
+            value={formData.template_type}
+            onValueChange={(value: TemplateType) =>
+              setFormData(prev => ({ ...prev, template_type: value }))
+            }
+            disabled={!!editingTemplate}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TEMPLATE_TYPES.map((t) => (
+                <SelectItem key={t.value} value={t.value}>
+                  {t.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
-    );
-  };
+
+      <div className="space-y-2">
+        <Label>Subject *</Label>
+        <Input
+          value={formData.subject}
+          onChange={(e) => setFormData(prev => ({ ...prev, subject: e.target.value }))}
+          onFocus={() => setInsertTarget('subject')}
+          placeholder="Email subject line (supports placeholders)"
+        />
+        {editorTab === 'preview' && (
+          <div className="p-2 bg-muted/50 rounded text-sm mt-1">
+            <span className="text-muted-foreground text-xs">Preview:</span>
+            <p className="font-medium">{replacePlaceholdersWithSamples(formData.subject)}</p>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label>Message Body</Label>
+          <Tabs value={editorTab} onValueChange={(v) => setEditorTab(v as 'edit' | 'preview')}>
+            <TabsList className="h-8">
+              <TabsTrigger value="edit" className="text-xs h-7 px-2">
+                <Pencil className="w-3 h-3 mr-1" />
+                Edit
+              </TabsTrigger>
+              <TabsTrigger value="preview" className="text-xs h-7 px-2">
+                <Eye className="w-3 h-3 mr-1" />
+                Preview
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {editorTab === 'edit' ? (
+          <Textarea
+            value={formData.body}
+            onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
+            onFocus={() => setInsertTarget('body')}
+            placeholder="Email message body. Use placeholders like {{customer_name}} for dynamic content."
+            rows={10}
+          />
+        ) : (
+          <div className="min-h-[240px] p-4 border rounded-md bg-muted/30">
+            <p className="text-xs text-muted-foreground mb-2">
+              Preview with sample values:
+            </p>
+            <Separator className="mb-3" />
+            <div className="whitespace-pre-wrap text-sm">
+              {replacePlaceholdersWithSamples(formData.body) || (
+                <span className="text-muted-foreground italic">No message body yet</span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Placeholder reference */}
+      <div className="p-3 bg-muted/50 rounded-lg">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-medium">
+            Available Placeholders for {TEMPLATE_TYPES.find(t => t.value === formData.template_type)?.label} templates:
+          </p>
+          <Badge variant="secondary" className="text-xs">
+            Insert into: {insertTarget}
+          </Badge>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {relevantPlaceholders.map((p) => (
+            <Badge
+              key={p.variable}
+              variant="outline"
+              className="cursor-pointer hover:bg-primary hover:text-primary-foreground text-xs transition-colors"
+              onClick={() => insertPlaceholder(p.variable, insertTarget)}
+              title={p.description}
+            >
+              <Copy className="w-2.5 h-2.5 mr-1" />
+              {p.variable}
+            </Badge>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">
+          Click subject or body field first, then click a placeholder to insert it.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Switch
+          id="is-default"
+          checked={formData.is_default}
+          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_default: checked }))}
+        />
+        <Label htmlFor="is-default" className="font-normal cursor-pointer">
+          Set as default template for {formData.template_type} emails
+        </Label>
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -450,7 +457,7 @@ export const EmailTemplatesTab = () => {
           <DialogHeader>
             <DialogTitle>Create Email Template</DialogTitle>
           </DialogHeader>
-          <TemplateForm />
+          {TemplateFormContent}
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
               Cancel
@@ -472,7 +479,7 @@ export const EmailTemplatesTab = () => {
           <DialogHeader>
             <DialogTitle>Edit Email Template</DialogTitle>
           </DialogHeader>
-          <TemplateForm />
+          {TemplateFormContent}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditingTemplate(null)}>
               Cancel
