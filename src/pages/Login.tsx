@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Wrench, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+import zoproLogo from '@/assets/zopro-logo.png';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useEffect } from 'react';
@@ -157,8 +158,8 @@ const Login = () => {
       <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
         <div className="w-full max-w-md animate-scale-in">
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-card mb-4 shadow-lg">
-              <Wrench className="w-8 h-8 text-primary" />
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-card mb-4 shadow-lg overflow-hidden">
+              <img src={zoproLogo} alt="ZoPro Logo" className="w-16 h-16 object-contain" />
             </div>
             <h1 className="text-3xl font-bold text-primary-foreground">Reset Password</h1>
             <p className="text-primary-foreground/80 mt-2">We'll send you a reset link</p>
@@ -232,8 +233,8 @@ const Login = () => {
         </div>
 
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-card mb-4 shadow-lg">
-            <Wrench className="w-8 h-8 text-primary" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-card mb-4 shadow-lg overflow-hidden">
+            <img src={zoproLogo} alt="ZoPro Logo" className="w-16 h-16 object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-primary-foreground">ZoPro</h1>
           <p className="text-primary-foreground/80 mt-2">Field Service Management Platform</p>
