@@ -5,12 +5,15 @@ import { useJobs } from "@/hooks/useJobs";
 import { useQuotes } from "@/hooks/useQuotes";
 import { useTimeEntries } from "@/hooks/useTimeEntries";
 import { useProfiles } from "@/hooks/useProfiles";
+import { useAllPayments } from "@/hooks/usePayments";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Briefcase, Clock, DollarSign, FileText, Loader2, TrendingUp, Users } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { useDashboardAccess } from "./useDashboardAccess";
 import { SchedulerWidget } from "@/components/dashboard/SchedulerWidget";
+import { RecentTransactionsWidget } from "@/components/dashboard/RecentTransactionsWidget";
+import { DraggableWidgetContainer } from "@/components/dashboard/DraggableWidgetContainer";
 import PageContainer from "@/components/layout/PageContainer";
 export default function DashboardPage() {
   const {
@@ -45,8 +48,12 @@ export default function DashboardPage() {
   const {
     data: profiles = []
   } = useProfiles();
+  const {
+    data: payments = [],
+    isLoading: loadingPayments
+  } = useAllPayments();
   const technicians = profiles.filter(p => p.role === 'technician' || p.role === 'admin' || p.role === 'manager');
-  const isLoading = authLoading || loadingInvoices || loadingQuotes || loadingCustomers || loadingTime || loadingJobs;
+  const isLoading = authLoading || loadingInvoices || loadingQuotes || loadingCustomers || loadingTime || loadingJobs || loadingPayments;
 
   // Dashboard scoping rules:
   // - Technicians: dashboard shows only “my” items.
@@ -191,96 +198,123 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-          {/* Recent Invoices */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                {isTechnicianDashboardScoped ? "My Recent Invoices" : "Recent Invoices"}
-              </CardTitle>
-              <Link to="/invoices" className="text-sm text-primary hover:underline">
-                View all
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {recentInvoices.map(invoice => <div key={invoice.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div>
-                      <p className="font-medium">{invoice.invoice_number}</p>
-                      <p className="text-sm text-muted-foreground">{invoice.customer?.name}</p>
+        <DraggableWidgetContainer 
+          storageKey="dashboard-widget-order"
+          className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6"
+          widgets={[
+            {
+              id: 'recent-invoices',
+              visible: true,
+              component: (
+                <Card className="h-full">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="w-5 h-5" />
+                      {isTechnicianDashboardScoped ? "My Recent Invoices" : "Recent Invoices"}
+                    </CardTitle>
+                    <Link to="/invoices" className="text-sm text-primary hover:underline">
+                      View all
+                    </Link>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {recentInvoices.map(invoice => <div key={invoice.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                          <div>
+                            <p className="font-medium">{invoice.invoice_number}</p>
+                            <p className="text-sm text-muted-foreground">{invoice.customer?.name}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium">${Number(invoice.total).toLocaleString()}</p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${invoice.status === "paid" ? "bg-success/10 text-success" : invoice.status === "overdue" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                              {invoice.status.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>)}
+                      {recentInvoices.length === 0 && <p className="text-center text-muted-foreground py-4">No invoices yet</p>}
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">${Number(invoice.total).toLocaleString()}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${invoice.status === "paid" ? "bg-success/10 text-success" : invoice.status === "overdue" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
-                        {invoice.status.replace('_', ' ')}
-                      </span>
+                  </CardContent>
+                </Card>
+              )
+            },
+            {
+              id: 'recent-quotes',
+              visible: true,
+              component: (
+                <Card className="h-full">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      {isTechnicianDashboardScoped ? "My Recent Quotes" : "Recent Quotes"}
+                    </CardTitle>
+                    <Link to="/quotes" className="text-sm text-primary hover:underline">
+                      View all
+                    </Link>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {recentQuotes.map(quote => <div key={quote.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                          <div>
+                            <p className="font-medium">{quote.quote_number}</p>
+                            <p className="text-sm text-muted-foreground">{quote.customer?.name}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-medium">${Number(quote.total).toLocaleString()}</p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${quote.status === "sent" ? "bg-primary/10 text-primary" : quote.status === "rejected" || quote.status === "expired" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                              {quote.status}
+                            </span>
+                          </div>
+                        </div>)}
+                      {recentQuotes.length === 0 && <p className="text-center text-muted-foreground py-4">No quotes yet</p>}
                     </div>
-                  </div>)}
-                {recentInvoices.length === 0 && <p className="text-center text-muted-foreground py-4">No invoices yet</p>}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Quotes */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                {isTechnicianDashboardScoped ? "My Recent Quotes" : "Recent Quotes"}
-              </CardTitle>
-              <Link to="/quotes" className="text-sm text-primary hover:underline">
-                View all
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {recentQuotes.map(quote => <div key={quote.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div>
-                      <p className="font-medium">{quote.quote_number}</p>
-                      <p className="text-sm text-muted-foreground">{quote.customer?.name}</p>
+                  </CardContent>
+                </Card>
+              )
+            },
+            {
+              id: 'recent-jobs',
+              visible: true,
+              component: (
+                <Card className="h-full">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Briefcase className="w-5 h-5" />
+                      {isTechnicianDashboardScoped ? "My Recent Jobs" : "Recent Jobs"}
+                    </CardTitle>
+                    <Link to="/jobs" className="text-sm text-primary hover:underline">
+                      View all
+                    </Link>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {recentJobs.map(job => <div key={job.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                          <div>
+                            <p className="font-medium">{job.job_number}</p>
+                            <p className="text-sm text-muted-foreground">{job.title}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${job.status === "completed" || job.status === "paid" ? "bg-success/10 text-success" : job.status === "in_progress" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
+                              {job.status.replace("_", " ")}
+                            </span>
+                          </div>
+                        </div>)}
+                      {recentJobs.length === 0 && <p className="text-center text-muted-foreground py-4">No jobs yet</p>}
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">${Number(quote.total).toLocaleString()}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${quote.status === "sent" ? "bg-primary/10 text-primary" : quote.status === "rejected" || quote.status === "expired" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground"}`}>
-                        {quote.status}
-                      </span>
-                    </div>
-                  </div>)}
-                {recentQuotes.length === 0 && <p className="text-center text-muted-foreground py-4">No quotes yet</p>}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Recent Jobs */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Briefcase className="w-5 h-5" />
-                {isTechnicianDashboardScoped ? "My Recent Jobs" : "Recent Jobs"}
-              </CardTitle>
-              <Link to="/jobs" className="text-sm text-primary hover:underline">
-                View all
-              </Link>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {recentJobs.map(job => <div key={job.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                    <div>
-                      <p className="font-medium">{job.job_number}</p>
-                      <p className="text-sm text-muted-foreground">{job.title}</p>
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${job.status === "completed" || job.status === "paid" ? "bg-success/10 text-success" : job.status === "in_progress" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
-                        {job.status.replace("_", " ")}
-                      </span>
-                    </div>
-                  </div>)}
-                {recentJobs.length === 0 && <p className="text-center text-muted-foreground py-4">No jobs yet</p>}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                  </CardContent>
+                </Card>
+              )
+            },
+            {
+              id: 'recent-transactions',
+              visible: true,
+              component: (
+                <RecentTransactionsWidget 
+                  payments={payments} 
+                  isTechnicianScoped={isTechnicianDashboardScoped} 
+                />
+              )
+            }
+          ]}
+        />
       </section>
     </PageContainer>;
 }
