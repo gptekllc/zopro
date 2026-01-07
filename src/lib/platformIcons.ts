@@ -41,6 +41,8 @@ export const PLATFORM_ICONS: Record<string, string> = {
   porch: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#00C16E"><path d="M12 3L2 9v12h20V9L12 3zm0 2.5l7 4.5v9H5v-9l7-4.5zM7 13v5h2v-5H7zm4 0v5h2v-5h-2zm4 0v5h2v-5h-2z"/></svg>')}`,
   
   thumbtack: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="#2797dd"><circle cx="24" cy="24" r="24"/><rect x="12" y="14" width="24" height="6" fill="#fff"/><path d="M21 20h6v14c0 2-1.5 4-3 4s-3-2-3-4V20z" fill="#fff"/></svg>')}`,
+  
+  homeadvisor: `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#455a64" d="M30.899,23L18.548,10.668L9,20.201v10.189c0,1.408,1.155,2.564,2.564,2.564l11.317,0.015l9.081,9.968L32,33l4.374-0.031c1.408,0,2.564-1.155,2.564-2.564V23H30.899z"/><polygon fill="#fb8c00" points="31.619,6 16.381,6 1,21 5.369,21 18.548,7.842 31.727,21 47,21"/></svg>')}`,
 };
 
 // Platform name aliases (case-insensitive matching)
