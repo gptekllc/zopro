@@ -2041,17 +2041,21 @@ export type Database = {
       auto_archive_old_records: { Args: never; Returns: undefined }
       create_company_and_set_admin: {
         Args: {
-          _address: string
-          _city: string
-          _email: string
+          _address?: string
+          _city?: string
+          _email?: string
           _name: string
-          _phone: string
-          _state: string
-          _zip: string
+          _phone?: string
+          _state?: string
+          _zip?: string
         }
         Returns: {
           company_id: string
         }[]
+      }
+      create_default_email_templates: {
+        Args: { _company_id: string; _created_by?: string }
+        Returns: undefined
       }
       generate_invoice_number: {
         Args: { _company_id: string }
