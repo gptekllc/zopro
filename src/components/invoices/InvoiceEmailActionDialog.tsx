@@ -166,22 +166,24 @@ ${companyName}`;
 
   const handleSelectAction = (type: EmailActionType) => {
     setActionType(type);
-    
-    // Find default template for this type
-    const defaultTemplate = templates.find(t => t.template_type === type && t.is_default);
-    if (defaultTemplate) {
-      // Replace placeholders with actual values when loading template
-      setSubject(replacePlaceholders(defaultTemplate.subject));
-      setMessage(replacePlaceholders(defaultTemplate.body));
-      setSelectedTemplateId(defaultTemplate.id);
-    } else {
-      setSubject(getDefaultSubject(type));
-      setMessage(getDefaultMessage(type));
-      setSelectedTemplateId('');
-    }
-    
     setStep('compose');
   };
+
+  // Apply default template when action type changes or templates load
+  useEffect(() => {
+    if (step === 'compose' && templates.length >= 0) {
+      const defaultTemplate = templates.find(t => t.template_type === actionType && t.is_default);
+      if (defaultTemplate) {
+        setSubject(replacePlaceholders(defaultTemplate.subject));
+        setMessage(replacePlaceholders(defaultTemplate.body));
+        setSelectedTemplateId(defaultTemplate.id);
+      } else if (!selectedTemplateId) {
+        // Only set defaults if no template is selected
+        setSubject(getDefaultSubject(actionType));
+        setMessage(getDefaultMessage(actionType));
+      }
+    }
+  }, [step, templates, actionType]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);

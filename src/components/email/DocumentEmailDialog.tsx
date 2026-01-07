@@ -162,6 +162,7 @@ Thank you,
 ${companyName}`;
   };
 
+  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setStep('compose');
@@ -173,8 +174,15 @@ ${companyName}`;
       setNewCcEmail('');
       setNewBccEmail('');
       setShowCcBcc(false);
-      
-      // Find default template for this type
+      setSelectedTemplateId('');
+      setSubject('');
+      setMessage('');
+    }
+  }, [open, customerEmail]);
+
+  // Apply default template when dialog opens and templates are loaded
+  useEffect(() => {
+    if (open && templates.length >= 0 && !subject && !message) {
       const defaultTemplate = templates.find(t => t.template_type === templateType && t.is_default);
       if (defaultTemplate) {
         setSubject(replacePlaceholders(defaultTemplate.subject));
@@ -183,10 +191,9 @@ ${companyName}`;
       } else {
         setSubject(getDefaultSubject());
         setMessage(getDefaultMessage());
-        setSelectedTemplateId('');
       }
     }
-  }, [open, customerEmail, templates, templateType]);
+  }, [open, templates, templateType]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
