@@ -365,7 +365,7 @@ export const EmailTemplatesTab = () => {
   ];
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [viewingBuiltinTemplate, setViewingBuiltinTemplate] = useState<BuiltInTemplate | null>(null);
+  const [viewingTemplate, setViewingTemplate] = useState<DisplayTemplate | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [formData, setFormData] = useState({
@@ -742,7 +742,11 @@ export const EmailTemplatesTab = () => {
       ) : (
         <div className="grid gap-4">
           {allTemplates.map((template) => (
-            <Card key={template.id} className="hover:shadow-md transition-shadow">
+            <Card 
+              key={template.id} 
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => setViewingTemplate(template)}
+            >
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -769,18 +773,7 @@ export const EmailTemplatesTab = () => {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
-                    {template.is_builtin && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setViewingBuiltinTemplate(template as BuiltInTemplate)}
-                        title="View template"
-                      >
-                        <Eye className="w-4 h-4 mr-1" />
-                        View
-                      </Button>
-                    )}
+                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <Button 
                       variant="ghost" 
                       size="icon"
@@ -857,31 +850,42 @@ export const EmailTemplatesTab = () => {
         </DialogContent>
       </Dialog>
 
-      {/* View Built-in Template Dialog */}
-      <Dialog open={!!viewingBuiltinTemplate} onOpenChange={(open) => !open && setViewingBuiltinTemplate(null)}>
+      {/* View Template Dialog */}
+      <Dialog open={!!viewingTemplate} onOpenChange={(open) => !open && setViewingTemplate(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-5 h-5" />
-              {viewingBuiltinTemplate?.name}
+              {viewingTemplate?.name}
             </DialogTitle>
           </DialogHeader>
           
-          {viewingBuiltinTemplate && (
+          {viewingTemplate && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="bg-primary/10 text-primary">
-                  Built-in Template
-                </Badge>
-                <Badge variant="outline" className={typeColors[viewingBuiltinTemplate.template_type] || typeColors.general}>
-                  {viewingBuiltinTemplate.template_type}
+                {viewingTemplate.is_builtin ? (
+                  <Badge variant="secondary" className="bg-primary/10 text-primary">
+                    Built-in Template
+                  </Badge>
+                ) : (
+                  <>
+                    {viewingTemplate.is_default && (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Star className="w-3 h-3 text-yellow-500" />
+                        Default
+                      </Badge>
+                    )}
+                  </>
+                )}
+                <Badge variant="outline" className={typeColors[viewingTemplate.template_type] || typeColors.general}>
+                  {viewingTemplate.template_type}
                 </Badge>
               </div>
               
               <div className="space-y-2">
                 <Label className="text-muted-foreground text-xs uppercase tracking-wide">Subject</Label>
                 <div className="p-3 bg-muted/50 rounded-md border">
-                  <p className="text-sm font-medium">{viewingBuiltinTemplate.subject}</p>
+                  <p className="text-sm font-medium">{viewingTemplate.subject}</p>
                 </div>
               </div>
               
@@ -897,40 +901,54 @@ export const EmailTemplatesTab = () => {
                     <div 
                       className="prose prose-sm dark:prose-invert max-w-none text-sm"
                       dangerouslySetInnerHTML={{ 
-                        __html: replacePlaceholdersWithSamples(viewingBuiltinTemplate.body)
+                        __html: replacePlaceholdersWithSamples(viewingTemplate.body)
                       }}
                     />
                   </div>
                 </TabsContent>
                 <TabsContent value="source">
                   <div className="p-3 bg-muted/50 rounded-md border min-h-[200px] max-h-[300px] overflow-auto">
-                    <pre className="text-xs font-mono whitespace-pre-wrap">{viewingBuiltinTemplate.body}</pre>
+                    <pre className="text-xs font-mono whitespace-pre-wrap">{viewingTemplate.body}</pre>
                   </div>
                 </TabsContent>
               </Tabs>
               
-              <div className="p-3 bg-muted/30 rounded-lg">
-                <p className="text-xs text-muted-foreground">
-                  <strong>Note:</strong> Built-in templates cannot be edited directly. Click "Copy to Customize" to create your own editable version.
-                </p>
-              </div>
+              {viewingTemplate.is_builtin && (
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Note:</strong> Built-in templates cannot be edited directly. Click "Copy to Customize" to create your own editable version.
+                  </p>
+                </div>
+              )}
             </div>
           )}
           
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setViewingBuiltinTemplate(null)}>
+            <Button variant="outline" onClick={() => setViewingTemplate(null)}>
               Close
             </Button>
+            {viewingTemplate && !viewingTemplate.is_builtin && (
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  handleEditOpen(viewingTemplate as EmailTemplate);
+                  setViewingTemplate(null);
+                }}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            )}
             <Button 
               onClick={() => {
-                if (viewingBuiltinTemplate) {
-                  handleDuplicate(viewingBuiltinTemplate);
-                  setViewingBuiltinTemplate(null);
+                if (viewingTemplate) {
+                  handleDuplicate(viewingTemplate);
+                  setViewingTemplate(null);
                 }
               }}
             >
               <CopyPlus className="w-4 h-4 mr-2" />
-              Copy to Customize
+              {viewingTemplate?.is_builtin ? 'Copy to Customize' : 'Duplicate'}
             </Button>
           </DialogFooter>
         </DialogContent>
