@@ -1708,12 +1708,12 @@ serve(async (req) => {
       const portalBaseUrl = Deno.env.get("APP_BASE_URL") || 'https://zopro.app';
       console.log("Portal base URL for email placeholders:", portalBaseUrl);
       const customerPortalLink = customer?.email 
-        ? `${portalBaseUrl}/portal?email=${encodeURIComponent(customer.email)}&company=${encodeURIComponent(company?.id || '')}`
+        ? `${portalBaseUrl}/customer-portal?email=${encodeURIComponent(customer.email)}&company=${encodeURIComponent(company?.id || '')}`
         : '';
       
       // Generate payment link (for invoices)
       const paymentLink = type === 'invoice' && documentId
-        ? `${portalBaseUrl}/portal?invoice=${encodeURIComponent(documentId)}&email=${encodeURIComponent(customer?.email || '')}`
+        ? `${portalBaseUrl}/customer-portal?invoice=${encodeURIComponent(documentId)}&email=${encodeURIComponent(customer?.email || '')}`
         : '';
 
       // Helper function to replace all placeholders in text
