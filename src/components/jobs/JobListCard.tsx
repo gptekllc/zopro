@@ -189,9 +189,7 @@ export function JobListCard({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>;
-  const icon = <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${job.archived_at ? 'bg-muted' : 'bg-primary/10'}`}>
-      {job.archived_at ? <Archive className="w-5 h-5 text-muted-foreground" /> : <Briefcase className="w-5 h-5 text-primary" />}
-    </div>;
+  const icon;
   const swipeRightActions: SwipeAction[] = [{
     icon: <Edit className="w-4 h-4" />,
     label: "Edit",
