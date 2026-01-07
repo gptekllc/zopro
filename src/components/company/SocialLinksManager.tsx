@@ -4,11 +4,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Trash2, Upload, Loader2, Save, X, GripVertical, Image } from 'lucide-react';
+import { Plus, Trash2, Loader2, Save, GripVertical, Image } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getDefaultPlatformIcon, getAvailablePlatforms, PLATFORM_ICONS } from '@/lib/platformIcons';
-import { compressImage } from '@/lib/imageCompression';
 import {
   DndContext,
   closestCenter,
@@ -51,28 +50,20 @@ interface SocialLinksManagerProps {
 }
 
 const MAX_LINKS = 7;
-const ICON_TARGET_SIZE_KB = 20;
-const ICON_MAX_DIMENSION = 128;
 
 // Sortable Card Component
 const SortableLinkCard = ({
   link,
   index,
-  uploadingIndex,
   onUpdate,
   onRemove,
-  onIconUpload,
-  onClearIcon,
   onOpenIconPicker,
   getDisplayIcon,
 }: {
   link: SocialLink;
   index: number;
-  uploadingIndex: number | null;
   onUpdate: (index: number, updates: Partial<SocialLink>) => void;
   onRemove: (index: number) => void;
-  onIconUpload: (index: number, file: File) => void;
-  onClearIcon: (index: number) => void;
   onOpenIconPicker: (index: number) => void;
   getDisplayIcon: (link: SocialLink) => string | null;
 }) => {
@@ -104,69 +95,21 @@ const SortableLinkCard = ({
             <GripVertical className="w-5 h-5 text-muted-foreground" />
           </div>
 
-          {/* Icon Display/Upload */}
+          {/* Icon Display */}
           <div className="flex-shrink-0">
             <Label className="text-xs text-muted-foreground mb-1 block">Icon</Label>
-            <div className="relative flex gap-1">
-              {/* Icon display */}
-              <div className="w-12 h-12 border-2 border-dashed rounded-lg flex items-center justify-center overflow-hidden bg-muted/30">
-                {uploadingIndex === index ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : getDisplayIcon(link) ? (
-                  <img src={getDisplayIcon(link)!} alt={link.platform_name} className="w-8 h-8 object-contain" />
-                ) : (
-                  <Image className="w-4 h-4 text-muted-foreground" />
-                )}
-              </div>
-              
-              {/* Icon actions */}
-              <div className="flex flex-col gap-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-5 w-5"
-                  onClick={() => onOpenIconPicker(index)}
-                  title="Pick default icon"
-                >
-                  <Image className="w-3 h-3" />
-                </Button>
-                <label className="cursor-pointer">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-5 w-5 pointer-events-none"
-                    title="Upload custom icon"
-                  >
-                    <Upload className="w-3 h-3" />
-                  </Button>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) onIconUpload(index, file);
-                    }}
-                  />
-                </label>
-              </div>
-              
-              {/* Clear custom icon button */}
-              {link.icon_url && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onClearIcon(index);
-                  }}
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center hover:bg-destructive/90"
-                >
-                  <X className="w-3 h-3" />
-                </button>
+            <button
+              type="button"
+              onClick={() => onOpenIconPicker(index)}
+              className="w-12 h-12 border-2 border-dashed rounded-lg flex items-center justify-center overflow-hidden bg-muted/30 hover:bg-muted/50 transition-colors"
+              title="Pick platform icon"
+            >
+              {getDisplayIcon(link) ? (
+                <img src={getDisplayIcon(link)!} alt={link.platform_name} className="w-8 h-8 object-contain" />
+              ) : (
+                <Image className="w-4 h-4 text-muted-foreground" />
               )}
-            </div>
+            </button>
           </div>
 
           {/* Platform Name & URL */}
@@ -290,7 +233,6 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
   const [links, setLinks] = useState<SocialLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [iconPickerIndex, setIconPickerIndex] = useState<number | null>(null);
 
@@ -374,11 +316,6 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
     return getDefaultPlatformIcon(link.platform_name);
   };
 
-  const clearCustomIcon = (index: number) => {
-    updateLink(index, { icon_url: null });
-    toast.success('Custom icon removed');
-  };
-
   const openIconPicker = (index: number) => {
     setIconPickerIndex(index);
     setIconPickerOpen(true);
@@ -394,52 +331,6 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
     }
     setIconPickerOpen(false);
     setIconPickerIndex(null);
-  };
-
-  const handleIconUpload = async (index: number, file: File) => {
-    if (!file) return;
-
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error('Please upload a valid image file (PNG, JPG, GIF, SVG, or WebP)');
-      return;
-    }
-
-    setUploadingIndex(index);
-    try {
-      let fileToUpload: File | Blob = file;
-      let fileExt = file.name.split('.').pop() || 'jpg';
-
-      // Compress non-SVG images to 20KB
-      if (file.type !== 'image/svg+xml') {
-        const compressedBlob = await compressImage(file, ICON_TARGET_SIZE_KB, ICON_MAX_DIMENSION);
-        fileToUpload = compressedBlob;
-        fileExt = 'jpg';
-      }
-
-      const fileName = `${companyId}/${Date.now()}-${index}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('social-icons')
-        .upload(fileName, fileToUpload, { 
-          upsert: true,
-          contentType: file.type === 'image/svg+xml' ? 'image/svg+xml' : 'image/jpeg'
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('social-icons')
-        .getPublicUrl(fileName);
-
-      updateLink(index, { icon_url: publicUrl });
-      toast.success('Icon uploaded and compressed');
-    } catch (error) {
-      console.error('Error uploading icon:', error);
-      toast.error('Failed to upload icon');
-    } finally {
-      setUploadingIndex(null);
-    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -555,11 +446,8 @@ const SocialLinksManager = ({ companyId }: SocialLinksManagerProps) => {
                   key={link.id || `new-${index}`}
                   link={link}
                   index={index}
-                  uploadingIndex={uploadingIndex}
                   onUpdate={updateLink}
                   onRemove={removeLink}
-                  onIconUpload={handleIconUpload}
-                  onClearIcon={clearCustomIcon}
                   onOpenIconPicker={openIconPicker}
                   getDisplayIcon={getDisplayIcon}
                 />
