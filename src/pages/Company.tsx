@@ -672,7 +672,7 @@ const Company = () => {
         </TabsContent>
 
         <TabsContent value="preferences">
-          <Card>
+          <Card className="max-w-2xl mx-auto">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Settings className="w-5 h-5" />
@@ -1227,7 +1227,7 @@ const Company = () => {
 
         {/* Templates Tab */}
         <TabsContent value="templates">
-          <div className="space-y-6">
+          <div className="max-w-2xl mx-auto space-y-6">
             <Tabs defaultValue="jobs" className="w-full">
               <TabsList className="mb-4">
                 <TabsTrigger value="jobs" className="gap-2">
@@ -1264,7 +1264,9 @@ const Company = () => {
 
         {isAdmin && (
           <TabsContent value="payments">
-            <StripeConnectSection company={company} />
+            <div className="max-w-2xl mx-auto">
+              <StripeConnectSection company={company} />
+            </div>
           </TabsContent>
         )}
       </Tabs>
