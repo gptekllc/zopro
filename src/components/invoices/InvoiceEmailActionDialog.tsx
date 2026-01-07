@@ -164,26 +164,32 @@ ${companyName}`;
     }
   }, [open, customerEmail]);
 
+  // Apply default template when entering compose step
+  const applyDefaultTemplate = (type: EmailActionType) => {
+    const defaultTemplate = templates.find(t => t.template_type === type && t.is_default);
+    if (defaultTemplate) {
+      setSubject(replacePlaceholders(defaultTemplate.subject));
+      setMessage(replacePlaceholders(defaultTemplate.body));
+      setSelectedTemplateId(defaultTemplate.id);
+    } else {
+      setSubject(getDefaultSubject(type));
+      setMessage(getDefaultMessage(type));
+      setSelectedTemplateId('');
+    }
+  };
+
   const handleSelectAction = (type: EmailActionType) => {
     setActionType(type);
     setStep('compose');
+    applyDefaultTemplate(type);
   };
 
-  // Apply default template when action type changes or templates load
+  // Re-apply template if templates load after entering compose
   useEffect(() => {
-    if (step === 'compose' && templates.length >= 0) {
-      const defaultTemplate = templates.find(t => t.template_type === actionType && t.is_default);
-      if (defaultTemplate) {
-        setSubject(replacePlaceholders(defaultTemplate.subject));
-        setMessage(replacePlaceholders(defaultTemplate.body));
-        setSelectedTemplateId(defaultTemplate.id);
-      } else if (!selectedTemplateId) {
-        // Only set defaults if no template is selected
-        setSubject(getDefaultSubject(actionType));
-        setMessage(getDefaultMessage(actionType));
-      }
+    if (step === 'compose' && templates.length > 0 && !selectedTemplateId) {
+      applyDefaultTemplate(actionType);
     }
-  }, [step, templates, actionType]);
+  }, [templates]);
 
   const handleTemplateChange = (templateId: string) => {
     setSelectedTemplateId(templateId);
