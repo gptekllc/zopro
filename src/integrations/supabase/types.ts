@@ -67,6 +67,7 @@ export type Database = {
           auto_send_invoice_reminders: boolean
           auto_send_job_scheduled_email: boolean
           brand_primary_color: string
+          business_hours: Json | null
           city: string | null
           created_at: string
           customer_portal_welcome_message: string | null
@@ -127,6 +128,7 @@ export type Database = {
           auto_send_invoice_reminders?: boolean
           auto_send_job_scheduled_email?: boolean
           brand_primary_color?: string
+          business_hours?: Json | null
           city?: string | null
           created_at?: string
           customer_portal_welcome_message?: string | null
@@ -187,6 +189,7 @@ export type Database = {
           auto_send_invoice_reminders?: boolean
           auto_send_job_scheduled_email?: boolean
           brand_primary_color?: string
+          business_hours?: Json | null
           city?: string | null
           created_at?: string
           customer_portal_welcome_message?: string | null
