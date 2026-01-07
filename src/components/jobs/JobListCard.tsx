@@ -189,7 +189,6 @@ export function JobListCard({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>;
-  const icon;
   const swipeRightActions: SwipeAction[] = [{
     icon: <Edit className="w-4 h-4" />,
     label: "Edit",
@@ -211,5 +210,5 @@ export function JobListCard({
     onClick: () => onDelete(job),
     variant: "destructive"
   }];
-  return <DocumentListCard onClick={() => onView(job)} isArchived={!!job.archived_at} documentNumber={job.job_number} title={job.title} customerName={job.customer?.name || "Unknown"} customerEmail={job.customer?.email} total={(job.total ?? 0) > 0 ? Number(job.total) : undefined} metadataRow={metadataRow} notes={job.notes} tagsRow={tagsRow} actionsMenu={actionsMenu} icon={icon} swipeRightActions={swipeRightActions} showSwipeHint={showSwipeHint} onSwipeHintDismiss={onSwipeHintDismiss} />;
+  return <DocumentListCard onClick={() => onView(job)} isArchived={!!job.archived_at} documentNumber={job.job_number} title={job.title} customerName={job.customer?.name || "Unknown"} customerEmail={job.customer?.email} total={(job.total ?? 0) > 0 ? Number(job.total) : undefined} metadataRow={metadataRow} notes={job.notes} tagsRow={tagsRow} actionsMenu={actionsMenu} swipeRightActions={swipeRightActions} showSwipeHint={showSwipeHint} onSwipeHintDismiss={onSwipeHintDismiss} />;
 }
