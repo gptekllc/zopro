@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import {
   Loader2, 
   CheckCircle2, 
   XCircle, 
+  ArrowLeft,
   Calendar, 
   Users, 
   Briefcase,
@@ -78,11 +79,19 @@ export default function Subscription() {
 
   return (
     <PageContainer className="space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Subscription & Billing</h1>
-        <p className="text-muted-foreground mt-1">
-          Manage your subscription plan and billing settings
-        </p>
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" asChild className="-ml-2">
+          <Link to="/company?tab=billing">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Settings
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Subscription & Billing</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage your subscription plan and billing settings
+          </p>
+        </div>
       </div>
 
       {/* Current Plan Overview */}
