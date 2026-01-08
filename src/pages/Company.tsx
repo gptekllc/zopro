@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link, Clock, BookTemplate, CalendarClock } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link, Clock, BookTemplate, CalendarClock, Shield } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -92,6 +92,8 @@ const Company = () => {
     timeclock_require_job_selection: false,
     timeclock_auto_start_break_reminder: 240,
     timeclock_max_shift_hours: 12,
+    // Security
+    require_mfa: false,
   });
   const [runningAutomations, setRunningAutomations] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -166,6 +168,7 @@ const Company = () => {
       timeclock_require_job_selection: (company as any).timeclock_require_job_selection ?? false,
       timeclock_auto_start_break_reminder: (company as any).timeclock_auto_start_break_reminder ?? 240,
       timeclock_max_shift_hours: (company as any).timeclock_max_shift_hours ?? 12,
+      require_mfa: company.require_mfa ?? false,
     });
     setBusinessHours((company as any).business_hours ?? defaultBusinessHours);
     setLogoUrl(company.logo_url || null);
@@ -1193,6 +1196,47 @@ const Company = () => {
                           </Select>
                           <p className="text-sm text-muted-foreground">Auto clock-out after this duration</p>
                         </div>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Security Settings */}
+                  <AccordionItem value="security">
+                    <AccordionTrigger className="text-base font-medium">
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4" />
+                        Security
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-4 pt-4">
+                      <div className="flex items-center justify-between space-x-4">
+                        <div className="space-y-0.5">
+                          <Label className="font-medium">Require MFA for All Team Members</Label>
+                          <p className="text-sm text-muted-foreground">
+                            When enabled, all team members must set up two-factor authentication to access the app
+                          </p>
+                        </div>
+                        <Switch
+                          checked={preferences.require_mfa}
+                          onCheckedChange={(checked) => setPreferences({ ...preferences, require_mfa: checked })}
+                        />
+                      </div>
+                      {preferences.require_mfa && (
+                        <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                          <p className="text-sm text-amber-800 dark:text-amber-200">
+                            <strong>Note:</strong> Team members without MFA enabled will be required to set it up on their next login.
+                          </p>
+                        </div>
+                      )}
+                      <div className="pt-2 border-t">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Additional security features:
+                        </p>
+                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                          <li>Account lockout after 5 failed login attempts (15 min)</li>
+                          <li>Email verification required for new accounts</li>
+                          <li>Password requirements: 10+ chars, uppercase, lowercase, number, special char</li>
+                        </ul>
                       </div>
                     </AccordionContent>
                   </AccordionItem>
