@@ -18,7 +18,6 @@ import {
   Users,
   FileText,
   Receipt,
-  Settings,
   LogOut,
   UserCog,
   Building2,
@@ -28,6 +27,7 @@ import {
   Bell,
   Loader2,
   BarChart3,
+  ArrowRightLeft,
 } from 'lucide-react';
 import zoproLogo from '@/assets/zopro-logo.png';
 import { cn } from '@/lib/utils';
@@ -139,6 +139,21 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
     item.roles.some(role => userRoles.includes(role as any)) || userRoles.length === 0
   );
 
+  // Check if user has both company role (admin/technician/manager) AND customer role
+  const hasCompanyRole = userRoles.some(role => ['admin', 'technician', 'manager'].includes(role));
+  const hasCustomerRole = userRoles.includes('customer');
+  const canSwitchPortals = hasCompanyRole && hasCustomerRole;
+
+  const handleSwitchToCustomerPortal = () => {
+    navigate('/customer-portal');
+  };
+
+  const handleSwitchToCompanyPortal = () => {
+    navigate('/dashboard');
+  };
+
+  const isInCustomerPortal = location.pathname.startsWith('/customer-portal');
+
   const getInitials = (name: string | null) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -185,9 +200,15 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
               <DropdownMenuItem onClick={() => navigate('/profile')}>
                 <User className="w-4 h-4 mr-2" /> Edit Profile
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/settings/security')}>
-                <Shield className="w-4 h-4 mr-2" /> Security
-              </DropdownMenuItem>
+              {canSwitchPortals && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={isInCustomerPortal ? handleSwitchToCompanyPortal : handleSwitchToCustomerPortal}>
+                    <ArrowRightLeft className="w-4 h-4 mr-2" />
+                    {isInCustomerPortal ? 'Switch to Company Portal' : 'Switch to Customer Portal'}
+                  </DropdownMenuItem>
+                </>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" /> Logout
@@ -267,10 +288,15 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
                   <User className="w-4 h-4 mr-2" />
                   Edit Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/settings/security')}>
-                  <Shield className="w-4 h-4 mr-2" />
-                  Security
-                </DropdownMenuItem>
+                {canSwitchPortals && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={isInCustomerPortal ? handleSwitchToCompanyPortal : handleSwitchToCustomerPortal}>
+                      <ArrowRightLeft className="w-4 h-4 mr-2" />
+                      {isInCustomerPortal ? 'Switch to Company Portal' : 'Switch to Customer Portal'}
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" />
