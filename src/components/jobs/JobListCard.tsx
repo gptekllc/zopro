@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertTriangle, Archive, ArchiveRestore, Bell, Briefcase, Calendar, CheckCircle2, ChevronRight, Copy, Download, Edit, Eye, FileText, Image, Mail, MoreVertical, Navigation, PenTool, Receipt, Save, Send, Trash2, UserCog } from "lucide-react";
+import { AlertTriangle, Archive, ArchiveRestore, Bell, Briefcase, Calendar, CheckCircle2, ChevronRight, Clock, Copy, Download, Edit, Eye, FileText, Image, Mail, MoreVertical, Navigation, PenTool, Receipt, Save, Send, Trash2, UserCog } from "lucide-react";
 import { format } from "date-fns";
 import type { Job } from "@/hooks/useJobs";
 import { DocumentListCard } from "@/components/documents/DocumentListCard";
@@ -106,7 +106,7 @@ export function JobListCard({
       {displayDate && <>
           {assigneeNames && <span>•</span>}
           <span className="flex items-center gap-1 shrink-0">
-            {dateLabel === 'completed' ? <CheckCircle2 className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
+            {dateLabel === 'completed' ? <CheckCircle2 className="w-3 h-3" /> : dateLabel === 'scheduled' ? <Calendar className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
             {format(new Date(displayDate), 'MMM d, h:mm a')}
           </span>
         </>}
