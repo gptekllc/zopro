@@ -20,6 +20,17 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import PageContainer from '@/components/layout/PageContainer';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface Notification {
   id: string;
@@ -304,28 +315,45 @@ const Notifications = () => {
                   </TabsList>
                 </Tabs>
                 {notifications.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 lg:h-8 text-xs text-muted-foreground hover:text-destructive"
-                    onClick={async () => {
-                      if (confirm('Are you sure you want to clear all notifications?')) {
-                        const { error } = await supabase
-                          .from('notifications')
-                          .delete()
-                          .eq('user_id', user!.id);
-                        if (error) {
-                          toast.error('Failed to clear notifications');
-                        } else {
-                          setNotifications([]);
-                          toast.success('All notifications cleared');
-                        }
-                      }
-                    }}
-                  >
-                    <Trash2 className="w-3.5 h-3.5 mr-1" />
-                    Clear
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 lg:h-8 text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1" />
+                        Clear
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete all your notifications. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={async () => {
+                            const { error } = await supabase
+                              .from('notifications')
+                              .delete()
+                              .eq('user_id', user!.id);
+                            if (error) {
+                              toast.error('Failed to clear notifications');
+                            } else {
+                              setNotifications([]);
+                              toast.success('All notifications cleared');
+                            }
+                          }}
+                        >
+                          Yes, clear all
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
               </div>
             </div>
