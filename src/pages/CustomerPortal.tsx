@@ -17,7 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer, Star, MessageSquare } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer, Star, MessageSquare, Edit2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
@@ -497,6 +497,9 @@ const CustomerPortal = () => {
   const [feedbackRating, setFeedbackRating] = useState(5);
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackMode, setFeedbackMode] = useState<'create' | 'edit'>('create');
+  const [existingFeedbackId, setExistingFeedbackId] = useState<string | null>(null);
+  const [isDeletingFeedback, setIsDeletingFeedback] = useState(false);
 
   // Check for magic link token and payment status in URL
   useEffect(() => {
@@ -1147,15 +1150,16 @@ const CustomerPortal = () => {
     }
   };
 
-  // Handle feedback submission
+  // Handle feedback submission (create or update)
   const handleSubmitFeedback = async () => {
     if (!feedbackJob || !customerData?.id) return;
     
     setIsSubmittingFeedback(true);
     try {
+      const action = feedbackMode === 'edit' ? 'update-feedback' : 'submit-feedback';
       const { error } = await supabase.functions.invoke('customer-portal-auth', {
         body: {
-          action: 'submit-feedback',
+          action,
           jobId: feedbackJob.id,
           customerId: customerData.id,
           token: sessionStorage.getItem('customer_portal_token'),
@@ -1166,7 +1170,7 @@ const CustomerPortal = () => {
 
       if (error) throw error;
 
-      toast.success('Thank you for your feedback!');
+      toast.success(feedbackMode === 'edit' ? 'Feedback updated!' : 'Thank you for your feedback!');
       
       // Update job to show feedback was given
       setJobs(jobs.map(j => 
@@ -1177,10 +1181,76 @@ const CustomerPortal = () => {
       setFeedbackJob(null);
       setFeedbackRating(5);
       setFeedbackText('');
+      setFeedbackMode('create');
+      setExistingFeedbackId(null);
     } catch (err: any) {
       toast.error(err.message || 'Failed to submit feedback');
     } finally {
       setIsSubmittingFeedback(false);
+    }
+  };
+
+  // Handle feedback deletion
+  const handleDeleteFeedback = async () => {
+    if (!feedbackJob || !customerData?.id) return;
+    
+    setIsDeletingFeedback(true);
+    try {
+      const { error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: {
+          action: 'delete-feedback',
+          jobId: feedbackJob.id,
+          customerId: customerData.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success('Feedback deleted');
+      
+      // Update job to show feedback was removed
+      setJobs(jobs.map(j => 
+        j.id === feedbackJob.id ? { ...j, has_feedback: false } : j
+      ));
+      
+      setShowFeedbackDialog(false);
+      setFeedbackJob(null);
+      setFeedbackRating(5);
+      setFeedbackText('');
+      setFeedbackMode('create');
+      setExistingFeedbackId(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete feedback');
+    } finally {
+      setIsDeletingFeedback(false);
+    }
+  };
+
+  // Handle editing feedback - fetch existing feedback first
+  const handleEditFeedback = async (job: Job) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: {
+          action: 'get-feedback',
+          jobId: job.id,
+          customerId: customerData?.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.feedback) {
+        setFeedbackRating(data.feedback.rating);
+        setFeedbackText(data.feedback.feedback_text || '');
+        setExistingFeedbackId(data.feedback.id);
+        setFeedbackMode('edit');
+        setFeedbackJob(job);
+        setShowFeedbackDialog(true);
+      }
+    } catch (err: any) {
+      toast.error('Failed to load feedback');
     }
   };
 
@@ -2623,9 +2693,24 @@ const CustomerPortal = () => {
               {viewingJob.has_feedback && (
                 <div className="pt-4 border-t">
                   <div className="p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <CheckCircle className="w-4 h-4" />
-                      <p className="text-sm">Thank you! Your feedback has been submitted.</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <CheckCircle className="w-4 h-4" />
+                        <p className="text-sm">Your feedback has been submitted.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            handleEditFeedback(viewingJob);
+                            setViewingJob(null);
+                          }}
+                        >
+                          <Edit2 className="w-3 h-3 mr-1" />
+                          Edit
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2756,29 +2841,50 @@ const CustomerPortal = () => {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowFeedbackDialog(false);
-                setFeedbackJob(null);
-                setFeedbackRating(5);
-                setFeedbackText('');
-              }}
-            >
-              Skip
-            </Button>
-            <Button
-              onClick={handleSubmitFeedback}
-              disabled={isSubmittingFeedback}
-            >
-              {isSubmittingFeedback ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Star className="w-4 h-4 mr-2" />
-              )}
-              Submit Feedback
-            </Button>
+          <DialogFooter className="gap-2 flex-col sm:flex-row">
+            {feedbackMode === 'edit' && (
+              <Button
+                variant="destructive"
+                onClick={handleDeleteFeedback}
+                disabled={isDeletingFeedback || isSubmittingFeedback}
+                className="w-full sm:w-auto"
+              >
+                {isDeletingFeedback ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
+                Delete
+              </Button>
+            )}
+            <div className="flex gap-2 w-full sm:w-auto sm:ml-auto">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowFeedbackDialog(false);
+                  setFeedbackJob(null);
+                  setFeedbackRating(5);
+                  setFeedbackText('');
+                  setFeedbackMode('create');
+                  setExistingFeedbackId(null);
+                }}
+                className="flex-1 sm:flex-none"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitFeedback}
+                disabled={isSubmittingFeedback || isDeletingFeedback}
+                className="flex-1 sm:flex-none"
+              >
+                {isSubmittingFeedback ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Star className="w-4 h-4 mr-2" />
+                )}
+                {feedbackMode === 'edit' ? 'Update' : 'Submit'}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1378,7 +1378,7 @@ Deno.serve(async (req) => {
       const isNegative = rating <= 3;
 
       // Save feedback
-      const { error: feedbackError } = await adminClient
+      const { data: newFeedback, error: feedbackError } = await adminClient
         .from('job_feedbacks')
         .insert({
           job_id: jobId,
@@ -1387,7 +1387,9 @@ Deno.serve(async (req) => {
           rating: rating,
           feedback_text: feedbackText || null,
           is_negative: isNegative,
-        });
+        })
+        .select()
+        .single();
 
       if (feedbackError) {
         console.error('Error saving feedback:', feedbackError);
@@ -1396,6 +1398,21 @@ Deno.serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+
+      // Record creation in history
+      await adminClient
+        .from('job_feedback_history')
+        .insert({
+          feedback_id: newFeedback.id,
+          job_id: jobId,
+          customer_id: customerId,
+          company_id: job.company_id,
+          action_type: 'created',
+          old_rating: null,
+          new_rating: rating,
+          old_feedback_text: null,
+          new_feedback_text: feedbackText || null,
+        });
 
       console.log('Feedback saved for job:', job.job_number, 'Rating:', rating);
 
@@ -1461,6 +1478,202 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, message: 'Feedback submitted successfully' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle getting customer's feedback for a job
+    if (action === 'get-feedback') {
+      const { jobId, customerId, token } = body;
+      
+      if (!jobId || !customerId || !token) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get feedback for the job
+      const { data: feedback, error: feedbackError } = await adminClient
+        .from('job_feedbacks')
+        .select('*')
+        .eq('job_id', jobId)
+        .eq('customer_id', customerId)
+        .single();
+
+      if (feedbackError && feedbackError.code !== 'PGRST116') {
+        console.error('Error fetching feedback:', feedbackError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch feedback' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ feedback: feedback || null }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle updating customer feedback
+    if (action === 'update-feedback') {
+      const { jobId, customerId, token, rating, feedbackText } = body;
+      
+      if (!jobId || !customerId || !token || !rating) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get existing feedback
+      const { data: existingFeedback, error: fetchError } = await adminClient
+        .from('job_feedbacks')
+        .select('*')
+        .eq('job_id', jobId)
+        .eq('customer_id', customerId)
+        .single();
+
+      if (fetchError || !existingFeedback) {
+        return new Response(
+          JSON.stringify({ error: 'Feedback not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const isNegative = rating <= 3;
+
+      // Record history
+      await adminClient
+        .from('job_feedback_history')
+        .insert({
+          feedback_id: existingFeedback.id,
+          job_id: jobId,
+          customer_id: customerId,
+          company_id: existingFeedback.company_id,
+          action_type: 'edited',
+          old_rating: existingFeedback.rating,
+          new_rating: rating,
+          old_feedback_text: existingFeedback.feedback_text,
+          new_feedback_text: feedbackText || null,
+        });
+
+      // Update feedback
+      const { error: updateError } = await adminClient
+        .from('job_feedbacks')
+        .update({
+          rating: rating,
+          feedback_text: feedbackText || null,
+          is_negative: isNegative,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingFeedback.id);
+
+      if (updateError) {
+        console.error('Error updating feedback:', updateError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to update feedback' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Feedback updated for job:', jobId);
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Feedback updated successfully' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Handle deleting customer feedback
+    if (action === 'delete-feedback') {
+      const { jobId, customerId, token } = body;
+      
+      if (!jobId || !customerId || !token) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get existing feedback
+      const { data: existingFeedback, error: fetchError } = await adminClient
+        .from('job_feedbacks')
+        .select('*')
+        .eq('job_id', jobId)
+        .eq('customer_id', customerId)
+        .single();
+
+      if (fetchError || !existingFeedback) {
+        return new Response(
+          JSON.stringify({ error: 'Feedback not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Record history (before deletion)
+      await adminClient
+        .from('job_feedback_history')
+        .insert({
+          feedback_id: existingFeedback.id,
+          job_id: jobId,
+          customer_id: customerId,
+          company_id: existingFeedback.company_id,
+          action_type: 'deleted',
+          old_rating: existingFeedback.rating,
+          new_rating: null,
+          old_feedback_text: existingFeedback.feedback_text,
+          new_feedback_text: null,
+        });
+
+      // Delete feedback
+      const { error: deleteError } = await adminClient
+        .from('job_feedbacks')
+        .delete()
+        .eq('id', existingFeedback.id);
+
+      if (deleteError) {
+        console.error('Error deleting feedback:', deleteError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to delete feedback' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log('Feedback deleted for job:', jobId);
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Feedback deleted successfully' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

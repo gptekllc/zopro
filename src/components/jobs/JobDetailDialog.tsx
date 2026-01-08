@@ -25,6 +25,7 @@ import { formatAmount } from '@/lib/formatAmount';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
 import { useJobNotifications } from '@/hooks/useJobNotifications';
 import { useJobFeedbacks, JobFeedback } from '@/hooks/useJobFeedbacks';
+import { useFeedbackHistory, FeedbackHistoryEntry } from '@/hooks/useFeedbackHistory';
 import { useJobTimeEntries } from '@/hooks/useTimeEntries';
 import { ConvertJobToInvoiceDialog } from '@/components/jobs/ConvertJobToInvoiceDialog';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
@@ -104,6 +105,10 @@ export function JobDetailDialog({
     data: feedbacks = [],
     isLoading: loadingFeedbacks
   } = useJobFeedbacks(job?.id || null);
+  const {
+    data: feedbackHistory = [],
+    isLoading: loadingFeedbackHistory
+  } = useFeedbackHistory(job?.id || null);
   const {
     data: jobTimeEntries = []
   } = useJobTimeEntries(job?.id || null);
@@ -647,39 +652,130 @@ export function JobDetailDialog({
 
             {/* Customer Feedback Tab */}
             <TabsContent value="feedback" className="mt-4" ref={feedbackSectionRef}>
-              {loadingFeedbacks ? <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p> : feedbacks.length > 0 ? <div className="space-y-3">
-                  {feedbacks.map((feedback: JobFeedback) => <div key={feedback.id} className={`p-3 rounded-lg border ${feedback.is_negative ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-muted/50'}`}>
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="flex items-center gap-0.5">
-                              {[1, 2, 3, 4, 5].map(star => <Star key={star} className={`w-4 h-4 ${star <= feedback.rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`} />)}
+              {loadingFeedbacks || loadingFeedbackHistory ? <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p> : (
+                <div className="space-y-4">
+                  {/* Current Feedback */}
+                  {feedbacks.length > 0 ? (
+                    <div className="space-y-3">
+                      <h4 className="text-sm font-medium">Current Feedback</h4>
+                      {feedbacks.map((feedback: JobFeedback) => (
+                        <div key={feedback.id} className={`p-3 rounded-lg border ${feedback.is_negative ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-muted/50'}`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <div className="flex items-center gap-0.5">
+                                  {[1, 2, 3, 4, 5].map(star => <Star key={star} className={`w-4 h-4 ${star <= feedback.rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground/30'}`} />)}
+                                </div>
+                                <span className="text-sm font-medium">
+                                  {feedback.rating}/5
+                                </span>
+                                {feedback.is_negative && <Badge variant="destructive" className="text-xs">
+                                    Needs Attention
+                                  </Badge>}
+                              </div>
+                              {feedback.feedback_text && <p className="text-sm text-muted-foreground">
+                                  "{feedback.feedback_text}"
+                                </p>}
+                              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                                <span>{feedback.customer?.name || 'Customer'}</span>
+                                <span>•</span>
+                                <span>{format(new Date(feedback.created_at), 'MMM d, yyyy')}</span>
+                              </div>
                             </div>
-                            <span className="text-sm font-medium">
-                              {feedback.rating}/5
-                            </span>
-                            {feedback.is_negative && <Badge variant="destructive" className="text-xs">
-                                Needs Attention
-                              </Badge>}
-                          </div>
-                          {feedback.feedback_text && <p className="text-sm text-muted-foreground">
-                              "{feedback.feedback_text}"
-                            </p>}
-                          <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
-                            <span>{feedback.customer?.name || 'Customer'}</span>
-                            <span>•</span>
-                            <span>{format(new Date(feedback.created_at), 'MMM d, yyyy')}</span>
                           </div>
                         </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-muted/50 rounded-lg text-center">
+                      <MessageSquare className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+                      <p className="text-xs sm:text-sm text-muted-foreground">No customer feedback yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Feedback will appear here after the customer rates the job
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Feedback History */}
+                  {feedbackHistory.length > 0 && (
+                    <div className="space-y-3 pt-4 border-t">
+                      <h4 className="text-sm font-medium flex items-center gap-2">
+                        <History className="w-4 h-4" />
+                        Feedback History
+                      </h4>
+                      <div className="space-y-2">
+                        {feedbackHistory.map((entry: FeedbackHistoryEntry) => {
+                          const getActionLabel = () => {
+                            switch (entry.action_type) {
+                              case 'created': return 'Submitted feedback';
+                              case 'edited': return 'Edited feedback';
+                              case 'deleted': return 'Deleted feedback';
+                              default: return entry.action_type;
+                            }
+                          };
+                          
+                          const getActionColor = () => {
+                            switch (entry.action_type) {
+                              case 'created': return 'bg-success/10 text-success border-success/20';
+                              case 'edited': return 'bg-primary/10 text-primary border-primary/20';
+                              case 'deleted': return 'bg-destructive/10 text-destructive border-destructive/20';
+                              default: return 'bg-muted';
+                            }
+                          };
+
+                          return (
+                            <div key={entry.id} className="p-3 rounded-lg border bg-muted/30 text-sm">
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <Badge variant="outline" className={`text-xs ${getActionColor()}`}>
+                                  {getActionLabel()}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(entry.created_at), 'MMM d, yyyy h:mm a')}
+                                </span>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {entry.customer?.name || 'Customer'}
+                              </p>
+                              {entry.action_type === 'edited' && (
+                                <div className="mt-2 space-y-1 text-xs">
+                                  {entry.old_rating !== entry.new_rating && (
+                                    <p>
+                                      <span className="text-muted-foreground">Rating: </span>
+                                      <span className="line-through text-muted-foreground/60">{entry.old_rating}/5</span>
+                                      <span className="mx-1">→</span>
+                                      <span className="font-medium">{entry.new_rating}/5</span>
+                                    </p>
+                                  )}
+                                  {entry.old_feedback_text !== entry.new_feedback_text && (
+                                    <div className="space-y-1">
+                                      {entry.old_feedback_text && (
+                                        <p className="line-through text-muted-foreground/60">"{entry.old_feedback_text}"</p>
+                                      )}
+                                      {entry.new_feedback_text && (
+                                        <p className="font-medium">"{entry.new_feedback_text}"</p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {entry.action_type === 'deleted' && entry.old_rating && (
+                                <div className="mt-2 text-xs text-muted-foreground/60">
+                                  <p>Was: {entry.old_rating}/5 {entry.old_feedback_text ? `- "${entry.old_feedback_text}"` : ''}</p>
+                                </div>
+                              )}
+                              {entry.action_type === 'created' && (
+                                <div className="mt-2 text-xs">
+                                  <p>{entry.new_rating}/5 {entry.new_feedback_text ? `- "${entry.new_feedback_text}"` : ''}</p>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>)}
-                </div> : <div className="p-4 bg-muted/50 rounded-lg text-center">
-                  <MessageSquare className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-                  <p className="text-xs sm:text-sm text-muted-foreground">No customer feedback yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Feedback will appear here after the customer rates the job
-                  </p>
-                </div>}
+                    </div>
+                  )}
+                </div>
+              )}
             </TabsContent>
 
             {/* Activities Tab (Combined Email + Signature + Job Activities) */}
