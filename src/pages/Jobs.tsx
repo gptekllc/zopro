@@ -30,6 +30,8 @@ import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEdit
 import { JobListManager } from '@/components/jobs/JobListManager';
 import { JobListControls } from '@/components/jobs/JobListControls';
 import PageContainer from '@/components/layout/PageContainer';
+import { UsageLimitWarning, UsageLimitBadge } from '@/components/UsageLimitWarning';
+import { useUsageLimits } from '@/hooks/useUsageLimits';
 
 const JOB_STATUSES_EDITABLE = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -38,6 +40,7 @@ const Jobs = () => {
   const { profile, roles } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
+  const { isAtJobLimit, isNearJobLimit } = useUsageLimits();
 
   // Determine if we need to include archived jobs
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -420,11 +423,17 @@ const Jobs = () => {
 
   return (
     <PageContainer className="space-y-6">
+      {/* Usage Limit Warning */}
+      <UsageLimitWarning type="jobs" showProgress />
+
       {/* Header */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h1 className="text-3xl font-bold">Jobs</h1>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              Jobs
+              <UsageLimitBadge type="jobs" />
+            </h1>
             <p className="text-muted-foreground mt-1 hidden sm:block">{safeJobs.length} total jobs</p>
           </div>
 
@@ -459,7 +468,11 @@ const Jobs = () => {
               if (!open) resetForm();
             }}>
               <DialogTrigger asChild>
-                <Button className="gap-2 hidden sm:flex">
+                <Button 
+                  className="gap-2 hidden sm:flex"
+                  disabled={isAtJobLimit && !editingJob}
+                  title={isAtJobLimit ? 'Job limit reached. Upgrade to create more.' : undefined}
+                >
                   <Plus className="w-4 h-4" />
                   Create Job
                 </Button>

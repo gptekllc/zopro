@@ -18,6 +18,9 @@ import { compressImageToFile } from '@/lib/imageCompression';
 import { format } from 'date-fns';
 import ViewMemberDialog from '@/components/team/ViewMemberDialog';
 import PageContainer from '@/components/layout/PageContainer';
+import { FeatureGate } from '@/components/FeatureGate';
+import { UsageLimitWarning, UsageLimitBadge } from '@/components/UsageLimitWarning';
+import { useUsageLimits } from '@/hooks/useUsageLimits';
 
 const AVAILABLE_ROLES = ['admin', 'manager', 'technician'] as const;
 type AppRole = typeof AVAILABLE_ROLES[number];
@@ -26,10 +29,19 @@ const EMPLOYMENT_STATUSES = ['active', 'on_leave', 'terminated'] as const;
 type EmploymentStatus = typeof EMPLOYMENT_STATUSES[number];
 
 const Technicians = () => {
+  return (
+    <FeatureGate feature="team_members">
+      <TechniciansContent />
+    </FeatureGate>
+  );
+};
+
+const TechniciansContent = () => {
   const { user, profile: currentProfile, isAdmin, isManager } = useAuth();
   const canManageTeam = isAdmin || isManager;
   const { data: profiles = [], isLoading } = useProfiles();
   const { data: company } = useCompany();
+  const { isAtUserLimit, isNearUserLimit } = useUsageLimits();
   const queryClient = useQueryClient();
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -345,10 +357,16 @@ const Technicians = () => {
 
   return (
     <PageContainer className="space-y-6">
+      {/* Usage Limit Warning */}
+      <UsageLimitWarning type="users" showProgress />
+
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold">Team Members</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            Team Members
+            <UsageLimitBadge type="users" />
+          </h1>
           <p className="text-muted-foreground mt-1 hidden sm:block">{teamMembers.length} team members</p>
         </div>
         
@@ -364,7 +382,11 @@ const Technicians = () => {
           </div>
           
           {isAdmin && (
-            <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)}
+              disabled={isAtUserLimit}
+              title={isAtUserLimit ? 'User limit reached. Upgrade to add more.' : undefined}
+            >
               <UserPlus className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Add Member</span>
             </Button>

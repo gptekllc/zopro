@@ -15,7 +15,17 @@ import { toast } from 'sonner';
 import { TimeEntryDialog } from '@/components/timeclock/TimeEntryDialog';
 import { Link } from 'react-router-dom';
 import PageContainer from '@/components/layout/PageContainer';
+import { FeatureGate } from '@/components/FeatureGate';
+
 const TimeClock = () => {
+  return (
+    <FeatureGate feature="time_clock">
+      <TimeClockContent />
+    </FeatureGate>
+  );
+};
+
+const TimeClockContent = () => {
   const {
     user,
     profile,
