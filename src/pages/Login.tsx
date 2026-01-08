@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,13 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle, Lock, Mail } from 'lucide-react';
 import zoproLogo from '@/assets/zopro-logo.png';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import PasswordStrength, { validatePassword } from '@/components/auth/PasswordStrength';
 
-type AuthView = 'auth' | 'forgot-password' | 'reset-success';
+type AuthView = 'auth' | 'forgot-password' | 'reset-success' | 'verify-email';
+
+interface LockoutStatus {
+  locked: boolean;
+  failed_attempts: number;
+  lockout_until?: string;
+  minutes_remaining?: number;
+  attempts_remaining?: number;
+}
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -21,8 +29,48 @@ const Login = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [view, setView] = useState<AuthView>('auth');
+  const [lockoutStatus, setLockoutStatus] = useState<LockoutStatus | null>(null);
   const { signIn, signUp, signInWithGoogle, user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+
+  // Check lockout status when email changes
+  const checkLockout = useCallback(async (emailToCheck: string) => {
+    if (!emailToCheck || !emailToCheck.includes('@')) {
+      setLockoutStatus(null);
+      return null;
+    }
+    
+    try {
+      const { data, error } = await supabase.rpc('check_account_lockout', {
+        check_email: emailToCheck.toLowerCase()
+      });
+      
+      if (error) {
+        console.error('Error checking lockout:', error);
+        return null;
+      }
+      
+      const status = data as unknown as LockoutStatus;
+      setLockoutStatus(status);
+      return status;
+    } catch (err) {
+      console.error('Lockout check failed:', err);
+      return null;
+    }
+  }, []);
+
+  // Record login attempt
+  const recordAttempt = async (attemptEmail: string, success: boolean) => {
+    try {
+      await supabase.rpc('record_login_attempt', {
+        attempt_email: attemptEmail.toLowerCase(),
+        attempt_success: success,
+        attempt_ip: null // IP tracking would require server-side implementation
+      });
+    } catch (err) {
+      console.error('Failed to record login attempt:', err);
+    }
+  };
 
   const handleGoogleSignIn = async () => {
     setError('');
@@ -46,11 +94,39 @@ const Login = () => {
     setError('');
     setIsLoading(true);
 
+    // Check if account is locked
+    const lockout = await checkLockout(email);
+    if (lockout?.locked) {
+      setError(`Account temporarily locked. Try again in ${lockout.minutes_remaining} minute(s).`);
+      setIsLoading(false);
+      return;
+    }
+
     const { error } = await signIn(email, password);
     
     if (error) {
-      setError(error.message);
+      // Record failed attempt
+      await recordAttempt(email, false);
+      
+      // Re-check lockout status after failed attempt
+      await checkLockout(email);
+      
+      // Handle specific error cases
+      if (error.message.includes('Email not confirmed')) {
+        setView('verify-email');
+      } else if (error.message.includes('Invalid login credentials')) {
+        const remaining = lockoutStatus?.attempts_remaining ?? 4;
+        if (remaining <= 2) {
+          setError(`Invalid credentials. ${remaining - 1} attempt(s) remaining before lockout.`);
+        } else {
+          setError('Invalid email or password');
+        }
+      } else {
+        setError(error.message);
+      }
     } else {
+      // Record successful attempt
+      await recordAttempt(email, true);
       toast.success('Welcome back!');
       navigate('/dashboard');
     }
@@ -86,7 +162,8 @@ const Login = () => {
         setError(error.message);
       }
     } else {
-      toast.success('Account created! Please check your email to confirm.');
+      // Show email verification view
+      setView('verify-email');
     }
     setIsLoading(false);
   };
@@ -120,6 +197,68 @@ const Login = () => {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-primary">
         <div className="text-primary-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  // Email verification required view
+  if (view === 'verify-email') {
+    return (
+      <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+        <div className="w-full max-w-md animate-scale-in">
+          <Card className="shadow-lg border-0">
+            <CardHeader className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mx-auto mb-4">
+                <Mail className="w-8 h-8 text-blue-600" />
+              </div>
+              <CardTitle>Verify Your Email</CardTitle>
+              <CardDescription>
+                We've sent a verification link to <strong>{email}</strong>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <p className="text-sm font-medium">Next steps:</p>
+                <ol className="text-sm text-muted-foreground list-decimal list-inside space-y-1">
+                  <li>Check your email inbox (and spam folder)</li>
+                  <li>Click the verification link in the email</li>
+                  <li>Return here to sign in</li>
+                </ol>
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setView('auth');
+                  setError('');
+                }}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Sign In
+              </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                Didn't receive the email?{' '}
+                <Button
+                  variant="link"
+                  className="px-0 h-auto text-xs"
+                  onClick={async () => {
+                    const { error } = await supabase.auth.resend({
+                      type: 'signup',
+                      email: email,
+                    });
+                    if (error) {
+                      toast.error(error.message);
+                    } else {
+                      toast.success('Verification email resent!');
+                    }
+                  }}
+                >
+                  Resend verification email
+                </Button>
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
