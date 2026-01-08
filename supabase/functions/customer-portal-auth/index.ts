@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="text-align: center; margin-bottom: 30px;">
-                  <img src="https://zopro.app/icons/bbb.png" alt="ZoPro Logo" style="height: 60px; width: auto;" />
+                  <img src="https://fsm.zopro.app/assets/ZoPro_Logo.png" alt="ZoPro Logo" style="height: 60px; width: auto;" />
                 </div>
                 <h1 style="color: #333;">Customer Portal Access</h1>
                 <p>Hello ${customer.name},</p>
