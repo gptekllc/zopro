@@ -29,6 +29,8 @@ import {
   Loader2,
   BarChart3,
   ArrowRightLeft,
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
 import zoproLogo from '@/assets/zopro-logo.png';
 import { cn } from '@/lib/utils';
@@ -36,6 +38,7 @@ import { toast } from 'sonner';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import MobileFAB from '@/components/layout/MobileFAB';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -72,6 +75,18 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
   const unreadNotifications = useUnreadNotifications();
   const [isOnLeave, setIsOnLeave] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    const stored = localStorage.getItem('sidebar-collapsed');
+    return stored === 'true';
+  });
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('sidebar-collapsed', String(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (profile?.employment_status) {
@@ -268,37 +283,70 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
       </header>
 
       {/* Sidebar - Desktop only */}
-      <aside className="hidden lg:block fixed top-0 left-0 h-full w-64 bg-sidebar text-sidebar-foreground z-50"
+      <aside 
+        className={cn(
+          "hidden lg:block fixed top-0 left-0 h-full bg-sidebar text-sidebar-foreground z-50 transition-all duration-300",
+          sidebarCollapsed ? "w-[72px]" : "w-64"
+        )}
       >
         <div className="flex flex-col h-full">
-          {/* Sidebar header */}
-          <div className="p-6 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden">
+          {/* Sidebar header with toggle button */}
+          <div className={cn(
+            "flex items-center gap-3 shrink-0",
+            sidebarCollapsed ? "p-3 justify-center" : "p-6"
+          )}>
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden shrink-0">
               <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
             </div>
-            <div>
-              <h1 className="font-bold text-lg">ZoPro</h1>
-              <p className="text-xs text-sidebar-foreground/60">{company?.name || 'No Company'}</p>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="flex-1 min-w-0">
+                <h1 className="font-bold text-lg">ZoPro</h1>
+                <p className="text-xs text-sidebar-foreground/60 truncate">{company?.name || 'No Company'}</p>
+              </div>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleSidebar}
+                  className={cn(
+                    "shrink-0 text-sidebar-foreground hover:bg-sidebar-accent",
+                    sidebarCollapsed && "mt-2"
+                  )}
+                >
+                  {sidebarCollapsed ? (
+                    <PanelLeft className="w-5 h-5" />
+                  ) : (
+                    <PanelLeftClose className="w-5 h-5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              </TooltipContent>
+            </Tooltip>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-3 py-4 space-y-1">
+          {/* Navigation - scrollable */}
+          <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">
             {filteredNavItems.map((item) => {
               const isActive = location.pathname === item.path;
               const showBadge = item.path === '/notifications' && unreadNotifications > 0;
-              return (
+              
+              const linkContent = (
                 <Link
                   key={item.path}
                   to={item.path}
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
+                    sidebarCollapsed && "justify-center px-2",
                     isActive
                       ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg"
                       : "hover:bg-sidebar-accent text-sidebar-foreground/80 hover:text-sidebar-foreground"
                   )}
                 >
-                  <div className="relative">
+                  <div className="relative shrink-0">
                     <item.icon className="w-5 h-5" />
                     {showBadge && (
                       <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center font-medium">
@@ -306,29 +354,49 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
                       </span>
                     )}
                   </div>
-                  <span className="font-medium">{item.label}</span>
+                  {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
                 </Link>
               );
+
+              if (sidebarCollapsed) {
+                return (
+                  <Tooltip key={item.path}>
+                    <TooltipTrigger asChild>
+                      {linkContent}
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      {item.label}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              }
+
+              return linkContent;
             })}
           </nav>
 
-          {/* User section with dropdown */}
-          <div className="p-4 border-t border-sidebar-border">
+          {/* User section with dropdown - always visible */}
+          <div className="p-3 border-t border-sidebar-border shrink-0">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="w-full flex items-center gap-3 p-3 rounded-lg bg-sidebar-accent hover:bg-sidebar-accent/80 transition-colors">
-                  <Avatar className="w-10 h-10">
+                <button className={cn(
+                  "w-full flex items-center gap-3 p-2 rounded-lg bg-sidebar-accent hover:bg-sidebar-accent/80 transition-colors",
+                  sidebarCollapsed && "justify-center p-2"
+                )}>
+                  <Avatar className={cn("shrink-0", sidebarCollapsed ? "w-8 h-8" : "w-10 h-10")}>
                     <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm">
                       {getInitials(profile?.full_name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="font-medium truncate">{displayName}</p>
-                    <p className="text-xs text-sidebar-foreground/60 capitalize">{primaryRole}</p>
-                  </div>
+                  {!sidebarCollapsed && (
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="font-medium truncate">{displayName}</p>
+                      <p className="text-xs text-sidebar-foreground/60 capitalize">{primaryRole}</p>
+                    </div>
+                  )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent side="top" align="start" className="w-56 bg-popover">
+              <DropdownMenuContent side="top" align={sidebarCollapsed ? "center" : "start"} className="w-56 bg-popover">
                 <div className="flex items-center justify-between px-2 py-1.5">
                   <span className="text-sm">On Leave</span>
                   <div className="flex items-center gap-1">
@@ -369,7 +437,10 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
       </aside>
 
       {/* Main content */}
-      <main className="lg:ml-64 pt-16 lg:pt-0 pb-20 lg:pb-0 min-h-screen">
+      <main className={cn(
+        "pt-16 lg:pt-0 pb-20 lg:pb-0 min-h-screen transition-all duration-300",
+        sidebarCollapsed ? "lg:ml-[72px]" : "lg:ml-64"
+      )}>
         <div
           className={cn(
             'w-full p-3 lg:py-6 lg:px-6',
