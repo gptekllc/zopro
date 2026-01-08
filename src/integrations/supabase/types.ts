@@ -1016,6 +1016,77 @@ export type Database = {
           },
         ]
       }
+      job_feedback_history: {
+        Row: {
+          action_type: string
+          company_id: string
+          created_at: string
+          customer_id: string
+          feedback_id: string | null
+          id: string
+          job_id: string
+          new_feedback_text: string | null
+          new_rating: number | null
+          old_feedback_text: string | null
+          old_rating: number | null
+        }
+        Insert: {
+          action_type: string
+          company_id: string
+          created_at?: string
+          customer_id: string
+          feedback_id?: string | null
+          id?: string
+          job_id: string
+          new_feedback_text?: string | null
+          new_rating?: number | null
+          old_feedback_text?: string | null
+          old_rating?: number | null
+        }
+        Update: {
+          action_type?: string
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          feedback_id?: string | null
+          id?: string
+          job_id?: string
+          new_feedback_text?: string | null
+          new_rating?: number | null
+          old_feedback_text?: string | null
+          old_rating?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_feedback_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_feedback_history_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_feedback_history_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "job_feedbacks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_feedback_history_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_feedbacks: {
         Row: {
           company_id: string
@@ -1026,6 +1097,7 @@ export type Database = {
           is_negative: boolean
           job_id: string
           rating: number
+          updated_at: string | null
         }
         Insert: {
           company_id: string
@@ -1036,6 +1108,7 @@ export type Database = {
           is_negative?: boolean
           job_id: string
           rating: number
+          updated_at?: string | null
         }
         Update: {
           company_id?: string
@@ -1046,6 +1119,7 @@ export type Database = {
           is_negative?: boolean
           job_id?: string
           rating?: number
+          updated_at?: string | null
         }
         Relationships: [
           {
