@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
 import zoproLogo from '@/assets/zopro-logo.png';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { useEffect } from 'react';
+import PasswordStrength, { validatePassword } from '@/components/auth/PasswordStrength';
 
 type AuthView = 'auth' | 'forgot-password' | 'reset-success';
 
@@ -62,13 +62,22 @@ const Login = () => {
     setError('');
     setIsLoading(true);
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    // Validate password strength
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      setError(passwordValidation.errors[0]);
       setIsLoading(false);
       return;
     }
 
-    const { error } = await signUp(email, password, fullName);
+    // Validate full name
+    if (fullName.trim().length < 2) {
+      setError('Please enter your full name');
+      setIsLoading(false);
+      return;
+    }
+
+    const { error } = await signUp(email, password, fullName.trim());
     
     if (error) {
       if (error.message.includes('already registered')) {
@@ -369,13 +378,13 @@ const Login = () => {
                     <Input
                       id="signup-password"
                       type="password"
-                      placeholder="At least 6 characters"
+                      placeholder="Create a strong password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      minLength={6}
                       className="h-11"
                     />
+                    <PasswordStrength password={password} />
                   </div>
 
                   <Button type="submit" className="w-full h-11" disabled={isLoading}>
