@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -51,6 +51,8 @@ interface InvoiceListManagerProps {
   onCreateInvoice?: () => void;
   onRefetch?: () => Promise<void>;
   isLoading?: boolean;
+  initialViewInvoiceId?: string | null;
+  onInitialViewHandled?: () => void;
 }
 
 export function InvoiceListManager({
@@ -70,6 +72,8 @@ export function InvoiceListManager({
   onCreateInvoice,
   onRefetch,
   isLoading = false,
+  initialViewInvoiceId,
+  onInitialViewHandled,
 }: InvoiceListManagerProps) {
   const { data: company } = useCompany();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
@@ -119,6 +123,17 @@ export function InvoiceListManager({
     }
   };
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
+
+  // Handle initial view invoice from parent
+  useEffect(() => {
+    if (initialViewInvoiceId && invoices.length > 0 && !viewingInvoice) {
+      const invoice = invoices.find(i => i.id === initialViewInvoiceId);
+      if (invoice) {
+        setViewingInvoice(invoice);
+        onInitialViewHandled?.();
+      }
+    }
+  }, [initialViewInvoiceId, invoices, viewingInvoice, onInitialViewHandled]);
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
   const [archiveConfirmInvoice, setArchiveConfirmInvoice] = useState<Invoice | null>(null);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
