@@ -597,105 +597,125 @@ const Company = () => {
         </TabsContent>
 
         <TabsContent value="billing">
-          <Card className="max-w-2xl mx-auto">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Receipt className="w-5 h-5" />
-                Billing & Tax Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleBillingSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="tax_rate">Default Tax Rate (%)</Label>
-                  <Input
-                    id="tax_rate"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="100"
-                    value={billingData.tax_rate}
-                    onChange={(e) => setBillingData({ ...billingData, tax_rate: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Applied to all new quotes, invoices, and jobs
-                  </p>
+          <div className="space-y-6 max-w-2xl mx-auto">
+            {/* Subscription Link Card */}
+            <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+              <CardContent className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <CreditCard className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Subscription & Billing</p>
+                    <p className="text-sm text-muted-foreground">Manage your plan, usage, and payment methods</p>
+                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="payment_terms">Payment Terms (days)</Label>
-                  <Select
-                    value={String(billingData.payment_terms_days)}
-                    onValueChange={(value) => setBillingData({ ...billingData, payment_terms_days: parseInt(value) })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment terms" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="7">Net 7 (Due in 7 days)</SelectItem>
-                      <SelectItem value="14">Net 14 (Due in 14 days)</SelectItem>
-                      <SelectItem value="15">Net 15 (Due in 15 days)</SelectItem>
-                      <SelectItem value="30">Net 30 (Due in 30 days)</SelectItem>
-                      <SelectItem value="45">Net 45 (Due in 45 days)</SelectItem>
-                      <SelectItem value="60">Net 60 (Due in 60 days)</SelectItem>
-                      <SelectItem value="90">Net 90 (Due in 90 days)</SelectItem>
-                      <SelectItem value="0">Due on Receipt</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Default due date for new invoices
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="late_fee">Late Fee (%)</Label>
-                  <Input
-                    id="late_fee"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={billingData.late_fee_percentage}
-                    onChange={(e) => setBillingData({ ...billingData, late_fee_percentage: parseFloat(e.target.value) || 0 })}
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Percentage charged on overdue invoices (0 to disable)
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="payment_method">Default Payment Method</Label>
-                  <Select
-                    value={billingData.default_payment_method}
-                    onValueChange={(value) => setBillingData({ ...billingData, default_payment_method: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select payment method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="any">Any Method</SelectItem>
-                      <SelectItem value="cash">Cash</SelectItem>
-                      <SelectItem value="check">Check</SelectItem>
-                      <SelectItem value="card">Credit/Debit Card</SelectItem>
-                      <SelectItem value="bank_transfer">Bank Transfer (ACH)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Preferred payment method shown on invoices
-                  </p>
-                </div>
-
-                <Button type="submit" className="gap-2" disabled={updateCompany.isPending}>
-                  {updateCompany.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4" />
-                  )}
-                  Save Tax Settings
+                <Button asChild variant="outline" size="sm">
+                  <a href="/subscription">Manage</a>
                 </Button>
-              </form>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="w-5 h-5" />
+                  Tax Settings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleBillingSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="tax_rate">Default Tax Rate (%)</Label>
+                    <Input
+                      id="tax_rate"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={billingData.tax_rate}
+                      onChange={(e) => setBillingData({ ...billingData, tax_rate: parseFloat(e.target.value) || 0 })}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Applied to all new quotes, invoices, and jobs
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_terms">Payment Terms (days)</Label>
+                    <Select
+                      value={String(billingData.payment_terms_days)}
+                      onValueChange={(value) => setBillingData({ ...billingData, payment_terms_days: parseInt(value) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment terms" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7">Net 7 (Due in 7 days)</SelectItem>
+                        <SelectItem value="14">Net 14 (Due in 14 days)</SelectItem>
+                        <SelectItem value="15">Net 15 (Due in 15 days)</SelectItem>
+                        <SelectItem value="30">Net 30 (Due in 30 days)</SelectItem>
+                        <SelectItem value="45">Net 45 (Due in 45 days)</SelectItem>
+                        <SelectItem value="60">Net 60 (Due in 60 days)</SelectItem>
+                        <SelectItem value="90">Net 90 (Due in 90 days)</SelectItem>
+                        <SelectItem value="0">Due on Receipt</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Default due date for new invoices
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="late_fee">Late Fee (%)</Label>
+                    <Input
+                      id="late_fee"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      value={billingData.late_fee_percentage}
+                      onChange={(e) => setBillingData({ ...billingData, late_fee_percentage: parseFloat(e.target.value) || 0 })}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Percentage charged on overdue invoices (0 to disable)
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_method">Default Payment Method</Label>
+                    <Select
+                      value={billingData.default_payment_method}
+                      onValueChange={(value) => setBillingData({ ...billingData, default_payment_method: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Any Method</SelectItem>
+                        <SelectItem value="cash">Cash</SelectItem>
+                        <SelectItem value="check">Check</SelectItem>
+                        <SelectItem value="card">Credit/Debit Card</SelectItem>
+                        <SelectItem value="bank_transfer">Bank Transfer (ACH)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-sm text-muted-foreground">
+                      Preferred payment method shown on invoices
+                    </p>
+                  </div>
+
+                  <Button type="submit" className="gap-2" disabled={updateCompany.isPending}>
+                    {updateCompany.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    Save Tax Settings
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         <TabsContent value="preferences">

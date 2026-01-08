@@ -1,9 +1,12 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useFeatureFlags, FeatureFlag, FEATURE_FLAGS } from '@/hooks/useFeatureFlags';
+import { useSubscriptionPlans, useCurrentSubscription } from '@/hooks/useSubscription';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Lock, Sparkles, ArrowRight } from 'lucide-react';
+import { Lock, Sparkles, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { PlanComparisonTable } from '@/components/subscription/PlanComparisonTable';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface FeatureGateProps {
   feature: FeatureFlag;
@@ -24,6 +27,9 @@ export function FeatureGate({
   minimal = false,
 }: FeatureGateProps) {
   const { isFeatureEnabled, isLoading } = useFeatureFlags();
+  const { data: plans } = useSubscriptionPlans();
+  const { data: subscription } = useCurrentSubscription();
+  const [showComparison, setShowComparison] = useState(false);
   
   // While loading, show children (optimistic)
   if (isLoading) {
@@ -56,6 +62,7 @@ export function FeatureGate({
   
   const featureName = feature.replace(/_/g, ' ');
   const featureDescription = FEATURE_FLAGS[feature];
+  const currentPlanId = subscription?.subscription_plans?.id;
   
   return (
     <Card className="border-dashed border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
@@ -76,13 +83,36 @@ export function FeatureGate({
         </p>
         <div className="flex flex-col sm:flex-row gap-2 justify-center">
           <Button asChild className="gap-2">
-            <Link to="/company">
+            <Link to="/subscription">
               <Sparkles className="w-4 h-4" />
               Upgrade Plan
               <ArrowRight className="w-4 h-4" />
             </Link>
           </Button>
         </div>
+
+        {/* Plan Comparison Toggle */}
+        {plans && plans.length > 0 && (
+          <Collapsible open={showComparison} onOpenChange={setShowComparison}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
+                Compare Plans
+                {showComparison ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4">
+              <PlanComparisonTable
+                plans={plans}
+                currentPlanId={currentPlanId}
+                compact
+              />
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </CardContent>
     </Card>
   );
