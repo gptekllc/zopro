@@ -85,6 +85,8 @@ const Jobs = () => {
   const [pendingFromQuoteId, setPendingFromQuoteId] = useState<string | null>(null);
   const [pendingDuplicateJobId, setPendingDuplicateJobId] = useState<string | null>(null);
   const [pendingSaveTemplateJobId, setPendingSaveTemplateJobId] = useState<string | null>(null);
+  const [pendingViewJobId, setPendingViewJobId] = useState<string | null>(null);
+  const [pendingJobTab, setPendingJobTab] = useState<'photos' | 'linked' | 'feedback' | 'activities' | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -120,6 +122,7 @@ const Jobs = () => {
     const fromQuoteId = searchParams.get('fromQuote');
     const duplicateJobId = searchParams.get('duplicate');
     const saveTemplateId = searchParams.get('saveTemplate');
+    const tabParam = searchParams.get('tab');
 
     if (saveTemplateId && safeJobs.length > 0) {
       setPendingSaveTemplateJobId(saveTemplateId);
@@ -142,15 +145,23 @@ const Jobs = () => {
       newParams.delete('edit');
       setSearchParams(newParams, { replace: true });
     } else if (viewJobId && safeJobs.length > 0) {
-      const job = safeJobs.find(j => j.id === viewJobId);
-      if (job) {
-        setViewingJob(job);
-        const newParams = new URLSearchParams(searchParams);
-        newParams.delete('view');
-        setSearchParams(newParams, { replace: true });
+      // Pass to JobListManager via pending state
+      setPendingViewJobId(viewJobId);
+      if (tabParam && ['photos', 'linked', 'feedback', 'activities'].includes(tabParam)) {
+        setPendingJobTab(tabParam as 'photos' | 'linked' | 'feedback' | 'activities');
       }
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('view');
+      newParams.delete('tab');
+      setSearchParams(newParams, { replace: true });
     }
   }, [searchParams, safeJobs, safeQuotes, setSearchParams]);
+
+  // Callback when initial view has been handled by JobListManager
+  const handleInitialViewHandled = useCallback(() => {
+    setPendingViewJobId(null);
+    setPendingJobTab(null);
+  }, []);
 
   // Handle pending save template
   useEffect(() => {
@@ -735,6 +746,9 @@ const Jobs = () => {
             onCreateJob={() => openEditDialog(true)}
             onRefetch={async () => { await refetchJobs(); }}
             isLoading={isLoading}
+            initialViewJobId={pendingViewJobId}
+            initialJobTab={pendingJobTab || undefined}
+            onInitialViewHandled={handleInitialViewHandled}
           />
         </div>
       )}

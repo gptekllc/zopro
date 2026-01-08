@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -57,6 +57,9 @@ interface JobListManagerProps {
   onCreateJob?: () => void;
   onRefetch?: () => Promise<void>;
   isLoading?: boolean;
+  initialViewJobId?: string | null;
+  initialJobTab?: 'photos' | 'linked' | 'feedback' | 'activities';
+  onInitialViewHandled?: () => void;
 }
 
 export function JobListManager({
@@ -75,6 +78,9 @@ export function JobListManager({
   onCreateJob,
   onRefetch,
   isLoading = false,
+  initialViewJobId,
+  initialJobTab,
+  onInitialViewHandled,
 }: JobListManagerProps) {
   const { profile } = useAuth();
   const { data: company } = useCompany();
@@ -161,6 +167,7 @@ export function JobListManager({
     }
   };
   const [viewingJob, setViewingJob] = useState<Job | null>(null);
+  const [jobDetailTab, setJobDetailTab] = useState<'photos' | 'linked' | 'feedback' | 'activities'>('photos');
   const [deleteConfirmJob, setDeleteConfirmJob] = useState<Job | null>(null);
   const [archiveConfirmJob, setArchiveConfirmJob] = useState<Job | null>(null);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
@@ -181,10 +188,27 @@ export function JobListManager({
   // Swipe hint
   const { showHint: showSwipeHint, dismissHint: dismissSwipeHint } = useSwipeHint('jobs-swipe-hint-shown');
 
+  // Handle initial view job from URL params
+  useEffect(() => {
+    if (initialViewJobId && jobs.length > 0 && !viewingJob) {
+      const job = jobs.find(j => j.id === initialViewJobId);
+      if (job) {
+        setViewingJob(job);
+        if (initialJobTab) {
+          setJobDetailTab(initialJobTab);
+        }
+        onInitialViewHandled?.();
+      }
+    }
+  }, [initialViewJobId, initialJobTab, jobs, viewingJob, onInitialViewHandled]);
+
   // Wrapped setters for scroll restoration
   const openViewingJob = useCallback((job: Job | null) => {
     if (job) saveScrollPosition();
     setViewingJob(job);
+    if (job) {
+      setJobDetailTab('photos'); // Reset to default tab when opening new job
+    }
     if (!job) restoreScrollPosition();
   }, [saveScrollPosition, restoreScrollPosition]);
 
@@ -566,6 +590,7 @@ export function JobListManager({
         onCollectSignature={() => viewingJob && handleOpenSignatureDialog(viewingJob)}
         onSendSignatureRequest={() => viewingJob && handleSendSignatureRequest(viewingJob)}
         isCollectingSignature={signJobCompletion.isPending}
+        initialTab={jobDetailTab}
       />
 
       {/* Delete Confirmation */}
