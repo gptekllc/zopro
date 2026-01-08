@@ -117,12 +117,23 @@ const Jobs = () => {
 
   // Handle URL params
   useEffect(() => {
+    const createParam = searchParams.get('create');
     const viewJobId = searchParams.get('view');
     const editJobId = searchParams.get('edit');
     const fromQuoteId = searchParams.get('fromQuote');
     const duplicateJobId = searchParams.get('duplicate');
     const saveTemplateId = searchParams.get('saveTemplate');
     const tabParam = searchParams.get('tab');
+
+    // Handle create param from mobile FAB
+    if (createParam === 'true') {
+      resetForm();
+      openEditDialog(true);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('create');
+      setSearchParams(newParams, { replace: true });
+      return;
+    }
 
     if (saveTemplateId && safeJobs.length > 0) {
       setPendingSaveTemplateJobId(saveTemplateId);

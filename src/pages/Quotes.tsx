@@ -82,11 +82,21 @@ const Quotes = () => {
     if (!open) restoreScrollPosition();
   }, [saveScrollPosition, restoreScrollPosition]);
 
-  // Handle URL params for edit/duplicate/saveTemplate
+  // Handle URL params for edit/duplicate/saveTemplate/create
   useEffect(() => {
+    const createParam = searchParams.get('create');
     const editQuoteId = searchParams.get('edit');
     const duplicateQuoteId = searchParams.get('duplicate');
     const saveTemplateId = searchParams.get('saveTemplate');
+    
+    // Handle create param from mobile FAB
+    if (createParam === 'true') {
+      resetForm();
+      openEditDialog(true);
+      searchParams.delete('create');
+      setSearchParams(searchParams, { replace: true });
+      return;
+    }
     
     if (saveTemplateId && quotes.length > 0) {
       setPendingSaveTemplateQuoteId(saveTemplateId);
