@@ -680,17 +680,10 @@ async function generatePDFDocument(
         y -= 12;
       }
 
-      page.drawLine({
-        start: { x: tableLeft, y: y - 3 },
-        end: { x: tableRight, y: y - 3 },
-        thickness: 0.5,
-        color: rgb(0.9, 0.9, 0.9),
-      });
-
-      y -= 8;
+      y -= 4;
     }
 
-    y -= 10; // Space between sections
+  y -= 10; // Space between sections
   };
 
   // Draw Products section (if any)
@@ -698,6 +691,14 @@ async function generatePDFDocument(
 
   // Draw Services section (if any)
   drawItemsSection(services, "Services");
+
+  // Draw separator line above totals section
+  page.drawLine({
+    start: { x: tableLeft, y: y - 5 },
+    end: { x: tableRight, y: y - 5 },
+    thickness: 0.5,
+    color: rgb(0.85, 0.85, 0.85),
+  });
 
   y -= 20;
 
