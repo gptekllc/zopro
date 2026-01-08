@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,7 @@ import {
   FileDown, Mail, Edit, PenTool, Calendar, 
   DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
   ChevronRight, CheckCircle2, Briefcase, FileText, Link2, Send, Loader2,
-  List, Image as ImageIcon, CreditCard, Trash2, Pencil, RotateCcw, XCircle, MoreHorizontal, Ban, StickyNote
+  List, Image as ImageIcon, CreditCard, Trash2, Pencil, RotateCcw, XCircle, MoreHorizontal, Ban, StickyNote, ChevronDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -183,6 +183,16 @@ export function InvoiceDetailDialog({
   
   // Receipt loading state
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
+  
+  // Local state for optimistic UI updates
+  const [localStatus, setLocalStatus] = useState(invoice?.status);
+  
+  // Sync local state when invoice prop changes
+  useEffect(() => {
+    if (invoice) {
+      setLocalStatus(invoice.status);
+    }
+  }, [invoice?.status]);
 
   if (!invoice) return null;
 
@@ -403,29 +413,32 @@ export function InvoiceDetailDialog({
             {onStatusChange ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Badge className={`${statusColors[invoice.status] || 'bg-muted'} shrink-0 text-xs cursor-pointer hover:opacity-80 transition-opacity`}>
-                    {invoice.status === 'paid' ? 'Paid in Full' : 
-                     invoice.status === 'partially_paid' ? 'Partially Paid' :
-                     invoice.status === 'voided' ? 'Voided' :
-                     invoice.status.charAt(0).toUpperCase() + invoice.status.slice(1)}
-                    <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                  <Badge className={`${statusColors[localStatus || invoice.status] || 'bg-muted'} shrink-0 text-xs cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1`}>
+                    <ChevronDown className="h-3 w-3" />
+                    {(localStatus || invoice.status) === 'paid' ? 'Paid in Full' : 
+                     (localStatus || invoice.status) === 'partially_paid' ? 'Partially Paid' :
+                     (localStatus || invoice.status) === 'voided' ? 'Voided' :
+                     (localStatus || invoice.status).charAt(0).toUpperCase() + (localStatus || invoice.status).slice(1)}
                   </Badge>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover z-50">
+                <DropdownMenuContent align="end" className="bg-popover z-50 min-w-[120px]">
                   {INVOICE_STATUSES.map(status => (
                     <DropdownMenuItem
                       key={status}
-                      onClick={() => onStatusChange(invoice.id, status)}
-                      disabled={invoice.status === status}
-                      className={invoice.status === status ? 'bg-accent' : ''}
+                      onClick={() => {
+                        if ((localStatus || invoice.status) !== status) {
+                          setLocalStatus(status);
+                          onStatusChange(invoice.id, status);
+                        }
+                      }}
+                      className={`${(localStatus || invoice.status) === status ? 'bg-accent' : ''} p-1`}
                     >
-                      <Badge className={`${statusColors[status] || 'bg-muted'} mr-2`} variant="outline">
+                      <Badge className={`${statusColors[status] || 'bg-muted'} text-xs w-full justify-center`}>
                         {status === 'paid' ? 'Paid in Full' : 
                          status === 'partially_paid' ? 'Partially Paid' :
                          status === 'voided' ? 'Voided' :
                          status.charAt(0).toUpperCase() + status.slice(1)}
                       </Badge>
-                      {invoice.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>

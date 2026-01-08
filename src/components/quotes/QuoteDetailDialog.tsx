@@ -12,7 +12,7 @@ import {
 import { 
   FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, 
   DollarSign, FileText, CheckCircle, Send, UserCog, ChevronRight, CheckCircle2,
-  Briefcase, Receipt, Link2, List, Image as ImageIcon, StickyNote
+  Briefcase, Receipt, Link2, List, Image as ImageIcon, StickyNote, ChevronDown
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
@@ -22,7 +22,7 @@ import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useJobs, Job } from '@/hooks/useJobs';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
 import { useQuotePhotos, useUploadQuotePhoto, useDeleteQuotePhoto, useUpdateQuotePhotoType } from '@/hooks/useQuotePhotos';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { formatAmount } from '@/lib/formatAmount';
 
 const QUOTE_STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'expired'] as const;
@@ -96,6 +96,16 @@ export function QuoteDetailDialog({
   const uploadPhoto = useUploadQuotePhoto();
   const deletePhoto = useDeleteQuotePhoto();
   const updatePhotoType = useUpdateQuotePhotoType();
+  
+  // Local state for optimistic UI updates
+  const [localStatus, setLocalStatus] = useState(quote?.status);
+  
+  // Sync local state when quote prop changes
+  useEffect(() => {
+    if (quote) {
+      setLocalStatus(quote.status);
+    }
+  }, [quote?.status]);
 
   // Find job linked to this quote
   const linkedJob = useMemo(() => {
@@ -151,23 +161,26 @@ export function QuoteDetailDialog({
             {onStatusChange ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Badge className={`${statusColors[quote.status] || 'bg-muted'} shrink-0 text-xs cursor-pointer hover:opacity-80 transition-opacity capitalize`}>
-                    {quote.status === 'accepted' ? 'approved' : quote.status}
-                    <ChevronRight className="w-3 h-3 ml-1 rotate-90" />
+                  <Badge className={`${statusColors[localStatus || quote.status] || 'bg-muted'} shrink-0 text-xs cursor-pointer hover:opacity-80 transition-opacity capitalize flex items-center gap-1`}>
+                    <ChevronDown className="h-3 w-3" />
+                    {(localStatus || quote.status) === 'accepted' ? 'approved' : (localStatus || quote.status)}
                   </Badge>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover z-50">
+                <DropdownMenuContent align="end" className="bg-popover z-50 min-w-[100px]">
                   {QUOTE_STATUSES.map(status => (
                     <DropdownMenuItem
                       key={status}
-                      onClick={() => onStatusChange(quote.id, status)}
-                      disabled={quote.status === status}
-                      className={quote.status === status ? 'bg-accent' : ''}
+                      onClick={() => {
+                        if ((localStatus || quote.status) !== status) {
+                          setLocalStatus(status);
+                          onStatusChange(quote.id, status);
+                        }
+                      }}
+                      className={`${(localStatus || quote.status) === status ? 'bg-accent' : ''} p-1`}
                     >
-                      <Badge className={`${statusColors[status] || 'bg-muted'} mr-2 capitalize`} variant="outline">
+                      <Badge className={`${statusColors[status] || 'bg-muted'} text-xs capitalize w-full justify-center`}>
                         {status === 'accepted' ? 'approved' : status}
                       </Badge>
-                      {quote.status === status && <CheckCircle2 className="w-4 h-4 ml-auto" />}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
