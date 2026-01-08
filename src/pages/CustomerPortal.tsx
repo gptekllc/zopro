@@ -2905,6 +2905,10 @@ const CustomerPortal = () => {
                         <Button
                           size="sm"
                           onClick={() => {
+                            setFeedbackMode('create');
+                            setFeedbackRating(5);
+                            setFeedbackText('');
+                            setExistingFeedbackId(null);
                             setFeedbackJob(viewingJob);
                             setShowFeedbackDialog(true);
                             setViewingJob(null);
