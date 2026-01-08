@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link, Clock, BookTemplate, CalendarClock, Shield } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link, Clock, BookTemplate, CalendarClock, Shield, ShieldCheck } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -23,6 +23,7 @@ import PageContainer from '@/components/layout/PageContainer';
 // Import template components
 import { JobTemplatesTab, QuoteTemplatesTab } from '@/pages/Templates';
 import { EmailTemplatesTab } from '@/components/templates/EmailTemplatesTab';
+import SecuritySettingsContent from '@/components/settings/SecuritySettingsContent';
 
 const Company = () => {
   const { isAdmin } = useAuth();
@@ -308,6 +309,10 @@ const Company = () => {
                 <Building2 className="w-4 h-4 shrink-0" />
                 <span className="text-xs sm:text-sm whitespace-nowrap">Details</span>
               </TabsTrigger>
+              <TabsTrigger value="security" className="flex items-center gap-1.5 px-3 py-2">
+                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <span className="text-xs sm:text-sm whitespace-nowrap">Security</span>
+              </TabsTrigger>
               <TabsTrigger value="billing" className="flex items-center gap-1.5 px-3 py-2">
                 <Receipt className="w-4 h-4 shrink-0" />
                 <span className="text-xs sm:text-sm whitespace-nowrap">Billing</span>
@@ -334,6 +339,10 @@ const Company = () => {
             <TabsTrigger value="details" className="gap-2">
               <Building2 className="w-4 h-4" />
               Details
+            </TabsTrigger>
+            <TabsTrigger value="security" className="gap-2">
+              <ShieldCheck className="w-4 h-4" />
+              Security
             </TabsTrigger>
             <TabsTrigger value="billing" className="gap-2">
               <Receipt className="w-4 h-4" />
@@ -581,6 +590,10 @@ const Company = () => {
               </form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="security">
+          <SecuritySettingsContent />
         </TabsContent>
 
         <TabsContent value="billing">
