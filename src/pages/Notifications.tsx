@@ -218,30 +218,6 @@ const Notifications = () => {
                 <span className="hidden sm:inline">Mark all as read</span>
               </Button>
             )}
-            {notifications.length > 0 && (
-              <Button 
-                variant="outline"
-                size="sm"
-                className="sm:size-default"
-                onClick={async () => {
-                  if (confirm('Are you sure you want to clear all notifications?')) {
-                    const { error } = await supabase
-                      .from('notifications')
-                      .delete()
-                      .eq('user_id', user!.id);
-                    if (error) {
-                      toast.error('Failed to clear notifications');
-                    } else {
-                      setNotifications([]);
-                      toast.success('All notifications cleared');
-                    }
-                  }
-                }}
-              >
-                <Trash2 className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Clear all</span>
-              </Button>
-            )}
           </div>
         </div>
 
