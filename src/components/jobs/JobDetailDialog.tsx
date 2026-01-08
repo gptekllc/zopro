@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Edit, PenTool, Calendar, User, Briefcase, Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt, Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star, List, Camera, StickyNote, History, RefreshCw } from 'lucide-react';
+import { Edit, PenTool, Calendar, User, Briefcase, Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt, Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star, List, Camera, StickyNote, History, RefreshCw, ChevronDown } from 'lucide-react';
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -307,50 +307,50 @@ export function JobDetailDialog({
             <div className="flex gap-1 sm:gap-2 shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Badge className={`${priorityColors[job.priority] || 'bg-muted'} text-xs capitalize cursor-pointer hover:opacity-80`}>
+                  <Badge className={`${priorityColors[job.priority] || 'bg-muted'} text-xs capitalize cursor-pointer hover:opacity-80 flex items-center gap-1`}>
+                    <ChevronDown className="h-3 w-3" />
                     {job.priority}
                   </Badge>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuContent align="end" className="bg-popover min-w-[100px]">
                   {(['low', 'medium', 'high', 'urgent'] as const).map((priority) => (
                     <DropdownMenuItem
                       key={priority}
-                      className={`capitalize ${job.priority === priority ? 'bg-accent' : ''}`}
+                      className={`${job.priority === priority ? 'bg-accent' : ''} p-1`}
                       onClick={() => {
                         if (job.priority !== priority) {
                           updateJob.mutate({ id: job.id, priority });
                         }
                       }}
                     >
-                      <Badge className={`${priorityColors[priority]} text-xs capitalize mr-2`}>
+                      <Badge className={`${priorityColors[priority]} text-xs capitalize w-full justify-center`}>
                         {priority}
                       </Badge>
-                      {priority}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Badge className={`${statusColors[job.status] || 'bg-muted'} text-xs capitalize cursor-pointer hover:opacity-80`}>
+                  <Badge className={`${statusColors[job.status] || 'bg-muted'} text-xs capitalize cursor-pointer hover:opacity-80 flex items-center gap-1`}>
+                    <ChevronDown className="h-3 w-3" />
                     {job.status.replace('_', ' ')}
                   </Badge>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuContent align="end" className="bg-popover min-w-[120px]">
                   {(['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const).map((status) => (
                     <DropdownMenuItem
                       key={status}
-                      className={`capitalize ${job.status === status ? 'bg-accent' : ''}`}
+                      className={`${job.status === status ? 'bg-accent' : ''} p-1`}
                       onClick={() => {
                         if (job.status !== status) {
                           updateJob.mutate({ id: job.id, status });
                         }
                       }}
                     >
-                      <Badge className={`${statusColors[status]} text-xs capitalize mr-2`}>
+                      <Badge className={`${statusColors[status]} text-xs capitalize w-full justify-center`}>
                         {status.replace('_', ' ')}
                       </Badge>
-                      {status.replace('_', ' ')}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
