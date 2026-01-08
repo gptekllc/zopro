@@ -20,7 +20,7 @@ import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job,
 import { Quote } from '@/hooks/useQuotes';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { useInvoices, Invoice, getInvoiceStatusLabel } from '@/hooks/useInvoices';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { formatAmount } from '@/lib/formatAmount';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
 import { useJobNotifications } from '@/hooks/useJobNotifications';
@@ -121,6 +121,20 @@ export function JobDetailDialog({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
+  
+  // Ref for auto-scrolling to feedback section
+  const feedbackSectionRef = useRef<HTMLDivElement>(null);
+  
+  // Auto-scroll to feedback section when initialTab is 'feedback'
+  useEffect(() => {
+    if (open && initialTab === 'feedback' && feedbackSectionRef.current) {
+      // Small delay to ensure the tab content is rendered
+      const timer = setTimeout(() => {
+        feedbackSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [open, initialTab]);
 
   // Filter invoices that are linked to this job (via quote_id that matches job's origin quote or child quotes)
   const jobInvoices = useMemo(() => {
@@ -626,7 +640,7 @@ export function JobDetailDialog({
             </TabsContent>
 
             {/* Customer Feedback Tab */}
-            <TabsContent value="feedback" className="mt-4">
+            <TabsContent value="feedback" className="mt-4" ref={feedbackSectionRef}>
               {loadingFeedbacks ? <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p> : feedbacks.length > 0 ? <div className="space-y-3">
                   {feedbacks.map((feedback: JobFeedback) => <div key={feedback.id} className={`p-3 rounded-lg border ${feedback.is_negative ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-muted/50'}`}>
                       <div className="flex items-start justify-between gap-2">
