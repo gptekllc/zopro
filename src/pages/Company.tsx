@@ -98,6 +98,7 @@ const Company = () => {
     require_mfa: false,
   });
   const [runningAutomations, setRunningAutomations] = useState(false);
+  const [savingSection, setSavingSection] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formInitialized, setFormInitialized] = useState(false);
   const [searchParams] = useSearchParams();
@@ -248,6 +249,19 @@ const Company = () => {
       email_quote_body: preferences.email_quote_body || null,
       email_invoice_body: preferences.email_invoice_body || null,
     } as any);
+  };
+
+  const handleSaveSection = async (sectionKey: string, sectionFields: Partial<typeof preferences>) => {
+    if (!company) return;
+    setSavingSection(sectionKey);
+    try {
+      await updateCompany.mutateAsync({
+        id: company.id,
+        ...sectionFields,
+      } as any);
+    } finally {
+      setSavingSection(null);
+    }
   };
 
   const handleRunAutomations = async () => {
@@ -837,6 +851,29 @@ const Company = () => {
                           onChange={(e) => setPreferences({ ...preferences, pdf_footer_text: e.target.value })}
                         />
                       </div>
+                      <div className="pt-4 border-t">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          disabled={savingSection === 'pdf'}
+                          onClick={() => handleSaveSection('pdf', {
+                            pdf_show_logo: preferences.pdf_show_logo,
+                            pdf_show_notes: preferences.pdf_show_notes,
+                            pdf_show_signature: preferences.pdf_show_signature,
+                            pdf_show_line_item_details: preferences.pdf_show_line_item_details,
+                            pdf_show_job_photos: preferences.pdf_show_job_photos,
+                            pdf_show_quote_photos: preferences.pdf_show_quote_photos,
+                            pdf_show_invoice_photos: preferences.pdf_show_invoice_photos,
+                            pdf_terms_conditions: preferences.pdf_terms_conditions || null,
+                            pdf_footer_text: preferences.pdf_footer_text || null,
+                          } as any)}
+                        >
+                          {savingSection === 'pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save PDF Settings
+                        </Button>
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -881,6 +918,23 @@ const Company = () => {
                           rows={3}
                         />
                         <p className="text-xs text-muted-foreground">This text will appear when you send invoices to customers.</p>
+                      </div>
+                      <div className="pt-4 border-t">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          disabled={savingSection === 'email'}
+                          onClick={() => handleSaveSection('email', {
+                            email_job_body: preferences.email_job_body || null,
+                            email_quote_body: preferences.email_quote_body || null,
+                            email_invoice_body: preferences.email_invoice_body || null,
+                          } as any)}
+                        >
+                          {savingSection === 'email' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save Email Settings
+                        </Button>
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -963,6 +1017,25 @@ const Company = () => {
                           onCheckedChange={(checked) => setPreferences({ ...preferences, auto_send_job_scheduled_email: checked })}
                         />
                       </div>
+                      <div className="pt-4 border-t">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          disabled={savingSection === 'jobs'}
+                          onClick={() => handleSaveSection('jobs', {
+                            default_job_duration: preferences.default_job_duration,
+                            default_job_priority: preferences.default_job_priority,
+                            require_job_completion_signature: preferences.require_job_completion_signature,
+                            notify_on_job_assignment: preferences.notify_on_job_assignment,
+                            auto_send_job_scheduled_email: preferences.auto_send_job_scheduled_email,
+                          } as any)}
+                        >
+                          {savingSection === 'jobs' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save Job Settings
+                        </Button>
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -1005,6 +1078,23 @@ const Company = () => {
                           checked={preferences.require_quote_signature}
                           onCheckedChange={(checked) => setPreferences({ ...preferences, require_quote_signature: checked })}
                         />
+                      </div>
+                      <div className="pt-4 border-t">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          disabled={savingSection === 'quotes'}
+                          onClick={() => handleSaveSection('quotes', {
+                            default_quote_validity_days: preferences.default_quote_validity_days,
+                            auto_expire_quotes: preferences.auto_expire_quotes,
+                            require_quote_signature: preferences.require_quote_signature,
+                          } as any)}
+                        >
+                          {savingSection === 'quotes' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save Quote Settings
+                        </Button>
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -1049,6 +1139,23 @@ const Company = () => {
                           checked={preferences.auto_apply_late_fees}
                           onCheckedChange={(checked) => setPreferences({ ...preferences, auto_apply_late_fees: checked })}
                         />
+                      </div>
+                      <div className="pt-4 border-t">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          disabled={savingSection === 'invoices'}
+                          onClick={() => handleSaveSection('invoices', {
+                            auto_send_invoice_reminders: preferences.auto_send_invoice_reminders,
+                            invoice_reminder_days: preferences.invoice_reminder_days,
+                            auto_apply_late_fees: preferences.auto_apply_late_fees,
+                          } as any)}
+                        >
+                          {savingSection === 'invoices' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save Invoice Settings
+                        </Button>
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -1102,6 +1209,24 @@ const Company = () => {
                           onCheckedChange={(checked) => setPreferences({ ...preferences, notify_on_automation_run: checked })}
                         />
                       </div>
+                      <div className="pt-4 border-t">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          disabled={savingSection === 'notifications'}
+                          onClick={() => handleSaveSection('notifications', {
+                            email_on_new_job: preferences.email_on_new_job,
+                            email_on_payment_received: preferences.email_on_payment_received,
+                            send_weekly_summary: preferences.send_weekly_summary,
+                            notify_on_automation_run: preferences.notify_on_automation_run,
+                          } as any)}
+                        >
+                          {savingSection === 'notifications' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save Notification Settings
+                        </Button>
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -1151,6 +1276,23 @@ const Company = () => {
                         <p className="text-sm text-muted-foreground">
                           The base URL for customer portal links in emails (e.g., https://zopro.app). Leave blank to use the default.
                         </p>
+                      </div>
+                      <div className="pt-4 border-t">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          disabled={savingSection === 'branding'}
+                          onClick={() => handleSaveSection('branding', {
+                            brand_primary_color: preferences.brand_primary_color,
+                            customer_portal_welcome_message: preferences.customer_portal_welcome_message || null,
+                            custom_domain: preferences.custom_domain || null,
+                          } as any)}
+                        >
+                          {savingSection === 'branding' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save Branding Settings
+                        </Button>
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -1236,6 +1378,25 @@ const Company = () => {
                           <p className="text-sm text-muted-foreground">Auto clock-out after this duration</p>
                         </div>
                       </div>
+                      <div className="pt-4 border-t">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          disabled={savingSection === 'timeclock'}
+                          onClick={() => handleSaveSection('timeclock', {
+                            timeclock_require_job_selection: preferences.timeclock_require_job_selection,
+                            timeclock_enforce_job_labor: preferences.timeclock_enforce_job_labor,
+                            timeclock_allow_manual_labor_edit: preferences.timeclock_allow_manual_labor_edit,
+                            timeclock_auto_start_break_reminder: preferences.timeclock_auto_start_break_reminder,
+                            timeclock_max_shift_hours: preferences.timeclock_max_shift_hours,
+                          } as any)}
+                        >
+                          {savingSection === 'timeclock' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save Time Clock Settings
+                        </Button>
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
 
@@ -1276,6 +1437,21 @@ const Company = () => {
                           <li>Email verification required for new accounts</li>
                           <li>Password requirements: 10+ chars, uppercase, lowercase, number, special char</li>
                         </ul>
+                      </div>
+                      <div className="pt-4 border-t">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          disabled={savingSection === 'security'}
+                          onClick={() => handleSaveSection('security', {
+                            require_mfa: preferences.require_mfa,
+                          } as any)}
+                        >
+                          {savingSection === 'security' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save Security Settings
+                        </Button>
                       </div>
                     </AccordionContent>
                   </AccordionItem>
