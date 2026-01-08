@@ -128,6 +128,18 @@ export function JobDetailDialog({
   const [emailAddress, setEmailAddress] = useState('');
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
   
+  // Local state for optimistic UI updates
+  const [localPriority, setLocalPriority] = useState(job?.priority);
+  const [localStatus, setLocalStatus] = useState(job?.status);
+  
+  // Sync local state when job prop changes
+  useEffect(() => {
+    if (job) {
+      setLocalPriority(job.priority);
+      setLocalStatus(job.status);
+    }
+  }, [job?.priority, job?.status]);
+  
   // Ref for auto-scrolling to feedback section
   const feedbackSectionRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -307,18 +319,19 @@ export function JobDetailDialog({
             <div className="flex gap-1 sm:gap-2 shrink-0">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Badge className={`${priorityColors[job.priority] || 'bg-muted'} text-xs capitalize cursor-pointer hover:opacity-80 flex items-center gap-1`}>
+                  <Badge className={`${priorityColors[localPriority || job.priority] || 'bg-muted'} text-xs capitalize cursor-pointer hover:opacity-80 flex items-center gap-1`}>
                     <ChevronDown className="h-3 w-3" />
-                    {job.priority}
+                    {localPriority || job.priority}
                   </Badge>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover min-w-[100px]">
                   {(['low', 'medium', 'high', 'urgent'] as const).map((priority) => (
                     <DropdownMenuItem
                       key={priority}
-                      className={`${job.priority === priority ? 'bg-accent' : ''} p-1`}
+                      className={`${(localPriority || job.priority) === priority ? 'bg-accent' : ''} p-1`}
                       onClick={() => {
-                        if (job.priority !== priority) {
+                        if ((localPriority || job.priority) !== priority) {
+                          setLocalPriority(priority);
                           updateJob.mutate({ id: job.id, priority });
                         }
                       }}
@@ -332,18 +345,19 @@ export function JobDetailDialog({
               </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Badge className={`${statusColors[job.status] || 'bg-muted'} text-xs capitalize cursor-pointer hover:opacity-80 flex items-center gap-1`}>
+                  <Badge className={`${statusColors[localStatus || job.status] || 'bg-muted'} text-xs capitalize cursor-pointer hover:opacity-80 flex items-center gap-1`}>
                     <ChevronDown className="h-3 w-3" />
-                    {job.status.replace('_', ' ')}
+                    {(localStatus || job.status).replace('_', ' ')}
                   </Badge>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover min-w-[120px]">
                   {(['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const).map((status) => (
                     <DropdownMenuItem
                       key={status}
-                      className={`${job.status === status ? 'bg-accent' : ''} p-1`}
+                      className={`${(localStatus || job.status) === status ? 'bg-accent' : ''} p-1`}
                       onClick={() => {
-                        if (job.status !== status) {
+                        if ((localStatus || job.status) !== status) {
+                          setLocalStatus(status);
                           updateJob.mutate({ id: job.id, status });
                         }
                       }}
