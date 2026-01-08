@@ -74,6 +74,26 @@ export function JobListCard({
   const hasOnLeaveAssignee = job.assignees?.some(a => a.profile?.employment_status === 'on_leave') 
     || job.assignee?.employment_status === 'on_leave';
   
+  // Determine which date to show (only one)
+  const now = new Date();
+  const isCompleted = job.status === 'completed' || job.status === 'invoiced';
+  const scheduledPast = job.scheduled_start && new Date(job.scheduled_start) < now;
+  
+  let displayDate: string | null = null;
+  let dateLabel: 'completed' | 'scheduled' | 'created' = 'created';
+  
+  if (isCompleted || scheduledPast) {
+    // Show completed/actual end time if available, otherwise fall back to scheduled or created
+    displayDate = (job as any).actual_end || job.scheduled_start || job.created_at;
+    dateLabel = 'completed';
+  } else if (job.scheduled_start) {
+    displayDate = job.scheduled_start;
+    dateLabel = 'scheduled';
+  } else {
+    displayDate = job.created_at;
+    dateLabel = 'created';
+  }
+  
   const metadataRow = <>
       {assigneeNames && <span className="flex items-center gap-1 mx-0 px-[5px] bg-inherit text-primary">
           <UserCog className="w-3 h-3" />
@@ -83,11 +103,11 @@ export function JobListCard({
               On Leave
             </Badge>}
         </span>}
-      {job.scheduled_start && <>
+      {displayDate && <>
           {assigneeNames && <span>•</span>}
           <span className="flex items-center gap-1 shrink-0">
-            <Calendar className="w-3 h-3" />
-            {format(new Date(job.scheduled_start), 'MMM d, h:mm a')}
+            {dateLabel === 'completed' ? <CheckCircle2 className="w-3 h-3" /> : <Calendar className="w-3 h-3" />}
+            {format(new Date(displayDate), 'MMM d, h:mm a')}
           </span>
         </>}
     </>;
