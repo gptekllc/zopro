@@ -103,13 +103,26 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const resendApiKey = Deno.env.get('RESEND_API_KEY');
+
+  const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
+  const getAuthEmail = async (): Promise<string | null> => {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) return null;
+
+    const token = authHeader.replace('Bearer ', '').trim();
+    if (!token) return null;
+
+    const { data, error } = await adminClient.auth.getUser(token);
+    if (error) return null;
+
+    return data.user?.email ?? null;
+  };
+
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-    
     const body = await req.json();
     const { action } = body;
 
@@ -128,7 +141,7 @@ Deno.serve(async (req) => {
       // Find customer by email
       const { data: customers, error: customerError } = await adminClient
         .from('customers')
-        .select('id, name, email, company_id, companies(name)')
+        .select('id, name, email, company_id, companies(name, custom_domain)')
         .eq('email', email.toLowerCase())
         .limit(1);
 
@@ -154,10 +167,12 @@ Deno.serve(async (req) => {
       expiresAt.setHours(expiresAt.getHours() + 24); // 24 hour expiry
 
       const signedToken = await generateSignedToken(customer.id, expiresAt);
-      
-      // Get the app URL from environment or request origin
-      const origin = Deno.env.get('APP_BASE_URL') || 'https://zopro.app';
-      const magicLink = `${origin}/customer-portal?token=${encodeURIComponent(signedToken)}&customer=${customer.id}`;
+
+      // Prefer company custom domain, then configured app base URL, then production domain.
+      const rawBaseUrl = (customer as any).companies?.custom_domain || Deno.env.get('APP_BASE_URL') || 'https://fsm.zopro.app';
+      const baseUrl = rawBaseUrl.startsWith('http') ? rawBaseUrl : `https://${rawBaseUrl}`;
+
+      const magicLink = `${baseUrl}/customer-portal?token=${encodeURIComponent(signedToken)}&customer=${customer.id}`;
 
       console.log('Generated magic link for customer');
 
@@ -200,6 +215,79 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, message: 'Magic link sent!' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'check-auth-user-access') {
+      const email = await getAuthEmail();
+      if (!email) {
+        return new Response(
+          JSON.stringify({ hasCustomer: false, error: 'Not authenticated' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: customers, error } = await adminClient
+        .from('customers')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .limit(1);
+
+      if (error) {
+        console.error('Error checking customer access:', error);
+        return new Response(
+          JSON.stringify({ hasCustomer: false }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ hasCustomer: (customers?.length ?? 0) > 0 }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'create-link-for-auth-user') {
+      const email = await getAuthEmail();
+      if (!email) {
+        return new Response(
+          JSON.stringify({ error: 'Not authenticated' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data: customers, error: customerError } = await adminClient
+        .from('customers')
+        .select('id, company_id, companies(custom_domain)')
+        .eq('email', email.toLowerCase())
+        .limit(1);
+
+      if (customerError) {
+        console.error('Error finding customer for auth user:', customerError);
+        throw customerError;
+      }
+
+      if (!customers || customers.length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'No customer profile found for this email' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const customer = customers[0];
+
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      const signedToken = await generateSignedToken(customer.id, expiresAt);
+
+      const rawBaseUrl = (customer as any).companies?.custom_domain || Deno.env.get('APP_BASE_URL') || 'https://fsm.zopro.app';
+      const baseUrl = rawBaseUrl.startsWith('http') ? rawBaseUrl : `https://${rawBaseUrl}`;
+
+      const magicLink = `${baseUrl}/customer-portal?token=${encodeURIComponent(signedToken)}&customer=${customer.id}`;
+
+      return new Response(
+        JSON.stringify({ success: true, url: magicLink, customerId: customer.id, token: signedToken }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

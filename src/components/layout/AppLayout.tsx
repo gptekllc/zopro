@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -139,13 +139,57 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
     item.roles.some(role => userRoles.includes(role as any)) || userRoles.length === 0
   );
 
-  // Check if user has both company role (admin/technician/manager) AND customer role
+  // Company portal access (based on roles)
   const hasCompanyRole = userRoles.some(role => ['admin', 'technician', 'manager'].includes(role));
-  const hasCustomerRole = userRoles.includes('customer');
-  const canSwitchPortals = hasCompanyRole && hasCustomerRole;
 
-  const handleSwitchToCustomerPortal = () => {
-    navigate('/customer-portal');
+  // Customer portal access is determined by whether this authenticated email exists in customers.
+  const [hasCustomerPortalAccess, setHasCustomerPortalAccess] = useState(false);
+  const [isCheckingCustomerPortalAccess, setIsCheckingCustomerPortalAccess] = useState(false);
+
+  const checkCustomerPortalAccess = useCallback(async () => {
+    if (!user || !hasCompanyRole) {
+      setHasCustomerPortalAccess(false);
+      return;
+    }
+
+    setIsCheckingCustomerPortalAccess(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { action: 'check-auth-user-access' },
+      });
+
+      if (error) throw error;
+      setHasCustomerPortalAccess(!!data?.hasCustomer);
+    } catch {
+      setHasCustomerPortalAccess(false);
+    } finally {
+      setIsCheckingCustomerPortalAccess(false);
+    }
+  }, [user, hasCompanyRole]);
+
+  useEffect(() => {
+    checkCustomerPortalAccess();
+  }, [checkCustomerPortalAccess]);
+
+  const canSwitchPortals = hasCompanyRole && hasCustomerPortalAccess;
+
+  const handleSwitchToCustomerPortal = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: { action: 'create-link-for-auth-user' },
+      });
+
+      if (error) throw error;
+      if (!data?.url) {
+        toast.error('No customer portal access found for this account.');
+        return;
+      }
+
+      // Go through the magic link URL so the portal can authenticate immediately.
+      window.location.href = data.url;
+    } catch (e: any) {
+      toast.error(e?.message || 'Unable to open customer portal');
+    }
   };
 
   const handleSwitchToCompanyPortal = () => {
@@ -203,7 +247,10 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
               {canSwitchPortals && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={isInCustomerPortal ? handleSwitchToCompanyPortal : handleSwitchToCustomerPortal}>
+                  <DropdownMenuItem
+                    disabled={isCheckingCustomerPortalAccess}
+                    onClick={isInCustomerPortal ? handleSwitchToCompanyPortal : handleSwitchToCustomerPortal}
+                  >
                     <ArrowRightLeft className="w-4 h-4 mr-2" />
                     {isInCustomerPortal ? 'Switch to Company Portal' : 'Switch to Customer Portal'}
                   </DropdownMenuItem>
@@ -291,7 +338,10 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
                 {canSwitchPortals && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={isInCustomerPortal ? handleSwitchToCompanyPortal : handleSwitchToCustomerPortal}>
+                    <DropdownMenuItem
+                      disabled={isCheckingCustomerPortalAccess}
+                      onClick={isInCustomerPortal ? handleSwitchToCompanyPortal : handleSwitchToCustomerPortal}
+                    >
                       <ArrowRightLeft className="w-4 h-4 mr-2" />
                       {isInCustomerPortal ? 'Switch to Company Portal' : 'Switch to Customer Portal'}
                     </DropdownMenuItem>
