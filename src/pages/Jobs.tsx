@@ -5,6 +5,7 @@ import { useJobs, useCreateJob, useUpdateJob, Job } from '@/hooks/useJobs';
 import { useJobTemplates, JobTemplate } from '@/hooks/useJobTemplates';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useQuotes } from '@/hooks/useQuotes';
+import { useInvoices } from '@/hooks/useInvoices';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -50,6 +51,7 @@ const Jobs = () => {
   const safeJobs = useMemo(() => (jobs ?? []).filter(Boolean) as Job[], [jobs]);
   const { data: customers = [] } = useCustomers();
   const { data: quotes = [] } = useQuotes();
+  const { data: invoices = [] } = useInvoices();
   const { data: profiles = [] } = useProfiles();
   const { data: company } = useCompany();
   const { data: templates = [] } = useJobTemplates();
@@ -58,6 +60,18 @@ const Jobs = () => {
   const safeCustomers = useMemo(() => (Array.isArray(customers) ? customers : []).filter((c: any) => c && c.id), [customers]);
   const safeQuotes = useMemo(() => (Array.isArray(quotes) ? quotes : []).filter((q: any) => q && q.id), [quotes]);
   const safeProfiles = useMemo(() => (Array.isArray(profiles) ? profiles : []).filter((p: any) => p && p.id), [profiles]);
+  
+  // Filter quotes: only "sent" or "accepted" status, and not already converted to invoice
+  const invoicedQuoteIds = useMemo(() => {
+    return new Set((invoices || []).filter((inv: any) => inv?.quote_id).map((inv: any) => inv.quote_id));
+  }, [invoices]);
+  
+  const availableQuotesForImport = useMemo(() => {
+    return safeQuotes.filter((q: any) => 
+      (q?.status === 'sent' || q?.status === 'accepted') && 
+      !invoicedQuoteIds.has(q?.id)
+    );
+  }, [safeQuotes, invoicedQuoteIds]);
 
   const createJob = useCreateJob();
   const updateJob = useUpdateJob();
@@ -505,29 +519,31 @@ const Jobs = () => {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {/* Import from Quote or Template */}
-                  {!editingJob && (
+                  {!editingJob && (availableQuotesForImport.length > 0 || templates.length > 0) && (
                     <div className="flex flex-col gap-3">
-                      <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
-                        <div className="flex-1 space-y-2">
-                          <Label>Import from Quote (optional)</Label>
-                          <Select value={importQuoteId} onValueChange={setImportQuoteId}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a quote" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {safeQuotes.filter((q: any) => (q?.status === 'accepted' || q?.status === 'sent') && q?.id).map((q: any) => (
-                                <SelectItem key={q.id} value={q.id}>
-                                  {String(q.quote_number ?? 'Quote')} - {safeCustomers.find((c: any) => c?.id === q?.customer_id)?.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                      {availableQuotesForImport.length > 0 && (
+                        <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                          <div className="flex-1 space-y-2">
+                            <Label>Import from Quote (optional)</Label>
+                            <Select value={importQuoteId} onValueChange={setImportQuoteId}>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select a quote" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {availableQuotesForImport.map((q: any) => (
+                                  <SelectItem key={q.id} value={q.id}>
+                                    {String(q.quote_number ?? 'Quote')} - {safeCustomers.find((c: any) => c?.id === q?.customer_id)?.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <Button type="button" variant="outline" onClick={handleImportQuote} disabled={!importQuoteId} className="w-full sm:w-auto">
+                            <FileText className="w-4 h-4 mr-2" />
+                            Import
+                          </Button>
                         </div>
-                        <Button type="button" variant="outline" onClick={handleImportQuote} disabled={!importQuoteId} className="w-full sm:w-auto">
-                          <FileText className="w-4 h-4 mr-2" />
-                          Import
-                        </Button>
-                      </div>
+                      )}
 
                       {templates.length > 0 && (
                         <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
