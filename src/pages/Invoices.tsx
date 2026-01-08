@@ -5,13 +5,15 @@ import { useInvoices, useCreateInvoice, useUpdateInvoice, Invoice } from "@/hook
 import { useCustomers } from "@/hooks/useCustomers";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useCompany } from "@/hooks/useCompany";
+import { useJobs, Job } from "@/hooks/useJobs";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, FileInput } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { toast } from "sonner";
 import { InlineCustomerForm } from "@/components/customers/InlineCustomerForm";
@@ -26,17 +28,20 @@ const Invoices = () => {
 
   // Determine if we need archived data based on URL or default
   const [includeArchived, setIncludeArchived] = useState(false);
-  const {
-    data: invoices = [],
-    isLoading,
-    refetch: refetchInvoices
-  } = useInvoices(includeArchived);
+  const { data: invoices = [], isLoading, refetch: refetchInvoices } = useInvoices(includeArchived);
   const { data: customers = [] } = useCustomers();
   const { data: profiles = [] } = useProfiles();
   const { data: company } = useCompany();
+  const { data: jobs = [] } = useJobs();
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
+
+  // Jobs available for import (completed/in_progress but not yet invoiced)
+  const availableJobsForImport = jobs.filter(job => 
+    (job.status === 'completed' || job.status === 'in_progress') && 
+    !invoices.some(inv => inv.job_id === job.id)
+  );
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -58,6 +63,7 @@ const Invoices = () => {
     dueDays: number;
     discountType: 'amount' | 'percentage';
     discountValue: number;
+    importedJobId: string | null;
   }>({
     customerId: "",
     assignedTo: "",
@@ -66,7 +72,8 @@ const Invoices = () => {
     status: "draft",
     dueDays: 30,
     discountType: "amount",
-    discountValue: 0
+    discountValue: 0,
+    importedJobId: null
   });
 
   // Wrapped setters for scroll restoration
@@ -133,9 +140,35 @@ const Invoices = () => {
       status: "draft",
       dueDays: 30,
       discountType: "amount",
-      discountValue: 0
+      discountValue: 0,
+      importedJobId: null
     });
     setEditingInvoice(null);
+  };
+
+  const handleImportJob = (jobId: string) => {
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
+    
+    setFormData({
+      customerId: job.customer_id,
+      assignedTo: job.assigned_to || (job.assignees?.[0]?.profile_id) || "",
+      items: job.items?.map((item: any) => ({
+        id: Date.now().toString() + Math.random(),
+        description: item.description,
+        itemDescription: item.item_description || '',
+        quantity: item.quantity,
+        unitPrice: Number(item.unit_price),
+        type: item.type || 'service'
+      })) || [{ id: "1", description: "", itemDescription: "", quantity: 1, unitPrice: 0, type: 'service' }],
+      notes: job.notes || "",
+      status: "draft",
+      dueDays: 30,
+      discountType: (job.discount_type as 'amount' | 'percentage') || "amount",
+      discountValue: Number(job.discount_value) || 0,
+      importedJobId: job.id
+    });
+    toast.success(`Imported from ${job.job_number} - ${job.title}`);
   };
 
   const handleAddItem = (type: 'product' | 'service' = 'service') => {
@@ -183,7 +216,8 @@ const Invoices = () => {
       tax: 0,
       total: afterDiscount,
       discount_type: formData.discountValue > 0 ? formData.discountType : null,
-      discount_value: formData.discountValue > 0 ? formData.discountValue : 0
+      discount_value: formData.discountValue > 0 ? formData.discountValue : 0,
+      job_id: formData.importedJobId || null
     };
     
     try {
@@ -200,7 +234,35 @@ const Invoices = () => {
         await updateInvoice.mutateAsync({ id: editingInvoice, ...invoiceData, items: itemsData } as any);
         toast.success("Invoice updated successfully");
       } else {
-        await createInvoice.mutateAsync({ ...invoiceData, items: itemsData } as any);
+        const createdInvoice = await createInvoice.mutateAsync({ ...invoiceData, items: itemsData } as any);
+        
+        // If importing from a job, copy the job photos to the invoice
+        if (formData.importedJobId && createdInvoice?.id) {
+          const importedJob = jobs.find(j => j.id === formData.importedJobId);
+          if (importedJob?.photos && importedJob.photos.length > 0) {
+            try {
+              // Copy each photo from job_photos to invoice_photos
+              const photoInserts = importedJob.photos.map((photo, index) => ({
+                invoice_id: createdInvoice.id,
+                photo_url: photo.photo_url,
+                photo_type: photo.photo_type,
+                caption: photo.caption,
+                display_order: index,
+                uploaded_by: photo.uploaded_by
+              }));
+              
+              await (supabase as any)
+                .from('invoice_photos')
+                .insert(photoInserts);
+              
+              toast.success(`Imported ${importedJob.photos.length} photos from job`);
+            } catch (photoError) {
+              console.error('Failed to copy photos:', photoError);
+              // Don't fail the whole operation if photo copy fails
+            }
+          }
+        }
+        
         toast.success("Invoice created successfully");
       }
       openEditDialog(false);
@@ -226,7 +288,8 @@ const Invoices = () => {
       status: invoice.status as any,
       dueDays: 30,
       discountType: (invoice.discount_type as 'amount' | 'percentage') || "amount",
-      discountValue: Number(invoice.discount_value) || 0
+      discountValue: Number(invoice.discount_value) || 0,
+      importedJobId: invoice.job_id || null
     });
     setEditingInvoice(invoice.id);
     openEditDialog(true);
@@ -247,7 +310,8 @@ const Invoices = () => {
       status: "draft",
       dueDays: 30,
       discountType: (invoice.discount_type as 'amount' | 'percentage') || "amount",
-      discountValue: Number(invoice.discount_value) || 0
+      discountValue: Number(invoice.discount_value) || 0,
+      importedJobId: null
     });
     setEditingInvoice(null);
     openEditDialog(true);
@@ -294,6 +358,43 @@ const Invoices = () => {
               <DialogTitle>{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Import from Job - only show when creating new invoice */}
+              {!editingInvoice && availableJobsForImport.length > 0 && (
+                <div className="p-3 bg-muted/50 rounded-lg border border-dashed">
+                  <Label className="flex items-center gap-2 text-sm font-medium mb-2">
+                    <FileInput className="w-4 h-4" />
+                    Import from Existing Job
+                  </Label>
+                  <Select
+                    value={formData.importedJobId || "none"}
+                    onValueChange={(value) => {
+                      if (value === "none") {
+                        resetForm();
+                      } else {
+                        handleImportJob(value);
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a job to import..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No job selected</SelectItem>
+                      {availableJobsForImport.map((job) => (
+                        <SelectItem key={job.id} value={job.id}>
+                          {job.job_number} - {job.title} ({job.customer?.name || 'No customer'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formData.importedJobId && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Importing from: {jobs.find(j => j.id === formData.importedJobId)?.job_number}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InlineCustomerForm
                   customers={customers}
