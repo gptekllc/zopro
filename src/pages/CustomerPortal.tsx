@@ -735,10 +735,10 @@ const CustomerPortal = () => {
         toast.error(data.error);
       } else {
         setLinkSent(true);
-        toast.success('Magic link sent! Check your email.');
+        toast.success('Access link sent! Check your email.');
       }
     } catch (err: any) {
-      toast.error('Failed to send magic link. Please try again.');
+      toast.error('Failed to send access link. Please try again.');
     } finally {
       setIsSendingLink(false);
     }
@@ -1213,8 +1213,8 @@ const CustomerPortal = () => {
             <CardTitle className="text-2xl">Customer Portal</CardTitle>
             <CardDescription>
               {linkSent 
-                ? 'Check your email for the magic link'
-                : 'Enter your email to receive a magic link'
+                ? 'Check your email for the access link'
+                : 'Enter your email to receive an access link'
               }
             </CardDescription>
           </CardHeader>
@@ -1225,7 +1225,7 @@ const CustomerPortal = () => {
                   <Mail className="w-8 h-8 text-primary" />
                 </div>
                 <p className="text-muted-foreground">
-                  We've sent a magic link to <strong>{email}</strong>. 
+                  We've sent an access link to <strong>{email}</strong>. 
                   Click the link in the email to access your portal.
                 </p>
               <div className="flex flex-col gap-2">
@@ -1265,7 +1265,7 @@ const CustomerPortal = () => {
                   ) : (
                     <>
                       <Mail className="w-4 h-4 mr-2" />
-                      Send Magic Link
+                      Send Access Link
                     </>
                   )}
                 </Button>
