@@ -328,13 +328,22 @@ const Jobs = () => {
     };
     
     try {
+      let resultJobId: string | null = null;
       if (editingJob) {
         await updateJob.mutateAsync({ id: editingJob.id, ...jobData });
+        resultJobId = editingJob.id;
       } else {
-        await createJob.mutateAsync(jobData);
+        const created = await createJob.mutateAsync(jobData);
+        resultJobId = created?.id || null;
       }
       openEditDialog(false);
       resetForm();
+      
+      // Open the detail dialog for the created/updated job
+      if (resultJobId) {
+        await refetchJobs();
+        setPendingViewJobId(resultJobId);
+      }
     } catch (error) {
       // Error handled by hook
     }

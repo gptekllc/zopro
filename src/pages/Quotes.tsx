@@ -195,6 +195,9 @@ const Quotes = () => {
     return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   };
 
+  // State for auto-opening detail dialog after create/update
+  const [pendingViewQuoteId, setPendingViewQuoteId] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customerId) {
@@ -232,15 +235,24 @@ const Quotes = () => {
         type: item.type || 'service'
       }));
       
+      let resultQuoteId: string | null = null;
       if (editingQuote) {
         await updateQuote.mutateAsync({ id: editingQuote, ...quoteData, items: itemsData } as any);
+        resultQuoteId = editingQuote;
         toast.success('Quote updated successfully');
       } else {
-        await createQuote.mutateAsync({ ...quoteData, items: itemsData } as any);
+        const created = await createQuote.mutateAsync({ ...quoteData, items: itemsData } as any);
+        resultQuoteId = created?.id || null;
         toast.success('Quote created successfully');
       }
       openEditDialog(false);
       resetForm();
+      
+      // Open the detail dialog for the created/updated quote
+      if (resultQuoteId) {
+        await refetchQuotes();
+        setPendingViewQuoteId(resultQuoteId);
+      }
     } catch (error) {
       toast.error(editingQuote ? 'Failed to update quote' : 'Failed to create quote');
     }
@@ -520,6 +532,8 @@ const Quotes = () => {
           onCreateQuote={() => openEditDialog(true)}
           onRefetch={async () => { await refetchQuotes(); }}
           isLoading={isLoading}
+          initialViewQuoteId={pendingViewQuoteId}
+          onInitialViewHandled={() => setPendingViewQuoteId(null)}
         />
       </div>
 

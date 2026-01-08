@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
@@ -50,6 +50,8 @@ interface QuoteListManagerProps {
   onCreateQuote?: () => void;
   onRefetch?: () => Promise<void>;
   isLoading?: boolean;
+  initialViewQuoteId?: string | null;
+  onInitialViewHandled?: () => void;
 }
 
 export function QuoteListManager({
@@ -68,6 +70,8 @@ export function QuoteListManager({
   onCreateQuote,
   onRefetch,
   isLoading = false,
+  initialViewQuoteId,
+  onInitialViewHandled,
 }: QuoteListManagerProps) {
   const { data: company } = useCompany();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
@@ -137,6 +141,17 @@ export function QuoteListManager({
     }
   };
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
+
+  // Handle initial view quote from parent
+  useEffect(() => {
+    if (initialViewQuoteId && quotes.length > 0 && !viewingQuote) {
+      const quote = quotes.find(q => q.id === initialViewQuoteId);
+      if (quote) {
+        setViewingQuote(quote);
+        onInitialViewHandled?.();
+      }
+    }
+  }, [initialViewQuoteId, quotes, viewingQuote, onInitialViewHandled]);
   const [quoteToDelete, setQuoteToDelete] = useState<Quote | null>(null);
   const [archiveConfirmQuote, setArchiveConfirmQuote] = useState<Quote | null>(null);
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);

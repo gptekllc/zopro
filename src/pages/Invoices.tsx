@@ -205,6 +205,9 @@ const Invoices = () => {
     return items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
   };
 
+  // State for auto-opening detail dialog after create/update
+  const [pendingViewInvoiceId, setPendingViewInvoiceId] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.customerId) {
@@ -241,11 +244,14 @@ const Invoices = () => {
         type: item.type || 'service'
       }));
       
+      let resultInvoiceId: string | null = null;
       if (editingInvoice) {
         await updateInvoice.mutateAsync({ id: editingInvoice, ...invoiceData, items: itemsData } as any);
+        resultInvoiceId = editingInvoice;
         toast.success("Invoice updated successfully");
       } else {
         const createdInvoice = await createInvoice.mutateAsync({ ...invoiceData, items: itemsData } as any);
+        resultInvoiceId = createdInvoice?.id || null;
         
         // If importing from a job, copy the job photos to the invoice
         if (formData.importedJobId && createdInvoice?.id) {
@@ -278,6 +284,12 @@ const Invoices = () => {
       }
       openEditDialog(false);
       resetForm();
+      
+      // Open the detail dialog for the created/updated invoice
+      if (resultInvoiceId) {
+        await refetchInvoices();
+        setPendingViewInvoiceId(resultInvoiceId);
+      }
     } catch (error) {
       toast.error(editingInvoice ? "Failed to update invoice" : "Failed to create invoice");
     }
@@ -569,6 +581,8 @@ const Invoices = () => {
           onCreateInvoice={() => openEditDialog(true)}
           onRefetch={async () => { await refetchInvoices(); }}
           isLoading={isLoading}
+          initialViewInvoiceId={pendingViewInvoiceId}
+          onInitialViewHandled={() => setPendingViewInvoiceId(null)}
         />
       </div>
     </PageContainer>
