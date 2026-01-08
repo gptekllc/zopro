@@ -13,7 +13,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Loader2, FileInput } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Plus, Loader2, FileInput, ChevronsUpDown } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { toast } from "sonner";
 import { InlineCustomerForm } from "@/components/customers/InlineCustomerForm";
@@ -56,7 +58,7 @@ const Invoices = () => {
   // Form state
   const [formData, setFormData] = useState<{
     customerId: string;
-    assignedTo: string;
+    assignedToIds: string[];
     items: LineItem[];
     notes: string;
     status: string;
@@ -66,7 +68,7 @@ const Invoices = () => {
     importedJobId: string | null;
   }>({
     customerId: "",
-    assignedTo: "",
+    assignedToIds: [],
     items: [{ id: "1", description: "", quantity: 1, unitPrice: 0, type: 'service' }],
     notes: "",
     status: "draft",
@@ -75,6 +77,10 @@ const Invoices = () => {
     discountValue: 0,
     importedJobId: null
   });
+
+  // Filter available technicians
+  const technicians = profiles.filter(p => p.role === "technician" || p.role === "admin" || p.role === "manager");
+  const availableTechnicians = technicians.filter(p => p.employment_status !== 'on_leave');
 
   // Wrapped setters for scroll restoration
   const openEditDialog = useCallback((open: boolean) => {
@@ -134,7 +140,7 @@ const Invoices = () => {
   const resetForm = () => {
     setFormData({
       customerId: "",
-      assignedTo: "",
+      assignedToIds: [],
       items: [{ id: "1", description: "", quantity: 1, unitPrice: 0, type: 'service' }],
       notes: "",
       status: "draft",
@@ -152,7 +158,7 @@ const Invoices = () => {
     
     setFormData({
       customerId: job.customer_id,
-      assignedTo: job.assigned_to || (job.assignees?.[0]?.profile_id) || "",
+      assignedToIds: job.assignees?.map((a: any) => a.profile_id) || (job.assigned_to ? [job.assigned_to] : []),
       items: job.items?.map((item: any) => ({
         id: Date.now().toString() + Math.random(),
         description: item.description,
@@ -208,7 +214,7 @@ const Invoices = () => {
     
     const invoiceData = {
       customer_id: formData.customerId,
-      assigned_to: formData.assignedTo || null,
+      assigned_to: formData.assignedToIds.length > 0 ? formData.assignedToIds[0] : null,
       notes: formData.notes || null,
       status: formData.status,
       due_date: format(addDays(new Date(), formData.dueDays), "yyyy-MM-dd"),
@@ -275,7 +281,7 @@ const Invoices = () => {
   const handleEdit = (invoice: Invoice) => {
     setFormData({
       customerId: invoice.customer_id,
-      assignedTo: invoice.assigned_to || "",
+      assignedToIds: invoice.assigned_to ? [invoice.assigned_to] : [],
       items: invoice.items?.map((item: any) => ({
         id: item.id,
         description: item.description,
@@ -298,7 +304,7 @@ const Invoices = () => {
   const handleDuplicate = (invoice: Invoice) => {
     setFormData({
       customerId: invoice.customer_id,
-      assignedTo: invoice.assigned_to || "",
+      assignedToIds: invoice.assigned_to ? [invoice.assigned_to] : [],
       items: invoice.items?.map((item: any) => ({
         id: Date.now().toString() + Math.random(),
         description: item.description,
@@ -412,18 +418,51 @@ const Invoices = () => {
               </div>
 
               <div className="space-y-2">
-                <Label>Assigned Technician</Label>
-                <Select value={formData.assignedTo} onValueChange={value => setFormData({ ...formData, assignedTo: value === "none" ? "" : value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select technician (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No technician assigned</SelectItem>
-                    {profiles.filter(p => p.role === "technician" || p.role === "admin" || p.role === "manager").map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.full_name || p.email}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Assigned Technicians</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                      <span className="truncate">
+                        {formData.assignedToIds.length === 0 
+                          ? "Select technicians..." 
+                          : formData.assignedToIds.length === 1
+                            ? availableTechnicians.find(t => t.id === formData.assignedToIds[0])?.full_name || availableTechnicians.find(t => t.id === formData.assignedToIds[0])?.email || "1 selected"
+                            : `${formData.assignedToIds.length} technicians selected`}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <div className="p-2 space-y-1 max-h-48 overflow-y-auto">
+                      {availableTechnicians.length === 0 ? (
+                        <p className="text-sm text-muted-foreground p-2">No technicians available</p>
+                      ) : (
+                        availableTechnicians.map(t => (
+                          <div 
+                            key={t.id} 
+                            className="flex items-center gap-2 p-2 rounded-md hover:bg-accent cursor-pointer"
+                            onClick={() => {
+                              if (formData.assignedToIds.includes(t.id)) {
+                                setFormData({ ...formData, assignedToIds: formData.assignedToIds.filter(id => id !== t.id) });
+                              } else {
+                                setFormData({ ...formData, assignedToIds: [...formData.assignedToIds, t.id] });
+                              }
+                            }}
+                          >
+                            <Checkbox
+                              checked={formData.assignedToIds.includes(t.id)}
+                              onCheckedChange={() => {}}
+                            />
+                            <span className="text-sm">{t.full_name || t.email}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {technicians.some(t => t.employment_status === 'on_leave') && (
+                  <p className="text-xs text-muted-foreground">Team members on leave are hidden</p>
+                )}
               </div>
 
               {/* Line Items */}
