@@ -680,10 +680,10 @@ async function generatePDFDocument(
         y -= 12;
       }
 
-      y -= 4;
+      y -= 2;
     }
 
-  y -= 10; // Space between sections
+    y -= 4; // Small space between sections
   };
 
   // Draw Products section (if any)
@@ -694,13 +694,13 @@ async function generatePDFDocument(
 
   // Draw separator line above totals section
   page.drawLine({
-    start: { x: tableLeft, y: y - 5 },
-    end: { x: tableRight, y: y - 5 },
+    start: { x: tableLeft, y: y + 2 },
+    end: { x: tableRight, y: y + 2 },
     thickness: 0.5,
     color: rgb(0.85, 0.85, 0.85),
   });
 
-  y -= 20;
+  y -= 8;
 
   // Totals section (right aligned)
   const totalsX = width - margin - 120;
@@ -724,27 +724,30 @@ async function generatePDFDocument(
     y -= 14;
   }
 
-  // Discount if applicable
-  if (document.discount_value && document.discount_value > 0) {
-    const discountAmount = document.discount_type === 'percentage' 
-      ? (document.subtotal * document.discount_value / 100)
-      : document.discount_value;
-    page.drawText("Discount:", {
-      x: totalsX,
-      y,
-      size: 9,
-      font: helvetica,
-      color: grayColor,
-    });
-    page.drawText(`-$${Number(discountAmount).toFixed(2)}`, {
-      x: valuesX - helvetica.widthOfTextAtSize(`-$${Number(discountAmount).toFixed(2)}`, 9),
-      y,
-      size: 9,
-      font: helvetica,
-      color: blackColor,
-    });
-    y -= 14;
-  }
+  // Discount line (always shown for consistency)
+  const discountAmount = document.discount_value && document.discount_value > 0
+    ? (document.discount_type === 'percentage' 
+        ? (document.subtotal * document.discount_value / 100)
+        : document.discount_value)
+    : 0;
+  const discountLabel = document.discount_type === 'percentage' && document.discount_value
+    ? `Discount (${document.discount_value}%):`
+    : "Discount:";
+  page.drawText(discountLabel, {
+    x: totalsX,
+    y,
+    size: 9,
+    font: helvetica,
+    color: grayColor,
+  });
+  page.drawText(`-$${Number(discountAmount).toFixed(2)}`, {
+    x: valuesX - helvetica.widthOfTextAtSize(`-$${Number(discountAmount).toFixed(2)}`, 9),
+    y,
+    size: 9,
+    font: helvetica,
+    color: blackColor,
+  });
+  y -= 14;
 
   if (document.tax !== undefined) {
     page.drawText("Tax:", {
@@ -1366,6 +1369,14 @@ function generateHTML(
         <div class="totals-row">
           <span>Subtotal</span>
           <span>${formatCurrency(Number(document.subtotal || 0))}</span>
+        </div>
+        <div class="totals-row">
+          <span>Discount${document.discount_type === 'percentage' && document.discount_value ? ` (${document.discount_value}%)` : ''}</span>
+          <span>-${document.discount_value ? formatCurrency(
+            document.discount_type === 'percentage'
+              ? (Number(document.subtotal || 0) * Number(document.discount_value)) / 100
+              : Number(document.discount_value)
+          ) : '$0.00'}</span>
         </div>
         <div class="totals-row">
           <span>Tax</span>
