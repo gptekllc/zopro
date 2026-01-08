@@ -156,6 +156,121 @@ serve(async (req) => {
       }
     }
 
+    // Handle customer.subscription.created - new subscription
+    if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") {
+      const subscription = event.data.object as Stripe.Subscription;
+      logStep(`Processing ${event.type}`, { subscriptionId: subscription.id });
+
+      const stripeCustomerId = typeof subscription.customer === 'string' 
+        ? subscription.customer 
+        : subscription.customer.id;
+
+      // Get customer email to find company
+      const customer = await stripe.customers.retrieve(stripeCustomerId);
+      if (customer.deleted) {
+        logStep("Customer was deleted, skipping");
+      } else {
+        const companyId = (customer as Stripe.Customer).metadata?.company_id;
+        
+        if (companyId) {
+          // Get price info to determine plan
+          const priceId = subscription.items.data[0]?.price?.id;
+          const productId = subscription.items.data[0]?.price?.product;
+          
+          // Try to find matching plan by price or create/update subscription
+          const { data: plans } = await supabase
+            .from("subscription_plans")
+            .select("id, name, price_monthly")
+            .eq("is_active", true);
+
+          // For now, try to match by name in metadata or default to first paid plan
+          let planId = plans?.[0]?.id;
+          const planName = (customer as Stripe.Customer).metadata?.plan_name;
+          if (planName && plans) {
+            const matchingPlan = plans.find(p => p.name === planName);
+            if (matchingPlan) planId = matchingPlan.id;
+          }
+
+          // Map Stripe status to our status
+          let status = 'active';
+          if (subscription.status === 'trialing') status = 'trialing';
+          else if (subscription.status === 'past_due') status = 'past_due';
+          else if (subscription.status === 'canceled' || subscription.status === 'unpaid') status = 'cancelled';
+
+          // Upsert company subscription
+          const { error: subError } = await supabase
+            .from("company_subscriptions")
+            .upsert({
+              company_id: companyId,
+              plan_id: planId,
+              status,
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              stripe_subscription_id: subscription.id,
+              trial_ends_at: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
+              cancel_at_period_end: subscription.cancel_at_period_end,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: 'company_id',
+            });
+
+          if (subError) {
+            logStep("ERROR: Failed to upsert subscription", { error: subError.message });
+          } else {
+            logStep("Company subscription synced", { companyId, status, stripeSubId: subscription.id });
+          }
+        } else {
+          logStep("No company_id in customer metadata, skipping subscription sync");
+        }
+      }
+    }
+
+    // Handle customer.subscription.deleted - subscription cancelled
+    if (event.type === "customer.subscription.deleted") {
+      const subscription = event.data.object as Stripe.Subscription;
+      logStep("Processing customer.subscription.deleted", { subscriptionId: subscription.id });
+
+      // Update subscription status to cancelled
+      const { error: updateError } = await supabase
+        .from("company_subscriptions")
+        .update({
+          status: 'cancelled',
+          updated_at: new Date().toISOString(),
+        })
+        .eq("stripe_subscription_id", subscription.id);
+
+      if (updateError) {
+        logStep("WARNING: Failed to update cancelled subscription", { error: updateError.message });
+      } else {
+        logStep("Subscription marked as cancelled", { stripeSubId: subscription.id });
+      }
+    }
+
+    // Handle invoice.payment_failed for subscriptions
+    if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as Stripe.Invoice;
+      
+      if (invoice.subscription) {
+        const subscriptionId = typeof invoice.subscription === 'string' 
+          ? invoice.subscription 
+          : invoice.subscription.id;
+
+        logStep("Subscription payment failed", { subscriptionId });
+
+        const { error: updateError } = await supabase
+          .from("company_subscriptions")
+          .update({
+            status: 'past_due',
+            updated_at: new Date().toISOString(),
+          })
+          .eq("stripe_subscription_id", subscriptionId);
+
+        if (updateError) {
+          logStep("WARNING: Failed to update subscription to past_due", { error: updateError.message });
+        }
+      }
+    }
+
     // Handle payment_intent.payment_failed event
     if (event.type === "payment_intent.payment_failed") {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
