@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { ItemsPicker } from './ItemsPicker';
 import { Item } from '@/hooks/useItems';
+import { formatAmount } from '@/lib/formatAmount';
 
 export interface LineItem {
   id: string;
@@ -114,7 +115,7 @@ export const LineItemsEditor = ({
             </div>
           </div>
           <div className="flex justify-end text-sm font-medium">
-            Total: ${(item.quantity * item.unitPrice).toLocaleString()}
+            Total: ${formatAmount(item.quantity * item.unitPrice)}
           </div>
         </div>
         
@@ -159,7 +160,7 @@ export const LineItemsEditor = ({
               />
             </div>
             <div className="col-span-2 pt-6 text-right text-sm font-medium">
-              ${(item.quantity * item.unitPrice).toLocaleString()}
+              ${formatAmount(item.quantity * item.unitPrice)}
             </div>
             <div className="col-span-1 pt-5">
               <Button

@@ -23,6 +23,7 @@ import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEdit
 import { QuoteListManager } from '@/components/quotes/QuoteListManager';
 import { QuoteListControls } from '@/components/quotes/QuoteListControls';
 import PageContainer from '@/components/layout/PageContainer';
+import { formatAmount } from '@/lib/formatAmount';
 
 const Quotes = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -408,17 +409,17 @@ const Quotes = () => {
                   />
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal:</span>
-                    <span>${calculateTotal(formData.items).toLocaleString()}</span>
+                    <span>${formatAmount(calculateTotal(formData.items))}</span>
                   </div>
                   {formData.discountValue > 0 && (
                     <div className="flex justify-between text-sm text-success">
                       <span>Discount ({formatDiscount(formData.discountType, formData.discountValue)}):</span>
-                      <span>-${calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue).toLocaleString()}</span>
+                      <span>-${formatAmount(calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue))}</span>
                     </div>
                   )}
                   <div className="flex justify-between font-semibold text-lg pt-1 border-t">
                     <span>Total:</span>
-                    <span>${(calculateTotal(formData.items) - calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue)).toLocaleString()}</span>
+                    <span>${formatAmount(calculateTotal(formData.items) - calculateDiscountAmount(calculateTotal(formData.items), formData.discountType, formData.discountValue))}</span>
                   </div>
                 </div>
 

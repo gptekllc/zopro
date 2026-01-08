@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Loader2, Briefcase, Plus } from 'lucide-react';
+import { formatAmount } from '@/lib/formatAmount';
 
 interface QuoteItem {
   id: string;
@@ -129,8 +130,8 @@ export function CreateJobFromQuoteDialog({
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm">{item.description}</p>
                     <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>{item.quantity} × ${Number(item.unit_price).toLocaleString()}</span>
-                      <span className="font-medium text-foreground">${Number(item.total).toLocaleString()}</span>
+                      <span>{item.quantity} × ${formatAmount(item.unit_price)}</span>
+                      <span className="font-medium text-foreground">${formatAmount(item.total)}</span>
                     </div>
                   </div>
                 </label>
@@ -146,7 +147,7 @@ export function CreateJobFromQuoteDialog({
           <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg border">
             <span className="font-medium">Selected Items Total:</span>
             <span className="text-lg font-semibold text-primary">
-              ${selectedTotal.toLocaleString()}
+              ${formatAmount(selectedTotal)}
             </span>
           </div>
 
@@ -327,8 +328,8 @@ export function AddQuoteItemsToJobDialog({
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm">{item.description}</p>
                     <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>{item.quantity} × ${Number(item.unit_price).toLocaleString()}</span>
-                      <span className="font-medium text-foreground">${Number(item.total).toLocaleString()}</span>
+                      <span>{item.quantity} × ${formatAmount(item.unit_price)}</span>
+                      <span className="font-medium text-foreground">${formatAmount(item.total)}</span>
                     </div>
                   </div>
                 </label>
@@ -344,7 +345,7 @@ export function AddQuoteItemsToJobDialog({
           <div className="flex justify-between items-center p-3 bg-primary/5 rounded-lg border">
             <span className="font-medium">Selected Items Total:</span>
             <span className="text-lg font-semibold text-primary">
-              ${selectedTotal.toLocaleString()}
+              ${formatAmount(selectedTotal)}
             </span>
           </div>
         </div>
