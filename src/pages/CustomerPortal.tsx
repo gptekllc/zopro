@@ -1228,12 +1228,20 @@ const CustomerPortal = () => {
                   We've sent a magic link to <strong>{email}</strong>. 
                   Click the link in the email to access your portal.
                 </p>
+              <div className="flex flex-col gap-2">
                 <Button 
                   variant="outline" 
                   onClick={() => { setLinkSent(false); setEmail(''); }}
                 >
                   Use a different email
                 </Button>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => window.location.href = '/portal'}
+                >
+                  Back to Login
+                </Button>
+              </div>
               </div>
             ) : (
               <form onSubmit={handleRequestMagicLink} className="space-y-4">
