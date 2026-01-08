@@ -647,7 +647,7 @@ const Jobs = () => {
                     <div className="space-y-2">
                       <Label>Priority</Label>
                       <Select value={formData.priority} onValueChange={value => setFormData({ ...formData, priority: value as Job['priority'] })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger><SelectValue className="capitalize" /></SelectTrigger>
                         <SelectContent>
                           {JOB_PRIORITIES.map(p => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
                         </SelectContent>
@@ -656,7 +656,7 @@ const Jobs = () => {
                     <div className="space-y-2">
                       <Label>Status</Label>
                       <Select value={formData.status} onValueChange={value => setFormData({ ...formData, status: value as Job['status'] })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger><SelectValue className="capitalize" /></SelectTrigger>
                         <SelectContent>
                           {JOB_STATUSES_EDITABLE.map(s => <SelectItem key={s} value={s} className="capitalize">{s.replace('_', ' ')}</SelectItem>)}
                         </SelectContent>
