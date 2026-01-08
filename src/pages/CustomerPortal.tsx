@@ -471,7 +471,7 @@ const CustomerPortal = () => {
   // Signature dialog states
   const [signatureDialogOpen, setSignatureDialogOpen] = useState(false);
   const [signatureAction, setSignatureAction] = useState<{
-    type: 'quote' | 'invoice' | 'job';
+    type: 'quote' | 'invoice' | 'invoice-sign-only' | 'job';
     id: string;
     data?: any;
   } | null>(null);
@@ -490,6 +490,9 @@ const CustomerPortal = () => {
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [viewingJob, setViewingJob] = useState<Job | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState<string | null>(null);
+  
+  // Tab control state for programmatic tab switching
+  const [activeTab, setActiveTab] = useState('jobs');
 
   // Feedback form states
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
@@ -1042,6 +1045,12 @@ const CustomerPortal = () => {
     setSignatureDialogOpen(true);
   };
 
+  const handleSignInvoice = (invoice: Invoice) => {
+    // Open signature dialog for invoice signing only (no payment)
+    setSignatureAction({ type: 'invoice-sign-only', id: invoice.id, data: invoice });
+    setSignatureDialogOpen(true);
+  };
+
   const handleApproveQuote = async (quote: Quote) => {
     // Open signature dialog for quote approval
     setSignatureAction({ type: 'quote', id: quote.id, data: quote });
@@ -1102,6 +1111,29 @@ const CustomerPortal = () => {
         // Redirect to Stripe checkout
         window.open(data.url, '_blank');
         setPayingInvoice(null);
+      } else if (signatureAction.type === 'invoice-sign-only') {
+        // Sign invoice without payment
+        const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+          body: { 
+            action: 'sign-invoice', 
+            invoiceId: signatureAction.id,
+            customerId: customerData?.id,
+            token: sessionStorage.getItem('customer_portal_token'),
+            signatureData,
+            signerName,
+          },
+        });
+
+        if (error) {
+          throw new Error(data?.error || 'Failed to sign invoice');
+        }
+
+        toast.success('Invoice signed successfully!');
+        
+        // Update local state
+        setInvoices(invoices.map(i => 
+          i.id === signatureAction.id ? { ...i, signed_at: new Date().toISOString() } : i
+        ));
       } else if (signatureAction.type === 'job') {
         setSigningJob(signatureAction.id);
         const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
@@ -1721,10 +1753,7 @@ const CustomerPortal = () => {
         <div className="grid gap-4 md:grid-cols-4 mb-8">
           <Card 
             className="cursor-pointer hover:bg-muted/50 transition-colors group"
-            onClick={() => {
-              const tabTrigger = document.querySelector('[role="tab"][value="quotes"]') as HTMLElement;
-              tabTrigger?.click();
-            }}
+            onClick={() => setActiveTab('quotes')}
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -1743,10 +1772,7 @@ const CustomerPortal = () => {
           </Card>
           <Card 
             className="cursor-pointer hover:bg-muted/50 transition-colors group"
-            onClick={() => {
-              const tabTrigger = document.querySelector('[role="tab"][value="invoices"]') as HTMLElement;
-              tabTrigger?.click();
-            }}
+            onClick={() => setActiveTab('invoices')}
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -1765,10 +1791,7 @@ const CustomerPortal = () => {
           </Card>
           <Card 
             className="cursor-pointer hover:bg-muted/50 transition-colors group"
-            onClick={() => {
-              const tabTrigger = document.querySelector('[role="tab"][value="invoices"]') as HTMLElement;
-              tabTrigger?.click();
-            }}
+            onClick={() => setActiveTab('invoices')}
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -1789,10 +1812,7 @@ const CustomerPortal = () => {
           </Card>
           <Card 
             className="cursor-pointer hover:bg-muted/50 transition-colors group"
-            onClick={() => {
-              const tabTrigger = document.querySelector('[role="tab"][value="jobs"]') as HTMLElement;
-              tabTrigger?.click();
-            }}
+            onClick={() => setActiveTab('jobs')}
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -1812,7 +1832,7 @@ const CustomerPortal = () => {
         </div>
 
         {/* Tabs - Reordered: Jobs, Quotes, Invoices, Payment Methods */}
-        <Tabs defaultValue="jobs" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="quotes" className="flex items-center gap-2">
@@ -2435,19 +2455,34 @@ const CustomerPortal = () => {
                       Sign and Pay Now
                     </Button>
                   ) : (
-                    <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
-                      <p className="font-medium text-foreground mb-1">Payment Instructions</p>
-                      <p>
-                        {customerData?.company?.default_payment_method === 'cash' && 
-                          'Please pay in cash upon service completion or at our office.'}
-                        {customerData?.company?.default_payment_method === 'check' && 
-                          'Please mail a check to our office address.'}
-                        {customerData?.company?.default_payment_method === 'bank_transfer' && 
-                          'Please arrange a bank transfer. Contact us for account details.'}
-                        {(!customerData?.company?.default_payment_method || customerData?.company?.default_payment_method === 'any') && 
-                          'Please contact us for payment arrangements.'}
-                      </p>
-                    </div>
+                    <>
+                      {/* Sign Invoice Button when Stripe is disabled */}
+                      {!viewingInvoice.signed_at && (
+                        <Button
+                          className="w-full"
+                          onClick={() => {
+                            handleSignInvoice(viewingInvoice);
+                            setViewingInvoice(null);
+                          }}
+                        >
+                          <PenLine className="w-4 h-4 mr-2" />
+                          Sign Invoice
+                        </Button>
+                      )}
+                      <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
+                        <p className="font-medium text-foreground mb-1">Payment Instructions</p>
+                        <p>
+                          {customerData?.company?.default_payment_method === 'cash' && 
+                            'Please pay in cash upon service completion or at our office.'}
+                          {customerData?.company?.default_payment_method === 'check' && 
+                            'Please mail a check to our office address.'}
+                          {customerData?.company?.default_payment_method === 'bank_transfer' && 
+                            'Please arrange a bank transfer. Contact us for account details.'}
+                          {(!customerData?.company?.default_payment_method || customerData?.company?.default_payment_method === 'any') && 
+                            'Please contact us for payment arrangements.'}
+                        </p>
+                      </div>
+                    </>
                   )}
                   <Button
                     variant="outline"
@@ -2764,6 +2799,7 @@ const CustomerPortal = () => {
         title={
           signatureAction?.type === 'quote' ? 'Sign & Approve Quote' :
           signatureAction?.type === 'invoice' ? 'Sign & Pay Invoice' :
+          signatureAction?.type === 'invoice-sign-only' ? 'Sign Invoice' :
           'Confirm Job Completion'
         }
         description={
@@ -2771,6 +2807,8 @@ const CustomerPortal = () => {
             ? `Please sign to approve Quote ${signatureAction?.data?.quote_number} for $${Number(signatureAction?.data?.total || 0).toFixed(2)}`
             : signatureAction?.type === 'invoice'
             ? `Please sign to proceed with payment for Invoice ${signatureAction?.data?.invoice_number}`
+            : signatureAction?.type === 'invoice-sign-only'
+            ? `Please sign Invoice ${signatureAction?.data?.invoice_number} for $${Number(signatureAction?.data?.total || 0).toFixed(2)}`
             : `Please sign to confirm completion of Job ${signatureAction?.data?.job_number}`
         }
         signerName={customerData?.name || ''}

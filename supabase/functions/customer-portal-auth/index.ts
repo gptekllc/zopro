@@ -1323,6 +1323,101 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Handle invoice signature from customer (without payment)
+    if (action === 'sign-invoice') {
+      const { invoiceId, customerId, token, signatureData, signerName } = body;
+      
+      if (!invoiceId || !customerId || !token) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required parameters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (!signatureData || !signerName) {
+        return new Response(
+          JSON.stringify({ error: 'Signature is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify signed token
+      const tokenData = await verifySignedToken(token);
+      
+      if (!tokenData || tokenData.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Verify invoice belongs to customer
+      const { data: invoice, error: invoiceError } = await adminClient
+        .from('invoices')
+        .select('*, companies(*)')
+        .eq('id', invoiceId)
+        .eq('customer_id', customerId)
+        .single();
+
+      if (invoiceError || !invoice) {
+        console.error('Invoice not found or access denied:', invoiceError);
+        return new Response(
+          JSON.stringify({ error: 'Invoice not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Get client IP
+      const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+                       req.headers.get('x-real-ip') || 
+                       'unknown';
+
+      // Save signature
+      const { data: signature, error: signatureError } = await adminClient
+        .from('signatures')
+        .insert({
+          company_id: invoice.company_id,
+          customer_id: customerId,
+          document_type: 'invoice',
+          document_id: invoiceId,
+          signature_data: signatureData,
+          signer_name: signerName,
+          signer_ip: clientIp,
+        })
+        .select()
+        .single();
+
+      if (signatureError) {
+        console.error('Error saving signature:', signatureError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to save signature' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Update invoice with signature reference
+      const { error: updateError } = await adminClient
+        .from('invoices')
+        .update({
+          signature_id: signature.id,
+          signed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', invoiceId);
+
+      if (updateError) {
+        console.error('Error updating invoice:', updateError);
+        throw updateError;
+      }
+
+      console.log('Invoice signed:', invoice.invoice_number);
+
+      return new Response(
+        JSON.stringify({ success: true, message: 'Invoice signed successfully' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Handle customer feedback submission
     if (action === 'submit-feedback') {
       const { jobId, customerId, token, rating, feedbackText } = body;
