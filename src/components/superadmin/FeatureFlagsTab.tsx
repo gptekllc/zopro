@@ -7,11 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Save, Plus, Trash2, Building2, Layers } from 'lucide-react';
+import { Loader2, Plus, Trash2, Building2, Layers } from 'lucide-react';
 import { toast } from 'sonner';
 import { FEATURE_FLAGS, type FeatureFlag } from '@/hooks/useFeatureFlags';
 
@@ -42,8 +42,6 @@ interface FeatureFlagsTabProps {
 
 export function FeatureFlagsTab({ companies }: FeatureFlagsTabProps) {
   const queryClient = useQueryClient();
-  const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
-  const [planFeatures, setPlanFeatures] = useState<Record<string, boolean>>({});
   const [overrideDialogOpen, setOverrideDialogOpen] = useState(false);
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [selectedFeature, setSelectedFeature] = useState<FeatureFlag | ''>('');
@@ -88,7 +86,6 @@ export function FeatureFlagsTab({ companies }: FeatureFlagsTabProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscription-plans'] });
       toast.success('Plan features updated');
-      setEditingPlan(null);
     },
     onError: (error: any) => {
       toast.error('Failed: ' + error.message);
@@ -141,23 +138,6 @@ export function FeatureFlagsTab({ companies }: FeatureFlagsTabProps) {
     setOverrideReason('');
   };
 
-  const handleEditPlan = (plan: SubscriptionPlan) => {
-    setEditingPlan(plan);
-    setPlanFeatures(plan.features || {});
-  };
-
-  const handleSavePlan = () => {
-    if (!editingPlan) return;
-    updatePlanMutation.mutate({ planId: editingPlan.id, features: planFeatures });
-  };
-
-  const togglePlanFeature = (feature: string) => {
-    setPlanFeatures(prev => ({
-      ...prev,
-      [feature]: !prev[feature],
-    }));
-  };
-
   const featureKeys = Object.keys(FEATURE_FLAGS) as FeatureFlag[];
 
   return (
@@ -179,7 +159,7 @@ export function FeatureFlagsTab({ companies }: FeatureFlagsTabProps) {
           <CardHeader>
             <CardTitle>Feature Flags by Plan</CardTitle>
             <CardDescription>
-              Configure which features are enabled for each subscription tier
+              Toggle switches directly to enable/disable features for each subscription tier
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -212,71 +192,23 @@ export function FeatureFlagsTab({ companies }: FeatureFlagsTabProps) {
                       </TableCell>
                       {plans.map(plan => (
                         <TableCell key={plan.id} className="text-center">
-                          {plan.features?.[feature] ? (
-                            <Badge className="bg-green-500">✓</Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-muted-foreground">—</Badge>
-                          )}
+                          <Switch
+                            checked={plan.features?.[feature] || false}
+                            onCheckedChange={(checked) => {
+                              const newFeatures = { ...plan.features, [feature]: checked };
+                              updatePlanMutation.mutate({ planId: plan.id, features: newFeatures });
+                            }}
+                            disabled={updatePlanMutation.isPending}
+                          />
                         </TableCell>
                       ))}
                     </TableRow>
                   ))}
-                  <TableRow>
-                    <TableCell />
-                    {plans.map(plan => (
-                      <TableCell key={plan.id} className="text-center">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditPlan(plan)}
-                        >
-                          Edit
-                        </Button>
-                      </TableCell>
-                    ))}
-                  </TableRow>
                 </TableBody>
               </Table>
             )}
           </CardContent>
         </Card>
-
-        {/* Edit Plan Dialog */}
-        <Dialog open={!!editingPlan} onOpenChange={(open) => !open && setEditingPlan(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Edit {editingPlan?.display_name} Features</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {featureKeys.map(feature => (
-                <div key={feature} className="flex items-center justify-between py-2">
-                  <div>
-                    <p className="font-medium capitalize">{feature.replace(/_/g, ' ')}</p>
-                    <p className="text-xs text-muted-foreground">{FEATURE_FLAGS[feature]}</p>
-                  </div>
-                  <Switch
-                    checked={planFeatures[feature] || false}
-                    onCheckedChange={() => togglePlanFeature(feature)}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2 pt-4">
-              <Button variant="outline" className="flex-1" onClick={() => setEditingPlan(null)}>
-                Cancel
-              </Button>
-              <Button
-                className="flex-1 gap-2"
-                onClick={handleSavePlan}
-                disabled={updatePlanMutation.isPending}
-              >
-                {updatePlanMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                <Save className="w-4 h-4" />
-                Save
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
       </TabsContent>
 
       {/* Company Overrides Tab */}
@@ -299,6 +231,9 @@ export function FeatureFlagsTab({ companies }: FeatureFlagsTabProps) {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Feature Override</DialogTitle>
+                  <DialogDescription>
+                    Override a feature for a specific company regardless of their subscription plan.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div className="space-y-2">
