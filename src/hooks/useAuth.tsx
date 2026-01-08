@@ -126,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const result = await supabase.auth.mfa.enroll({ 
       factorType: 'totp',
+      issuer: 'ZoPro',
       friendlyName: 'Authenticator App'
     });
     return result;
