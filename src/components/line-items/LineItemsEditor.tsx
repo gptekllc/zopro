@@ -198,10 +198,10 @@ export const LineItemsEditor = ({
     <div className="space-y-4">
       {/* Products Section */}
       <Collapsible open={productsOpen} onOpenChange={setProductsOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-70 transition-opacity w-full">
+        <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity w-full bg-muted/60 dark:bg-muted/40 px-3 py-2 rounded-lg">
           <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${productsOpen ? '' : '-rotate-90'}`} />
           <Label className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
-            <Package className="w-4 h-4 text-muted-foreground" />
+            <Package className="w-4 h-4 text-primary" />
             Products
             {products.length > 0 && (
               <Badge variant="secondary" className="text-xs">{products.length}</Badge>
@@ -230,10 +230,10 @@ export const LineItemsEditor = ({
 
       {/* Services Section */}
       <Collapsible open={servicesOpen} onOpenChange={setServicesOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-70 transition-opacity w-full">
+        <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity w-full bg-muted/60 dark:bg-muted/40 px-3 py-2 rounded-lg">
           <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${servicesOpen ? '' : '-rotate-90'}`} />
           <Label className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
-            <Wrench className="w-4 h-4 text-muted-foreground" />
+            <Wrench className="w-4 h-4 text-primary" />
             Services
             {services.length > 0 && (
               <Badge variant="secondary" className="text-xs">{services.length}</Badge>
