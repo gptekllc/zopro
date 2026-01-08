@@ -188,7 +188,7 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {plans.filter(p => p.is_active).map(plan => (
+            {plans.filter(p => p.is_active !== false).map(plan => (
               <Card key={plan.id} className="border-2">
                 <CardContent className="pt-4">
                   <h3 className="font-bold text-lg">{plan.display_name}</h3>
@@ -247,7 +247,7 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
                       <SelectValue placeholder="Select plan" />
                     </SelectTrigger>
                     <SelectContent>
-                      {plans.filter(p => p.is_active).map(plan => (
+                      {plans.filter(p => p.is_active !== false).map(plan => (
                         <SelectItem key={plan.id} value={plan.id}>
                           {plan.display_name} (${plan.price_monthly}/mo)
                         </SelectItem>
@@ -358,7 +358,7 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {plans.filter(p => p.is_active).map(plan => (
+                    {plans.filter(p => p.is_active !== false).map(plan => (
                       <SelectItem key={plan.id} value={plan.id}>
                         {plan.display_name} (${plan.price_monthly}/mo)
                       </SelectItem>
