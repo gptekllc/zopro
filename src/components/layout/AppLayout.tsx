@@ -185,6 +185,9 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
               <DropdownMenuItem onClick={() => navigate('/profile')}>
                 <User className="w-4 h-4 mr-2" /> Edit Profile
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/settings/security')}>
+                <Shield className="w-4 h-4 mr-2" /> Security
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" /> Logout
@@ -263,6 +266,10 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
                 <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="w-4 h-4 mr-2" />
                   Edit Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/settings/security')}>
+                  <Shield className="w-4 h-4 mr-2" />
+                  Security
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
