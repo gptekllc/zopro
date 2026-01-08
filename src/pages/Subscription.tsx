@@ -16,12 +16,14 @@ import {
   Briefcase,
   ExternalLink,
   Sparkles,
-  AlertTriangle
+  AlertTriangle,
+  HardDrive
 } from 'lucide-react';
 import PageContainer from '@/components/layout/PageContainer';
 import { PlanComparisonTable } from '@/components/subscription/PlanComparisonTable';
 import { useSubscriptionPlans, useCurrentSubscription, useSubscriptionActions } from '@/hooks/useSubscription';
 import { useUsageLimits } from '@/hooks/useUsageLimits';
+import { useStorageUsage, formatBytes } from '@/hooks/useStorageUsage';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -35,6 +37,7 @@ export default function Subscription() {
   const { data: subscription, isLoading: subscriptionLoading } = useCurrentSubscription();
   const { startCheckout, openCustomerPortal } = useSubscriptionActions();
   const { currentUsers, maxUsers, currentJobsThisMonth, maxJobsPerMonth } = useUsageLimits();
+  const { totalBytesUsed, limitBytes, percentageUsed, isNearLimit, isCritical } = useStorageUsage();
 
   // Handle success/cancel from Stripe
   useEffect(() => {
@@ -224,6 +227,26 @@ export default function Subscription() {
                       <div 
                         className="h-full bg-primary transition-all"
                         style={{ width: `${Math.min((currentJobsThisMonth / maxJobsPerMonth) * 100, 100)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className={`p-4 rounded-lg space-y-2 ${isCritical ? 'bg-destructive/10' : isNearLimit ? 'bg-yellow-500/10' : 'bg-muted/50'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      <HardDrive className={`w-4 h-4 ${isCritical ? 'text-destructive' : isNearLimit ? 'text-yellow-600' : ''}`} />
+                      Storage
+                    </span>
+                    <span className={`font-bold ${isCritical ? 'text-destructive' : isNearLimit ? 'text-yellow-600' : ''}`}>
+                      {formatBytes(totalBytesUsed)} / {limitBytes === null ? '∞' : formatBytes(limitBytes)}
+                    </span>
+                  </div>
+                  {limitBytes !== null && (
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all ${isCritical ? 'bg-destructive' : isNearLimit ? 'bg-yellow-500' : 'bg-primary'}`}
+                        style={{ width: `${Math.min(percentageUsed, 100)}%` }}
                       />
                     </div>
                   )}
