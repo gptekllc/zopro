@@ -7,22 +7,24 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Shield, ShieldCheck, ShieldOff, Loader2, Trash2 } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldOff, Loader2, Trash2, LogOut, Monitor, Smartphone } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
 import MFAEnrollment from '@/components/auth/MFAEnrollment';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 const SecuritySettings = () => {
   const navigate = useNavigate();
-  const { profile, isAdmin, mfaFactors, listMFAFactors, unenrollMFA, refreshMFAStatus } = useAuth();
+  const { profile, isAdmin, mfaFactors, listMFAFactors, unenrollMFA, refreshMFAStatus, session } = useAuth();
   const { data: company } = useCompany();
   const updateCompany = useUpdateCompany();
   
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isLoadingFactors, setIsLoadingFactors] = useState(true);
   const [isUnenrolling, setIsUnenrolling] = useState(false);
+  const [isSigningOutAll, setIsSigningOutAll] = useState(false);
 
   const hasMFA = mfaFactors.length > 0;
   const verifiedFactor = mfaFactors.find(f => f.status === 'verified');
@@ -174,6 +176,79 @@ const SecuritySettings = () => {
                 </Button>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Session Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Monitor className="w-5 h-5" />
+              Session Management
+            </CardTitle>
+            <CardDescription>
+              Manage your active sessions and sign out from other devices
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Current Session Info */}
+            <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+              <div className="flex items-center gap-2">
+                <Smartphone className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium">Current Session</span>
+                <Badge variant="outline" className="text-green-600 border-green-600">Active</Badge>
+              </div>
+              {session && (
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p>Signed in as: {session.user.email}</p>
+                  <p>Last sign in: {format(new Date(session.user.last_sign_in_at || ''), 'MMM d, yyyy h:mm a')}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Sign Out All Devices */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="w-full" disabled={isSigningOutAll}>
+                  {isSigningOutAll ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <LogOut className="h-4 w-4 mr-2" />
+                  )}
+                  Sign out from all devices
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Sign out from all devices?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will sign you out from all devices including this one. You'll need to sign in again.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={async () => {
+                      setIsSigningOutAll(true);
+                      try {
+                        await supabase.auth.signOut({ scope: 'global' });
+                        toast.success('Signed out from all devices');
+                        navigate('/');
+                      } catch (error: any) {
+                        toast.error(error.message || 'Failed to sign out');
+                        setIsSigningOutAll(false);
+                      }
+                    }}
+                  >
+                    Sign out everywhere
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <p className="text-xs text-muted-foreground">
+              If you suspect unauthorized access, sign out from all devices and change your password.
+            </p>
           </CardContent>
         </Card>
 
