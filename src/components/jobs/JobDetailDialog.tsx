@@ -124,14 +124,20 @@ export function JobDetailDialog({
   
   // Ref for auto-scrolling to feedback section
   const feedbackSectionRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // Auto-scroll to feedback section when initialTab is 'feedback'
   useEffect(() => {
-    if (open && initialTab === 'feedback' && feedbackSectionRef.current) {
-      // Small delay to ensure the tab content is rendered
+    if (open && initialTab === 'feedback') {
+      // Delay to ensure the tab content is rendered
       const timer = setTimeout(() => {
-        feedbackSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+        if (feedbackSectionRef.current && scrollContainerRef.current) {
+          const container = scrollContainerRef.current;
+          const feedbackEl = feedbackSectionRef.current;
+          const offsetTop = feedbackEl.offsetTop - container.offsetTop;
+          container.scrollTo({ top: offsetTop, behavior: 'smooth' });
+        }
+      }, 150);
       return () => clearTimeout(timer);
     }
   }, [open, initialTab]);
@@ -303,7 +309,7 @@ export function JobDetailDialog({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pt-4 space-y-4 sm:space-y-6">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 sm:p-6 pt-4 space-y-4 sm:space-y-6">
           {/* Title */}
           <div>
             <h3 className="text-base sm:text-lg font-semibold">{job.title}</h3>
