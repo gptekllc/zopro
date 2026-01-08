@@ -42,7 +42,15 @@ export const LineItemsEditor = ({
   const services = items.filter(item => item.type === 'service');
 
   const handleCatalogSelect = (catalogItem: Item) => {
-    if (onAddFromCatalog) {
+    // Check if item with same name and type already exists
+    const existingItem = items.find(
+      item => item.description === catalogItem.name && item.type === catalogItem.type
+    );
+    
+    if (existingItem) {
+      // Increment quantity of existing item
+      onUpdateItem(existingItem.id, 'quantity', existingItem.quantity + 1);
+    } else if (onAddFromCatalog) {
       onAddFromCatalog(catalogItem);
     }
   };
@@ -195,20 +203,10 @@ export const LineItemsEditor = ({
     <div className="space-y-6">
       {/* Products Section */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-base font-semibold flex items-center gap-2">
-            <Package className="w-4 h-4 text-muted-foreground" />
-            Products
-          </Label>
-          <div className="flex items-center gap-1">
-            {onAddFromCatalog && <ItemsPicker type="product" onSelect={handleCatalogSelect} />}
-            <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('product')}>
-              <Plus className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">Add Product</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
-          </div>
-        </div>
+        <Label className="text-base font-semibold flex items-center gap-2">
+          <Package className="w-4 h-4 text-muted-foreground" />
+          Products
+        </Label>
         
         {products.length > 0 ? (
           <div className="space-y-3">
@@ -219,24 +217,23 @@ export const LineItemsEditor = ({
             No products added
           </div>
         )}
+        
+        <div className="flex items-center gap-1 justify-end">
+          {onAddFromCatalog && <ItemsPicker type="product" onSelect={handleCatalogSelect} />}
+          <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('product')}>
+            <Plus className="w-4 h-4 mr-1" />
+            <span className="hidden sm:inline">Add Product</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </div>
       </div>
 
       {/* Services Section */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-base font-semibold flex items-center gap-2">
-            <Wrench className="w-4 h-4 text-muted-foreground" />
-            Services
-          </Label>
-          <div className="flex items-center gap-1">
-            {onAddFromCatalog && <ItemsPicker type="service" onSelect={handleCatalogSelect} />}
-            <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('service')}>
-              <Plus className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">Add Service</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
-          </div>
-        </div>
+        <Label className="text-base font-semibold flex items-center gap-2">
+          <Wrench className="w-4 h-4 text-muted-foreground" />
+          Services
+        </Label>
         
         {services.length > 0 ? (
           <div className="space-y-3">
@@ -247,6 +244,15 @@ export const LineItemsEditor = ({
             No services added
           </div>
         )}
+        
+        <div className="flex items-center gap-1 justify-end">
+          {onAddFromCatalog && <ItemsPicker type="service" onSelect={handleCatalogSelect} />}
+          <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('service')}>
+            <Plus className="w-4 h-4 mr-1" />
+            <span className="hidden sm:inline">Add Service</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </div>
       </div>
     </div>
   );
