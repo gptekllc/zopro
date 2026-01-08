@@ -62,6 +62,8 @@ export interface Company {
   custom_domain: string | null;
   // Automation notifications
   notify_on_automation_run: boolean | null;
+  // MFA/Security
+  require_mfa: boolean;
   created_at: string;
   updated_at: string;
 }

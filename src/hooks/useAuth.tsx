@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, Factor } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Profile {
@@ -27,11 +27,24 @@ interface AuthContextType {
   isAdmin: boolean;
   isManager: boolean;
   isSuperAdmin: boolean;
+  // MFA properties
+  mfaFactors: Factor[];
+  aal: { currentLevel: string; nextLevel: string } | null;
+  hasMFA: boolean;
+  needsMFAChallenge: boolean;
+  // Auth functions
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  // MFA functions
+  listMFAFactors: () => Promise<Factor[]>;
+  enrollMFA: () => Promise<{ data: any; error: Error | null }>;
+  verifyMFAEnrollment: (factorId: string, code: string) => Promise<{ data: any; error: Error | null }>;
+  challengeAndVerifyMFA: (code: string) => Promise<{ data: any; error: Error | null }>;
+  unenrollMFA: (factorId: string) => Promise<{ data: any; error: Error | null }>;
+  refreshMFAStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,13 +55,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [mfaFactors, setMFAFactors] = useState<Factor[]>([]);
+  const [aal, setAAL] = useState<{ currentLevel: string; nextLevel: string } | null>(null);
 
   const isAdmin = roles.some(r => r.role === 'admin');
   const isManager = roles.some(r => r.role === 'manager');
   const isSuperAdmin = roles.some(r => r.role === 'super_admin');
+  const hasMFA = mfaFactors.some(f => f.status === 'verified');
+  const needsMFAChallenge = hasMFA && aal?.currentLevel === 'aal1' && aal?.nextLevel === 'aal2';
 
   const fetchProfile = async (userId: string) => {
-    // Using type assertion since types may be out of sync
     const { data, error } = await (supabase as any)
       .from('profiles')
       .select('*')
@@ -63,7 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchRoles = async (userId: string): Promise<UserRole[]> => {
-    // Using type assertion since types may be out of sync
     const { data, error } = await (supabase as any)
       .from('user_roles')
       .select('role')
@@ -74,6 +89,86 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return [];
     }
     return (data || []) as UserRole[];
+  };
+
+  const listMFAFactors = async (): Promise<Factor[]> => {
+    const { data, error } = await supabase.auth.mfa.listFactors();
+    if (error) {
+      console.error('Error listing MFA factors:', error);
+      return [];
+    }
+    const factors = data?.totp || [];
+    setMFAFactors(factors);
+    return factors;
+  };
+
+  const refreshMFAStatus = async () => {
+    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (data) {
+      setAAL({
+        currentLevel: data.currentLevel,
+        nextLevel: data.nextLevel,
+      });
+    }
+    await listMFAFactors();
+  };
+
+  const enrollMFA = async () => {
+    const result = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+    return result;
+  };
+
+  const verifyMFAEnrollment = async (factorId: string, code: string) => {
+    const challenge = await supabase.auth.mfa.challenge({ factorId });
+    if (challenge.error) {
+      return { data: null, error: challenge.error };
+    }
+    
+    const verify = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId: challenge.data.id,
+      code,
+    });
+    
+    if (!verify.error) {
+      await refreshMFAStatus();
+    }
+    
+    return verify;
+  };
+
+  const challengeAndVerifyMFA = async (code: string) => {
+    const factors = await supabase.auth.mfa.listFactors();
+    const totpFactor = factors.data?.totp?.find(f => f.status === 'verified');
+    
+    if (!totpFactor) {
+      return { data: null, error: new Error('No verified TOTP factor found') };
+    }
+    
+    const challenge = await supabase.auth.mfa.challenge({ factorId: totpFactor.id });
+    if (challenge.error) {
+      return { data: null, error: challenge.error };
+    }
+    
+    const verify = await supabase.auth.mfa.verify({
+      factorId: totpFactor.id,
+      challengeId: challenge.data.id,
+      code,
+    });
+    
+    if (!verify.error) {
+      await refreshMFAStatus();
+    }
+    
+    return verify;
+  };
+
+  const unenrollMFA = async (factorId: string) => {
+    const result = await supabase.auth.mfa.unenroll({ factorId });
+    if (!result.error) {
+      await refreshMFAStatus();
+    }
+    return result;
   };
 
   useEffect(() => {
@@ -90,10 +185,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setProfile(profileData);
             const rolesData = await fetchRoles(session.user.id);
             setRoles(rolesData);
+            // Fetch MFA status
+            await refreshMFAStatus();
           }, 0);
         } else {
           setProfile(null);
           setRoles([]);
+          setMFAFactors([]);
+          setAAL(null);
         }
       }
     );
@@ -108,6 +207,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(profileData);
         const rolesData = await fetchRoles(session.user.id);
         setRoles(rolesData);
+        // Fetch MFA status
+        await refreshMFAStatus();
       }
       
       setIsLoading(false);
@@ -170,6 +271,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
     setProfile(null);
     setRoles([]);
+    setMFAFactors([]);
+    setAAL(null);
   };
 
   const refreshProfile = async () => {
@@ -192,11 +295,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin,
         isManager,
         isSuperAdmin,
+        mfaFactors,
+        aal,
+        hasMFA,
+        needsMFAChallenge,
         signIn,
         signUp,
         signInWithGoogle,
         signOut,
         refreshProfile,
+        listMFAFactors,
+        enrollMFA,
+        verifyMFAEnrollment,
+        challengeAndVerifyMFA,
+        unenrollMFA,
+        refreshMFAStatus,
       }}
     >
       {children}

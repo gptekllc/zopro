@@ -7,13 +7,15 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Settings as SettingsIcon, User, Save, Loader2 } from 'lucide-react';
+import { Settings as SettingsIcon, User, Save, Loader2, Shield, ChevronRight } from 'lucide-react';
 import { PushNotificationToggle } from '@/components/notifications/PushNotificationToggle';
 import PageContainer from '@/components/layout/PageContainer';
+import { useNavigate } from 'react-router-dom';
 
 const Settings = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, hasMFA } = useAuth();
   const updateProfile = useUpdateProfile();
+  const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
     full_name: '',
@@ -120,6 +122,24 @@ const Settings = () => {
               Save Changes
             </Button>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* Security Settings */}
+      <Card className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => navigate('/settings/security')}>
+        <CardContent className="flex items-center justify-between py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium">Security</p>
+              <p className="text-sm text-muted-foreground">
+                {hasMFA ? 'Two-factor authentication enabled' : 'Set up two-factor authentication'}
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-muted-foreground" />
         </CardContent>
       </Card>
 
