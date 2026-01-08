@@ -76,10 +76,20 @@ const Invoices = () => {
     if (!open) restoreScrollPosition();
   }, [saveScrollPosition, restoreScrollPosition]);
 
-  // Handle URL params for edit/duplicate
+  // Handle URL params for edit/duplicate/create
   useEffect(() => {
+    const createParam = searchParams.get("create");
     const editInvoiceId = searchParams.get("edit");
     const duplicateInvoiceId = searchParams.get("duplicate");
+    
+    // Handle create param from mobile FAB
+    if (createParam === "true") {
+      resetForm();
+      openEditDialog(true);
+      searchParams.delete("create");
+      setSearchParams(searchParams, { replace: true });
+      return;
+    }
     
     if (editInvoiceId && invoices.length > 0) {
       setPendingEditInvoiceId(editInvoiceId);
