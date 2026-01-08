@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
+import zoproLogo from '@/assets/ZoPro_Logo.png';
 
 const StripeConnectReturn = () => {
   const navigate = useNavigate();
@@ -15,17 +16,23 @@ const StripeConnectReturn = () => {
   }, [queryClient]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="max-w-md w-full">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <CheckCircle2 className="w-16 h-16 text-green-500" />
+    <div className="min-h-screen flex items-center justify-center p-4 gradient-primary">
+      <div className="w-full max-w-md animate-scale-in">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-card mb-4 shadow-lg overflow-hidden">
+            <img src={zoproLogo} alt="ZoPro Logo" className="w-16 h-16 object-contain" />
           </div>
-          <CardTitle className="text-2xl">Stripe Setup Complete</CardTitle>
-          <CardDescription>
-            Your Stripe account has been connected. You can now accept online payments for invoices.
-          </CardDescription>
-        </CardHeader>
+        </div>
+        <Card className="shadow-lg border-0">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <CheckCircle2 className="w-16 h-16 text-green-500" />
+            </div>
+            <CardTitle className="text-2xl">Stripe Setup Complete</CardTitle>
+            <CardDescription>
+              Your Stripe account has been connected. You can now accept online payments for invoices.
+            </CardDescription>
+          </CardHeader>
         <CardContent className="space-y-4">
           <div className="bg-muted/50 rounded-lg p-4 text-sm text-muted-foreground">
             <p>
@@ -44,6 +51,7 @@ const StripeConnectReturn = () => {
           </Button>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };

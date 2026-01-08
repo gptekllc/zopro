@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Wrench, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import zoproLogo from '@/assets/ZoPro_Logo.png';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -88,6 +89,9 @@ const ResetPassword = () => {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
         <div className="text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-card mb-6 shadow-lg overflow-hidden">
+            <img src={zoproLogo} alt="ZoPro Logo" className="w-16 h-16 object-contain" />
+          </div>
           <Loader2 className="w-8 h-8 animate-spin text-primary-foreground mx-auto mb-4" />
           <p className="text-primary-foreground">Verifying reset link...</p>
         </div>
@@ -100,6 +104,11 @@ const ResetPassword = () => {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
         <div className="w-full max-w-md animate-scale-in">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-card mb-4 shadow-lg overflow-hidden">
+              <img src={zoproLogo} alt="ZoPro Logo" className="w-16 h-16 object-contain" />
+            </div>
+          </div>
           <Card className="shadow-lg border-0">
             <CardHeader className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10 mx-auto mb-4">
@@ -129,6 +138,11 @@ const ResetPassword = () => {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
         <div className="w-full max-w-md animate-scale-in">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-card mb-4 shadow-lg overflow-hidden">
+              <img src={zoproLogo} alt="ZoPro Logo" className="w-16 h-16 object-contain" />
+            </div>
+          </div>
           <Card className="shadow-lg border-0">
             <CardHeader className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mx-auto mb-4">
@@ -149,8 +163,8 @@ const ResetPassword = () => {
     <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
       <div className="w-full max-w-md animate-scale-in">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-card mb-4 shadow-lg">
-            <Wrench className="w-8 h-8 text-primary" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-card mb-4 shadow-lg overflow-hidden">
+            <img src={zoproLogo} alt="ZoPro Logo" className="w-16 h-16 object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-primary-foreground">Reset Password</h1>
           <p className="text-primary-foreground/80 mt-2">Enter your new password</p>
