@@ -1207,7 +1207,16 @@ const CustomerPortal = () => {
   // Login screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
+        <div className="text-center mb-6">
+          <img 
+            src="/icons/bbb.png" 
+            alt="ZoPro Logo" 
+            className="h-16 w-auto mx-auto mb-3"
+          />
+          <h1 className="text-2xl font-bold text-foreground">ZoPro</h1>
+          <p className="text-muted-foreground">Your Service Management Solution</p>
+        </div>
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Customer Portal</CardTitle>
