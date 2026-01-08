@@ -2244,6 +2244,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_super_admin_by_email: {
+        Args: { _email: string }
+        Returns: undefined
+      }
       auto_archive_old_records: { Args: never; Returns: undefined }
       check_account_lockout: { Args: { check_email: string }; Returns: Json }
       cleanup_old_login_attempts: { Args: never; Returns: undefined }
