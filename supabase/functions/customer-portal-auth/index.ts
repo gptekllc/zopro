@@ -173,6 +173,9 @@ Deno.serve(async (req) => {
             subject: `Your ${companyName} Customer Portal Access`,
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                  <img src="https://zopro.app/icons/bbb.png" alt="ZoPro Logo" style="height: 60px; width: auto;" />
+                </div>
                 <h1 style="color: #333;">Customer Portal Access</h1>
                 <p>Hello ${customer.name},</p>
                 <p>Click the button below to access your customer portal where you can view your invoices and service history:</p>
@@ -185,6 +188,7 @@ Deno.serve(async (req) => {
                 <p style="color: #666; font-size: 14px;">If you didn't request this link, you can safely ignore this email.</p>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
                 <p style="color: #999; font-size: 12px;">${companyName}</p>
+                <p style="color: #999; font-size: 12px;">© ${new Date().getFullYear()} <a href="https://zopro.app" style="color: #999;">ZoPro</a></p>
               </div>
             `,
           });
