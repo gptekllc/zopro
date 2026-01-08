@@ -17,12 +17,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer, Star, MessageSquare, Edit2 } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer, Star, MessageSquare, Edit2, CheckCheck } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format, formatDistanceToNow } from 'date-fns';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -150,6 +151,18 @@ interface PaymentMethod {
   exp_year?: number;
   bank_name?: string;
   account_type?: string;
+}
+
+interface CustomerNotification {
+  id: string;
+  customer_id: string;
+  company_id: string;
+  type: string;
+  title: string;
+  message: string;
+  data: any;
+  is_read: boolean;
+  created_at: string;
 }
 
 // Initialize Stripe - we need to get the publishable key
@@ -505,6 +518,11 @@ const CustomerPortal = () => {
   const [isDeletingFeedback, setIsDeletingFeedback] = useState(false);
   const [viewingJobFeedback, setViewingJobFeedback] = useState<{ rating: number; feedback_text: string | null } | null>(null);
   const [isLoadingViewingFeedback, setIsLoadingViewingFeedback] = useState(false);
+
+  // Notification states
+  const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
 
   // Check for magic link token and payment status in URL
   useEffect(() => {
@@ -1328,6 +1346,78 @@ const CustomerPortal = () => {
     }
   };
 
+  // Fetch customer notifications
+  const fetchNotifications = async () => {
+    if (!customerData?.id) return;
+    
+    setIsLoadingNotifications(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: {
+          action: 'get-notifications',
+          customerId: customerData.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error) throw error;
+      setNotifications(data?.notifications || []);
+    } catch (err: any) {
+      console.error('Failed to fetch notifications:', err);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  };
+
+  // Mark all notifications as read
+  const handleMarkAllRead = async () => {
+    if (!customerData?.id) return;
+    
+    try {
+      const { error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: {
+          action: 'mark-all-notifications-read',
+          customerId: customerData.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error) throw error;
+      setNotifications(notifications.map(n => ({ ...n, is_read: true })));
+      toast.success('All notifications marked as read');
+    } catch (err: any) {
+      toast.error('Failed to mark notifications as read');
+    }
+  };
+
+  // Clear all notifications
+  const handleClearAllNotifications = async () => {
+    if (!customerData?.id) return;
+    
+    try {
+      const { error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: {
+          action: 'clear-all-notifications',
+          customerId: customerData.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error) throw error;
+      setNotifications([]);
+      toast.success('All notifications cleared');
+    } catch (err: any) {
+      toast.error('Failed to clear notifications');
+    }
+  };
+
+  // Fetch notifications when authenticated
+  useEffect(() => {
+    if (isAuthenticated && customerData?.id) {
+      fetchNotifications();
+    }
+  }, [isAuthenticated, customerData?.id]);
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
       paid: 'default',
@@ -1762,17 +1852,80 @@ const CustomerPortal = () => {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {/* Notification Badge */}
-            <div className="relative">
-              <div className="p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
-                <Bell className="w-5 h-5 text-muted-foreground" />
-              </div>
-              {(pendingQuotes.length + unpaidInvoices.length) > 0 && (
-                <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {pendingQuotes.length + unpaidInvoices.length > 9 ? '9+' : pendingQuotes.length + unpaidInvoices.length}
-                </span>
-              )}
-            </div>
+            {/* Notification Dropdown */}
+            <Popover open={showNotifications} onOpenChange={setShowNotifications}>
+              <PopoverTrigger asChild>
+                <div className="relative cursor-pointer">
+                  <div className="p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                    <Bell className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  {notifications.filter(n => !n.is_read).length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {notifications.filter(n => !n.is_read).length > 9 ? '9+' : notifications.filter(n => !n.is_read).length}
+                    </span>
+                  )}
+                </div>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 p-0">
+                <div className="flex items-center justify-between px-4 py-3 border-b">
+                  <h4 className="font-semibold text-sm">Notifications</h4>
+                  {notifications.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 text-xs"
+                        onClick={handleMarkAllRead}
+                      >
+                        <CheckCheck className="w-3 h-3 mr-1" />
+                        Mark Read
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 text-xs text-destructive hover:text-destructive"
+                        onClick={handleClearAllNotifications}
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Clear
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <ScrollArea className="max-h-80">
+                  {isLoadingNotifications ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="py-8 text-center text-muted-foreground text-sm">
+                      <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>No notifications yet</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {notifications.map((notification) => (
+                        <div 
+                          key={notification.id} 
+                          className={`px-4 py-3 hover:bg-muted/50 transition-colors ${!notification.is_read ? 'bg-primary/5' : ''}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!notification.is_read ? 'bg-primary' : 'bg-transparent'}`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{notification.title}</p>
+                              <p className="text-xs text-muted-foreground line-clamp-2">{notification.message}</p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+              </PopoverContent>
+            </Popover>
             <span className="text-sm text-muted-foreground hidden sm:inline">
               {customerData?.name}
             </span>

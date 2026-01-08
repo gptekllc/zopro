@@ -2050,6 +2050,123 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Get customer notifications
+    if (action === 'get-notifications') {
+      const { token, customerId } = body;
+      
+      if (!token || !customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Token and customerId are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const verified = await verifySignedToken(token);
+      if (!verified || verified.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const { data: notifications, error } = await adminClient
+        .from('customer_notifications')
+        .select('*')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch notifications' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true, notifications: notifications || [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Mark all notifications as read
+    if (action === 'mark-all-notifications-read') {
+      const { token, customerId } = body;
+      
+      if (!token || !customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Token and customerId are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const verified = await verifySignedToken(token);
+      if (!verified || verified.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const { error } = await adminClient
+        .from('customer_notifications')
+        .update({ is_read: true })
+        .eq('customer_id', customerId)
+        .eq('is_read', false);
+      
+      if (error) {
+        console.error('Error marking notifications as read:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to mark notifications as read' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Clear all notifications
+    if (action === 'clear-all-notifications') {
+      const { token, customerId } = body;
+      
+      if (!token || !customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Token and customerId are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const verified = await verifySignedToken(token);
+      if (!verified || verified.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const { error } = await adminClient
+        .from('customer_notifications')
+        .delete()
+        .eq('customer_id', customerId);
+      
+      if (error) {
+        console.error('Error clearing notifications:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to clear notifications' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: 'Invalid action' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
