@@ -303,19 +303,19 @@ export function QuoteDetailDialog({
                       <span className="text-muted-foreground text-xs">Subtotal</span>
                       <span className="text-xs">${Number(quote.subtotal).toLocaleString()}</span>
                     </div>
-                    {quote.discount_value && quote.discount_value > 0 && (
-                      <div className="flex justify-between gap-4">
-                        <span className="text-muted-foreground text-xs">
-                          Discount{quote.discount_type === 'percentage' ? ` (${quote.discount_value}%)` : ''}
-                        </span>
-                        <span className="text-xs text-green-600">
-                          -${(quote.discount_type === 'percentage' 
-                            ? (Number(quote.subtotal) * Number(quote.discount_value) / 100) 
-                            : Number(quote.discount_value)
-                          ).toLocaleString()}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground text-xs">
+                        Discount{quote.discount_value && quote.discount_type === 'percentage' ? ` (${quote.discount_value}%)` : ''}
+                      </span>
+                      <span className={`text-xs ${quote.discount_value && quote.discount_value > 0 ? 'text-green-600' : ''}`}>
+                        {quote.discount_value && quote.discount_value > 0 
+                          ? `-$${(quote.discount_type === 'percentage' 
+                              ? (Number(quote.subtotal) * Number(quote.discount_value) / 100) 
+                              : Number(quote.discount_value)
+                            ).toLocaleString()}`
+                          : '$0'}
+                      </span>
+                    </div>
                     <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground text-xs">Tax</span>
                       <span className="text-xs">${Number(quote.tax).toLocaleString()}</span>
