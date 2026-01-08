@@ -198,26 +198,17 @@ export const LineItemsEditor = ({
     <div className="space-y-4">
       {/* Products Section */}
       <Collapsible open={productsOpen} onOpenChange={setProductsOpen}>
-        <div className="flex items-center justify-between">
-          <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-70 transition-opacity">
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${productsOpen ? '' : '-rotate-90'}`} />
-            <Label className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
-              <Package className="w-4 h-4 text-muted-foreground" />
-              Products
-              {products.length > 0 && (
-                <Badge variant="secondary" className="text-xs">{products.length}</Badge>
-              )}
-            </Label>
-          </CollapsibleTrigger>
-          <div className="flex items-center gap-1">
-            {onAddFromCatalog && <ItemsPicker type="product" onSelect={handleCatalogSelect} />}
-            <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('product')} className="h-8">
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              <span className="hidden sm:inline">Add</span>
-            </Button>
-          </div>
-        </div>
-        <CollapsibleContent className="mt-2">
+        <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-70 transition-opacity w-full">
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${productsOpen ? '' : '-rotate-90'}`} />
+          <Label className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
+            <Package className="w-4 h-4 text-muted-foreground" />
+            Products
+            {products.length > 0 && (
+              <Badge variant="secondary" className="text-xs">{products.length}</Badge>
+            )}
+          </Label>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2 space-y-2">
           {products.length > 0 ? (
             <div className="space-y-2">
               {products.map(item => renderItemRow(item, canRemoveItem))}
@@ -227,31 +218,29 @@ export const LineItemsEditor = ({
               No products added
             </div>
           )}
+          <div className="flex items-center justify-center gap-2 pt-1">
+            {onAddFromCatalog && <ItemsPicker type="product" onSelect={handleCatalogSelect} />}
+            <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('product')} className="h-8">
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              Add Product
+            </Button>
+          </div>
         </CollapsibleContent>
       </Collapsible>
 
       {/* Services Section */}
       <Collapsible open={servicesOpen} onOpenChange={setServicesOpen}>
-        <div className="flex items-center justify-between">
-          <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-70 transition-opacity">
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${servicesOpen ? '' : '-rotate-90'}`} />
-            <Label className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
-              <Wrench className="w-4 h-4 text-muted-foreground" />
-              Services
-              {services.length > 0 && (
-                <Badge variant="secondary" className="text-xs">{services.length}</Badge>
-              )}
-            </Label>
-          </CollapsibleTrigger>
-          <div className="flex items-center gap-1">
-            {onAddFromCatalog && <ItemsPicker type="service" onSelect={handleCatalogSelect} />}
-            <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('service')} className="h-8">
-              <Plus className="w-3.5 h-3.5 mr-1" />
-              <span className="hidden sm:inline">Add</span>
-            </Button>
-          </div>
-        </div>
-        <CollapsibleContent className="mt-2">
+        <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-70 transition-opacity w-full">
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${servicesOpen ? '' : '-rotate-90'}`} />
+          <Label className="text-sm font-semibold flex items-center gap-2 cursor-pointer">
+            <Wrench className="w-4 h-4 text-muted-foreground" />
+            Services
+            {services.length > 0 && (
+              <Badge variant="secondary" className="text-xs">{services.length}</Badge>
+            )}
+          </Label>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-2 space-y-2">
           {services.length > 0 ? (
             <div className="space-y-2">
               {services.map(item => renderItemRow(item, canRemoveItem))}
@@ -261,6 +250,13 @@ export const LineItemsEditor = ({
               No services added
             </div>
           )}
+          <div className="flex items-center justify-center gap-2 pt-1">
+            {onAddFromCatalog && <ItemsPicker type="service" onSelect={handleCatalogSelect} />}
+            <Button type="button" variant="outline" size="sm" onClick={() => onAddItem('service')} className="h-8">
+              <Plus className="w-3.5 h-3.5 mr-1" />
+              Add Service
+            </Button>
+          </div>
         </CollapsibleContent>
       </Collapsible>
     </div>
