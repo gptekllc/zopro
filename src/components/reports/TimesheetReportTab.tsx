@@ -656,7 +656,7 @@ const TimesheetReportTab = () => {
           <CardTitle>Team Hours</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto scrollbar-visible">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
