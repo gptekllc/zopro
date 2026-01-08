@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import ZoProLogo from '@/assets/ZoPro_Logo.png';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -1210,7 +1211,7 @@ const CustomerPortal = () => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
         <div className="text-center mb-6">
           <img 
-            src="/icons/bbb.png" 
+            src={ZoProLogo} 
             alt="ZoPro Logo" 
             className="h-16 w-auto mx-auto mb-3"
           />
