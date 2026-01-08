@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, Medal, Award } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { formatAmount } from '@/lib/formatAmount';
 
 interface TechnicianStats {
   id: string;
@@ -71,7 +72,7 @@ export function TechnicianLeaderboardWidget({ technicians }: TechnicianLeaderboa
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{tech.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    ${tech.revenue.toLocaleString()} • {tech.completedJobs} jobs • {tech.invoicesCount} invoices
+                    ${formatAmount(tech.revenue)} • {tech.completedJobs} jobs • {tech.invoicesCount} invoices
                   </p>
                 </div>
               </div>

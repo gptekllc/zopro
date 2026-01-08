@@ -34,6 +34,7 @@ import { VoidInvoiceDialog } from './VoidInvoiceDialog';
 import { InvoiceEmailActionDialog } from './InvoiceEmailActionDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { formatAmount } from '@/lib/formatAmount';
 
 const INVOICE_STATUSES = ['draft', 'sent', 'partially_paid', 'paid', 'overdue', 'voided'] as const;
 
@@ -562,13 +563,13 @@ export function InvoiceDetailDialog({
                       <div className="sm:hidden">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium truncate">{item.description}</span>
-                          <span className="font-medium shrink-0">${Number(item.total).toLocaleString()}</span>
+                          <span className="font-medium shrink-0">${formatAmount(item.total)}</span>
                         </div>
                         {(item as any).item_description && (
                           <p className="text-xs text-muted-foreground">{(item as any).item_description}</p>
                         )}
                         <div className="text-xs text-muted-foreground">
-                          {item.quantity} × ${Number(item.unit_price).toLocaleString()}
+                          {item.quantity} × ${formatAmount(item.unit_price)}
                         </div>
                       </div>
                       {/* Desktop layout */}
@@ -580,8 +581,8 @@ export function InvoiceDetailDialog({
                           )}
                         </div>
                         <div className="col-span-2 text-right text-xs">{item.quantity}</div>
-                        <div className="col-span-3 text-right text-xs">${Number(item.unit_price).toLocaleString()}</div>
-                        <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
+                        <div className="col-span-3 text-right text-xs">${formatAmount(item.unit_price)}</div>
+                        <div className="col-span-2 text-right font-medium">${formatAmount(item.total)}</div>
                       </div>
                     </div>
                   ))}
@@ -592,15 +593,15 @@ export function InvoiceDetailDialog({
                   <div className="space-y-0.5 min-w-[140px] text-sm">
                     <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground text-xs">Subtotal</span>
-                      <span className="text-xs">${Number(invoice.subtotal).toLocaleString()}</span>
+                      <span className="text-xs">${formatAmount(invoice.subtotal)}</span>
                     </div>
                     <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground text-xs">Tax</span>
-                      <span className="text-xs">${Number(invoice.tax).toLocaleString()}</span>
+                      <span className="text-xs">${formatAmount(invoice.tax)}</span>
                     </div>
                     <div className="flex justify-between font-medium gap-4">
                       <span className="text-xs">Invoice Total</span>
-                      <span>${Number(invoice.total).toLocaleString()}</span>
+                      <span>${formatAmount(invoice.total)}</span>
                     </div>
                     {hasLateFee && (
                       <div className="flex justify-between text-xs text-destructive">
@@ -608,7 +609,7 @@ export function InvoiceDetailDialog({
                           <AlertCircle className="w-3 h-3" />
                           Late Fee {lateFeePercentage > 0 && `(${lateFeePercentage}%)`}
                         </span>
-                        <span>+${Number(invoice.late_fee_amount).toFixed(2)}</span>
+                        <span>+${formatAmount(invoice.late_fee_amount)}</span>
                       </div>
                     )}
                     {totalPaid > 0 && (
@@ -617,7 +618,7 @@ export function InvoiceDetailDialog({
                           <CheckCircle className="w-3 h-3" />
                           Paid
                         </span>
-                        <span>-${totalPaid.toFixed(2)}</span>
+                        <span>-${formatAmount(totalPaid)}</span>
                       </div>
                     )}
                     <div className={`flex justify-between font-bold pt-1 border-t ${remainingBalance > 0 && invoice.status !== 'paid' ? 'border-destructive/30' : ''}`}>
@@ -626,7 +627,7 @@ export function InvoiceDetailDialog({
                         {remainingBalance > 0 && invoice.status !== 'paid' ? 'Balance Due' : 'Total'}
                       </span>
                       <span className={remainingBalance > 0 && invoice.status !== 'paid' ? 'text-destructive' : ''}>
-                        ${remainingBalance > 0 ? remainingBalance.toFixed(2) : totalDue.toFixed(2)}
+                        ${remainingBalance > 0 ? formatAmount(remainingBalance) : formatAmount(totalDue)}
                       </span>
                     </div>
                     {canApplyLateFee && onApplyLateFee && (

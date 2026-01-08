@@ -3,6 +3,7 @@ import { DollarSign, ArrowUpRight, ArrowDownRight, RotateCcw } from 'lucide-reac
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { PaymentWithDetails } from '@/hooks/usePayments';
+import { formatAmount } from '@/lib/formatAmount';
 
 interface RecentTransactionsWidgetProps {
   payments: PaymentWithDetails[];
@@ -64,7 +65,7 @@ export function RecentTransactionsWidget({ payments, isTechnicianScoped }: Recen
               </div>
               <div className="text-right">
                 <p className={`font-medium ${payment.status === 'refunded' ? 'text-destructive' : ''}`}>
-                  {payment.status === 'refunded' ? '-' : '+'}${Number(payment.amount).toLocaleString()}
+                  {payment.status === 'refunded' ? '-' : '+'}${formatAmount(payment.amount)}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {format(new Date(payment.payment_date), 'MMM d, yyyy')}

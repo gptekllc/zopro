@@ -2,6 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DollarSign, Percent } from "lucide-react";
+import { formatAmount } from '@/lib/formatAmount';
 
 interface DiscountInputProps {
   discountType: 'amount' | 'percentage';
@@ -72,5 +73,5 @@ export function formatDiscount(
   if (discountType === 'percentage') {
     return `${discountValue}%`;
   }
-  return `$${discountValue.toLocaleString()}`;
+  return `$${formatAmount(discountValue)}`;
 }

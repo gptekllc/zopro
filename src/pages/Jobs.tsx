@@ -33,6 +33,7 @@ import { JobListControls } from '@/components/jobs/JobListControls';
 import PageContainer from '@/components/layout/PageContainer';
 import { UsageLimitWarning, UsageLimitBadge } from '@/components/UsageLimitWarning';
 import { useUsageLimits } from '@/hooks/useUsageLimits';
+import { formatAmount } from '@/lib/formatAmount';
 
 const JOB_STATUSES_EDITABLE = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
@@ -712,21 +713,21 @@ const Jobs = () => {
                     />
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal:</span>
-                      <span>${calculateSubtotal().toLocaleString()}</span>
+                      <span>${formatAmount(calculateSubtotal())}</span>
                     </div>
                     {formData.discountValue > 0 && (
                       <div className="flex justify-between text-sm text-success">
                         <span>Discount ({formatDiscount(formData.discountType, formData.discountValue)}):</span>
-                        <span>-${calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue).toLocaleString()}</span>
+                        <span>-${formatAmount(calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue))}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Tax ({taxRate}%):</span>
-                      <span>${calculateTax().toLocaleString()}</span>
+                      <span>${formatAmount(calculateTax())}</span>
                     </div>
                     <div className="flex justify-between font-semibold pt-1 border-t">
                       <span>Total:</span>
-                      <span>${(calculateTotal() - calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue)).toLocaleString()}</span>
+                      <span>${formatAmount(calculateTotal() - calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue))}</span>
                     </div>
                   </div>
 

@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Loader2, Receipt } from 'lucide-react';
+import { formatAmount } from '@/lib/formatAmount';
 
 interface Quote {
   id: string;
@@ -45,7 +46,7 @@ export function ConvertToInvoiceDialog({
             Convert to Invoice
           </DialogTitle>
           <DialogDescription>
-            Create an invoice from {quote.quote_number} (${Number(quote.total).toLocaleString()})
+            Create an invoice from {quote.quote_number} (${formatAmount(quote.total)})
           </DialogDescription>
         </DialogHeader>
 

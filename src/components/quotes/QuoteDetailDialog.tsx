@@ -271,13 +271,13 @@ export function QuoteDetailDialog({
                       <div className="sm:hidden">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-medium truncate">{item.description}</span>
-                          <span className="font-medium shrink-0">${Number(item.total).toLocaleString()}</span>
+                          <span className="font-medium shrink-0">${formatAmount(item.total)}</span>
                         </div>
                         {(item as any).item_description && (
                           <p className="text-xs text-muted-foreground">{(item as any).item_description}</p>
                         )}
                         <div className="text-xs text-muted-foreground">
-                          {item.quantity} × ${Number(item.unit_price).toLocaleString()}
+                          {item.quantity} × ${formatAmount(item.unit_price)}
                         </div>
                       </div>
                       {/* Desktop layout */}
@@ -289,8 +289,8 @@ export function QuoteDetailDialog({
                           )}
                         </div>
                         <div className="col-span-2 text-right text-xs">{item.quantity}</div>
-                        <div className="col-span-3 text-right text-xs">${Number(item.unit_price).toLocaleString()}</div>
-                        <div className="col-span-2 text-right font-medium">${Number(item.total).toLocaleString()}</div>
+                        <div className="col-span-3 text-right text-xs">${formatAmount(item.unit_price)}</div>
+                        <div className="col-span-2 text-right font-medium">${formatAmount(item.total)}</div>
                       </div>
                     </div>
                   ))}
@@ -301,7 +301,7 @@ export function QuoteDetailDialog({
                   <div className="space-y-0.5 min-w-[140px] text-sm">
                     <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground text-xs">Subtotal</span>
-                      <span className="text-xs">${Number(quote.subtotal).toLocaleString()}</span>
+                      <span className="text-xs">${formatAmount(quote.subtotal)}</span>
                     </div>
                     <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground text-xs">
@@ -309,20 +309,20 @@ export function QuoteDetailDialog({
                       </span>
                       <span className={`text-xs ${quote.discount_value && quote.discount_value > 0 ? 'text-green-600' : ''}`}>
                         {quote.discount_value && quote.discount_value > 0 
-                          ? `-$${(quote.discount_type === 'percentage' 
+                          ? `-$${formatAmount(quote.discount_type === 'percentage' 
                               ? (Number(quote.subtotal) * Number(quote.discount_value) / 100) 
                               : Number(quote.discount_value)
-                            ).toLocaleString()}`
-                          : '$0'}
+                            )}`
+                          : '$0.00'}
                       </span>
                     </div>
                     <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground text-xs">Tax</span>
-                      <span className="text-xs">${Number(quote.tax).toLocaleString()}</span>
+                      <span className="text-xs">${formatAmount(quote.tax)}</span>
                     </div>
                     <div className="flex justify-between font-medium gap-4">
                       <span className="text-xs flex items-center gap-1"><DollarSign className="w-3 h-3" />Total</span>
-                      <span>${Number(quote.total).toLocaleString()}</span>
+                      <span>${formatAmount(quote.total)}</span>
                     </div>
                   </div>
                 </div>
