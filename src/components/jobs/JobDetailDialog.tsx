@@ -16,7 +16,7 @@ import { format, differenceInMinutes, isToday, isYesterday, startOfDay } from 'd
 import { CustomerJob } from '@/hooks/useCustomerHistory';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { JobPhotoGallery } from '@/components/jobs/JobPhotoGallery';
-import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job, useUploadJobPhoto, useDeleteJobPhoto, useUpdateJobPhotoType } from '@/hooks/useJobs';
+import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job, useUploadJobPhoto, useDeleteJobPhoto, useUpdateJobPhotoType, useUpdateJob } from '@/hooks/useJobs';
 import { Quote } from '@/hooks/useQuotes';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { useInvoices, Invoice, getInvoiceStatusLabel } from '@/hooks/useInvoices';
@@ -87,6 +87,7 @@ export function JobDetailDialog({
     isLoading: loadingQuotes
   } = useJobRelatedQuotes(job?.id || null, job?.quote_id || null);
   const convertJobToQuote = useConvertJobToQuote();
+  const updateJob = useUpdateJob();
   const convertJobToInvoice = useConvertJobToInvoice();
   const {
     data: allInvoices = [],
@@ -304,12 +305,56 @@ export function JobDetailDialog({
               <span className="truncate">{job.job_number}</span>
             </DialogTitle>
             <div className="flex gap-1 sm:gap-2 shrink-0">
-              <Badge className={`${priorityColors[job.priority] || 'bg-muted'} text-xs capitalize`}>
-                {job.priority}
-              </Badge>
-              <Badge className={`${statusColors[job.status] || 'bg-muted'} text-xs capitalize`}>
-                {job.status.replace('_', ' ')}
-              </Badge>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Badge className={`${priorityColors[job.priority] || 'bg-muted'} text-xs capitalize cursor-pointer hover:opacity-80`}>
+                    {job.priority}
+                  </Badge>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover">
+                  {(['low', 'medium', 'high', 'urgent'] as const).map((priority) => (
+                    <DropdownMenuItem
+                      key={priority}
+                      className={`capitalize ${job.priority === priority ? 'bg-accent' : ''}`}
+                      onClick={() => {
+                        if (job.priority !== priority) {
+                          updateJob.mutate({ id: job.id, priority });
+                        }
+                      }}
+                    >
+                      <Badge className={`${priorityColors[priority]} text-xs capitalize mr-2`}>
+                        {priority}
+                      </Badge>
+                      {priority}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Badge className={`${statusColors[job.status] || 'bg-muted'} text-xs capitalize cursor-pointer hover:opacity-80`}>
+                    {job.status.replace('_', ' ')}
+                  </Badge>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-popover">
+                  {(['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const).map((status) => (
+                    <DropdownMenuItem
+                      key={status}
+                      className={`capitalize ${job.status === status ? 'bg-accent' : ''}`}
+                      onClick={() => {
+                        if (job.status !== status) {
+                          updateJob.mutate({ id: job.id, status });
+                        }
+                      }}
+                    >
+                      <Badge className={`${statusColors[status]} text-xs capitalize mr-2`}>
+                        {status.replace('_', ' ')}
+                      </Badge>
+                      {status.replace('_', ' ')}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </DialogHeader>
