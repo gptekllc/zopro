@@ -734,7 +734,7 @@ const Company = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handlePreferencesSubmit} className="space-y-6">
-                <Accordion type="multiple" defaultValue={['pdf', 'jobs']} className="w-full">
+                <Accordion type="multiple" defaultValue={[]} className="w-full">
                   {/* PDF Preferences */}
                   <AccordionItem value="pdf">
                     <AccordionTrigger className="text-base font-medium">
