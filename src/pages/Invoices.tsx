@@ -420,7 +420,7 @@ const Invoices = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <InlineCustomerForm
                   customers={customers}
                   selectedCustomerId={formData.customerId}
@@ -433,6 +433,20 @@ const Invoices = () => {
                     value={formData.dueDays}
                     onChange={e => setFormData({ ...formData, dueDays: parseInt(e.target.value) || 30 })}
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={formData.status} onValueChange={value => setFormData({ ...formData, status: value })}>
+                    <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft" className="capitalize">Draft</SelectItem>
+                      <SelectItem value="sent" className="capitalize">Sent</SelectItem>
+                      <SelectItem value="partial" className="capitalize">Partial</SelectItem>
+                      <SelectItem value="paid" className="capitalize">Paid</SelectItem>
+                      <SelectItem value="overdue" className="capitalize">Overdue</SelectItem>
+                      <SelectItem value="void" className="capitalize">Void</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
