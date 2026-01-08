@@ -58,6 +58,8 @@ export interface CustomerQuote {
   created_at: string;
   notes: string | null;
   signature_id: string | null;
+  discount_type: string | null;
+  discount_value: number | null;
   items?: QuoteItem[];
 }
 
