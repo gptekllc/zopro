@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
-import { Shield, Loader2, CheckCircle2, Copy, QrCode } from 'lucide-react';
+import { Shield, Loader2, CheckCircle2, QrCode } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
@@ -17,7 +17,6 @@ const MFAEnrollment = ({ onComplete, onCancel }: MFAEnrollmentProps) => {
   const [step, setStep] = useState<EnrollmentStep>('intro');
   const [isLoading, setIsLoading] = useState(false);
   const [qrCode, setQrCode] = useState<string>('');
-  const [secret, setSecret] = useState<string>('');
   const [factorId, setFactorId] = useState<string>('');
   const [code, setCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -33,7 +32,6 @@ const MFAEnrollment = ({ onComplete, onCancel }: MFAEnrollmentProps) => {
       }
       if (result.data) {
         setQrCode(result.data.totp.qr_code);
-        setSecret(result.data.totp.secret);
         setFactorId(result.data.id);
         setStep('qr');
       }
@@ -65,11 +63,6 @@ const MFAEnrollment = ({ onComplete, onCancel }: MFAEnrollmentProps) => {
     } finally {
       setIsVerifying(false);
     }
-  };
-
-  const copySecret = () => {
-    navigator.clipboard.writeText(secret);
-    toast.success('Secret copied to clipboard');
   };
 
   if (step === 'intro') {
@@ -130,23 +123,9 @@ const MFAEnrollment = ({ onComplete, onCancel }: MFAEnrollmentProps) => {
           <div className="flex justify-center bg-white p-4 rounded-lg">
             <img src={qrCode} alt="QR Code for MFA setup" className="w-48 h-48" />
           </div>
-          
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground mb-2">
-              Can't scan? Enter this code manually:
-            </p>
-            <div className="flex items-center justify-center gap-2">
-              <code className="bg-muted px-2 py-1 rounded text-xs font-mono break-all">
-                {secret}
-              </code>
-              <Button variant="ghost" size="icon" onClick={copySecret}>
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
 
           <Button onClick={() => setStep('verify')} className="w-full">
-            I've scanned the code
+            Continue
           </Button>
         </CardContent>
       </Card>
