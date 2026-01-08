@@ -524,6 +524,8 @@ export function InvoiceListManager({
             subtotal: Number(viewingInvoice.subtotal),
             tax: Number(viewingInvoice.tax),
             total: Number(viewingInvoice.total),
+            discount_type: (viewingInvoice as any).discount_type ?? null,
+            discount_value: (viewingInvoice as any).discount_value ?? null,
             notes: viewingInvoice.notes,
             items: viewingInvoice.items,
             signature_id: (viewingInvoice as any).signature_id,

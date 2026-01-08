@@ -37,6 +37,8 @@ export interface CustomerJob {
   subtotal: number | null;
   tax: number | null;
   total: number | null;
+  discount_type: string | null;
+  discount_value: number | null;
   labor_hourly_rate: number | null;
   assignee?: { full_name: string | null } | null;
   completion_signature_id?: string | null;
@@ -78,6 +80,8 @@ export interface CustomerInvoice {
   subtotal: number;
   tax: number;
   total: number;
+  discount_type: string | null;
+  discount_value: number | null;
   late_fee_amount: number | null;
   late_fee_applied_at: string | null;
   due_date: string | null;
@@ -147,6 +151,8 @@ export function useCustomerJobs(customerId: string | undefined) {
           subtotal,
           tax,
           total,
+          discount_type,
+          discount_value,
           labor_hourly_rate,
           completion_signature_id,
           completion_signed_at,
@@ -212,6 +218,8 @@ export function useCustomerInvoices(customerId: string | undefined) {
           subtotal,
           tax,
           total,
+          discount_type,
+          discount_value,
           late_fee_amount,
           late_fee_applied_at,
           due_date,
