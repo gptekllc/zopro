@@ -1269,6 +1269,14 @@ const CustomerPortal = () => {
                     </>
                   )}
                 </Button>
+                <Button 
+                  type="button"
+                  variant="ghost" 
+                  className="w-full"
+                  onClick={() => window.location.href = '/portal'}
+                >
+                  Back to Login
+                </Button>
               </form>
             )}
           </CardContent>
