@@ -503,6 +503,8 @@ const CustomerPortal = () => {
   const [feedbackMode, setFeedbackMode] = useState<'create' | 'edit'>('create');
   const [existingFeedbackId, setExistingFeedbackId] = useState<string | null>(null);
   const [isDeletingFeedback, setIsDeletingFeedback] = useState(false);
+  const [viewingJobFeedback, setViewingJobFeedback] = useState<{ rating: number; feedback_text: string | null } | null>(null);
+  const [isLoadingViewingFeedback, setIsLoadingViewingFeedback] = useState(false);
 
   // Check for magic link token and payment status in URL
   useEffect(() => {
@@ -839,8 +841,15 @@ const CustomerPortal = () => {
 
   // Fetch job details
   const handleViewJob = async (job: Job) => {
+    // Reset feedback state when opening a new job
+    setViewingJobFeedback(null);
+    
     if (job.items && job.items.length > 0 && job.photos !== undefined) {
       setViewingJob(job);
+      // Fetch feedback if job has feedback
+      if (job.has_feedback) {
+        fetchViewingJobFeedback(job.id);
+      }
       return;
     }
     
@@ -866,11 +875,44 @@ const CustomerPortal = () => {
         photos: data?.document?.photos || [],
         signature: data?.document?.signature || null,
       });
+      
+      // Fetch feedback if job has feedback
+      if (job.has_feedback) {
+        fetchViewingJobFeedback(job.id);
+      }
     } catch (err) {
       console.error('Failed to fetch job details:', err);
       setViewingJob(job);
     } finally {
       setIsLoadingDetails(null);
+    }
+  };
+
+  // Fetch feedback for viewing job
+  const fetchViewingJobFeedback = async (jobId: string) => {
+    setIsLoadingViewingFeedback(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: {
+          action: 'get-feedback',
+          jobId,
+          customerId: customerData?.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.feedback) {
+        setViewingJobFeedback({
+          rating: data.feedback.rating,
+          feedback_text: data.feedback.feedback_text,
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch feedback:', err);
+    } finally {
+      setIsLoadingViewingFeedback(false);
     }
   };
 
@@ -2724,29 +2766,65 @@ const CustomerPortal = () => {
                 </div>
               )}
 
-              {/* Feedback Already Submitted */}
+              {/* Feedback Already Submitted - Show existing feedback */}
               {viewingJob.has_feedback && (
                 <div className="pt-4 border-t">
-                  <div className="p-3 bg-muted/50 rounded-lg">
-                    <div className="flex items-center justify-between gap-2">
+                  <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-primary" />
+                        <p className="font-medium text-sm">Your Feedback</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          handleEditFeedback(viewingJob);
+                          setViewingJob(null);
+                        }}
+                      >
+                        <Edit2 className="w-3 h-3 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
+                    
+                    {isLoadingViewingFeedback ? (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span className="text-sm">Loading feedback...</span>
+                      </div>
+                    ) : viewingJobFeedback ? (
+                      <>
+                        {/* Star Rating Display */}
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-5 h-5 ${
+                                star <= viewingJobFeedback.rating
+                                  ? 'fill-yellow-400 text-yellow-400'
+                                  : 'text-muted-foreground/30'
+                              }`}
+                            />
+                          ))}
+                          <span className="ml-2 text-sm text-muted-foreground">
+                            {viewingJobFeedback.rating}/5
+                          </span>
+                        </div>
+                        
+                        {/* Feedback Text */}
+                        {viewingJobFeedback.feedback_text && (
+                          <p className="text-sm text-muted-foreground bg-background/50 p-3 rounded border">
+                            "{viewingJobFeedback.feedback_text}"
+                          </p>
+                        )}
+                      </>
+                    ) : (
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <CheckCircle className="w-4 h-4" />
-                        <p className="text-sm">Your feedback has been submitted.</p>
+                        <p className="text-sm">Feedback submitted</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            handleEditFeedback(viewingJob);
-                            setViewingJob(null);
-                          }}
-                        >
-                          <Edit2 className="w-3 h-3 mr-1" />
-                          Edit
-                        </Button>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               )}
