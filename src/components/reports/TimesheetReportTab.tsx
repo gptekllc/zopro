@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useTimeEntries, useUpdateTimeEntry, TimeEntry } from '@/hooks/useTimeEntries';
+import { useTimeEntries, useUpdateTimeEntry, useDeleteTimeEntry, TimeEntry } from '@/hooks/useTimeEntries';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,13 +15,23 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, Printer, Mail, Users, X, Search, MoreVertical, ChevronDown, ChevronUp, Clock, Pencil } from 'lucide-react';
+import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, Printer, Mail, Users, X, Search, MoreVertical, ChevronDown, ChevronUp, Clock, Pencil, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, differenceInMinutes, isSameDay } from 'date-fns';
@@ -37,6 +47,7 @@ const TimesheetReportTab = () => {
   const { data: timeEntries = [], isLoading: loadingEntries } = useTimeEntries();
   const { data: profiles = [], isLoading: loadingProfiles } = useProfiles();
   const updateTimeEntry = useUpdateTimeEntry();
+  const deleteTimeEntry = useDeleteTimeEntry();
   
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
   const [numWeeks, setNumWeeks] = useState('1');
@@ -48,6 +59,8 @@ const TimesheetReportTab = () => {
   const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set());
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [entryDialogOpen, setEntryDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [entryToDelete, setEntryToDelete] = useState<TimeEntry | null>(null);
 
   const canViewAll = roles.some(r => r.role === 'admin' || r.role === 'manager');
   const canEdit = roles.some(r => r.role === 'admin' || r.role === 'manager');
@@ -105,6 +118,19 @@ const TimesheetReportTab = () => {
       notes: data.notes,
       break_minutes: data.break_minutes,
     });
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, entry: TimeEntry) => {
+    e.stopPropagation();
+    setEntryToDelete(entry);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!entryToDelete) return;
+    await deleteTimeEntry.mutateAsync(entryToDelete.id);
+    setDeleteDialogOpen(false);
+    setEntryToDelete(null);
   };
 
   const weekEnd = endOfWeek(addWeeks(weekStart, parseInt(numWeeks) - 1), { weekStartsOn: 0 });
@@ -742,7 +768,27 @@ const TimesheetReportTab = () => {
                                               {formatMinutes(workedMins)}
                                             </span>
                                             {canEdit && (
-                                              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                              <div className="flex items-center gap-1">
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEntryClick(entry);
+                                                  }}
+                                                >
+                                                  <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                                </Button>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6 text-destructive hover:text-destructive"
+                                                  onClick={(e) => handleDeleteClick(e, entry)}
+                                                >
+                                                  <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                              </div>
                                             )}
                                           </div>
                                         );
@@ -797,6 +843,35 @@ const TimesheetReportTab = () => {
         onSave={handleEntrySave}
         timezone={company?.timezone || undefined}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Time Entry?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {entryToDelete && (
+                <>
+                  Are you sure you want to delete this time entry from{' '}
+                  <span className="font-medium">
+                    {format(new Date(entryToDelete.clock_in), 'MMM d, yyyy h:mm a')}
+                  </span>
+                  ? This action cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Yes, Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
