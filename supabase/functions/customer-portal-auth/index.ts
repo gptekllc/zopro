@@ -348,6 +348,24 @@ Deno.serve(async (req) => {
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
 
+      // Fetch feedbacks for this customer's jobs to determine has_feedback
+      const jobIds = (jobs || []).map(j => j.id);
+      let feedbackJobIds: string[] = [];
+      if (jobIds.length > 0) {
+        const { data: feedbacks } = await adminClient
+          .from('job_feedbacks')
+          .select('job_id')
+          .eq('customer_id', customerId)
+          .in('job_id', jobIds);
+        feedbackJobIds = (feedbacks || []).map(f => f.job_id);
+      }
+
+      // Add has_feedback flag to each job
+      const jobsWithFeedback = (jobs || []).map(job => ({
+        ...job,
+        has_feedback: feedbackJobIds.includes(job.id),
+      }));
+
       // Fetch quotes for this customer
       const { data: quotes } = await adminClient
         .from('quotes')
@@ -368,7 +386,7 @@ Deno.serve(async (req) => {
             company: customer.companies,
           },
           invoices: invoices || [],
-          jobs: jobs || [],
+          jobs: jobsWithFeedback,
           quotes: quotes || [],
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

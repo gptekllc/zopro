@@ -2932,17 +2932,35 @@ const CustomerPortal = () => {
                         <MessageSquare className="w-4 h-4 text-primary" />
                         <p className="font-medium text-sm">Your Feedback</p>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          handleEditFeedback(viewingJob);
-                          setViewingJob(null);
-                        }}
-                      >
-                        <Edit2 className="w-3 h-3 mr-1" />
-                        Edit
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            handleEditFeedback(viewingJob);
+                            setViewingJob(null);
+                          }}
+                        >
+                          <Edit2 className="w-3 h-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                          onClick={() => {
+                            setFeedbackJob(viewingJob);
+                            setFeedbackMode('edit');
+                            setShowFeedbackDialog(true);
+                            setViewingJob(null);
+                            // Pre-fetch feedback to get the ID for deletion
+                            handleEditFeedback(viewingJob);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
                     </div>
                     
                     {isLoadingViewingFeedback ? (
