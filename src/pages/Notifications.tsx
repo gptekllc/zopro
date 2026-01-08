@@ -145,6 +145,13 @@ const Notifications = () => {
     }
   };
 
+  const formatNotificationType = (type: string) => {
+    return type
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   const getNotificationBadge = (type: string) => {
     switch (type) {
       case 'payment_received':
@@ -155,8 +162,10 @@ const Notifications = () => {
         return <Badge className="bg-primary/10 text-primary border-primary/20">Quote Approved</Badge>;
       case 'member_on_leave':
         return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Member On Leave</Badge>;
+      case 'negative_feedback':
+        return <Badge variant="destructive">Negative Feedback</Badge>;
       default:
-        return <Badge variant="secondary">{type}</Badge>;
+        return <Badge variant="secondary">{formatNotificationType(type)}</Badge>;
     }
   };
 
