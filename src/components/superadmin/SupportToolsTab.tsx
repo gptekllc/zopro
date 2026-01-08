@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { KeyRound, ShieldOff, UserPlus, Building2, Loader2, Mail, AlertTriangle } from 'lucide-react';
+import { KeyRound, ShieldOff, UserPlus, Building2, Loader2, Mail, AlertTriangle, UserCheck, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Profile {
@@ -35,6 +35,11 @@ export function SupportToolsTab({ profiles, companies }: SupportToolsTabProps) {
   // Password Reset
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
   const [resetPasswordEmail, setResetPasswordEmail] = useState('');
+  
+  // Impersonation
+  const [impersonateOpen, setImpersonateOpen] = useState(false);
+  const [impersonateUserId, setImpersonateUserId] = useState('');
+  const [impersonationLink, setImpersonationLink] = useState<string | null>(null);
   
   // MFA Reset
   const [mfaResetOpen, setMfaResetOpen] = useState(false);
@@ -148,11 +153,42 @@ export function SupportToolsTab({ profiles, companies }: SupportToolsTabProps) {
     },
   });
 
+  // Impersonation mutation
+  const impersonateMutation = useMutation({
+    mutationFn: async (targetUserId: string) => {
+      const { data, error } = await supabase.functions.invoke('super-admin-impersonate', {
+        body: { targetUserId, action: 'generate_link' },
+      });
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data.link) {
+        setImpersonationLink(data.link);
+        toast.success(`Impersonation link generated for ${data.name || data.email}`);
+      }
+    },
+    onError: (error: any) => {
+      toast.error('Failed: ' + error.message);
+    },
+  });
+
   const selectedUserForMfa = profiles.find(p => p.id === mfaResetUserId);
+  const selectedUserForImpersonate = profiles.find(p => p.id === impersonateUserId);
+
+  const handleOpenImpersonationLink = () => {
+    if (impersonationLink) {
+      window.open(impersonationLink, '_blank');
+      setImpersonateOpen(false);
+      setImpersonationLink(null);
+      setImpersonateUserId('');
+    }
+  };
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Password Reset Tool */}
         <Card>
           <CardHeader>
@@ -185,6 +221,27 @@ export function SupportToolsTab({ profiles, companies }: SupportToolsTabProps) {
           <CardContent>
             <Button variant="outline" className="w-full" onClick={() => setMfaResetOpen(true)}>
               Reset User MFA
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Impersonation Tool */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-purple-500" />
+              <CardTitle className="text-base">User Impersonation</CardTitle>
+            </div>
+            <CardDescription>
+              Login as any user for debugging
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button variant="outline" className="w-full" onClick={() => {
+              setImpersonateOpen(true);
+              setImpersonationLink(null);
+            }}>
+              Impersonate User
             </Button>
           </CardContent>
         </Card>
@@ -386,6 +443,102 @@ export function SupportToolsTab({ profiles, companies }: SupportToolsTabProps) {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Impersonation Dialog */}
+      <Dialog open={impersonateOpen} onOpenChange={(open) => {
+        setImpersonateOpen(open);
+        if (!open) {
+          setImpersonationLink(null);
+          setImpersonateUserId('');
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5" />
+              Impersonate User
+            </DialogTitle>
+            <DialogDescription>
+              Generate a secure login link to access a user's account for debugging.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {!impersonationLink ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Select User</Label>
+                  <Select value={impersonateUserId} onValueChange={setImpersonateUserId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select user to impersonate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {profiles.map(profile => (
+                        <SelectItem key={profile.id} value={profile.id}>
+                          {profile.full_name || profile.email} ({profile.email})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedUserForImpersonate && (
+                  <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-purple-500 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-medium text-purple-600">Important</p>
+                        <p className="text-muted-foreground">
+                          You will be logged in as <strong>{selectedUserForImpersonate.email}</strong> in a new tab. 
+                          This action is logged for audit purposes.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setImpersonateOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    className="flex-1" 
+                    onClick={() => impersonateMutation.mutate(impersonateUserId)}
+                    disabled={impersonateMutation.isPending || !impersonateUserId}
+                  >
+                    {impersonateMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Generate Link
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                  <div className="text-sm">
+                    <p className="font-medium text-green-600 mb-2">✓ Link Generated</p>
+                    <p className="text-muted-foreground">
+                      Click the button below to open a new tab and login as{' '}
+                      <strong>{selectedUserForImpersonate?.email}</strong>.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => {
+                    setImpersonationLink(null);
+                    setImpersonateUserId('');
+                  }}>
+                    Generate Another
+                  </Button>
+                  <Button 
+                    className="flex-1 gap-2" 
+                    onClick={handleOpenImpersonationLink}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Open as User
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog, LayoutDashboard, CreditCard, Wrench, History } from 'lucide-react';
+import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog, LayoutDashboard, CreditCard, Wrench, History, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import PageContainer from '@/components/layout/PageContainer';
@@ -20,6 +20,7 @@ import { OverviewTab } from '@/components/superadmin/OverviewTab';
 import { SubscriptionsTab } from '@/components/superadmin/SubscriptionsTab';
 import { SupportToolsTab } from '@/components/superadmin/SupportToolsTab';
 import { AuditLogTab } from '@/components/superadmin/AuditLogTab';
+import { AnalyticsTab } from '@/components/superadmin/AnalyticsTab';
 
 interface Company {
   id: string;
@@ -382,6 +383,10 @@ const SuperAdmin = () => {
           <TabsTrigger value="support" className="gap-2">
             <Wrench className="w-4 h-4" />
             Support Tools
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Analytics
           </TabsTrigger>
           <TabsTrigger value="audit" className="gap-2">
             <History className="w-4 h-4" />
@@ -781,6 +786,11 @@ const SuperAdmin = () => {
         {/* Support Tools Tab */}
         <TabsContent value="support">
           <SupportToolsTab profiles={profiles} companies={companies} />
+        </TabsContent>
+
+        {/* Analytics Tab */}
+        <TabsContent value="analytics">
+          <AnalyticsTab companies={companies} profiles={profiles} />
         </TabsContent>
 
         {/* Audit Log Tab */}
