@@ -13,7 +13,7 @@ interface PasswordRequirement {
 }
 
 const requirements: PasswordRequirement[] = [
-  { label: 'At least 8 characters', test: (p) => p.length >= 8 },
+  { label: 'At least 10 characters', test: (p) => p.length >= 10 },
   { label: 'Contains uppercase letter', test: (p) => /[A-Z]/.test(p) },
   { label: 'Contains lowercase letter', test: (p) => /[a-z]/.test(p) },
   { label: 'Contains a number', test: (p) => /[0-9]/.test(p) },
@@ -23,8 +23,8 @@ const requirements: PasswordRequirement[] = [
 export const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
   
-  if (password.length < 8) {
-    errors.push('Password must be at least 8 characters');
+  if (password.length < 10) {
+    errors.push('Password must be at least 10 characters');
   }
   if (!/[A-Z]/.test(password)) {
     errors.push('Password must contain an uppercase letter');
