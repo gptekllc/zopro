@@ -59,6 +59,7 @@ const Invoices = () => {
   const [formData, setFormData] = useState<{
     customerId: string;
     assignedToIds: string[];
+    createdBy: string;
     items: LineItem[];
     notes: string;
     status: string;
@@ -69,6 +70,7 @@ const Invoices = () => {
   }>({
     customerId: "",
     assignedToIds: [],
+    createdBy: "",
     items: [{ id: "1", description: "", quantity: 1, unitPrice: 0, type: 'service' }],
     notes: "",
     status: "draft",
@@ -141,6 +143,7 @@ const Invoices = () => {
     setFormData({
       customerId: "",
       assignedToIds: [],
+      createdBy: "",
       items: [{ id: "1", description: "", quantity: 1, unitPrice: 0, type: 'service' }],
       notes: "",
       status: "draft",
@@ -159,6 +162,7 @@ const Invoices = () => {
     setFormData({
       customerId: job.customer_id,
       assignedToIds: job.assignees?.map((a: any) => a.profile_id) || (job.assigned_to ? [job.assigned_to] : []),
+      createdBy: job.created_by || "",
       items: job.items?.map((item: any) => ({
         id: Date.now().toString() + Math.random(),
         description: item.description,
@@ -215,6 +219,7 @@ const Invoices = () => {
     const invoiceData = {
       customer_id: formData.customerId,
       assigned_to: formData.assignedToIds.length > 0 ? formData.assignedToIds[0] : null,
+      created_by: formData.createdBy || null,
       notes: formData.notes || null,
       status: formData.status,
       due_date: format(addDays(new Date(), formData.dueDays), "yyyy-MM-dd"),
@@ -282,6 +287,7 @@ const Invoices = () => {
     setFormData({
       customerId: invoice.customer_id,
       assignedToIds: invoice.assigned_to ? [invoice.assigned_to] : [],
+      createdBy: invoice.created_by || "",
       items: invoice.items?.map((item: any) => ({
         id: item.id,
         description: item.description,
@@ -305,6 +311,7 @@ const Invoices = () => {
     setFormData({
       customerId: invoice.customer_id,
       assignedToIds: invoice.assigned_to ? [invoice.assigned_to] : [],
+      createdBy: "",
       items: invoice.items?.map((item: any) => ({
         id: Date.now().toString() + Math.random(),
         description: item.description,
@@ -417,52 +424,69 @@ const Invoices = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Assigned Technicians</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between font-normal">
-                      <span className="truncate">
-                        {formData.assignedToIds.length === 0 
-                          ? "Select technicians..." 
-                          : formData.assignedToIds.length === 1
-                            ? availableTechnicians.find(t => t.id === formData.assignedToIds[0])?.full_name || availableTechnicians.find(t => t.id === formData.assignedToIds[0])?.email || "1 selected"
-                            : `${formData.assignedToIds.length} technicians selected`}
-                      </span>
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0" align="start">
-                    <div className="p-2 space-y-1 max-h-48 overflow-y-auto">
-                      {availableTechnicians.length === 0 ? (
-                        <p className="text-sm text-muted-foreground p-2">No technicians available</p>
-                      ) : (
-                        availableTechnicians.map(t => (
-                          <div 
-                            key={t.id} 
-                            className="flex items-center gap-2 p-2 rounded-md hover:bg-accent cursor-pointer"
-                            onClick={() => {
-                              if (formData.assignedToIds.includes(t.id)) {
-                                setFormData({ ...formData, assignedToIds: formData.assignedToIds.filter(id => id !== t.id) });
-                              } else {
-                                setFormData({ ...formData, assignedToIds: [...formData.assignedToIds, t.id] });
-                              }
-                            }}
-                          >
-                            <Checkbox
-                              checked={formData.assignedToIds.includes(t.id)}
-                              onCheckedChange={() => {}}
-                            />
-                            <span className="text-sm">{t.full_name || t.email}</span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </PopoverContent>
-                </Popover>
-                {technicians.some(t => t.employment_status === 'on_leave') && (
-                  <p className="text-xs text-muted-foreground">Team members on leave are hidden</p>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Assigned Technicians</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between font-normal">
+                        <span className="truncate">
+                          {formData.assignedToIds.length === 0 
+                            ? "Select technicians..." 
+                            : formData.assignedToIds.length === 1
+                              ? availableTechnicians.find(t => t.id === formData.assignedToIds[0])?.full_name || availableTechnicians.find(t => t.id === formData.assignedToIds[0])?.email || "1 selected"
+                              : `${formData.assignedToIds.length} technicians selected`}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <div className="p-2 space-y-1 max-h-48 overflow-y-auto">
+                        {availableTechnicians.length === 0 ? (
+                          <p className="text-sm text-muted-foreground p-2">No technicians available</p>
+                        ) : (
+                          availableTechnicians.map(t => (
+                            <div 
+                              key={t.id} 
+                              className="flex items-center gap-2 p-2 rounded-md hover:bg-accent cursor-pointer"
+                              onClick={() => {
+                                if (formData.assignedToIds.includes(t.id)) {
+                                  setFormData({ ...formData, assignedToIds: formData.assignedToIds.filter(id => id !== t.id) });
+                                } else {
+                                  setFormData({ ...formData, assignedToIds: [...formData.assignedToIds, t.id] });
+                                }
+                              }}
+                            >
+                              <Checkbox
+                                checked={formData.assignedToIds.includes(t.id)}
+                                onCheckedChange={() => {}}
+                              />
+                              <span className="text-sm">{t.full_name || t.email}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {technicians.some(t => t.employment_status === 'on_leave') && (
+                    <p className="text-xs text-muted-foreground">Team members on leave are hidden</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Created By</Label>
+                  <Select value={formData.createdBy} onValueChange={value => setFormData({ ...formData, createdBy: value === "none" ? "" : value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select creator (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Not specified</SelectItem>
+                      {availableTechnicians.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.full_name || p.email}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {/* Line Items */}
