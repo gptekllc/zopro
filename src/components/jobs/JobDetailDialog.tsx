@@ -499,11 +499,23 @@ export function JobDetailDialog({
                     <div className="space-y-0.5 min-w-[140px] text-sm">
                       {job.subtotal !== null && <div className="flex justify-between gap-4">
                           <span className="text-muted-foreground text-xs">Subtotal</span>
-                          <span className="text-xs">{formatAmount(job.subtotal)}</span>
+                          <span className="text-xs">${formatAmount(job.subtotal)}</span>
                         </div>}
+                      <div className="flex justify-between gap-4">
+                        <span className="text-muted-foreground text-xs">
+                          Discount{job.discount_type === 'percentage' && job.discount_value ? ` (${job.discount_value}%)` : ''}
+                        </span>
+                        <span className="text-xs">
+                          -${job.discount_value ? formatAmount(
+                            job.discount_type === 'percentage' && job.subtotal
+                              ? (Number(job.subtotal) * Number(job.discount_value)) / 100
+                              : Number(job.discount_value)
+                          ) : '0.00'}
+                        </span>
+                      </div>
                       {job.tax !== null && job.tax > 0 && <div className="flex justify-between gap-4">
                           <span className="text-muted-foreground text-xs">Tax</span>
-                          <span className="text-xs">{formatAmount(job.tax)}</span>
+                          <span className="text-xs">${formatAmount(job.tax)}</span>
                         </div>}
                       {job.total !== null && <div className="flex justify-between font-medium gap-4">
                           <span className="text-xs">Total</span>

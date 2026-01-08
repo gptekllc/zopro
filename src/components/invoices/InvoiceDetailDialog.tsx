@@ -596,6 +596,18 @@ export function InvoiceDetailDialog({
                       <span className="text-xs">${formatAmount(invoice.subtotal)}</span>
                     </div>
                     <div className="flex justify-between gap-4">
+                      <span className="text-muted-foreground text-xs">
+                        Discount{invoice.discount_type === 'percentage' && invoice.discount_value ? ` (${invoice.discount_value}%)` : ''}
+                      </span>
+                      <span className="text-xs">
+                        -${invoice.discount_value ? formatAmount(
+                          invoice.discount_type === 'percentage'
+                            ? (Number(invoice.subtotal) * Number(invoice.discount_value)) / 100
+                            : Number(invoice.discount_value)
+                        ) : '0.00'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between gap-4">
                       <span className="text-muted-foreground text-xs">Tax</span>
                       <span className="text-xs">${formatAmount(invoice.tax)}</span>
                     </div>
