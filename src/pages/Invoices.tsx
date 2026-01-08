@@ -79,7 +79,7 @@ const Invoices = () => {
   });
 
   // Filter available technicians
-  const technicians = profiles.filter(p => p.role === "technician" || p.role === "admin" || p.role === "manager");
+  const technicians = (profiles || []).filter(p => p.role === "technician" || p.role === "admin" || p.role === "manager");
   const availableTechnicians = technicians.filter(p => p.employment_status !== 'on_leave');
 
   // Wrapped setters for scroll restoration
