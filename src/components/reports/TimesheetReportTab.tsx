@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useTimeEntries } from '@/hooks/useTimeEntries';
+import { useTimeEntries, useUpdateTimeEntry, TimeEntry } from '@/hooks/useTimeEntries';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, Printer, Mail, Users, X, Search, MoreVertical } from 'lucide-react';
+import { Calendar, Download, Loader2, ChevronLeft, ChevronRight, Printer, Mail, Users, X, Search, MoreVertical, ChevronDown, ChevronUp, Clock, Pencil } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,12 +29,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { ReportEmailDialog } from './ReportEmailDialog';
 import { formatAmount } from '@/lib/formatAmount';
+import { TimeEntryDialog } from '@/components/timeclock/TimeEntryDialog';
 
 const TimesheetReportTab = () => {
   const { roles } = useAuth();
   const { data: company } = useCompany();
   const { data: timeEntries = [], isLoading: loadingEntries } = useTimeEntries();
   const { data: profiles = [], isLoading: loadingProfiles } = useProfiles();
+  const updateTimeEntry = useUpdateTimeEntry();
   
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
   const [numWeeks, setNumWeeks] = useState('1');
@@ -43,8 +45,12 @@ const TimesheetReportTab = () => {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [memberFilterSearch, setMemberFilterSearch] = useState('');
+  const [expandedMembers, setExpandedMembers] = useState<Set<string>>(new Set());
+  const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
+  const [entryDialogOpen, setEntryDialogOpen] = useState(false);
 
   const canViewAll = roles.some(r => r.role === 'admin' || r.role === 'manager');
+  const canEdit = roles.some(r => r.role === 'admin' || r.role === 'manager');
 
   // Get all team members for the filter dropdown
   const allTeamMembers = useMemo(() => {
@@ -71,6 +77,34 @@ const TimesheetReportTab = () => {
 
   const clearSelectedMembers = () => {
     setSelectedMemberIds([]);
+  };
+
+  const toggleExpandedMember = (memberId: string) => {
+    setExpandedMembers(prev => {
+      const next = new Set(prev);
+      if (next.has(memberId)) {
+        next.delete(memberId);
+      } else {
+        next.add(memberId);
+      }
+      return next;
+    });
+  };
+
+  const handleEntryClick = (entry: TimeEntry) => {
+    setSelectedEntry(entry);
+    setEntryDialogOpen(true);
+  };
+
+  const handleEntrySave = async (data: { clock_in: string; clock_out: string | null; notes: string | null; break_minutes?: number }) => {
+    if (!selectedEntry) return;
+    await updateTimeEntry.mutateAsync({
+      id: selectedEntry.id,
+      clock_in: data.clock_in,
+      clock_out: data.clock_out,
+      notes: data.notes,
+      break_minutes: data.break_minutes,
+    });
   };
 
   const weekEnd = endOfWeek(addWeeks(weekStart, parseInt(numWeeks) - 1), { weekStartsOn: 0 });
@@ -619,24 +653,109 @@ const TimesheetReportTab = () => {
                   </tr>
                 ) : (
                   <>
-                    {timesheetData.map(row => (
-                      <tr key={row.member.id} className="border-b hover:bg-muted/30">
-                        <td className="py-3 px-4">
-                          <div className="font-medium">{row.member.full_name || 'Unknown'}</div>
-                          <div className="text-xs text-muted-foreground">{row.member.email}</div>
-                        </td>
-                        {row.dailyHours.map((day, i) => (
-                          <td key={i} className="text-center py-3 px-2">
-                            <span className={day.minutes > 0 ? 'font-medium' : 'text-muted-foreground'}>
-                              {formatMinutes(day.minutes)}
-                            </span>
-                          </td>
-                        ))}
-                        <td className="text-center py-3 px-4 font-bold bg-muted/50">
-                          {formatMinutes(row.weeklyTotal)}
-                        </td>
-                      </tr>
-                    ))}
+                    {timesheetData.map(row => {
+                      const isExpanded = expandedMembers.has(row.member.id);
+                      const allEntries = row.dailyHours.flatMap(d => d.entries);
+                      
+                      return (
+                        <>
+                          <tr key={row.member.id} className="border-b hover:bg-muted/30">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 shrink-0"
+                                  onClick={() => toggleExpandedMember(row.member.id)}
+                                  disabled={allEntries.length === 0}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <div>
+                                  <div className="font-medium">{row.member.full_name || 'Unknown'}</div>
+                                  <div className="text-xs text-muted-foreground">{row.member.email}</div>
+                                </div>
+                              </div>
+                            </td>
+                            {row.dailyHours.map((day, i) => (
+                              <td key={i} className="text-center py-3 px-2">
+                                <span className={day.minutes > 0 ? 'font-medium' : 'text-muted-foreground'}>
+                                  {formatMinutes(day.minutes)}
+                                </span>
+                                {day.entries.length > 0 && (
+                                  <div className="text-[10px] text-muted-foreground">
+                                    {day.entries.length} {day.entries.length === 1 ? 'entry' : 'entries'}
+                                  </div>
+                                )}
+                              </td>
+                            ))}
+                            <td className="text-center py-3 px-4 font-bold bg-muted/50">
+                              {formatMinutes(row.weeklyTotal)}
+                            </td>
+                          </tr>
+                          {/* Expanded entries row */}
+                          {isExpanded && allEntries.length > 0 && (
+                            <tr key={`${row.member.id}-entries`} className="bg-muted/10">
+                              <td colSpan={weekDays.length + 2} className="py-2 px-4">
+                                <div className="space-y-2">
+                                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                                    Time Entries
+                                  </div>
+                                  <div className="grid gap-2">
+                                    {row.dailyHours.map((day, dayIndex) => 
+                                      day.entries.map((entry) => {
+                                        const clockIn = new Date(entry.clock_in);
+                                        const clockOut = entry.clock_out ? new Date(entry.clock_out) : null;
+                                        const workedMins = clockOut 
+                                          ? differenceInMinutes(clockOut, clockIn) - (entry.break_minutes || 0)
+                                          : 0;
+                                        
+                                        return (
+                                          <div 
+                                            key={entry.id} 
+                                            className="flex flex-wrap items-center gap-3 p-2 bg-background rounded-lg border text-sm cursor-pointer hover:border-primary/50 transition-colors"
+                                            onClick={() => handleEntryClick(entry)}
+                                          >
+                                            <Badge variant="outline" className="text-xs">
+                                              {format(clockIn, 'EEE, MMM d')}
+                                            </Badge>
+                                            <div className="flex items-center gap-1.5">
+                                              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                              <span className="font-medium">
+                                                {format(clockIn, 'h:mm a')}
+                                              </span>
+                                              <span className="text-muted-foreground">→</span>
+                                              <span className="font-medium">
+                                                {clockOut ? format(clockOut, 'h:mm a') : 'Active'}
+                                              </span>
+                                            </div>
+                                            {(entry.break_minutes || 0) > 0 && (
+                                              <Badge variant="secondary" className="text-xs">
+                                                {entry.break_minutes}m break
+                                              </Badge>
+                                            )}
+                                            <span className="font-semibold text-primary ml-auto">
+                                              {formatMinutes(workedMins)}
+                                            </span>
+                                            {canEdit && (
+                                              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                                            )}
+                                          </div>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      );
+                    })}
                     {/* Totals Row */}
                     <tr className="bg-muted/30 font-semibold">
                       <td className="py-3 px-4">TOTAL</td>
@@ -667,6 +786,16 @@ const TimesheetReportTab = () => {
         onSend={sendReportEmail}
         isSending={isSendingEmail}
         title="Email Timesheet Report"
+      />
+
+      {/* Time Entry Edit Dialog */}
+      <TimeEntryDialog
+        entry={selectedEntry}
+        open={entryDialogOpen}
+        onOpenChange={setEntryDialogOpen}
+        canEdit={canEdit}
+        onSave={handleEntrySave}
+        timezone={company?.timezone || undefined}
       />
     </div>
   );
