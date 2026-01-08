@@ -1281,6 +1281,30 @@ export type Database = {
           },
         ]
       }
+      login_attempts: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          ip_address: string | null
+          success: boolean
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          ip_address?: string | null
+          success?: boolean
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -2048,6 +2072,8 @@ export type Database = {
     }
     Functions: {
       auto_archive_old_records: { Args: never; Returns: undefined }
+      check_account_lockout: { Args: { check_email: string }; Returns: Json }
+      cleanup_old_login_attempts: { Args: never; Returns: undefined }
       create_company_and_set_admin: {
         Args: {
           _address?: string
@@ -2079,6 +2105,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      record_login_attempt: {
+        Args: {
+          attempt_email: string
+          attempt_ip?: string
+          attempt_success: boolean
+        }
+        Returns: undefined
       }
       sync_invoice_status_for_invoice: {
         Args: { _invoice_id: string }
