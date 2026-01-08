@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
@@ -100,7 +100,12 @@ const Company = () => {
   const [runningAutomations, setRunningAutomations] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [formInitialized, setFormInitialized] = useState(false);
-  const [activeTab, setActiveTab] = useState('details');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    const tabParam = searchParams.get('tab');
+    const validTabs = ['details', 'security', 'billing', 'preferences', 'templates', 'payments'];
+    return tabParam && validTabs.includes(tabParam) ? tabParam : 'details';
+  });
   const socialLinksRef = useRef<SocialLinksManagerRef>(null);
   
   const defaultBusinessHours = {
