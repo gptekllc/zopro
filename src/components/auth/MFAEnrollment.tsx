@@ -17,6 +17,7 @@ const MFAEnrollment = ({ onComplete, onCancel }: MFAEnrollmentProps) => {
   const [step, setStep] = useState<EnrollmentStep>('intro');
   const [isLoading, setIsLoading] = useState(false);
   const [qrCode, setQrCode] = useState<string>('');
+  const [secret, setSecret] = useState<string>('');
   const [factorId, setFactorId] = useState<string>('');
   const [code, setCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -32,6 +33,7 @@ const MFAEnrollment = ({ onComplete, onCancel }: MFAEnrollmentProps) => {
       }
       if (result.data) {
         setQrCode(result.data.totp.qr_code);
+        setSecret(result.data.totp.secret);
         setFactorId(result.data.id);
         setStep('qr');
       }
@@ -122,6 +124,17 @@ const MFAEnrollment = ({ onComplete, onCancel }: MFAEnrollmentProps) => {
         <CardContent className="space-y-4">
           <div className="flex justify-center bg-white p-4 rounded-lg">
             <img src={qrCode} alt="QR Code for MFA setup" className="w-48 h-48" />
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground text-center">
+              Can't scan? Enter this code manually:
+            </p>
+            <div className="bg-muted p-3 rounded-lg">
+              <code className="text-sm font-mono break-all select-all block text-center">
+                {secret}
+              </code>
+            </div>
           </div>
 
           <Button onClick={() => setStep('verify')} className="w-full">
