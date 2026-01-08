@@ -265,9 +265,11 @@ const JobCard = ({
       invoiced: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
       paid: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
     };
+    // Capitalize first letter and replace underscores with spaces
+    const displayStatus = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     return (
       <Badge className={statusColors[status] || 'bg-muted'}>
-        {status.replace('_', ' ')}
+        {displayStatus}
       </Badge>
     );
   };
@@ -280,9 +282,11 @@ const JobCard = ({
       urgent: 'bg-red-100 text-red-800',
     };
     if (priority === 'low' || priority === 'medium') return null;
+    // Capitalize first letter
+    const displayPriority = priority.charAt(0).toUpperCase() + priority.slice(1);
     return (
       <Badge variant="outline" className={priorityColors[priority] || ''}>
-        {priority}
+        {displayPriority}
       </Badge>
     );
   };
@@ -1194,7 +1198,9 @@ const CustomerPortal = () => {
       rejected: 'destructive',
       expired: 'destructive',
     };
-    return <Badge variant={variants[status] || 'outline'}>{status}</Badge>;
+    // Capitalize first letter and replace underscores with spaces
+    const displayStatus = status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return <Badge variant={variants[status] || 'outline'}>{displayStatus}</Badge>;
   };
 
   if (isLoading) {
@@ -1644,9 +1650,8 @@ const CustomerPortal = () => {
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4 mb-8">
           <Card 
-            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            className="cursor-pointer hover:bg-muted/50 transition-colors group"
             onClick={() => {
-              const tabsElement = document.querySelector('[data-state="active"][value="quotes"]');
               const tabTrigger = document.querySelector('[role="tab"][value="quotes"]') as HTMLElement;
               tabTrigger?.click();
             }}
@@ -1662,12 +1667,12 @@ const CustomerPortal = () => {
                     <p className="text-sm text-muted-foreground">Pending Quotes</p>
                   </div>
                 </div>
-                <span className="text-xs text-primary hover:underline">View All →</span>
+                <span className="text-xs text-primary group-hover:underline font-medium">View All →</span>
               </div>
             </CardContent>
           </Card>
           <Card 
-            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            className="cursor-pointer hover:bg-muted/50 transition-colors group"
             onClick={() => {
               const tabTrigger = document.querySelector('[role="tab"][value="invoices"]') as HTMLElement;
               tabTrigger?.click();
@@ -1684,12 +1689,12 @@ const CustomerPortal = () => {
                     <p className="text-sm text-muted-foreground">Total Invoices</p>
                   </div>
                 </div>
-                <span className="text-xs text-primary hover:underline">View All →</span>
+                <span className="text-xs text-primary group-hover:underline font-medium">View All →</span>
               </div>
             </CardContent>
           </Card>
           <Card 
-            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            className="cursor-pointer hover:bg-muted/50 transition-colors group"
             onClick={() => {
               const tabTrigger = document.querySelector('[role="tab"][value="invoices"]') as HTMLElement;
               tabTrigger?.click();
@@ -1708,12 +1713,12 @@ const CustomerPortal = () => {
                     <p className="text-sm text-muted-foreground">Outstanding</p>
                   </div>
                 </div>
-                <span className="text-xs text-amber-600 hover:underline">Pay Now →</span>
+                <span className="text-xs text-amber-600 group-hover:underline font-medium">Pay Now →</span>
               </div>
             </CardContent>
           </Card>
           <Card 
-            className="cursor-pointer hover:bg-muted/50 transition-colors"
+            className="cursor-pointer hover:bg-muted/50 transition-colors group"
             onClick={() => {
               const tabTrigger = document.querySelector('[role="tab"][value="jobs"]') as HTMLElement;
               tabTrigger?.click();
@@ -1730,7 +1735,7 @@ const CustomerPortal = () => {
                     <p className="text-sm text-muted-foreground">Service Jobs</p>
                   </div>
                 </div>
-                <span className="text-xs text-emerald-600 hover:underline">View All →</span>
+                <span className="text-xs text-emerald-600 group-hover:underline font-medium">View All →</span>
               </div>
             </CardContent>
           </Card>
@@ -2583,6 +2588,46 @@ const CustomerPortal = () => {
                       />
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Leave Feedback Section */}
+              {viewingJob.completion_signed_at && !viewingJob.has_feedback && (
+                <div className="pt-4 border-t">
+                  <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                    <div className="flex items-start gap-3">
+                      <MessageSquare className="w-5 h-5 text-primary mt-0.5" />
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">How was your experience?</p>
+                        <p className="text-xs text-muted-foreground mt-1 mb-3">
+                          We'd love to hear your feedback about this job
+                        </p>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setFeedbackJob(viewingJob);
+                            setShowFeedbackDialog(true);
+                            setViewingJob(null);
+                          }}
+                        >
+                          <Star className="w-4 h-4 mr-2" />
+                          Leave Feedback
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Feedback Already Submitted */}
+              {viewingJob.has_feedback && (
+                <div className="pt-4 border-t">
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <CheckCircle className="w-4 h-4" />
+                      <p className="text-sm">Thank you! Your feedback has been submitted.</p>
+                    </div>
+                  </div>
                 </div>
               )}
 
