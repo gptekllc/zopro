@@ -71,8 +71,9 @@ export function SupportToolsTab({ profiles, companies }: SupportToolsTabProps) {
   // Password reset mutation
   const resetPasswordMutation = useMutation({
     mutationFn: async (email: string) => {
+      const { PRODUCTION_DOMAIN } = await import('@/lib/authConfig');
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${PRODUCTION_DOMAIN}/reset-password`,
       });
       if (error) throw error;
       await logAction('password_reset', 'user', undefined, { email });
