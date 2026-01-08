@@ -12,10 +12,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog } from 'lucide-react';
+import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog, LayoutDashboard, CreditCard, Wrench, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import PageContainer from '@/components/layout/PageContainer';
+import { OverviewTab } from '@/components/superadmin/OverviewTab';
+import { SubscriptionsTab } from '@/components/superadmin/SubscriptionsTab';
+import { SupportToolsTab } from '@/components/superadmin/SupportToolsTab';
+import { AuditLogTab } from '@/components/superadmin/AuditLogTab';
 
 interface Company {
   id: string;
@@ -41,11 +45,11 @@ interface Profile {
 interface UserRole {
   id: string;
   user_id: string;
-  role: 'admin' | 'technician' | 'super_admin';
+  role: 'admin' | 'technician' | 'super_admin' | 'manager';
   created_at: string;
 }
 
-const AVAILABLE_ROLES = ['admin', 'technician', 'super_admin'] as const;
+const AVAILABLE_ROLES = ['admin', 'manager', 'technician', 'super_admin'] as const;
 
 const SuperAdmin = () => {
   const { roles } = useAuth();
@@ -75,7 +79,7 @@ const SuperAdmin = () => {
   const { data: companies = [], isLoading: loadingCompanies } = useQuery({
     queryKey: ['all-companies'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('companies')
         .select('*')
         .order('created_at', { ascending: false });
@@ -89,7 +93,7 @@ const SuperAdmin = () => {
   const { data: profiles = [], isLoading: loadingProfiles } = useQuery({
     queryKey: ['all-profiles'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
@@ -103,7 +107,7 @@ const SuperAdmin = () => {
   const { data: allUserRoles = [] } = useQuery({
     queryKey: ['all-user-roles'],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('user_roles')
         .select('*');
       if (error) throw error;
@@ -116,7 +120,7 @@ const SuperAdmin = () => {
   const companyMutation = useMutation({
     mutationFn: async (data: typeof companyForm & { id?: string }) => {
       if (data.id) {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('companies')
           .update({
             name: data.name,
@@ -130,7 +134,7 @@ const SuperAdmin = () => {
           .eq('id', data.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('companies')
           .insert({
             name: data.name,
@@ -158,7 +162,7 @@ const SuperAdmin = () => {
   // Delete company mutation
   const deleteCompanyMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('companies')
         .delete()
         .eq('id', id);
@@ -181,16 +185,14 @@ const SuperAdmin = () => {
       userEmail: string;
       userName: string | null;
     }) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('profiles')
         .update({ company_id: companyId })
         .eq('id', userId);
       if (error) throw error;
 
-      // Get company name for notification
       const companyName = companyId ? companies.find(c => c.id === companyId)?.name : null;
 
-      // Send email notification
       try {
         await supabase.functions.invoke('send-notification', {
           body: {
@@ -202,7 +204,6 @@ const SuperAdmin = () => {
         });
       } catch (emailError) {
         console.error('Failed to send notification email:', emailError);
-        // Don't fail the mutation if email fails
       }
     },
     onSuccess: () => {
@@ -223,26 +224,21 @@ const SuperAdmin = () => {
       userEmail: string;
       userName: string | null;
     }) => {
-      // Get current roles for this user
       const currentRoles = allUserRoles.filter(r => r.user_id === userId);
       const currentRoleNames = currentRoles.map(r => r.role);
       
-      // Roles to add
       const rolesToAdd = newRoles.filter(r => !currentRoleNames.includes(r as any));
-      // Roles to remove
       const rolesToRemove = currentRoleNames.filter(r => !newRoles.includes(r));
       
-      // Add new roles
       for (const role of rolesToAdd) {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('user_roles')
-          .insert({ user_id: userId, role });
+          .insert([{ user_id: userId, role: role as any }]);
         if (error && !error.message.includes('duplicate')) throw error;
       }
       
-      // Remove old roles
       for (const role of rolesToRemove) {
-        const { error } = await (supabase as any)
+        const { error } = await supabase
           .from('user_roles')
           .delete()
           .eq('user_id', userId)
@@ -250,15 +246,14 @@ const SuperAdmin = () => {
         if (error) throw error;
       }
       
-      // Also update the profile role field to match primary role
       const primaryRole = newRoles.includes('admin') ? 'admin' : 
+                         newRoles.includes('manager') ? 'manager' :
                          newRoles.includes('technician') ? 'technician' : 'technician';
-      await (supabase as any)
+      await supabase
         .from('profiles')
         .update({ role: primaryRole })
         .eq('id', userId);
 
-      // Send email notification
       try {
         await supabase.functions.invoke('send-notification', {
           body: {
@@ -271,7 +266,6 @@ const SuperAdmin = () => {
         });
       } catch (emailError) {
         console.error('Failed to send notification email:', emailError);
-        // Don't fail the mutation if email fails
       }
     },
     onSuccess: () => {
@@ -363,22 +357,16 @@ const SuperAdmin = () => {
             <Shield className="w-8 h-8 text-primary" />
             Super Admin
           </h1>
-          <p className="text-muted-foreground mt-1">Manage companies, users, and roles</p>
+          <p className="text-muted-foreground mt-1">Platform back office • God view</p>
         </div>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      <Tabs defaultValue="companies" className="space-y-4">
-        <TabsList>
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList className="flex-wrap h-auto gap-1">
+          <TabsTrigger value="overview" className="gap-2">
+            <LayoutDashboard className="w-4 h-4" />
+            Overview
+          </TabsTrigger>
           <TabsTrigger value="companies" className="gap-2">
             <Building2 className="w-4 h-4" />
             Companies ({companies.length})
@@ -387,358 +375,417 @@ const SuperAdmin = () => {
             <Users className="w-4 h-4" />
             Users ({profiles.length})
           </TabsTrigger>
+          <TabsTrigger value="subscriptions" className="gap-2">
+            <CreditCard className="w-4 h-4" />
+            Subscriptions
+          </TabsTrigger>
+          <TabsTrigger value="support" className="gap-2">
+            <Wrench className="w-4 h-4" />
+            Support Tools
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="gap-2">
+            <History className="w-4 h-4" />
+            Audit Log
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="companies">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>All Companies</CardTitle>
-              <Dialog open={companyDialogOpen} onOpenChange={(open) => {
-                setCompanyDialogOpen(open);
-                if (!open) resetCompanyForm();
-              }}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    Add Company
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{editingCompany ? 'Edit Company' : 'Create Company'}</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    companyMutation.mutate({ ...companyForm, id: editingCompany?.id });
-                  }} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Company Name *</Label>
-                      <Input
-                        value={companyForm.name}
-                        onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Email</Label>
-                        <Input
-                          type="email"
-                          value={companyForm.email}
-                          onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Phone</Label>
-                        <Input
-                          value={companyForm.phone}
-                          onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Address</Label>
-                      <Input
-                        value={companyForm.address}
-                        onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })}
-                      />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <Input
-                        placeholder="City"
-                        value={companyForm.city}
-                        onChange={(e) => setCompanyForm({ ...companyForm, city: e.target.value })}
-                      />
-                      <Input
-                        placeholder="State"
-                        value={companyForm.state}
-                        onChange={(e) => setCompanyForm({ ...companyForm, state: e.target.value })}
-                      />
-                      <Input
-                        placeholder="ZIP"
-                        value={companyForm.zip}
-                        onChange={(e) => setCompanyForm({ ...companyForm, zip: e.target.value })}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button type="button" variant="outline" className="flex-1" onClick={() => setCompanyDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit" className="flex-1" disabled={companyMutation.isPending}>
-                        {companyMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        {editingCompany ? 'Update' : 'Create'}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </CardHeader>
-            <CardContent>
-              {loadingCompanies ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="w-24">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredCompanies.map((company) => (
-                      <TableRow key={company.id}>
-                        <TableCell className="font-medium">{company.name}</TableCell>
-                        <TableCell>{company.email || '-'}</TableCell>
-                        <TableCell>{company.phone || '-'}</TableCell>
-                        <TableCell>
-                          {company.city && company.state ? `${company.city}, ${company.state}` : '-'}
-                        </TableCell>
-                        <TableCell>{format(new Date(company.created_at), 'MMM d, yyyy')}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditCompany(company)}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                if (confirm('Delete this company?')) {
-                                  deleteCompanyMutation.mutate(company.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredCompanies.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          No companies found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+        {/* Overview Tab */}
+        <TabsContent value="overview">
+          <OverviewTab companies={companies} profiles={profiles} />
         </TabsContent>
 
-        <TabsContent value="users">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Users</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingProfiles ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Roles</TableHead>
-                      <TableHead>Created</TableHead>
-                      <TableHead className="w-32">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredProfiles.map((profile) => {
-                      const userRoles = getUserRoles(profile.id);
-                      return (
-                        <TableRow key={profile.id}>
-                          <TableCell className="font-medium">{profile.full_name || '-'}</TableCell>
-                          <TableCell>{profile.email}</TableCell>
+        {/* Companies Tab */}
+        <TabsContent value="companies">
+          <div className="space-y-4">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search companies..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>All Companies</CardTitle>
+                <Dialog open={companyDialogOpen} onOpenChange={(open) => {
+                  setCompanyDialogOpen(open);
+                  if (!open) resetCompanyForm();
+                }}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gap-2">
+                      <Plus className="w-4 h-4" />
+                      Add Company
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{editingCompany ? 'Edit Company' : 'Create Company'}</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      companyMutation.mutate({ ...companyForm, id: editingCompany?.id });
+                    }} className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Company Name *</Label>
+                        <Input
+                          value={companyForm.name}
+                          onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Email</Label>
+                          <Input
+                            type="email"
+                            value={companyForm.email}
+                            onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Phone</Label>
+                          <Input
+                            value={companyForm.phone}
+                            onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Address</Label>
+                        <Input
+                          value={companyForm.address}
+                          onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Input
+                          placeholder="City"
+                          value={companyForm.city}
+                          onChange={(e) => setCompanyForm({ ...companyForm, city: e.target.value })}
+                        />
+                        <Input
+                          placeholder="State"
+                          value={companyForm.state}
+                          onChange={(e) => setCompanyForm({ ...companyForm, state: e.target.value })}
+                        />
+                        <Input
+                          placeholder="ZIP"
+                          value={companyForm.zip}
+                          onChange={(e) => setCompanyForm({ ...companyForm, zip: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" className="flex-1" onClick={() => setCompanyDialogOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button type="submit" className="flex-1" disabled={companyMutation.isPending}>
+                          {companyMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                          {editingCompany ? 'Update' : 'Create'}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {loadingCompanies ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="w-24">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCompanies.map((company) => (
+                        <TableRow key={company.id}>
+                          <TableCell className="font-medium">{company.name}</TableCell>
+                          <TableCell>{company.email || '-'}</TableCell>
+                          <TableCell>{company.phone || '-'}</TableCell>
                           <TableCell>
-                            <Badge variant={profile.company_id ? 'default' : 'secondary'}>
-                              {getCompanyName(profile.company_id)}
-                            </Badge>
+                            {company.city && company.state ? `${company.city}, ${company.state}` : '-'}
                           </TableCell>
-                          <TableCell>
-                            <div className="flex flex-wrap gap-1">
-                              {userRoles.length > 0 ? (
-                                userRoles.map(role => (
-                                  <Badge 
-                                    key={role} 
-                                    variant={role === 'super_admin' ? 'destructive' : role === 'admin' ? 'default' : 'secondary'}
-                                    className="text-xs"
-                                  >
-                                    {role.replace('_', ' ')}
-                                  </Badge>
-                                ))
-                              ) : (
-                                <span className="text-muted-foreground text-sm">No roles</span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>{format(new Date(profile.created_at), 'MMM d, yyyy')}</TableCell>
+                          <TableCell>{format(new Date(company.created_at), 'MMM d, yyyy')}</TableCell>
                           <TableCell>
                             <div className="flex gap-1">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => handleAssignUser(profile)}
-                                title="Assign to Company"
-                              >
-                                <Building2 className="w-4 h-4" />
+                              <Button variant="ghost" size="icon" onClick={() => handleEditCompany(company)}>
+                                <Edit className="w-4 h-4" />
                               </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => handleManageRoles(profile)}
-                                title="Manage Roles"
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  if (confirm('Delete this company?')) {
+                                    deleteCompanyMutation.mutate(company.id);
+                                  }
+                                }}
                               >
-                                <UserCog className="w-4 h-4" />
+                                <Trash2 className="w-4 h-4 text-destructive" />
                               </Button>
                             </div>
                           </TableCell>
                         </TableRow>
-                      );
-                    })}
-                    {filteredProfiles.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                          No users found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Assign User to Company Dialog */}
-          <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Assign User to Company</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">User</p>
-                  <p className="font-medium">{selectedUser?.full_name || selectedUser?.email}</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Company</Label>
-                  <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select company" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Company (Unassign)</SelectItem>
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id}>
-                          {company.name}
-                        </SelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setAssignDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    disabled={assignUserMutation.isPending}
-                    onClick={() => {
-                      if (selectedUser) {
-                        assignUserMutation.mutate({
-                          userId: selectedUser.id,
-                          companyId: selectedCompanyId === 'none' ? null : selectedCompanyId,
-                          userEmail: selectedUser.email,
-                          userName: selectedUser.full_name,
-                        });
-                      }
-                    }}
-                  >
-                    {assignUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Save
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Manage User Roles Dialog */}
-          <Dialog open={rolesDialogOpen} onOpenChange={setRolesDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Manage User Roles</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">User</p>
-                  <p className="font-medium">{selectedUser?.full_name || selectedUser?.email}</p>
-                </div>
-                <div className="space-y-3">
-                  <Label>Roles</Label>
-                  {AVAILABLE_ROLES.map((role) => (
-                    <div key={role} className="flex items-center space-x-3 p-3 rounded-lg border">
-                      <Checkbox
-                        id={role}
-                        checked={selectedUserRoles.includes(role)}
-                        onCheckedChange={() => handleRoleToggle(role)}
-                      />
-                      <div className="flex-1">
-                        <label 
-                          htmlFor={role} 
-                          className="font-medium capitalize cursor-pointer"
-                        >
-                          {role.replace('_', ' ')}
-                        </label>
-                        <p className="text-xs text-muted-foreground">
-                          {role === 'super_admin' && 'Full access to all companies and users'}
-                          {role === 'admin' && 'Manage company settings, technicians, and view all data'}
-                          {role === 'technician' && 'Standard access to quotes, invoices, and time tracking'}
-                        </p>
-                      </div>
-                      {role === 'super_admin' && (
-                        <Badge variant="destructive" className="text-xs">Powerful</Badge>
+                      {filteredCompanies.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            No companies found
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </div>
-                  ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Users Tab */}
+        <TabsContent value="users">
+          <div className="space-y-4">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search users..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle>All Users</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingProfiles ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Company</TableHead>
+                        <TableHead>Roles</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="w-32">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredProfiles.map((profile) => {
+                        const userRoles = getUserRoles(profile.id);
+                        return (
+                          <TableRow key={profile.id}>
+                            <TableCell className="font-medium">{profile.full_name || '-'}</TableCell>
+                            <TableCell>{profile.email}</TableCell>
+                            <TableCell>
+                              <Badge variant={profile.company_id ? 'default' : 'secondary'}>
+                                {getCompanyName(profile.company_id)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap gap-1">
+                                {userRoles.length > 0 ? (
+                                  userRoles.map(role => (
+                                    <Badge 
+                                      key={role} 
+                                      variant={role === 'super_admin' ? 'destructive' : role === 'admin' ? 'default' : 'secondary'}
+                                      className="text-xs"
+                                    >
+                                      {role.replace('_', ' ')}
+                                    </Badge>
+                                  ))
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">No roles</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>{format(new Date(profile.created_at), 'MMM d, yyyy')}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleAssignUser(profile)}
+                                  title="Assign to Company"
+                                >
+                                  <Building2 className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleManageRoles(profile)}
+                                  title="Manage Roles"
+                                >
+                                  <UserCog className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      {filteredProfiles.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            No users found
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Assign User to Company Dialog */}
+            <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Assign User to Company</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">User</p>
+                    <p className="font-medium">{selectedUser?.full_name || selectedUser?.email}</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Company</Label>
+                    <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select company" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No Company (Unassign)</SelectItem>
+                        {companies.map((company) => (
+                          <SelectItem key={company.id} value={company.id}>
+                            {company.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => setAssignDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      disabled={assignUserMutation.isPending}
+                      onClick={() => {
+                        if (selectedUser) {
+                          assignUserMutation.mutate({
+                            userId: selectedUser.id,
+                            companyId: selectedCompanyId === 'none' ? null : selectedCompanyId,
+                            userEmail: selectedUser.email,
+                            userName: selectedUser.full_name,
+                          });
+                        }
+                      }}
+                    >
+                      {assignUserMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Save
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setRolesDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    className="flex-1"
-                    disabled={updateRolesMutation.isPending}
-                    onClick={() => {
-                      if (selectedUser) {
-                        updateRolesMutation.mutate({
-                          userId: selectedUser.id,
-                          newRoles: selectedUserRoles,
-                          userEmail: selectedUser.email,
-                          userName: selectedUser.full_name,
-                        });
-                      }
-                    }}
-                  >
-                    {updateRolesMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Save Roles
-                  </Button>
+              </DialogContent>
+            </Dialog>
+
+            {/* Manage User Roles Dialog */}
+            <Dialog open={rolesDialogOpen} onOpenChange={setRolesDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Manage User Roles</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">User</p>
+                    <p className="font-medium">{selectedUser?.full_name || selectedUser?.email}</p>
+                  </div>
+                  <div className="space-y-3">
+                    <Label>Roles</Label>
+                    {AVAILABLE_ROLES.map((role) => (
+                      <div key={role} className="flex items-center space-x-3 p-3 rounded-lg border">
+                        <Checkbox
+                          id={role}
+                          checked={selectedUserRoles.includes(role)}
+                          onCheckedChange={() => handleRoleToggle(role)}
+                        />
+                        <div className="flex-1">
+                          <label 
+                            htmlFor={role} 
+                            className="font-medium capitalize cursor-pointer"
+                          >
+                            {role.replace('_', ' ')}
+                          </label>
+                          <p className="text-xs text-muted-foreground">
+                            {role === 'super_admin' && 'Full access to all companies and users (God view)'}
+                            {role === 'admin' && 'Manage company settings, team members, and view all data'}
+                            {role === 'manager' && 'Manage jobs, schedules, and view reports'}
+                            {role === 'technician' && 'Standard access to quotes, invoices, and time tracking'}
+                          </p>
+                        </div>
+                        {role === 'super_admin' && (
+                          <Badge variant="destructive" className="text-xs">Powerful</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1" onClick={() => setRolesDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      disabled={updateRolesMutation.isPending}
+                      onClick={() => {
+                        if (selectedUser) {
+                          updateRolesMutation.mutate({
+                            userId: selectedUser.id,
+                            newRoles: selectedUserRoles,
+                            userEmail: selectedUser.email,
+                            userName: selectedUser.full_name,
+                          });
+                        }
+                      }}
+                    >
+                      {updateRolesMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                      Save Roles
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </TabsContent>
+
+        {/* Subscriptions Tab */}
+        <TabsContent value="subscriptions">
+          <SubscriptionsTab companies={companies} />
+        </TabsContent>
+
+        {/* Support Tools Tab */}
+        <TabsContent value="support">
+          <SupportToolsTab profiles={profiles} companies={companies} />
+        </TabsContent>
+
+        {/* Audit Log Tab */}
+        <TabsContent value="audit">
+          <AuditLogTab profiles={profiles} />
         </TabsContent>
       </Tabs>
     </PageContainer>
