@@ -2,6 +2,7 @@ import { ReactNode, useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
+import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -68,6 +69,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
   const navigate = useNavigate();
   const { user, profile, roles, signOut, refreshProfile } = useAuth();
   const { data: company } = useCompany();
+  const unreadNotifications = useUnreadNotifications();
   const [isOnLeave, setIsOnLeave] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
@@ -284,6 +286,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
           <nav className="flex-1 px-3 py-4 space-y-1">
             {filteredNavItems.map((item) => {
               const isActive = location.pathname === item.path;
+              const showBadge = item.path === '/notifications' && unreadNotifications > 0;
               return (
                 <Link
                   key={item.path}
@@ -295,7 +298,14 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
                       : "hover:bg-sidebar-accent text-sidebar-foreground/80 hover:text-sidebar-foreground"
                   )}
                 >
-                  <item.icon className="w-5 h-5" />
+                  <div className="relative">
+                    <item.icon className="w-5 h-5" />
+                    {showBadge && (
+                      <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center font-medium">
+                        {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                      </span>
+                    )}
+                  </div>
                   <span className="font-medium">{item.label}</span>
                 </Link>
               );
