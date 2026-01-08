@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import AppLayout from "@/components/layout/AppLayout";
 import Login from "./pages/Login";
@@ -63,6 +63,7 @@ const App = () => (
             <Route path="/terms" element={<Terms />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/customer-portal" element={<CustomerPortal />} />
+            <Route path="/portal" element={<Navigate to="/customer-portal" replace />} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={<AuthedLayout />}>
