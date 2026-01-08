@@ -173,9 +173,6 @@ Deno.serve(async (req) => {
             subject: `Your ${companyName} Customer Portal Access`,
             html: `
               <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="text-align: center; margin-bottom: 30px;">
-                  <img src="https://fsm.zopro.app/assets/ZoPro_Logo.png" alt="ZoPro Logo" style="height: 60px; width: auto;" />
-                </div>
                 <h1 style="color: #333;">Customer Portal Access</h1>
                 <p>Hello ${customer.name},</p>
                 <p>Click the button below to access your customer portal where you can view your invoices and service history:</p>
