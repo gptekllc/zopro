@@ -24,6 +24,7 @@ import Reports from "./pages/Reports";
 import Technicians from "./pages/Technicians";
 import Company from "./pages/Company";
 import Settings from "./pages/Settings";
+import SecuritySettings from "./pages/SecuritySettings";
 import Profile from "./pages/Profile";
 import SuperAdmin from "./pages/SuperAdmin";
 import CustomerPortal from "./pages/CustomerPortal";
@@ -79,6 +80,7 @@ const App = () => (
                 <Route path="/technicians" element={<Technicians />} />
                 <Route path="/company" element={<Company />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/settings/security" element={<SecuritySettings />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/super-admin" element={<SuperAdmin />} />

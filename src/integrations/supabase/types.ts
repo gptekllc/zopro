@@ -102,6 +102,7 @@ export type Database = {
           phone: string | null
           platform_fee_percentage: number | null
           require_job_completion_signature: boolean
+          require_mfa: boolean
           require_quote_signature: boolean
           send_weekly_summary: boolean
           state: string | null
@@ -164,6 +165,7 @@ export type Database = {
           phone?: string | null
           platform_fee_percentage?: number | null
           require_job_completion_signature?: boolean
+          require_mfa?: boolean
           require_quote_signature?: boolean
           send_weekly_summary?: boolean
           state?: string | null
@@ -226,6 +228,7 @@ export type Database = {
           phone?: string | null
           platform_fee_percentage?: number | null
           require_job_completion_signature?: boolean
+          require_mfa?: boolean
           require_quote_signature?: boolean
           send_weekly_summary?: boolean
           state?: string | null
