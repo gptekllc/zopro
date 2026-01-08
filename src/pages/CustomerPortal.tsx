@@ -1247,7 +1247,7 @@ const CustomerPortal = () => {
                 </Button>
                 <Button 
                   variant="ghost" 
-                  onClick={() => window.location.href = '/portal'}
+                  onClick={() => navigate('/login')}
                 >
                   Back to Login
                 </Button>
@@ -1283,7 +1283,7 @@ const CustomerPortal = () => {
                   type="button"
                   variant="ghost" 
                   className="w-full"
-                  onClick={() => window.location.href = '/portal'}
+                  onClick={() => navigate('/login')}
                 >
                   Back to Login
                 </Button>
