@@ -16,6 +16,7 @@ import { SchedulerWidget } from "@/components/dashboard/SchedulerWidget";
 import { RecentTransactionsWidget } from "@/components/dashboard/RecentTransactionsWidget";
 import { DraggableWidgetContainer } from "@/components/dashboard/DraggableWidgetContainer";
 import { TechnicianLeaderboardWidget } from "@/components/dashboard/TechnicianLeaderboardWidget";
+import { RecentFeedbacksWidget } from "@/components/dashboard/RecentFeedbacksWidget";
 import PageContainer from "@/components/layout/PageContainer";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -453,6 +454,13 @@ export default function DashboardPage() {
               visible: !isTechnicianDashboardScoped,
               component: (
                 <TechnicianLeaderboardWidget technicians={technicianPerformanceStats} />
+              )
+            },
+            {
+              id: 'recent-feedbacks',
+              visible: !isTechnicianDashboardScoped,
+              component: (
+                <RecentFeedbacksWidget />
               )
             },
             {

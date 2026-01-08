@@ -43,6 +43,7 @@ interface JobDetailDialogProps {
   onCollectSignature?: () => void;
   onSendSignatureRequest?: () => void;
   isCollectingSignature?: boolean;
+  initialTab?: 'photos' | 'linked' | 'feedback' | 'activities';
 }
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
@@ -70,7 +71,8 @@ export function JobDetailDialog({
   onViewQuote,
   onCollectSignature,
   onSendSignatureRequest,
-  isCollectingSignature
+  isCollectingSignature,
+  initialTab = 'photos'
 }: JobDetailDialogProps) {
   // ALL hooks must come first, before any conditional returns
   const {
@@ -474,7 +476,7 @@ export function JobDetailDialog({
 
           {/* Photos, Related Docs, Comments, History Tabs */}
           <Separator />
-          <Tabs defaultValue="photos" className="w-full">
+          <Tabs defaultValue={initialTab} className="w-full">
             <TabsList className="w-full grid grid-cols-4 h-auto p-1">
               <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
