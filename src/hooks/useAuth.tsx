@@ -244,7 +244,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    const redirectUrl = `${window.location.origin}/dashboard`;
+    const { PRODUCTION_DOMAIN } = await import('@/lib/authConfig');
+    const redirectUrl = `${PRODUCTION_DOMAIN}/dashboard`;
     
     const { error } = await supabase.auth.signUp({
       email,
@@ -265,10 +266,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInWithGoogle = async () => {
+    const { PRODUCTION_DOMAIN } = await import('@/lib/authConfig');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${PRODUCTION_DOMAIN}/dashboard`,
       },
     });
     

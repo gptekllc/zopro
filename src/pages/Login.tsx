@@ -179,7 +179,8 @@ const Login = () => {
       return;
     }
 
-    const redirectUrl = `${window.location.origin}/reset-password`;
+    const { PRODUCTION_DOMAIN } = await import('@/lib/authConfig');
+    const redirectUrl = `${PRODUCTION_DOMAIN}/reset-password`;
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: redirectUrl,
