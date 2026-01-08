@@ -2738,8 +2738,8 @@ const CustomerPortal = () => {
                 </div>
               )}
 
-              {/* Leave Feedback Section */}
-              {viewingJob.completion_signed_at && !viewingJob.has_feedback && (
+              {/* Leave Feedback Section - Only show for completed/invoiced jobs */}
+              {(viewingJob.status === 'completed' || viewingJob.status === 'invoiced') && !viewingJob.has_feedback && (
                 <div className="pt-4 border-t">
                   <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
                     <div className="flex items-start gap-3">
@@ -2766,8 +2766,8 @@ const CustomerPortal = () => {
                 </div>
               )}
 
-              {/* Feedback Already Submitted - Show existing feedback */}
-              {viewingJob.has_feedback && (
+              {/* Feedback Already Submitted - Show existing feedback (only for completed/invoiced jobs) */}
+              {(viewingJob.status === 'completed' || viewingJob.status === 'invoiced') && viewingJob.has_feedback && (
                 <div className="pt-4 border-t">
                   <div className="p-4 bg-muted/50 rounded-lg space-y-3">
                     <div className="flex items-center justify-between">
