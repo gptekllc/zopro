@@ -114,7 +114,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const enrollMFA = async () => {
-    const result = await supabase.auth.mfa.enroll({ factorType: 'totp' });
+    // First, unenroll any existing unverified factors to avoid conflicts
+    const factors = await supabase.auth.mfa.listFactors();
+    if (factors.data?.totp) {
+      for (const factor of factors.data.totp) {
+        if (factor.status !== 'verified') {
+          await supabase.auth.mfa.unenroll({ factorId: factor.id });
+        }
+      }
+    }
+    
+    const result = await supabase.auth.mfa.enroll({ 
+      factorType: 'totp',
+      friendlyName: 'Authenticator App'
+    });
     return result;
   };
 
