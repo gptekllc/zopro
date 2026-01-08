@@ -180,8 +180,8 @@ const Notifications = () => {
       navigate('/invoices');
     } else if (notification.type === 'quote_approved') {
       navigate('/quotes');
-    } else if (notification.type === 'negative_feedback' && data?.job_id) {
-      navigate(`/jobs?view=${data.job_id}&tab=feedback`);
+    } else if (notification.type === 'negative_feedback' && data?.jobId) {
+      navigate(`/jobs?view=${data.jobId}&tab=feedback`);
     }
   };
 
