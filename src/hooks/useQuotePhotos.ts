@@ -44,12 +44,33 @@ export function useUploadQuotePhoto() {
       file,
       photoType,
       caption,
+      companyId,
     }: {
       quoteId: string;
       file: File;
       photoType: 'before' | 'after' | 'other';
       caption?: string;
+      companyId?: string;
     }) => {
+      // Check photo limit before upload
+      if (companyId) {
+        const { data: limit } = await supabase.rpc('get_effective_limit', {
+          p_company_id: companyId,
+          p_limit_key: 'max_photos_per_document'
+        });
+        
+        if (limit !== null) {
+          const { count } = await supabase
+            .from('quote_photos')
+            .select('*', { count: 'exact', head: true })
+            .eq('quote_id', quoteId);
+          
+          if ((count || 0) >= limit) {
+            throw new Error(`Photo limit reached (${limit} per quote). Upgrade your plan for more.`);
+          }
+        }
+      }
+
       // Compress the image
       const compressedFile = await compressImage(file);
       
@@ -88,15 +109,27 @@ export function useUploadQuotePhoto() {
         .single();
 
       if (error) throw error;
+
+      // Track storage usage
+      if (companyId) {
+        await supabase.rpc('increment_storage_usage', {
+          p_company_id: companyId,
+          p_bytes: compressedFile.size,
+          p_type: 'quote_photos'
+        });
+        queryClient.invalidateQueries({ queryKey: ['storage-usage', companyId] });
+      }
+
       return data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['quote-photos', variables.quoteId] });
+      queryClient.invalidateQueries({ queryKey: ['photo-count', 'quote', variables.quoteId] });
       toast.success('Photo uploaded');
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Failed to upload photo:', error);
-      toast.error('Failed to upload photo');
+      toast.error(error.message || 'Failed to upload photo');
     },
   });
 }

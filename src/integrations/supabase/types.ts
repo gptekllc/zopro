@@ -344,6 +344,50 @@ export type Database = {
           },
         ]
       }
+      company_storage_usage: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          invoice_photos_bytes: number
+          job_photos_bytes: number
+          last_calculated_at: string
+          quote_photos_bytes: number
+          total_bytes_used: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          invoice_photos_bytes?: number
+          job_photos_bytes?: number
+          last_calculated_at?: string
+          quote_photos_bytes?: number
+          total_bytes_used?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          invoice_photos_bytes?: number
+          job_photos_bytes?: number
+          last_calculated_at?: string
+          quote_photos_bytes?: number
+          total_bytes_used?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_storage_usage_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_subscriptions: {
         Row: {
           cancel_at_period_end: boolean | null
@@ -397,6 +441,47 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_usage_limits: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          limit_key: string
+          limit_value: number
+          reason: string | null
+          set_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          limit_key: string
+          limit_value: number
+          reason?: string | null
+          set_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          limit_key?: string
+          limit_value?: number
+          reason?: string | null
+          set_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_usage_limits_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -2030,10 +2115,13 @@ export type Database = {
           id: string
           is_active: boolean | null
           max_jobs_per_month: number | null
+          max_photos_per_document: number | null
           max_users: number | null
           name: string
           price_monthly: number | null
           price_yearly: number | null
+          storage_addon_price_per_gb: number | null
+          storage_limit_bytes: number | null
           updated_at: string | null
         }
         Insert: {
@@ -2043,10 +2131,13 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           max_jobs_per_month?: number | null
+          max_photos_per_document?: number | null
           max_users?: number | null
           name: string
           price_monthly?: number | null
           price_yearly?: number | null
+          storage_addon_price_per_gb?: number | null
+          storage_limit_bytes?: number | null
           updated_at?: string | null
         }
         Update: {
@@ -2056,10 +2147,13 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           max_jobs_per_month?: number | null
+          max_photos_per_document?: number | null
           max_users?: number | null
           name?: string
           price_monthly?: number | null
           price_yearly?: number | null
+          storage_addon_price_per_gb?: number | null
+          storage_limit_bytes?: number | null
           updated_at?: string | null
         }
         Relationships: []
@@ -2275,6 +2369,10 @@ export type Database = {
       }
       generate_job_number: { Args: { _company_id: string }; Returns: string }
       generate_quote_number: { Args: { _company_id: string }; Returns: string }
+      get_effective_limit: {
+        Args: { p_company_id: string; p_limit_key: string }
+        Returns: number
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -2282,6 +2380,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_storage_usage: {
+        Args: { p_bytes: number; p_company_id: string; p_type: string }
+        Returns: undefined
+      }
+      recalculate_company_storage: {
+        Args: { p_company_id: string }
+        Returns: undefined
       }
       record_login_attempt: {
         Args: {
