@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
@@ -10,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link, Clock, BookTemplate, CalendarClock, Shield, ShieldCheck } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link as LinkIcon, Clock, BookTemplate, CalendarClock, Shield, ShieldCheck } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -455,7 +456,7 @@ const Company = () => {
                 {/* Website */}
                 <div className="space-y-4 pt-4 border-t">
                   <h3 className="font-medium flex items-center gap-2">
-                    <Link className="w-4 h-4" />
+                    <LinkIcon className="w-4 h-4" />
                     Website
                   </h3>
                   <div className="space-y-2">
@@ -611,7 +612,7 @@ const Company = () => {
                   </div>
                 </div>
                 <Button asChild variant="outline" size="sm">
-                  <a href="/subscription">Manage</a>
+                  <Link to="/subscription">Manage</Link>
                 </Button>
               </CardContent>
             </Card>
