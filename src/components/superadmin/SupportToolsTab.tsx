@@ -7,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { KeyRound, ShieldOff, UserPlus, Building2, Loader2, Mail, AlertTriangle, UserCheck, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
+import { SearchableUserSelect } from './SearchableUserSelect';
 
 interface Profile {
   id: string;
@@ -292,18 +292,14 @@ export function SupportToolsTab({ profiles, companies }: SupportToolsTabProps) {
               <p className="text-sm text-muted-foreground">
                 Or select from existing users:
               </p>
-              <Select value={resetPasswordEmail} onValueChange={setResetPasswordEmail}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select user" />
-                </SelectTrigger>
-                <SelectContent>
-                  {profiles.slice(0, 50).map(profile => (
-                    <SelectItem key={profile.id} value={profile.email}>
-                      {profile.full_name || profile.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableUserSelect
+                profiles={profiles}
+                companies={companies}
+                value={resetPasswordEmail}
+                onValueChange={setResetPasswordEmail}
+                placeholder="Search and select user"
+                valueType="email"
+              />
             </div>
             <div className="flex gap-2">
               <Button variant="outline" className="flex-1" onClick={() => setResetPasswordOpen(false)}>
@@ -341,18 +337,14 @@ export function SupportToolsTab({ profiles, companies }: SupportToolsTabProps) {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Select User</Label>
-              <Select value={mfaResetUserId} onValueChange={setMfaResetUserId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select user" />
-                </SelectTrigger>
-                <SelectContent>
-                  {profiles.map(profile => (
-                    <SelectItem key={profile.id} value={profile.id}>
-                      {profile.full_name || profile.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableUserSelect
+                profiles={profiles}
+                companies={companies}
+                value={mfaResetUserId}
+                onValueChange={setMfaResetUserId}
+                placeholder="Search and select user"
+                valueType="id"
+              />
             </div>
             {selectedUserForMfa && (
               <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
@@ -469,18 +461,14 @@ export function SupportToolsTab({ profiles, companies }: SupportToolsTabProps) {
               <>
                 <div className="space-y-2">
                   <Label>Select User</Label>
-                  <Select value={impersonateUserId} onValueChange={setImpersonateUserId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select user to impersonate" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {profiles.map(profile => (
-                        <SelectItem key={profile.id} value={profile.id}>
-                          {profile.full_name || profile.email} ({profile.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableUserSelect
+                    profiles={profiles}
+                    companies={companies}
+                    value={impersonateUserId}
+                    onValueChange={setImpersonateUserId}
+                    placeholder="Search and select user to impersonate"
+                    valueType="id"
+                  />
                 </div>
                 {selectedUserForImpersonate && (
                   <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
