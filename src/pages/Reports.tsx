@@ -8,8 +8,17 @@ import CustomerRevenueReport from '@/components/reports/CustomerRevenueReport';
 import TechnicianPerformanceReport from '@/components/reports/TechnicianPerformanceReport';
 import { cn } from '@/lib/utils';
 import PageContainer from '@/components/layout/PageContainer';
+import { FeatureGate } from '@/components/FeatureGate';
 
 const Reports = () => {
+  return (
+    <FeatureGate feature="reports">
+      <ReportsContent />
+    </FeatureGate>
+  );
+};
+
+const ReportsContent = () => {
   const [activeTab, setActiveTab] = useState('transactions');
   const [isScrolled, setIsScrolled] = useState(false);
 
