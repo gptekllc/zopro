@@ -7,9 +7,10 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Shield, ShieldCheck, ShieldOff, Loader2, Trash2, LogOut, Monitor, Smartphone } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldOff, Loader2, Trash2, LogOut, Monitor, Smartphone, Users, RotateCcw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
+import { useProfiles } from '@/hooks/useProfiles';
 import MFAEnrollment from '@/components/auth/MFAEnrollment';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -19,15 +20,20 @@ const SecuritySettings = () => {
   const navigate = useNavigate();
   const { profile, isAdmin, mfaFactors, listMFAFactors, unenrollMFA, refreshMFAStatus, session } = useAuth();
   const { data: company } = useCompany();
+  const { data: teamMembers } = useProfiles();
   const updateCompany = useUpdateCompany();
   
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isLoadingFactors, setIsLoadingFactors] = useState(true);
   const [isUnenrolling, setIsUnenrolling] = useState(false);
   const [isSigningOutAll, setIsSigningOutAll] = useState(false);
+  const [resettingUserId, setResettingUserId] = useState<string | null>(null);
 
   const hasMFA = mfaFactors.length > 0;
   const verifiedFactor = mfaFactors.find(f => f.status === 'verified');
+
+  // Filter team members excluding self
+  const otherTeamMembers = teamMembers?.filter(m => m.id !== profile?.id && m.employment_status !== 'terminated') || [];
 
   useEffect(() => {
     const loadFactors = async () => {
@@ -76,6 +82,31 @@ const SecuritySettings = () => {
       toast.success(checked ? 'MFA is now required for all team members' : 'MFA requirement removed');
     } catch (error: any) {
       toast.error(error.message || 'Failed to update setting');
+    }
+  };
+
+  const handleResetUserMFA = async (userId: string, userName: string) => {
+    setResettingUserId(userId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Not authenticated');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('reset-user-mfa', {
+        body: { userId }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to reset MFA');
+      }
+
+      toast.success(`MFA reset for ${userName}`);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to reset MFA');
+    } finally {
+      setResettingUserId(null);
     }
   };
 
@@ -254,30 +285,98 @@ const SecuritySettings = () => {
 
         {/* Admin Controls */}
         {isAdmin && company && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Team Security Policy</CardTitle>
-              <CardDescription>
-                Manage security requirements for your team
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="require-mfa">Require MFA for all team members</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Team members without MFA will be prompted to set it up
-                  </p>
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>Team Security Policy</CardTitle>
+                <CardDescription>
+                  Manage security requirements for your team
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="require-mfa">Require MFA for all team members</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Team members without MFA will be prompted to set it up
+                    </p>
+                  </div>
+                  <Switch
+                    id="require-mfa"
+                    checked={company.require_mfa || false}
+                    onCheckedChange={handleRequireMFAToggle}
+                    disabled={updateCompany.isPending}
+                  />
                 </div>
-                <Switch
-                  id="require-mfa"
-                  checked={company.require_mfa || false}
-                  onCheckedChange={handleRequireMFAToggle}
-                  disabled={updateCompany.isPending}
-                />
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            {/* Reset Team Member MFA */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  Team MFA Management
+                </CardTitle>
+                <CardDescription>
+                  Reset MFA for team members who have lost access to their authenticator app
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {otherTeamMembers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No other team members to manage.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {otherTeamMembers.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      >
+                        <div>
+                          <p className="font-medium">{member.full_name || 'Unnamed'}</p>
+                          <p className="text-sm text-muted-foreground">{member.email}</p>
+                        </div>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={resettingUserId === member.id}
+                            >
+                              {resettingUserId === member.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <RotateCcw className="h-4 w-4 mr-2" />
+                                  Reset MFA
+                                </>
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Reset MFA for {member.full_name || member.email}?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will remove their two-factor authentication setup. They will need to set up MFA again on their next login if MFA is required.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleResetUserMFA(member.id, member.full_name || member.email)}
+                              >
+                                Reset MFA
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
         )}
 
         <Button variant="ghost" onClick={() => navigate(-1)}>
