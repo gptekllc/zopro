@@ -29,7 +29,7 @@ export const ItemsPicker = ({ type, onSelect }: ItemsPickerProps) => {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-8 text-xs">
+        <Button variant="outline" size="sm" className="h-8 text-xs">
           <BookOpen className="w-3 h-3 mr-1" />
           Items
         </Button>
