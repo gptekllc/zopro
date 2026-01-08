@@ -164,6 +164,8 @@ const Notifications = () => {
         return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Member On Leave</Badge>;
       case 'negative_feedback':
         return <Badge variant="destructive">Negative Feedback</Badge>;
+      case 'feedback_updated':
+        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Feedback Updated</Badge>;
       default:
         return <Badge variant="secondary">{formatNotificationType(type)}</Badge>;
     }
@@ -180,7 +182,7 @@ const Notifications = () => {
       navigate('/invoices');
     } else if (notification.type === 'quote_approved') {
       navigate('/quotes');
-    } else if (notification.type === 'negative_feedback' && data?.jobId) {
+    } else if ((notification.type === 'negative_feedback' || notification.type === 'feedback_updated') && data?.jobId) {
       navigate(`/jobs?view=${data.jobId}&tab=feedback`);
     }
   };

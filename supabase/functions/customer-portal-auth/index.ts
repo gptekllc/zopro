@@ -1710,6 +1710,59 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Notify managers/admins about the feedback update
+      try {
+        // Get job details
+        const { data: job } = await adminClient
+          .from('jobs')
+          .select('job_number, company_id')
+          .eq('id', jobId)
+          .single();
+
+        // Get customer name
+        const { data: customer } = await adminClient
+          .from('customers')
+          .select('name')
+          .eq('id', customerId)
+          .single();
+
+        if (job) {
+          // Get managers and admins of the company
+          const { data: managers } = await adminClient
+            .from('profiles')
+            .select('id')
+            .eq('company_id', job.company_id)
+            .in('role', ['admin', 'manager']);
+
+          if (managers && managers.length > 0) {
+            const ratingChange = existingFeedback.rating !== rating 
+              ? ` (${existingFeedback.rating} → ${rating} stars)` 
+              : '';
+            
+            const notifications = managers.map((manager: { id: string }) => ({
+              user_id: manager.id,
+              type: 'feedback_updated',
+              title: 'Customer Updated Feedback',
+              message: `${customer?.name || 'A customer'} updated their feedback for Job ${job.job_number}${ratingChange}. "${feedbackText || 'No comment'}"`,
+              data: {
+                jobId,
+                jobNumber: job.job_number,
+                customerId,
+                customerName: customer?.name,
+                oldRating: existingFeedback.rating,
+                newRating: rating,
+                feedbackText: feedbackText || null,
+              },
+            }));
+
+            await adminClient.from('notifications').insert(notifications);
+          }
+        }
+      } catch (notifyError) {
+        console.error('Error sending feedback update notifications:', notifyError);
+        // Don't fail the request if notifications fail
+      }
+
       console.log('Feedback updated for job:', jobId);
 
       return new Response(
