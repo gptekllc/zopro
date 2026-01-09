@@ -138,7 +138,7 @@ serve(async (req) => {
           `,
         });
         logStep("Customer email sent", { response: customerEmailResponse });
-        await logEmail(adminClient, payload.customerEmail, customerSubject, 'invoice_paid_customer', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'invoice_paid_customer', 'sent', (customerEmailResponse as any)?.data?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
       } catch (err: any) {
         logStep("Customer email failed", { error: err.message });
         await logEmail(adminClient, payload.customerEmail, customerSubject, 'invoice_paid_customer', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
@@ -172,7 +172,7 @@ serve(async (req) => {
           `,
         });
         logStep("Quote approval email sent to company", { response: companyEmailResponse });
-        await logEmail(adminClient, payload.companyEmail, companySubject, 'quote_approved', 'sent', companyEmailResponse?.id || null, null, companyId, customerId, { quoteNumber: payload.quoteNumber });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'quote_approved', 'sent', (companyEmailResponse as any)?.data?.id || null, null, companyId, customerId, { quoteNumber: payload.quoteNumber });
       } catch (err: any) {
         logStep("Quote approval email failed", { error: err.message });
         await logEmail(adminClient, payload.companyEmail, companySubject, 'quote_approved', 'failed', null, err.message, companyId, customerId, { quoteNumber: payload.quoteNumber });
@@ -207,7 +207,7 @@ serve(async (req) => {
           `,
         });
         logStep("Failed payment email sent to customer", { response: customerEmailResponse });
-        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_failed', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_failed', 'sent', (customerEmailResponse as any)?.data?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
       } catch (err: any) {
         logStep("Failed payment email failed", { error: err.message });
         await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_failed', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
@@ -246,7 +246,7 @@ serve(async (req) => {
           `,
         });
         logStep("Late fee email sent to customer", { response: customerEmailResponse });
-        await logEmail(adminClient, payload.customerEmail, customerSubject, 'late_fee_customer', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'late_fee_customer', 'sent', (customerEmailResponse as any)?.data?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
       } catch (err: any) {
         logStep("Late fee email failed to customer", { error: err.message });
         await logEmail(adminClient, payload.customerEmail, customerSubject, 'late_fee_customer', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
@@ -276,7 +276,7 @@ serve(async (req) => {
           `,
         });
         logStep("Late fee email sent to company", { response: companyEmailResponse });
-        await logEmail(adminClient, payload.companyEmail, companySubject, 'late_fee_company', 'sent', companyEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'late_fee_company', 'sent', (companyEmailResponse as any)?.data?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
       } catch (err: any) {
         logStep("Late fee email failed to company", { error: err.message });
         await logEmail(adminClient, payload.companyEmail, companySubject, 'late_fee_company', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
@@ -319,7 +319,7 @@ serve(async (req) => {
           `,
         });
         logStep("Payment reminder email sent to customer", { response: customerEmailResponse });
-        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_reminder', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isOverdue });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_reminder', 'sent', (customerEmailResponse as any)?.data?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isOverdue });
       } catch (err: any) {
         logStep("Payment reminder email failed", { error: err.message });
         await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_reminder', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isOverdue });
@@ -382,7 +382,7 @@ serve(async (req) => {
           `,
         });
         logStep("Payment recorded email sent to customer", { response: customerEmailResponse });
-        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_recorded_customer', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isFullyPaid: payload.isFullyPaid });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_recorded_customer', 'sent', (customerEmailResponse as any)?.data?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isFullyPaid: payload.isFullyPaid });
       } catch (err: any) {
         logStep("Payment recorded email failed to customer", { error: err.message });
         await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_recorded_customer', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isFullyPaid: payload.isFullyPaid });
@@ -422,7 +422,7 @@ serve(async (req) => {
           `,
         });
         logStep("Payment recorded email sent to company", { response: companyEmailResponse });
-        await logEmail(adminClient, payload.companyEmail, companySubject, 'payment_recorded_company', 'sent', companyEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isFullyPaid: payload.isFullyPaid });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'payment_recorded_company', 'sent', (companyEmailResponse as any)?.data?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isFullyPaid: payload.isFullyPaid });
       } catch (err: any) {
         logStep("Payment recorded email failed to company", { error: err.message });
         await logEmail(adminClient, payload.companyEmail, companySubject, 'payment_recorded_company', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isFullyPaid: payload.isFullyPaid });
@@ -485,7 +485,7 @@ serve(async (req) => {
           `,
         });
         logStep("Payment refund email sent to customer", { response: customerEmailResponse });
-        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_refunded_customer', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, refundType: payload.refundType });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_refunded_customer', 'sent', (customerEmailResponse as any)?.data?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, refundType: payload.refundType });
       } catch (err: any) {
         logStep("Payment refund email failed to customer", { error: err.message });
         await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_refunded_customer', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber, refundType: payload.refundType });
@@ -519,7 +519,7 @@ serve(async (req) => {
           `,
         });
         logStep("Payment refund email sent to company", { response: companyEmailResponse });
-        await logEmail(adminClient, payload.companyEmail, companySubject, 'payment_refunded_company', 'sent', companyEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, refundType: payload.refundType });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'payment_refunded_company', 'sent', (companyEmailResponse as any)?.data?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, refundType: payload.refundType });
       } catch (err: any) {
         logStep("Payment refund email failed to company", { error: err.message });
         await logEmail(adminClient, payload.companyEmail, companySubject, 'payment_refunded_company', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber, refundType: payload.refundType });
