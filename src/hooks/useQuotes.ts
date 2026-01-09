@@ -107,6 +107,7 @@ export function useQuotes(includeArchived: boolean = false) {
           creator:profiles!quotes_created_by_fkey(full_name),
           items:quote_items(*)
         `)
+        .is('deleted_at', null) // Exclude soft-deleted items
         .order('created_at', { ascending: false });
       
       if (!includeArchived) {
@@ -276,9 +277,10 @@ export function useDeleteQuote() {
   
   return useMutation({
     mutationFn: async (id: string) => {
+      // Soft delete - set deleted_at timestamp
       const { error } = await (supabase as any)
         .from('quotes')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
       
       if (error) throw error;

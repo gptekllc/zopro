@@ -44,6 +44,7 @@ serve(async (req) => {
       expiredQuotes: 0,
       remindersSent: 0,
       lateFeesApplied: 0,
+      permanentlyDeleted: { jobs: 0, quotes: 0, invoices: 0, customers: 0 },
       errors: [] as string[],
     };
 
@@ -108,6 +109,35 @@ serve(async (req) => {
         console.error(`Error processing company ${company.id}:`, error);
         results.errors.push(`Company ${company.id}: ${error.message}`);
       }
+    }
+
+    // 5. Permanently delete soft-deleted records older than 6 months (global, not per-company)
+    try {
+      console.log("Running permanent deletion cleanup for soft-deleted records older than 6 months...");
+      const { data: cleanupResult, error: cleanupError } = await supabase
+        .rpc('permanent_delete_old_soft_deleted_records');
+      
+      if (cleanupError) {
+        console.error("Error running permanent deletion cleanup:", cleanupError);
+        results.errors.push(`Permanent deletion: ${cleanupError.message}`);
+      } else if (cleanupResult && cleanupResult.length > 0) {
+        const cleanup = cleanupResult[0];
+        results.permanentlyDeleted = {
+          jobs: cleanup.jobs_deleted || 0,
+          quotes: cleanup.quotes_deleted || 0,
+          invoices: cleanup.invoices_deleted || 0,
+          customers: cleanup.customers_deleted || 0,
+        };
+        const total = cleanup.jobs_deleted + cleanup.quotes_deleted + cleanup.invoices_deleted + cleanup.customers_deleted;
+        if (total > 0) {
+          console.log(`Permanently deleted ${total} records (${cleanup.jobs_deleted} jobs, ${cleanup.quotes_deleted} quotes, ${cleanup.invoices_deleted} invoices, ${cleanup.customers_deleted} customers)`);
+        } else {
+          console.log("No soft-deleted records older than 6 months to permanently delete");
+        }
+      }
+    } catch (cleanupErr: any) {
+      console.error("Error in permanent deletion cleanup:", cleanupErr);
+      results.errors.push(`Permanent deletion: ${cleanupErr.message}`);
     }
 
     console.log("Scheduled automations completed:", results);

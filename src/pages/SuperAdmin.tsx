@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog, LayoutDashboard, CreditCard, Wrench, History, BarChart3, ToggleLeft, Gauge } from 'lucide-react';
+import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog, LayoutDashboard, CreditCard, Wrench, History, BarChart3, ToggleLeft, Gauge, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import PageContainer from '@/components/layout/PageContainer';
@@ -23,6 +23,7 @@ import { AuditLogTab } from '@/components/superadmin/AuditLogTab';
 import { AnalyticsTab } from '@/components/superadmin/AnalyticsTab';
 import { FeatureFlagsTab } from '@/components/superadmin/FeatureFlagsTab';
 import UsageLimitsTab from '@/components/superadmin/UsageLimitsTab';
+import { DeletedItemsTab } from '@/components/superadmin/DeletedItemsTab';
 
 interface Company {
   id: string;
@@ -397,6 +398,10 @@ const SuperAdmin = () => {
           <TabsTrigger value="limits" className="gap-2">
             <Gauge className="w-4 h-4" />
             Usage Limits
+          </TabsTrigger>
+          <TabsTrigger value="deleted" className="gap-2">
+            <RotateCcw className="w-4 h-4" />
+            Deleted Items
           </TabsTrigger>
           <TabsTrigger value="audit" className="gap-2">
             <History className="w-4 h-4" />
@@ -811,6 +816,11 @@ const SuperAdmin = () => {
         {/* Usage Limits Tab */}
         <TabsContent value="limits">
           <UsageLimitsTab />
+        </TabsContent>
+
+        {/* Deleted Items Tab */}
+        <TabsContent value="deleted">
+          <DeletedItemsTab companies={companies} />
         </TabsContent>
 
         {/* Audit Log Tab */}

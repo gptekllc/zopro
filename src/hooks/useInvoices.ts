@@ -154,6 +154,7 @@ export function useInvoices(includeArchived: boolean = false) {
             )
           )
         `)
+        .is('deleted_at', null) // Exclude soft-deleted items
         .order('created_at', { ascending: false });
       
       if (!includeArchived) {
@@ -323,9 +324,10 @@ export function useDeleteInvoice() {
   
   return useMutation({
     mutationFn: async (id: string) => {
+      // Soft delete - set deleted_at timestamp
       const { error } = await (supabase as any)
         .from('invoices')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', id);
       
       if (error) throw error;
