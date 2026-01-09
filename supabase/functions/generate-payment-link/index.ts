@@ -100,7 +100,8 @@ serve(async (req) => {
       }
     }
 
-    const origin = req.headers.get("origin") || "https://lovable.dev";
+    const productionUrl = Deno.env.get("PRODUCTION_URL") || "https://fsm.zopro.app";
+    const origin = productionUrl;
 
     // Check if company has Stripe Connect set up
     const companyStripeAccountId = invoice.companies?.stripe_account_id;

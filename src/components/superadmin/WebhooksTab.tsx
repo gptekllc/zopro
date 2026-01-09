@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,10 @@ import {
   Eye,
   CreditCard,
   Wallet,
-  Square
+  Square,
+  RotateCcw,
+  Zap,
+  TestTube
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -44,9 +47,12 @@ export function WebhooksTab() {
   const [providerFilter, setProviderFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [testDialogOpen, setTestDialogOpen] = useState(false);
+  const [testPaymentDialogOpen, setTestPaymentDialogOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState('stripe');
   const [selectedEventType, setSelectedEventType] = useState('checkout.session.completed');
   const [isTesting, setIsTesting] = useState(false);
+  const [isTestingPayment, setIsTestingPayment] = useState(false);
+  const [retryingEventId, setRetryingEventId] = useState<string | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<WebhookLog | null>(null);
 
@@ -57,6 +63,37 @@ export function WebhooksTab() {
   });
 
   const { data: stats } = useWebhookStats();
+
+  // Real-time subscription for new webhook events
+  useEffect(() => {
+    const channel = supabase
+      .channel('webhook-logs-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'webhook_event_logs' },
+        (payload) => {
+          queryClient.invalidateQueries({ queryKey: ['webhook-logs'] });
+          queryClient.invalidateQueries({ queryKey: ['webhook-stats'] });
+          const newLog = payload.new as WebhookLog;
+          toast.info(`New webhook: ${newLog.event_type}`, {
+            description: `Provider: ${newLog.provider} • Status: ${newLog.status}`,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'webhook_event_logs' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['webhook-logs'] });
+          queryClient.invalidateQueries({ queryKey: ['webhook-stats'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -86,6 +123,51 @@ export function WebhooksTab() {
     } finally {
       setIsTesting(false);
       setTestDialogOpen(false);
+    }
+  };
+
+  const handleTestPaymentFlow = async () => {
+    setIsTestingPayment(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-payment-flow', {
+        body: { testAmount: 100 }, // $1.00
+      });
+
+      if (error) throw error;
+
+      if (data?.url) {
+        toast.success('Test checkout session created! Opening Stripe...');
+        window.open(data.url, '_blank');
+      } else if (data?.error) {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to create test payment');
+    } finally {
+      setIsTestingPayment(false);
+      setTestPaymentDialogOpen(false);
+    }
+  };
+
+  const handleRetryWebhook = async (eventId: string) => {
+    setRetryingEventId(eventId);
+    try {
+      const { data, error } = await supabase.functions.invoke('retry-webhook', {
+        body: { eventId },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success('Webhook retry successful');
+        refetch();
+      } else if (data?.error) {
+        throw new Error(data.error);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to retry webhook');
+    } finally {
+      setRetryingEventId(null);
     }
   };
 
@@ -165,33 +247,43 @@ export function WebhooksTab() {
                 <span className="text-xs">{formatDistanceToNow(new Date(stats.lastEventAt), { addSuffix: true })}</span>
               </div>
             )}
-            <div className="flex gap-2 pt-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1"
-                onClick={() => {
-                  setSelectedProvider('stripe');
-                  setTestDialogOpen(true);
-                }}
-              >
-                <Play className="w-3 h-3 mr-1" />
-                Test
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="flex-1"
-                asChild
-              >
-                <a 
-                  href="https://dashboard.stripe.com/webhooks" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
+            <div className="flex flex-col gap-2 pt-2">
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={() => {
+                    setSelectedProvider('stripe');
+                    setTestDialogOpen(true);
+                  }}
                 >
-                  <ExternalLink className="w-3 h-3 mr-1" />
-                  Dashboard
-                </a>
+                  <Play className="w-3 h-3 mr-1" />
+                  Test Event
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  asChild
+                >
+                  <a 
+                    href="https://dashboard.stripe.com/webhooks" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="w-3 h-3 mr-1" />
+                    Dashboard
+                  </a>
+                </Button>
+              </div>
+              <Button 
+                size="sm" 
+                className="w-full"
+                onClick={() => setTestPaymentDialogOpen(true)}
+              >
+                <TestTube className="w-3 h-3 mr-1" />
+                Test Payment Flow
               </Button>
             </div>
           </CardContent>
@@ -327,7 +419,7 @@ export function WebhooksTab() {
                     <TableHead>Event Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Time</TableHead>
-                    <TableHead className="w-[60px]"></TableHead>
+                    <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -352,14 +444,31 @@ export function WebhooksTab() {
                         {log.processing_time_ms ? `${log.processing_time_ms}ms` : '-'}
                       </TableCell>
                       <TableCell>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-7 w-7"
-                          onClick={() => handleViewDetails(log)}
-                        >
-                          <Eye className="w-3 h-3" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7"
+                            onClick={() => handleViewDetails(log)}
+                          >
+                            <Eye className="w-3 h-3" />
+                          </Button>
+                          {log.status === 'failed' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 text-amber-500 hover:text-amber-600"
+                              onClick={() => handleRetryWebhook(log.id)}
+                              disabled={retryingEventId === log.id}
+                            >
+                              {retryingEventId === log.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <RotateCcw className="w-3 h-3" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -412,6 +521,46 @@ export function WebhooksTab() {
             <Button onClick={handleTestWebhook} disabled={isTesting}>
               {isTesting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Send Test
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Payment Flow Dialog */}
+      <Dialog open={testPaymentDialogOpen} onOpenChange={setTestPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TestTube className="w-5 h-5" />
+              Test Payment Flow
+            </DialogTitle>
+            <DialogDescription>
+              Create a test Stripe Checkout session to verify the complete payment and webhook flow.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="p-4 bg-muted/50 rounded-lg space-y-2">
+              <p className="font-medium text-sm">This will:</p>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Create a $1.00 test checkout session</li>
+                <li>• Open Stripe Checkout in a new tab</li>
+                <li>• Process the webhook when payment completes</li>
+                <li>• Verify email notifications are sent</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                <strong>Tip:</strong> Use test card <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">4242 4242 4242 4242</code> with any future date and CVC.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTestPaymentDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleTestPaymentFlow} disabled={isTestingPayment}>
+              {isTestingPayment && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Start Test Payment
             </Button>
           </DialogFooter>
         </DialogContent>

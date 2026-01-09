@@ -27,6 +27,7 @@ import { FeatureFlagsTab } from '@/components/superadmin/FeatureFlagsTab';
 import UsageLimitsTab from '@/components/superadmin/UsageLimitsTab';
 import { DeletedItemsTab } from '@/components/superadmin/DeletedItemsTab';
 import { WebhooksTab } from '@/components/superadmin/WebhooksTab';
+import { EmailLogsTab } from '@/components/superadmin/EmailLogsTab';
 
 interface Company {
   id: string;
@@ -410,6 +411,10 @@ const SuperAdmin = () => {
           <TabsTrigger value="webhooks" className="gap-2">
             <Webhook className="w-4 h-4" />
             Webhooks
+          </TabsTrigger>
+          <TabsTrigger value="emails" className="gap-2">
+            <MoreHorizontal className="w-4 h-4" />
+            Email Logs
           </TabsTrigger>
           <TabsTrigger value="audit" className="gap-2">
             <History className="w-4 h-4" />
@@ -839,6 +844,11 @@ const SuperAdmin = () => {
         {/* Webhooks Tab */}
         <TabsContent value="webhooks">
           <WebhooksTab />
+        </TabsContent>
+
+        {/* Email Logs Tab */}
+        <TabsContent value="emails">
+          <EmailLogsTab />
         </TabsContent>
 
         {/* Audit Log Tab */}
