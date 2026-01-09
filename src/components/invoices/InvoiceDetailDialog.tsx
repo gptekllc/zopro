@@ -15,7 +15,7 @@ import {
   FileDown, Mail, Edit, PenTool, Calendar, 
   DollarSign, Receipt, CheckCircle, Clock, AlertCircle, UserCog, Bell,
   ChevronRight, CheckCircle2, Briefcase, FileText, Link2, Send, Loader2,
-  List, Image as ImageIcon, CreditCard, Trash2, Pencil, RotateCcw, XCircle, MoreHorizontal, Ban, StickyNote, ChevronDown
+  List, Image as ImageIcon, CreditCard, Trash2, Pencil, RotateCcw, XCircle, MoreHorizontal, Ban, StickyNote, ChevronDown, ExternalLink
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerInvoice } from '@/hooks/useCustomerHistory';
@@ -184,6 +184,9 @@ export function InvoiceDetailDialog({
   
   // Receipt loading state
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
+  
+  // Payment link loading state
+  const [isGeneratingPaymentLink, setIsGeneratingPaymentLink] = useState(false);
   
   // Local state for optimistic UI updates
   const [localStatus, setLocalStatus] = useState(invoice?.status);
@@ -400,6 +403,27 @@ export function InvoiceDetailDialog({
     });
     setVoidInvoiceDialogOpen(false);
     onOpenChange(false);
+  };
+
+  const handleGeneratePaymentLink = async () => {
+    setIsGeneratingPaymentLink(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-payment-link', {
+        body: { invoiceId: invoice.id },
+      });
+
+      if (error) throw error;
+      if (!data?.url) throw new Error('No payment URL received');
+
+      // Open in new tab
+      window.open(data.url, '_blank');
+      toast.success('Payment page opened in new tab');
+    } catch (err: any) {
+      console.error('Failed to generate payment link:', err);
+      toast.error(err.message || 'Failed to generate payment link');
+    } finally {
+      setIsGeneratingPaymentLink(false);
+    }
   };
 
   return (
@@ -1003,14 +1027,32 @@ export function InvoiceDetailDialog({
               Email
             </Button>
             {invoice.status !== 'paid' && remainingBalance > 0 && (
-              <Button 
-                size="sm" 
-                onClick={() => setRecordPaymentDialogOpen(true)}
-                className="bg-green-600 hover:bg-green-700 justify-center"
-              >
-                <DollarSign className="w-4 h-4 mr-1" />
-                Payment
-              </Button>
+              <>
+                <Button 
+                  size="sm" 
+                  onClick={() => setRecordPaymentDialogOpen(true)}
+                  className="bg-green-600 hover:bg-green-700 justify-center"
+                >
+                  <DollarSign className="w-4 h-4 mr-1" />
+                  Payment
+                </Button>
+                {company?.stripe_payments_enabled !== false && (
+                  <Button 
+                    size="sm"
+                    variant="outline"
+                    onClick={handleGeneratePaymentLink}
+                    disabled={isGeneratingPaymentLink}
+                    className="justify-center"
+                  >
+                    {isGeneratingPaymentLink ? (
+                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <ExternalLink className="w-4 h-4 mr-1" />
+                    )}
+                    Pay Online
+                  </Button>
+                )}
+              </>
             )}
             {invoice.status !== 'paid' && invoice.status !== 'voided' && (
               <Button 
