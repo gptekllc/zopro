@@ -5,14 +5,16 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Shield, ShieldCheck, Loader2, Trash2, LogOut, Monitor, Smartphone, Users, RotateCcw } from 'lucide-react';
+import { Shield, ShieldCheck, Loader2, Trash2, LogOut, Monitor, Smartphone, Users, RotateCcw, Laptop, TabletSmartphone } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
 import { useProfiles } from '@/hooks/useProfiles';
+import { useTrustedDevices } from '@/hooks/useTrustedDevices';
+import { useTrustedDevice } from '@/hooks/useTrustedDevice';
 import MFAEnrollment from '@/components/auth/MFAEnrollment';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 
 const SecuritySettingsContent = () => {
@@ -21,12 +23,18 @@ const SecuritySettingsContent = () => {
   const { data: company } = useCompany();
   const { data: teamMembers } = useProfiles();
   const updateCompany = useUpdateCompany();
+  const { devices, isLoading: isLoadingDevices, revokeDevice, revokeAllDevices, isRevoking, isRevokingAll } = useTrustedDevices();
+  const { getStoredToken, clearStoredToken } = useTrustedDevice();
   
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [isLoadingFactors, setIsLoadingFactors] = useState(true);
   const [isUnenrolling, setIsUnenrolling] = useState(false);
   const [isSigningOutAll, setIsSigningOutAll] = useState(false);
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
+  const [revokingDeviceId, setRevokingDeviceId] = useState<string | null>(null);
+
+  // Get current device token to identify it in the list
+  const currentDeviceToken = getStoredToken();
 
   const hasMFA = mfaFactors.length > 0;
   const verifiedFactor = mfaFactors.find(f => f.status === 'verified');
@@ -107,6 +115,47 @@ const SecuritySettingsContent = () => {
     } finally {
       setResettingUserId(null);
     }
+  };
+
+  const handleRevokeDevice = async (deviceId: string) => {
+    setRevokingDeviceId(deviceId);
+    try {
+      await revokeDevice(deviceId);
+      // If revoking the current device, clear the local token
+      const device = devices.find(d => d.id === deviceId);
+      if (device && currentDeviceToken) {
+        // We need to check the device token from the database, but since we don't store it in the response,
+        // just clear local storage if any device is revoked to be safe
+      }
+      clearStoredToken();
+      toast.success('Device removed from trusted devices');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to revoke device');
+    } finally {
+      setRevokingDeviceId(null);
+    }
+  };
+
+  const handleRevokeAllDevices = async () => {
+    try {
+      await revokeAllDevices();
+      clearStoredToken();
+      toast.success('All trusted devices have been removed');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to revoke devices');
+    }
+  };
+
+  const getDeviceIcon = (deviceName: string | null) => {
+    if (!deviceName) return <Monitor className="w-4 h-4" />;
+    const name = deviceName.toLowerCase();
+    if (name.includes('mobile') || name.includes('iphone') || name.includes('android')) {
+      return <Smartphone className="w-4 h-4" />;
+    }
+    if (name.includes('ipad') || name.includes('tablet')) {
+      return <TabletSmartphone className="w-4 h-4" />;
+    }
+    return <Laptop className="w-4 h-4" />;
   };
 
   if (isEnrolling) {
@@ -278,6 +327,117 @@ const SecuritySettingsContent = () => {
           </p>
         </CardContent>
       </Card>
+
+      {/* Trusted Devices Management */}
+      {hasMFA && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Trusted Devices
+            </CardTitle>
+            <CardDescription>
+              Devices that can skip two-factor authentication for 90 days
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoadingDevices ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : devices.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No trusted devices. When you sign in and choose "Trust this device", it will appear here.
+              </p>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {devices.map((device) => (
+                    <div
+                      key={device.id}
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        {getDeviceIcon(device.device_name)}
+                        <div>
+                          <p className="font-medium text-sm">{device.device_name || 'Unknown Device'}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span>Last used {formatDistanceToNow(new Date(device.last_used_at), { addSuffix: true })}</span>
+                            <span>•</span>
+                            <span>Expires {format(new Date(device.expires_at), 'MMM d, yyyy')}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={revokingDeviceId === device.id || isRevoking}
+                          >
+                            {revokingDeviceId === device.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                            )}
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove trusted device?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This device will require two-factor authentication on next sign in.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleRevokeDevice(device.id)}>
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  ))}
+                </div>
+
+                {devices.length > 1 && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full" disabled={isRevokingAll}>
+                        {isRevokingAll ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4 mr-2" />
+                        )}
+                        Remove all trusted devices
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Remove all trusted devices?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          All devices will require two-factor authentication on next sign in, including this one.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleRevokeAllDevices}>
+                          Remove All
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Removing a device will require MFA verification on next sign in from that device.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Admin Controls */}
       {isAdmin && company && (
