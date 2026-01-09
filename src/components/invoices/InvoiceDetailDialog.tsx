@@ -634,11 +634,10 @@ export function InvoiceDetailDialog({
                       </div>
                     )}
                     <div className={`flex justify-between font-bold pt-1 border-t ${remainingBalance > 0 && invoice.status !== 'paid' ? 'border-destructive/30' : ''}`}>
-                      <span className="flex items-center gap-1 text-xs">
-                        <DollarSign className="w-3 h-3" />
+                      <span className="text-xs">
                         {remainingBalance > 0 && invoice.status !== 'paid' ? 'Balance Due' : 'Total'}
                       </span>
-                      <span className={remainingBalance > 0 && invoice.status !== 'paid' ? 'text-destructive' : ''}>
+                      <span className={`text-xs ${remainingBalance > 0 && invoice.status !== 'paid' ? 'text-destructive' : ''}`}>
                         ${remainingBalance > 0 ? formatAmount(remainingBalance) : formatAmount(totalDue)}
                       </span>
                     </div>

@@ -321,8 +321,8 @@ export function QuoteDetailDialog({
                       <span className="text-xs">${formatAmount(quote.tax)}</span>
                     </div>
                     <div className="flex justify-between font-medium gap-4">
-                      <span className="text-xs flex items-center gap-1"><DollarSign className="w-3 h-3" />Total</span>
-                      <span>${formatAmount(quote.total)}</span>
+                      <span className="text-xs">Total</span>
+                      <span className="text-xs">${formatAmount(quote.total)}</span>
                     </div>
                   </div>
                 </div>
