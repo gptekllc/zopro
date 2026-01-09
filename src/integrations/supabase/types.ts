@@ -2861,6 +2861,7 @@ export type Database = {
         Args: { p_bytes: number; p_company_id: string; p_type: string }
         Returns: undefined
       }
+      is_company_admin: { Args: { _user_id: string }; Returns: boolean }
       permanent_delete_document: {
         Args: { p_document_id: string; p_table_name: string }
         Returns: boolean
@@ -2895,6 +2896,10 @@ export type Database = {
       sync_invoice_status_for_invoice: {
         Args: { _invoice_id: string }
         Returns: undefined
+      }
+      users_in_same_company: {
+        Args: { _user_id1: string; _user_id2: string }
+        Returns: boolean
       }
     }
     Enums: {

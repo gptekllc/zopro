@@ -16,6 +16,7 @@ interface AvatarUploadProps {
   onRemove?: () => void;
   size?: 'sm' | 'md' | 'lg';
   showRemoveButton?: boolean;
+  canEdit?: boolean; // If false, upload/remove controls are hidden (default: true)
 }
 
 const AvatarUpload = ({ 
@@ -25,7 +26,8 @@ const AvatarUpload = ({
   onUploadSuccess, 
   onRemove,
   size = 'lg',
-  showRemoveButton = true 
+  showRemoveButton = true,
+  canEdit = true
 }: AvatarUploadProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -317,18 +319,20 @@ const AvatarUpload = ({
               {getInitials(name)}
             </AvatarFallback>
           </Avatar>
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className={`absolute rounded-full ${buttonSizeClasses[size]}`}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Camera className={iconSizeClasses[size]} />
-          </Button>
+          {canEdit && (
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className={`absolute rounded-full ${buttonSizeClasses[size]}`}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Camera className={iconSizeClasses[size]} />
+            </Button>
+          )}
         </div>
         
-        {showRemoveButton && currentAvatarUrl && (
+        {canEdit && showRemoveButton && currentAvatarUrl && (
           <Button
             type="button"
             variant="ghost"
