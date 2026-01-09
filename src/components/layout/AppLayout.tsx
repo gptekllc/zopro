@@ -292,59 +292,40 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
         <div className="flex flex-col h-full">
           {/* Sidebar header with toggle button */}
           <div className={cn(
-            "flex items-center shrink-0 relative",
+            "flex items-center gap-3 shrink-0",
             sidebarCollapsed ? "p-3 justify-center" : "p-6"
           )}>
-            {/* Centered logo and text */}
-            <div className={cn(
-              "flex items-center gap-3",
-              !sidebarCollapsed && "flex-1 justify-center"
-            )}>
-              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden shrink-0">
-                <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
-              </div>
-              {!sidebarCollapsed && (
-                <div className="min-w-0">
-                  <h1 className="font-bold text-lg">ZoPro</h1>
-                  <p className="text-xs text-sidebar-foreground/60 truncate">{company?.name || 'No Company'}</p>
-                </div>
-              )}
+            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden shrink-0">
+              <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
             </div>
-            {/* Collapse button positioned to the right */}
             {!sidebarCollapsed && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={toggleSidebar}
-                    className="absolute right-2 shrink-0 text-sidebar-foreground hover:bg-sidebar-accent"
-                  >
-                    <PanelLeftClose className="w-5 h-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  Collapse sidebar
-                </TooltipContent>
-              </Tooltip>
+              <div className="flex-1 min-w-0">
+                <h1 className="font-bold text-lg">ZoPro</h1>
+                <p className="text-xs text-sidebar-foreground/60 truncate">{company?.name || 'No Company'}</p>
+              </div>
             )}
-            {sidebarCollapsed && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={toggleSidebar}
-                    className="mt-2 shrink-0 text-sidebar-foreground hover:bg-sidebar-accent"
-                  >
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleSidebar}
+                  className={cn(
+                    "shrink-0 text-sidebar-foreground hover:bg-sidebar-accent",
+                    sidebarCollapsed && "mt-2"
+                  )}
+                >
+                  {sidebarCollapsed ? (
                     <PanelLeft className="w-5 h-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  Expand sidebar
-                </TooltipContent>
-              </Tooltip>
-            )}
+                  ) : (
+                    <PanelLeftClose className="w-5 h-5" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Navigation - scrollable */}
