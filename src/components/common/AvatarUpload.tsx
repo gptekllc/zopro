@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Slider } from '@/components/ui/slider';
-import { Camera, Loader2, ZoomIn } from 'lucide-react';
+import { Camera, Loader2, ZoomIn, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { extractStoragePath } from '@/components/company/LogoUpload';
@@ -13,18 +13,33 @@ interface AvatarUploadProps {
   currentAvatarUrl: string | null;
   name: string;
   onUploadSuccess: (url: string) => void;
+  onRemove?: () => void;
   size?: 'sm' | 'md' | 'lg';
+  showRemoveButton?: boolean;
 }
 
-const AvatarUpload = ({ entityId, currentAvatarUrl, name, onUploadSuccess, size = 'lg' }: AvatarUploadProps) => {
+const AvatarUpload = ({ 
+  entityId, 
+  currentAvatarUrl, 
+  name, 
+  onUploadSuccess, 
+  onRemove,
+  size = 'lg',
+  showRemoveButton = true 
+}: AvatarUploadProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  
+  // Pinch-to-zoom state
+  const [initialPinchDistance, setInitialPinchDistance] = useState<number | null>(null);
+  const [initialZoom, setInitialZoom] = useState(1);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -81,24 +96,55 @@ const AvatarUpload = ({ entityId, currentAvatarUrl, name, onUploadSuccess, size 
     setIsDragging(false);
   };
 
-  // Touch support
+  // Calculate distance between two touch points
+  const getTouchDistance = (touches: React.TouchList): number => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Touch support with pinch-to-zoom
   const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    setIsDragging(true);
-    setDragStart({ x: touch.clientX - position.x, y: touch.clientY - position.y });
+    if (e.touches.length === 2) {
+      // Pinch gesture start
+      e.preventDefault();
+      const distance = getTouchDistance(e.touches);
+      setInitialPinchDistance(distance);
+      setInitialZoom(zoom);
+    } else if (e.touches.length === 1) {
+      // Single finger drag
+      const touch = e.touches[0];
+      setIsDragging(true);
+      setDragStart({ x: touch.clientX - position.x, y: touch.clientY - position.y });
+    }
   };
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDragging) return;
-    const touch = e.touches[0];
-    setPosition({
-      x: touch.clientX - dragStart.x,
-      y: touch.clientY - dragStart.y
-    });
-  }, [isDragging, dragStart]);
+    if (e.touches.length === 2 && initialPinchDistance !== null) {
+      // Pinch-to-zoom
+      e.preventDefault();
+      const currentDistance = getTouchDistance(e.touches);
+      const scale = currentDistance / initialPinchDistance;
+      const newZoom = Math.min(Math.max(initialZoom * scale, 0.1), 3);
+      setZoom(newZoom);
+    } else if (e.touches.length === 1 && isDragging) {
+      // Single finger drag
+      const touch = e.touches[0];
+      setPosition({
+        x: touch.clientX - dragStart.x,
+        y: touch.clientY - dragStart.y
+      });
+    }
+  }, [isDragging, dragStart, initialPinchDistance, initialZoom]);
 
-  const handleTouchEnd = () => {
-    setIsDragging(false);
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length < 2) {
+      setInitialPinchDistance(null);
+    }
+    if (e.touches.length === 0) {
+      setIsDragging(false);
+    }
   };
 
   const cropAndCompress = async (): Promise<Blob> => {
@@ -230,6 +276,32 @@ const AvatarUpload = ({ entityId, currentAvatarUrl, name, onUploadSuccess, size 
     }
   };
 
+  const handleRemovePhoto = async () => {
+    if (!currentAvatarUrl) return;
+
+    setIsRemoving(true);
+    try {
+      // Delete from storage
+      const oldPath = extractStoragePath(currentAvatarUrl, 'company-logos');
+      if (oldPath) {
+        await supabase.storage.from('company-logos').remove([oldPath]);
+      }
+
+      // Call onRemove callback if provided, otherwise call onUploadSuccess with empty string
+      if (onRemove) {
+        onRemove();
+      } else {
+        onUploadSuccess('');
+      }
+      toast.success('Photo removed successfully');
+    } catch (error: any) {
+      console.error('Remove error:', error);
+      toast.error(error.message || 'Failed to remove photo');
+    } finally {
+      setIsRemoving(false);
+    }
+  };
+
   const getInitials = (name: string) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -237,22 +309,42 @@ const AvatarUpload = ({ entityId, currentAvatarUrl, name, onUploadSuccess, size 
 
   return (
     <>
-      <div className="relative">
-        <Avatar className={sizeClasses[size]}>
-          <AvatarImage src={currentAvatarUrl || undefined} alt={name} />
-          <AvatarFallback className="bg-primary text-primary-foreground">
-            {getInitials(name)}
-          </AvatarFallback>
-        </Avatar>
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          className={`absolute rounded-full ${buttonSizeClasses[size]}`}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Camera className={iconSizeClasses[size]} />
-        </Button>
+      <div className="flex flex-col items-center gap-2">
+        <div className="relative">
+          <Avatar className={sizeClasses[size]}>
+            <AvatarImage src={currentAvatarUrl || undefined} alt={name} />
+            <AvatarFallback className="bg-primary text-primary-foreground">
+              {getInitials(name)}
+            </AvatarFallback>
+          </Avatar>
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            className={`absolute rounded-full ${buttonSizeClasses[size]}`}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Camera className={iconSizeClasses[size]} />
+          </Button>
+        </div>
+        
+        {showRemoveButton && currentAvatarUrl && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 text-xs"
+            onClick={handleRemovePhoto}
+            disabled={isRemoving}
+          >
+            {isRemoving ? (
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+            ) : (
+              <Trash2 className="w-3 h-3 mr-1" />
+            )}
+            Remove Photo
+          </Button>
+        )}
       </div>
 
       <input
@@ -272,7 +364,7 @@ const AvatarUpload = ({ entityId, currentAvatarUrl, name, onUploadSuccess, size 
           <div className="space-y-4">
             <div
               ref={containerRef}
-              className="relative w-full aspect-square bg-muted rounded-lg overflow-hidden cursor-move border-2 border-dashed border-border"
+              className="relative w-full aspect-square bg-muted rounded-lg overflow-hidden cursor-move border-2 border-dashed border-border touch-none"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -319,7 +411,7 @@ const AvatarUpload = ({ entityId, currentAvatarUrl, name, onUploadSuccess, size 
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              Drag to position, use slider to zoom. Image will be compressed to 50-70 KB.
+              Drag to position, use slider or pinch to zoom. Image will be compressed to 50-70 KB.
             </p>
 
             <div className="flex gap-2">
