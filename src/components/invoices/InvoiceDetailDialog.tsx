@@ -613,7 +613,7 @@ export function InvoiceDetailDialog({
                     </div>
                     <div className="flex justify-between font-medium gap-4">
                       <span className="text-xs">Invoice Total</span>
-                      <span>${formatAmount(invoice.total)}</span>
+                      <span className="text-xs">${formatAmount(invoice.total)}</span>
                     </div>
                     {hasLateFee && (
                       <div className="flex justify-between text-xs text-destructive">
