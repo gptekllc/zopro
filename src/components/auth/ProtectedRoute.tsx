@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow';
@@ -7,6 +7,7 @@ import MFAEnrollment from '@/components/auth/MFAEnrollment';
 import { useState } from 'react';
 
 const ProtectedRoute = () => {
+  const location = useLocation();
   const { user, profile, roles, isLoading, isMFALoading, isSuperAdmin, needsMFAChallenge, hasMFA, refreshMFAStatus } = useAuth();
   const { data: company, isLoading: companyLoading } = useCompany();
   const [mfaVerified, setMfaVerified] = useState(false);
@@ -22,7 +23,8 @@ const ProtectedRoute = () => {
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    // Preserve the intended destination so user can be redirected after login
+    return <Navigate to="/" state={{ from: location.pathname + location.search }} replace />;
   }
 
   // MFA Challenge - Check IMMEDIATELY after confirming user exists

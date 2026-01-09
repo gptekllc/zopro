@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertCircle, ArrowLeft, CheckCircle, Lock, Mail } from 'lucide-react';
 import zoproLogo from '@/assets/zopro-logo.png';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import PasswordStrength, { validatePassword } from '@/components/auth/PasswordStrength';
 
@@ -32,6 +32,10 @@ const Login = () => {
   const [lockoutStatus, setLockoutStatus] = useState<LockoutStatus | null>(null);
   const { signIn, signUp, signInWithGoogle, user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get the intended destination from location state, default to /dashboard
+  const from = (location.state as { from?: string })?.from || '/dashboard';
 
   // Check lockout status when email changes
   const checkLockout = useCallback(async (emailToCheck: string) => {
@@ -85,9 +89,9 @@ const Login = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (user && !authLoading) {
-      navigate('/dashboard');
+      navigate(from);
     }
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, from]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,7 +132,7 @@ const Login = () => {
       // Record successful attempt
       await recordAttempt(email, true);
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      navigate(from);
     }
     setIsLoading(false);
   };
