@@ -105,7 +105,7 @@ serve(async (req) => {
                 <p style="margin: 10px 0 0 0;"><strong>Customer:</strong> ${payload.customerName}</p>
               </div>
               <p>The invoice has been automatically marked as paid in your system.</p>
-              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>ZoPro</p>
             </div>
           `,
         });
@@ -167,7 +167,7 @@ serve(async (req) => {
                 <p style="margin: 10px 0 0 0;"><strong>Email:</strong> ${payload.customerEmail}</p>
               </div>
               <p>You can now proceed with scheduling the work or converting this quote to an invoice.</p>
-              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>ZoPro</p>
             </div>
           `,
         });
@@ -271,7 +271,7 @@ serve(async (req) => {
                 <p style="margin: 10px 0 0 0; font-size: 18px; font-weight: bold;"><strong>New Total:</strong> $${payload.amount?.toFixed(2)}</p>
               </div>
               <p>The customer has been notified via email.</p>
-              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>ZoPro</p>
             </div>
           `,
         });
@@ -417,7 +417,7 @@ serve(async (req) => {
                 ? '<p>The invoice has been automatically marked as paid in your system.</p>'
                 : '<p>The customer still has an outstanding balance.</p>'
               }
-              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>ZoPro</p>
             </div>
           `,
         });
@@ -514,7 +514,7 @@ serve(async (req) => {
                 ` : ''}
               </div>
               <p>The customer has been notified via email.</p>
-              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>ZoPro</p>
             </div>
           `,
         });

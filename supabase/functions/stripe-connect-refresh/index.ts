@@ -70,7 +70,8 @@ serve(async (req) => {
     logStep("Found Stripe account", { accountId: company.stripe_account_id });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const origin = req.headers.get("origin") || "https://lovable.dev";
+    const productionUrl = Deno.env.get("PRODUCTION_URL") || "https://fsm.zopro.app";
+    const origin = productionUrl;
 
     // Create new account link for continuing onboarding
     const accountLink = await stripe.accountLinks.create({
