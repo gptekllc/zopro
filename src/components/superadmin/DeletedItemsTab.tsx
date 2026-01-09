@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, RotateCcw, Trash2, AlertTriangle, FileText, Briefcase, Receipt } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Loader2, RotateCcw, Trash2, AlertTriangle, FileText, Briefcase, Receipt, MoreHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { formatAmount } from '@/lib/formatAmount';
@@ -242,25 +243,28 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            restoreMutation.mutate({
-                              tableName: getTableName(doc.document_type),
-                              documentId: doc.id,
-                            })
-                          }
-                          disabled={restoreMutation.isPending}
-                          className="gap-1"
-                        >
-                          {restoreMutation.isPending ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <RotateCcw className="w-3 h-3" />
-                          )}
-                          Restore
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                restoreMutation.mutate({
+                                  tableName: getTableName(doc.document_type),
+                                  documentId: doc.id,
+                                })
+                              }
+                              disabled={restoreMutation.isPending}
+                            >
+                              <RotateCcw className="w-4 h-4 mr-2" />
+                              Restore
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
