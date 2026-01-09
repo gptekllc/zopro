@@ -873,10 +873,10 @@ const Company = () => {
                                 setDocumentNumbering({ ...documentNumbering, job_next_number: value });
                               }}
                               placeholder="1"
-                              className={documentNumbering.job_next_number < (minNumbers?.job || 1) ? 'border-destructive' : ''}
+                              className={documentNumbering.job_next_number < (minNumbers?.job || 1) ? 'border-amber-500' : ''}
                             />
                             {minNumbers && documentNumbering.job_next_number < minNumbers.job && (
-                              <p className="text-xs text-destructive">Min: {minNumbers.job}</p>
+                              <p className="text-xs text-amber-600">Will auto-skip existing (highest: {minNumbers.job - 1})</p>
                             )}
                           </div>
                         </div>
@@ -964,10 +964,10 @@ const Company = () => {
                                 setDocumentNumbering({ ...documentNumbering, quote_next_number: value });
                               }}
                               placeholder="1"
-                              className={documentNumbering.quote_next_number < (minNumbers?.quote || 1) ? 'border-destructive' : ''}
+                              className={documentNumbering.quote_next_number < (minNumbers?.quote || 1) ? 'border-amber-500' : ''}
                             />
                             {minNumbers && documentNumbering.quote_next_number < minNumbers.quote && (
-                              <p className="text-xs text-destructive">Min: {minNumbers.quote}</p>
+                              <p className="text-xs text-amber-600">Will auto-skip existing (highest: {minNumbers.quote - 1})</p>
                             )}
                           </div>
                         </div>
@@ -1055,10 +1055,10 @@ const Company = () => {
                                 setDocumentNumbering({ ...documentNumbering, invoice_next_number: value });
                               }}
                               placeholder="1"
-                              className={documentNumbering.invoice_next_number < (minNumbers?.invoice || 1) ? 'border-destructive' : ''}
+                              className={documentNumbering.invoice_next_number < (minNumbers?.invoice || 1) ? 'border-amber-500' : ''}
                             />
                             {minNumbers && documentNumbering.invoice_next_number < minNumbers.invoice && (
-                              <p className="text-xs text-destructive">Min: {minNumbers.invoice}</p>
+                              <p className="text-xs text-amber-600">Will auto-skip existing (highest: {minNumbers.invoice - 1})</p>
                             )}
                           </div>
                         </div>
@@ -1081,32 +1081,24 @@ const Company = () => {
                             savingSection === 'numbering' || 
                             !documentNumbering.job_number_prefix || 
                             !documentNumbering.quote_number_prefix || 
-                            !documentNumbering.invoice_number_prefix ||
-                            (minNumbers && documentNumbering.job_next_number < minNumbers.job) ||
-                            (minNumbers && documentNumbering.quote_next_number < minNumbers.quote) ||
-                            (minNumbers && documentNumbering.invoice_next_number < minNumbers.invoice)
+                            !documentNumbering.invoice_number_prefix
                           }
                           onClick={() => {
-                            // Enforce minimum values on save
-                            const safeJobNext = Math.max(documentNumbering.job_next_number, minNumbers?.job || 1);
-                            const safeQuoteNext = Math.max(documentNumbering.quote_next_number, minNumbers?.quote || 1);
-                            const safeInvoiceNext = Math.max(documentNumbering.invoice_next_number, minNumbers?.invoice || 1);
-                            
                             handleSaveSection('numbering', {
                               job_number_prefix: documentNumbering.job_number_prefix,
                               job_number_padding: documentNumbering.job_number_padding,
                               job_number_include_year: documentNumbering.job_number_include_year,
-                              job_next_number: safeJobNext,
+                              job_next_number: documentNumbering.job_next_number,
                               job_number_use_hyphens: documentNumbering.job_number_use_hyphens,
                               quote_number_prefix: documentNumbering.quote_number_prefix,
                               quote_number_padding: documentNumbering.quote_number_padding,
                               quote_number_include_year: documentNumbering.quote_number_include_year,
-                              quote_next_number: safeQuoteNext,
+                              quote_next_number: documentNumbering.quote_next_number,
                               quote_number_use_hyphens: documentNumbering.quote_number_use_hyphens,
                               invoice_number_prefix: documentNumbering.invoice_number_prefix,
                               invoice_number_padding: documentNumbering.invoice_number_padding,
                               invoice_number_include_year: documentNumbering.invoice_number_include_year,
-                              invoice_next_number: safeInvoiceNext,
+                              invoice_next_number: documentNumbering.invoice_next_number,
                               invoice_number_use_hyphens: documentNumbering.invoice_number_use_hyphens,
                             } as any);
                           }}
