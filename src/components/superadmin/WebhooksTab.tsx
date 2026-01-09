@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   RefreshCw, 
   ExternalLink, 
@@ -28,10 +30,14 @@ import {
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useWebhookLogs, useWebhookStats, WebhookLog } from '@/hooks/useWebhookLogs';
+import { usePaymentProviders, PaymentProvider } from '@/hooks/usePaymentProviders';
 import { supabase } from '@/integrations/supabase/client';
 
 const SUPABASE_PROJECT_ID = 'emscfiinctuysscrarlg';
-const STRIPE_WEBHOOK_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/stripe-webhook`;
+
+const getWebhookUrl = (providerKey: string) => {
+  return `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/${providerKey}-webhook`;
+};
 
 const STRIPE_EVENT_TYPES = [
   'checkout.session.completed',
@@ -41,6 +47,184 @@ const STRIPE_EVENT_TYPES = [
   'payment_intent.payment_failed',
   'invoice.payment_failed',
 ];
+
+const getProviderIcon = (providerKey: string) => {
+  switch (providerKey) {
+    case 'stripe':
+      return <CreditCard className="w-5 h-5 text-primary" />;
+    case 'paypal':
+      return <Wallet className="w-5 h-5" />;
+    case 'square':
+      return <Square className="w-5 h-5" />;
+    default:
+      return <CreditCard className="w-5 h-5" />;
+  }
+};
+
+interface ProviderCardProps {
+  provider: PaymentProvider;
+  stats: any;
+  onCopyUrl: (url: string) => void;
+  onTestEvent: () => void;
+  onTestPayment: () => void;
+  onToggleEnabled: (enabled: boolean) => void;
+  onToggleComingSoon: (comingSoon: boolean) => void;
+  isUpdating: boolean;
+}
+
+function ProviderCard({
+  provider,
+  stats,
+  onCopyUrl,
+  onTestEvent,
+  onTestPayment,
+  onToggleEnabled,
+  onToggleComingSoon,
+  isUpdating,
+}: ProviderCardProps) {
+  const webhookUrl = getWebhookUrl(provider.provider_key);
+  const eventCount = stats?.byProvider?.[provider.provider_key] || 0;
+  const isActive = provider.is_enabled && !provider.is_coming_soon;
+
+  return (
+    <Card className={provider.is_coming_soon && !provider.is_enabled ? 'opacity-60' : ''}>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {getProviderIcon(provider.provider_key)}
+            <CardTitle className="text-lg">{provider.name.replace(' Payments', '')}</CardTitle>
+          </div>
+          <div className="flex items-center gap-2">
+            {provider.is_coming_soon ? (
+              <Badge variant="secondary">Coming Soon</Badge>
+            ) : provider.is_enabled ? (
+              <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Enabled</Badge>
+            ) : (
+              <Badge variant="outline">Disabled</Badge>
+            )}
+          </div>
+        </div>
+        <CardDescription>{provider.description}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Admin Controls */}
+        <div className="space-y-2 border-b pb-3">
+          <div className="flex items-center justify-between">
+            <Label htmlFor={`coming-soon-${provider.id}`} className="text-xs text-muted-foreground">
+              Mark as Coming Soon
+            </Label>
+            <Switch
+              id={`coming-soon-${provider.id}`}
+              checked={provider.is_coming_soon}
+              onCheckedChange={onToggleComingSoon}
+              disabled={isUpdating}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor={`enabled-${provider.id}`} className="text-xs text-muted-foreground">
+              Enable for Companies
+            </Label>
+            <Switch
+              id={`enabled-${provider.id}`}
+              checked={provider.is_enabled}
+              onCheckedChange={onToggleEnabled}
+              disabled={isUpdating || provider.is_coming_soon}
+            />
+          </div>
+        </div>
+
+        {isActive && (
+          <>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Webhook URL</p>
+              <div className="flex items-center gap-2">
+                <code className="text-xs bg-muted px-2 py-1 rounded flex-1 truncate">
+                  {webhookUrl}
+                </code>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-7 w-7 shrink-0"
+                  onClick={() => onCopyUrl(webhookUrl)}
+                >
+                  <Copy className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Events (24h)</span>
+              <span className="font-medium">{eventCount}</span>
+            </div>
+            {stats?.lastEventAt && provider.provider_key === 'stripe' && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Last Event</span>
+                <span className="text-xs">{formatDistanceToNow(new Date(stats.lastEventAt), { addSuffix: true })}</span>
+              </div>
+            )}
+            <div className="flex flex-col gap-2 pt-2">
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="flex-1"
+                  onClick={onTestEvent}
+                >
+                  <Play className="w-3 h-3 mr-1" />
+                  Test Event
+                </Button>
+                {provider.docs_url && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    asChild
+                  >
+                    <a 
+                      href={provider.docs_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="w-3 h-3 mr-1" />
+                      Dashboard
+                    </a>
+                  </Button>
+                )}
+              </div>
+              {provider.provider_key === 'stripe' && (
+                <Button 
+                  size="sm" 
+                  className="w-full"
+                  onClick={onTestPayment}
+                >
+                  <TestTube className="w-3 h-3 mr-1" />
+                  Test Payment Flow
+                </Button>
+              )}
+            </div>
+          </>
+        )}
+
+        {!isActive && provider.docs_url && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full"
+            asChild
+          >
+            <a 
+              href={provider.docs_url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+            >
+              <ExternalLink className="w-3 h-3 mr-1" />
+              View Docs
+            </a>
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function WebhooksTab() {
   const queryClient = useQueryClient();
@@ -56,6 +240,8 @@ export function WebhooksTab() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedLog, setSelectedLog] = useState<WebhookLog | null>(null);
 
+  const { providers, updateProvider, isUpdating } = usePaymentProviders();
+
   const { data: logs = [], isLoading: logsLoading, refetch } = useWebhookLogs({
     provider: providerFilter !== 'all' ? providerFilter : undefined,
     status: statusFilter !== 'all' ? statusFilter : undefined,
@@ -63,6 +249,8 @@ export function WebhooksTab() {
   });
 
   const { data: stats } = useWebhookStats();
+
+  const getProviderByKey = (key: string) => providers.find(p => p.provider_key === key);
 
   // Real-time subscription for new webhook events
   useEffect(() => {
@@ -191,7 +379,7 @@ export function WebhooksTab() {
     }
   };
 
-  const getProviderIcon = (provider: string) => {
+  const getTableProviderIcon = (provider: string) => {
     switch (provider) {
       case 'stripe':
         return <CreditCard className="w-4 h-4" />;
@@ -208,154 +396,22 @@ export function WebhooksTab() {
     <div className="space-y-6">
       {/* Provider Configuration Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        {/* Stripe Card */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CreditCard className="w-5 h-5 text-primary" />
-                <CardTitle className="text-lg">Stripe</CardTitle>
-              </div>
-              <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Connected</Badge>
-            </div>
-            <CardDescription>Payment processing webhooks</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Webhook URL</p>
-              <div className="flex items-center gap-2">
-                <code className="text-xs bg-muted px-2 py-1 rounded flex-1 truncate">
-                  {STRIPE_WEBHOOK_URL}
-                </code>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-7 w-7 shrink-0"
-                  onClick={() => copyToClipboard(STRIPE_WEBHOOK_URL)}
-                >
-                  <Copy className="w-3 h-3" />
-                </Button>
-              </div>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Events (24h)</span>
-              <span className="font-medium">{stats?.byProvider?.stripe || 0}</span>
-            </div>
-            {stats?.lastEventAt && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Last Event</span>
-                <span className="text-xs">{formatDistanceToNow(new Date(stats.lastEventAt), { addSuffix: true })}</span>
-              </div>
-            )}
-            <div className="flex flex-col gap-2 pt-2">
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  onClick={() => {
-                    setSelectedProvider('stripe');
-                    setTestDialogOpen(true);
-                  }}
-                >
-                  <Play className="w-3 h-3 mr-1" />
-                  Test Event
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex-1"
-                  asChild
-                >
-                  <a 
-                    href="https://dashboard.stripe.com/webhooks" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                  >
-                    <ExternalLink className="w-3 h-3 mr-1" />
-                    Dashboard
-                  </a>
-                </Button>
-              </div>
-              <Button 
-                size="sm" 
-                className="w-full"
-                onClick={() => setTestPaymentDialogOpen(true)}
-              >
-                <TestTube className="w-3 h-3 mr-1" />
-                Test Payment Flow
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* PayPal Card (Coming Soon) */}
-        <Card className="opacity-60">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Wallet className="w-5 h-5" />
-                <CardTitle className="text-lg">PayPal</CardTitle>
-              </div>
-              <Badge variant="secondary">Coming Soon</Badge>
-            </div>
-            <CardDescription>PayPal payment webhooks</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              PayPal integration will allow your customers to pay with their PayPal accounts.
-            </p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              asChild
-            >
-              <a 
-                href="https://developer.paypal.com/docs/api/webhooks/v1/" 
-                target="_blank" 
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="w-3 h-3 mr-1" />
-                View Docs
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Square Card (Coming Soon) */}
-        <Card className="opacity-60">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Square className="w-5 h-5" />
-                <CardTitle className="text-lg">Square</CardTitle>
-              </div>
-              <Badge variant="secondary">Coming Soon</Badge>
-            </div>
-            <CardDescription>Square payment webhooks</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Square integration for companies that prefer Square's payment processing.
-            </p>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full"
-              asChild
-            >
-              <a 
-                href="https://developer.squareup.com/docs/webhooks/overview" 
-                target="_blank" 
-                rel="noopener noreferrer"
-              >
-                <ExternalLink className="w-3 h-3 mr-1" />
-                View Docs
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
+        {providers.map((provider) => (
+          <ProviderCard
+            key={provider.id}
+            provider={provider}
+            stats={stats}
+            onCopyUrl={copyToClipboard}
+            onTestEvent={() => {
+              setSelectedProvider(provider.provider_key);
+              setTestDialogOpen(true);
+            }}
+            onTestPayment={() => setTestPaymentDialogOpen(true)}
+            onToggleEnabled={(enabled) => updateProvider({ id: provider.id, updates: { is_enabled: enabled } })}
+            onToggleComingSoon={(comingSoon) => updateProvider({ id: provider.id, updates: { is_coming_soon: comingSoon } })}
+            isUpdating={isUpdating}
+          />
+        ))}
       </div>
 
       {/* Webhook Event Logs */}
@@ -430,7 +486,7 @@ export function WebhooksTab() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          {getProviderIcon(log.provider)}
+                          {getTableProviderIcon(log.provider)}
                           <span className="capitalize">{log.provider}</span>
                         </div>
                       </TableCell>
