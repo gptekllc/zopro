@@ -689,6 +689,66 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          customer_id: string | null
+          email_type: string
+          error_message: string | null
+          id: string
+          metadata: Json | null
+          recipient_email: string
+          resend_id: string | null
+          sender_email: string
+          status: string
+          subject: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          email_type: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email: string
+          resend_id?: string | null
+          sender_email?: string
+          status?: string
+          subject: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          metadata?: Json | null
+          recipient_email?: string
+          resend_id?: string | null
+          sender_email?: string
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_templates: {
         Row: {
           body: string
@@ -2558,9 +2618,11 @@ export type Database = {
           event_id: string | null
           event_type: string
           id: string
+          original_event_id: string | null
           payload: Json | null
           processing_time_ms: number | null
           provider: string
+          retry_count: number | null
           status: string
         }
         Insert: {
@@ -2569,9 +2631,11 @@ export type Database = {
           event_id?: string | null
           event_type: string
           id?: string
+          original_event_id?: string | null
           payload?: Json | null
           processing_time_ms?: number | null
           provider: string
+          retry_count?: number | null
           status?: string
         }
         Update: {
@@ -2580,12 +2644,22 @@ export type Database = {
           event_id?: string | null
           event_type?: string
           id?: string
+          original_event_id?: string | null
           payload?: Json | null
           processing_time_ms?: number | null
           provider?: string
+          retry_count?: number | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "webhook_event_logs_original_event_id_fkey"
+            columns: ["original_event_id"]
+            isOneToOne: false
+            referencedRelation: "webhook_event_logs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
