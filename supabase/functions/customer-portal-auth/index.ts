@@ -280,8 +280,8 @@ Deno.serve(async (req) => {
       expiresAt.setHours(expiresAt.getHours() + 24);
       const signedToken = await generateSignedToken(customer.id, expiresAt);
 
-      const rawBaseUrl = (customer as any).companies?.custom_domain || Deno.env.get('APP_BASE_URL') || 'https://fsm.zopro.app';
-      const baseUrl = rawBaseUrl.startsWith('http') ? rawBaseUrl : `https://${rawBaseUrl}`;
+      // Always use the FSM app subdomain - custom_domain might point to a different site (e.g., WordPress marketing site)
+      const baseUrl = 'https://fsm.zopro.app';
 
       const magicLink = `${baseUrl}/customer-portal?token=${encodeURIComponent(signedToken)}&customer=${customer.id}`;
 
