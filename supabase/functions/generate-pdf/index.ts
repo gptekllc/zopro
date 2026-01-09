@@ -1072,7 +1072,8 @@ function generateHTML(
     pdf_terms_conditions: string | null;
     pdf_footer_text: string | null;
   },
-  socialLinks?: SocialLink[]
+  socialLinks?: SocialLink[],
+  payments?: Array<{ id: string; amount: number; method: string; payment_date: string; notes: string | null; status: string }>
 ): string {
   let documentNumber: string;
   let title: string;
@@ -1132,6 +1133,25 @@ function generateHTML(
   const paymentTerms = company?.payment_terms_days;
   const lateFee = company?.late_fee_percentage;
 
+  // Calculate payment totals for invoices
+  const totalPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+  const totalDue = Number(document.total || 0) + Number(document.late_fee_amount || 0);
+  const remainingBalance = Math.max(0, totalDue - totalPaid);
+
+  // Helper to format payment method for display
+  const formatPaymentMethodDisplay = (method: string) => {
+    switch (method) {
+      case 'cash': return 'Cash';
+      case 'check': return 'Check';
+      case 'credit_debit': return 'Credit/Debit Card';
+      case 'bank_payment': return 'Bank Payment';
+      case 'zelle': return 'Zelle';
+      case 'venmo': return 'Venmo';
+      case 'paypal': return 'PayPal';
+      default: return method || 'Other';
+    }
+  };
+
   const paymentInfoSection = type === "invoice" ? `
     <div class="payment-info">
       <h3>Payment Information</h3>
@@ -1140,6 +1160,47 @@ function generateHTML(
         ${paymentTerms !== null && paymentTerms !== undefined ? `<p><strong>Payment Terms:</strong> ${paymentTerms === 0 ? 'Due on Receipt' : `Net ${paymentTerms} days`}</p>` : ''}
         ${lateFee && lateFee > 0 ? `<p><strong>Late Fee:</strong> ${lateFee}% on overdue balances</p>` : ''}
       </div>
+    </div>
+  ` : '';
+
+  // Payment history section for invoices with payments
+  const paymentHistorySection = type === "invoice" && payments && payments.length > 0 ? `
+    <div class="payment-history">
+      <h3>Payment History</h3>
+      <table class="payment-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Method</th>
+            <th style="text-align: right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${payments.map(p => `
+            <tr>
+              <td>${formatDate(p.payment_date)}</td>
+              <td>${formatPaymentMethodDisplay(p.method)}</td>
+              <td style="text-align: right;">${formatCurrency(Number(p.amount))}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td colspan="2"><strong>Total Paid</strong></td>
+            <td style="text-align: right;"><strong>${formatCurrency(totalPaid)}</strong></td>
+          </tr>
+          ${remainingBalance > 0 ? `
+            <tr class="balance-row">
+              <td colspan="2"><strong style="color: #dc2626;">Balance Due</strong></td>
+              <td style="text-align: right;"><strong style="color: #dc2626;">${formatCurrency(remainingBalance)}</strong></td>
+            </tr>
+          ` : `
+            <tr class="paid-row">
+              <td colspan="3" style="text-align: center;"><strong style="color: #16a34a;">✓ Paid in Full</strong></td>
+            </tr>
+          `}
+        </tfoot>
+      </table>
     </div>
   ` : '';
 
@@ -1264,6 +1325,17 @@ function generateHTML(
     .payment-info { margin-top: 30px; padding: 20px; background: #e8f4fc; border-radius: 8px; border-left: 4px solid #2563eb; }
     .payment-info h3 { font-size: 14px; text-transform: uppercase; color: #2563eb; margin-bottom: 10px; }
     .payment-details p { margin: 5px 0; font-size: 14px; }
+    .payment-history { margin-top: 30px; padding: 20px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #16a34a; }
+    .payment-history h3 { font-size: 14px; text-transform: uppercase; color: #16a34a; margin-bottom: 15px; }
+    .payment-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .payment-table thead { background: #16a34a; color: white; }
+    .payment-table th { padding: 10px 12px; text-align: left; font-weight: 500; }
+    .payment-table td { padding: 10px 12px; border-bottom: 1px solid #e5e7eb; }
+    .payment-table tfoot { font-weight: bold; background: #f9fafb; }
+    .payment-table tfoot td { padding: 12px; border-top: 2px solid #16a34a; }
+    .payment-table .total-row td { border-bottom: none; }
+    .payment-table .balance-row td { color: #dc2626; border-bottom: none; }
+    .payment-table .paid-row td { color: #16a34a; border-bottom: none; }
     .notes { margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; }
     .notes h3 { font-size: 14px; color: #888; margin-bottom: 10px; }
     .footer { margin-top: 60px; text-align: center; color: #888; font-size: 12px; }
@@ -1413,6 +1485,8 @@ function generateHTML(
 
     ${paymentInfoSection}
 
+    ${paymentHistorySection}
+
     ${(pdfPreferences?.pdf_show_notes !== false) && document.notes ? `
       <div class="notes">
         <h3>Notes</h3>
@@ -1497,6 +1571,24 @@ serve(async (req) => {
     }
 
     console.log(`Found ${items?.length || 0} items`);
+
+    // Fetch payments for invoices
+    let payments: Array<{ id: string; amount: number; method: string; payment_date: string; notes: string | null; status: string }> = [];
+    if (type === "invoice") {
+      const { data: paymentsData, error: paymentsError } = await supabase
+        .from("payments")
+        .select("id, amount, method, payment_date, notes, status")
+        .eq("invoice_id", documentId)
+        .eq("status", "completed")
+        .order("payment_date", { ascending: false });
+
+      if (paymentsError) {
+        console.error("Payments fetch error:", paymentsError);
+      } else {
+        payments = paymentsData || [];
+        console.log(`Found ${payments.length} payments`);
+      }
+    }
 
     // Fetch company
     const { data: company, error: companyError } = await supabase
@@ -1700,7 +1792,7 @@ serve(async (req) => {
     };
 
     // Generate HTML
-    const html = generateHTML(type, document, company, customer, items || [], assignee, signature, pdfPreferences, socialLinks || []);
+    const html = generateHTML(type, document, company, customer, items || [], assignee, signature, pdfPreferences, socialLinks || [], payments);
     
     let documentNumber: string;
     if (type === "quote") {
