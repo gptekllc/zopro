@@ -82,13 +82,25 @@ export function PlanComparisonTable({
               
               <CardHeader className="text-center pb-2">
                 <CardTitle className="text-lg">{plan.display_name}</CardTitle>
-                <CardDescription>
+                <CardDescription className="space-y-1">
                   {plan.price_monthly === 0 ? (
                     <span className="text-2xl font-bold text-foreground">Free</span>
                   ) : (
                     <>
-                      <span className="text-2xl font-bold text-foreground">${plan.price_monthly}</span>
-                      <span className="text-muted-foreground">/mo</span>
+                      <div>
+                        <span className="text-2xl font-bold text-foreground">${plan.price_monthly}</span>
+                        <span className="text-muted-foreground">/mo</span>
+                      </div>
+                      {plan.price_yearly && plan.price_yearly > 0 && (
+                        <div className="text-xs">
+                          <span className="text-muted-foreground">or </span>
+                          <span className="font-semibold text-foreground">${Math.round(plan.price_yearly / 12)}</span>
+                          <span className="text-muted-foreground">/mo yearly</span>
+                          <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0">
+                            Save {Math.round((1 - plan.price_yearly / (plan.price_monthly * 12)) * 100)}%
+                          </Badge>
+                        </div>
+                      )}
                     </>
                   )}
                 </CardDescription>
@@ -167,7 +179,17 @@ export function PlanComparisonTable({
                       {plan.price_monthly === 0 ? (
                         'Free'
                       ) : (
-                        <>${plan.price_monthly}/mo</>
+                        <div className="space-y-0.5">
+                          <div>${plan.price_monthly}/mo</div>
+                          {plan.price_yearly && plan.price_yearly > 0 && (
+                            <div className="text-xs">
+                              <span>${Math.round(plan.price_yearly / 12)}/mo yearly </span>
+                              <Badge variant="secondary" className="text-[10px] px-1 py-0">
+                                -{Math.round((1 - plan.price_yearly / (plan.price_monthly * 12)) * 100)}%
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
