@@ -102,14 +102,17 @@ const Company = () => {
     job_number_padding: 3,
     job_number_include_year: true,
     job_next_number: 1,
+    job_number_use_hyphens: true,
     quote_number_prefix: 'Q',
     quote_number_padding: 4,
     quote_number_include_year: true,
     quote_next_number: 1,
+    quote_number_use_hyphens: true,
     invoice_number_prefix: 'I',
     invoice_number_padding: 4,
     invoice_number_include_year: true,
     invoice_next_number: 1,
+    invoice_number_use_hyphens: true,
   });
   const [runningAutomations, setRunningAutomations] = useState(false);
   const [savingSection, setSavingSection] = useState<string | null>(null);
@@ -199,14 +202,17 @@ const Company = () => {
       job_number_padding: (company as any).job_number_padding ?? 3,
       job_number_include_year: (company as any).job_number_include_year ?? true,
       job_next_number: (company as any).job_next_number ?? 1,
+      job_number_use_hyphens: (company as any).job_number_use_hyphens ?? true,
       quote_number_prefix: (company as any).quote_number_prefix ?? 'Q',
       quote_number_padding: (company as any).quote_number_padding ?? 4,
       quote_number_include_year: (company as any).quote_number_include_year ?? true,
       quote_next_number: (company as any).quote_next_number ?? 1,
+      quote_number_use_hyphens: (company as any).quote_number_use_hyphens ?? true,
       invoice_number_prefix: (company as any).invoice_number_prefix ?? 'I',
       invoice_number_padding: (company as any).invoice_number_padding ?? 4,
       invoice_number_include_year: (company as any).invoice_number_include_year ?? true,
       invoice_next_number: (company as any).invoice_next_number ?? 1,
+      invoice_number_use_hyphens: (company as any).invoice_number_use_hyphens ?? true,
     });
     setFormInitialized(true);
   }
@@ -793,7 +799,7 @@ const Company = () => {
                       {/* Job Numbers */}
                       <div className="space-y-3 p-4 border rounded-lg">
                         <Label className="font-medium">Job Numbers</Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Prefix</Label>
                             <Input
@@ -811,6 +817,21 @@ const Company = () => {
                             <Select
                               value={documentNumbering.job_number_include_year ? 'yes' : 'no'}
                               onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, job_number_include_year: value === 'yes' })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="yes">Yes</SelectItem>
+                                <SelectItem value="no">No</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Hyphens</Label>
+                            <Select
+                              value={documentNumbering.job_number_use_hyphens ? 'yes' : 'no'}
+                              onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, job_number_use_hyphens: value === 'yes' })}
                             >
                               <SelectTrigger>
                                 <SelectValue />
@@ -855,8 +876,8 @@ const Company = () => {
                         </div>
                         <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
                           Next number: <span className="font-mono font-medium text-foreground">
-                            {documentNumbering.job_number_prefix}-
-                            {documentNumbering.job_number_include_year ? `${new Date().getFullYear()}-` : ''}
+                            {documentNumbering.job_number_prefix}{documentNumbering.job_number_use_hyphens ? '-' : ''}
+                            {documentNumbering.job_number_include_year ? `${new Date().getFullYear()}${documentNumbering.job_number_use_hyphens ? '-' : ''}` : ''}
                             {documentNumbering.job_next_number.toString().padStart(documentNumbering.job_number_padding, '0')}
                           </span>
                         </div>
@@ -865,7 +886,7 @@ const Company = () => {
                       {/* Quote Numbers */}
                       <div className="space-y-3 p-4 border rounded-lg">
                         <Label className="font-medium">Quote Numbers</Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Prefix</Label>
                             <Input
@@ -883,6 +904,21 @@ const Company = () => {
                             <Select
                               value={documentNumbering.quote_number_include_year ? 'yes' : 'no'}
                               onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, quote_number_include_year: value === 'yes' })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="yes">Yes</SelectItem>
+                                <SelectItem value="no">No</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Hyphens</Label>
+                            <Select
+                              value={documentNumbering.quote_number_use_hyphens ? 'yes' : 'no'}
+                              onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, quote_number_use_hyphens: value === 'yes' })}
                             >
                               <SelectTrigger>
                                 <SelectValue />
@@ -927,8 +963,8 @@ const Company = () => {
                         </div>
                         <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
                           Next number: <span className="font-mono font-medium text-foreground">
-                            {documentNumbering.quote_number_prefix}-
-                            {documentNumbering.quote_number_include_year ? `${new Date().getFullYear()}-` : ''}
+                            {documentNumbering.quote_number_prefix}{documentNumbering.quote_number_use_hyphens ? '-' : ''}
+                            {documentNumbering.quote_number_include_year ? `${new Date().getFullYear()}${documentNumbering.quote_number_use_hyphens ? '-' : ''}` : ''}
                             {documentNumbering.quote_next_number.toString().padStart(documentNumbering.quote_number_padding, '0')}
                           </span>
                         </div>
@@ -937,7 +973,7 @@ const Company = () => {
                       {/* Invoice Numbers */}
                       <div className="space-y-3 p-4 border rounded-lg">
                         <Label className="font-medium">Invoice Numbers</Label>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Prefix</Label>
                             <Input
@@ -955,6 +991,21 @@ const Company = () => {
                             <Select
                               value={documentNumbering.invoice_number_include_year ? 'yes' : 'no'}
                               onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, invoice_number_include_year: value === 'yes' })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="yes">Yes</SelectItem>
+                                <SelectItem value="no">No</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Hyphens</Label>
+                            <Select
+                              value={documentNumbering.invoice_number_use_hyphens ? 'yes' : 'no'}
+                              onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, invoice_number_use_hyphens: value === 'yes' })}
                             >
                               <SelectTrigger>
                                 <SelectValue />
@@ -999,8 +1050,8 @@ const Company = () => {
                         </div>
                         <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
                           Next number: <span className="font-mono font-medium text-foreground">
-                            {documentNumbering.invoice_number_prefix}-
-                            {documentNumbering.invoice_number_include_year ? `${new Date().getFullYear()}-` : ''}
+                            {documentNumbering.invoice_number_prefix}{documentNumbering.invoice_number_use_hyphens ? '-' : ''}
+                            {documentNumbering.invoice_number_include_year ? `${new Date().getFullYear()}${documentNumbering.invoice_number_use_hyphens ? '-' : ''}` : ''}
                             {documentNumbering.invoice_next_number.toString().padStart(documentNumbering.invoice_number_padding, '0')}
                           </span>
                         </div>
@@ -1018,14 +1069,17 @@ const Company = () => {
                             job_number_padding: documentNumbering.job_number_padding,
                             job_number_include_year: documentNumbering.job_number_include_year,
                             job_next_number: documentNumbering.job_next_number,
+                            job_number_use_hyphens: documentNumbering.job_number_use_hyphens,
                             quote_number_prefix: documentNumbering.quote_number_prefix,
                             quote_number_padding: documentNumbering.quote_number_padding,
                             quote_number_include_year: documentNumbering.quote_number_include_year,
                             quote_next_number: documentNumbering.quote_next_number,
+                            quote_number_use_hyphens: documentNumbering.quote_number_use_hyphens,
                             invoice_number_prefix: documentNumbering.invoice_number_prefix,
                             invoice_number_padding: documentNumbering.invoice_number_padding,
                             invoice_number_include_year: documentNumbering.invoice_number_include_year,
                             invoice_next_number: documentNumbering.invoice_next_number,
+                            invoice_number_use_hyphens: documentNumbering.invoice_number_use_hyphens,
                           } as any)}
                         >
                           {savingSection === 'numbering' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
