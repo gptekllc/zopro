@@ -791,6 +791,7 @@ export type Database = {
         Row: {
           caption: string | null
           created_at: string
+          deleted_at: string | null
           display_order: number | null
           id: string
           invoice_id: string
@@ -801,6 +802,7 @@ export type Database = {
         Insert: {
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_order?: number | null
           id?: string
           invoice_id: string
@@ -811,6 +813,7 @@ export type Database = {
         Update: {
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_order?: number | null
           id?: string
           invoice_id?: string
@@ -1353,6 +1356,7 @@ export type Database = {
         Row: {
           caption: string | null
           created_at: string
+          deleted_at: string | null
           display_order: number | null
           id: string
           job_id: string
@@ -1363,6 +1367,7 @@ export type Database = {
         Insert: {
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_order?: number | null
           id?: string
           job_id: string
@@ -1373,6 +1378,7 @@ export type Database = {
         Update: {
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_order?: number | null
           id?: string
           job_id?: string
@@ -1923,6 +1929,7 @@ export type Database = {
         Row: {
           caption: string | null
           created_at: string
+          deleted_at: string | null
           display_order: number | null
           id: string
           photo_type: string
@@ -1933,6 +1940,7 @@ export type Database = {
         Insert: {
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_order?: number | null
           id?: string
           photo_type?: string
@@ -1943,6 +1951,7 @@ export type Database = {
         Update: {
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_order?: number | null
           id?: string
           photo_type?: string
@@ -2673,6 +2682,7 @@ export type Database = {
           document_type: string
           id: string
           permanent_delete_at: string
+          photo_url: string
           title: string
           total: number
         }[]
@@ -2699,6 +2709,7 @@ export type Database = {
           customers_deleted: number
           invoices_deleted: number
           jobs_deleted: number
+          photos_deleted: number
           quotes_deleted: number
         }[]
       }
