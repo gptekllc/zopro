@@ -2121,6 +2121,73 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Get payment history for customer
+    if (action === 'get-payment-history') {
+      const { token, customerId } = body;
+      
+      if (!token || !customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Token and customerId are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      const verified = await verifySignedToken(token);
+      if (!verified || verified.customerId !== customerId) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid or expired token' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Fetch payments for invoices belonging to this customer
+      const { data: payments, error } = await adminClient
+        .from('payments')
+        .select(`
+          id,
+          amount,
+          method,
+          payment_date,
+          status,
+          notes,
+          invoices!inner (
+            id,
+            invoice_number,
+            total,
+            customer_id
+          )
+        `)
+        .eq('invoices.customer_id', customerId)
+        .eq('status', 'completed')
+        .order('payment_date', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching payment history:', error);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch payment history' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Format the payments for the frontend
+      const formattedPayments = (payments || []).map((p: any) => ({
+        id: p.id,
+        amount: p.amount,
+        method: p.method,
+        payment_date: p.payment_date,
+        status: p.status,
+        notes: p.notes,
+        invoice_number: p.invoices?.invoice_number,
+        invoice_id: p.invoices?.id,
+        invoice_total: p.invoices?.total,
+      }));
+      
+      return new Response(
+        JSON.stringify({ success: true, payments: formattedPayments }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Get customer notifications
     if (action === 'get-notifications') {
       const { token, customerId } = body;

@@ -17,7 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer, Star, MessageSquare, Edit2, CheckCheck } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer, Star, MessageSquare, Edit2, CheckCheck, Receipt } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
@@ -151,6 +151,18 @@ interface PaymentMethod {
   exp_year?: number;
   bank_name?: string;
   account_type?: string;
+}
+
+interface PaymentRecord {
+  id: string;
+  amount: number;
+  method: string;
+  payment_date: string;
+  status: string;
+  notes: string | null;
+  invoice_number: string;
+  invoice_id: string;
+  invoice_total: number;
 }
 
 interface CustomerNotification {
@@ -523,6 +535,11 @@ const CustomerPortal = () => {
   const [notifications, setNotifications] = useState<CustomerNotification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+
+  // Payment history states
+  const [paymentHistory, setPaymentHistory] = useState<PaymentRecord[]>([]);
+  const [isLoadingPaymentHistory, setIsLoadingPaymentHistory] = useState(false);
+  const [downloadingReceipt, setDownloadingReceipt] = useState<string | null>(null);
 
   // Check for magic link token and payment status in URL
   useEffect(() => {
@@ -963,6 +980,88 @@ const CustomerPortal = () => {
       fetchPaymentMethods();
     }
   }, [isAuthenticated, customerData?.id]);
+
+  // Fetch payment history
+  const fetchPaymentHistory = async () => {
+    if (!customerData?.id) return;
+    
+    setIsLoadingPaymentHistory(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
+        body: {
+          action: 'get-payment-history',
+          customerId: customerData.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+        },
+      });
+
+      if (error) throw error;
+      setPaymentHistory(data?.payments || []);
+    } catch (err) {
+      console.error('Failed to fetch payment history:', err);
+    } finally {
+      setIsLoadingPaymentHistory(false);
+    }
+  };
+
+  // Fetch payment history when authenticated
+  useEffect(() => {
+    if (isAuthenticated && customerData?.id) {
+      fetchPaymentHistory();
+    }
+  }, [isAuthenticated, customerData?.id]);
+
+  // Handle receipt download
+  const handleDownloadReceipt = async (payment: PaymentRecord) => {
+    setDownloadingReceipt(payment.id);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-payment-receipt', {
+        body: {
+          paymentId: payment.id,
+          action: 'download',
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.pdf) {
+        // Convert base64 to blob and download
+        const binaryString = atob(data.pdf);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `receipt-${payment.invoice_number}-${format(new Date(payment.payment_date), 'yyyy-MM-dd')}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('Receipt downloaded');
+      }
+    } catch (err: any) {
+      console.error('Failed to download receipt:', err);
+      toast.error('Failed to download receipt');
+    } finally {
+      setDownloadingReceipt(null);
+    }
+  };
+
+  // Get payment method display label
+  const getPaymentMethodLabel = (method: string) => {
+    const labels: Record<string, string> = {
+      cash: 'Cash',
+      check: 'Check',
+      credit_card: 'Credit Card',
+      bank_transfer: 'Bank Transfer',
+      stripe: 'Online Payment',
+      other: 'Other',
+    };
+    return labels[method] || method;
+  };
 
   const handleDeletePaymentMethod = async (paymentMethodId: string) => {
     if (!customerData?.id) return;
@@ -2026,9 +2125,9 @@ const CustomerPortal = () => {
           </Card>
         </div>
 
-        {/* Tabs - Reordered: Jobs, Quotes, Invoices, Payment Methods */}
+        {/* Tabs - Reordered: Jobs, Quotes, Invoices, Payment History, Payment Methods */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="quotes" className="flex items-center gap-2">
               Quotes
@@ -2041,6 +2140,10 @@ const CustomerPortal = () => {
               {unpaidInvoices.length > 0 && (
                 <Badge variant="secondary" className="ml-1">{unpaidInvoices.length}</Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="payment-history" className="flex items-center gap-2">
+              <Receipt className="w-4 h-4" />
+              Payment History
             </TabsTrigger>
             {customerData?.company?.stripe_payments_enabled !== false && (
               <TabsTrigger value="payment-methods" className="flex items-center gap-2">
@@ -2286,6 +2389,90 @@ const CustomerPortal = () => {
                   <div className="text-center py-8 text-muted-foreground">
                     <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No invoices yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="payment-history">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Receipt className="w-5 h-5" />
+                  Payment History
+                </CardTitle>
+                <CardDescription>
+                  View your payment history and download receipts for your records.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoadingPaymentHistory ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : paymentHistory.length > 0 ? (
+                  <div className="space-y-3">
+                    {paymentHistory.map((payment) => (
+                      <div
+                        key={payment.id}
+                        className="border rounded-lg p-4"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-medium text-lg">
+                                ${Number(payment.amount).toFixed(2)}
+                              </span>
+                              <Badge variant="default" className="bg-emerald-500">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Paid
+                              </Badge>
+                            </div>
+                            <div className="space-y-1 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="w-4 h-4" />
+                                <span>{format(new Date(payment.payment_date), 'MMMM d, yyyy')}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <CreditCard className="w-4 h-4" />
+                                <span>{getPaymentMethodLabel(payment.method)}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4" />
+                                <span>Invoice: {payment.invoice_number}</span>
+                              </div>
+                            </div>
+                            {payment.notes && (
+                              <p className="text-sm text-muted-foreground mt-2 italic">
+                                {payment.notes}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownloadReceipt(payment)}
+                            disabled={downloadingReceipt === payment.id}
+                          >
+                            {downloadingReceipt === payment.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Download className="w-4 h-4 mr-2" />
+                                Receipt
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Receipt className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No payment history yet</p>
+                    <p className="text-sm mt-1">Your payment records will appear here</p>
                   </div>
                 )}
               </CardContent>
