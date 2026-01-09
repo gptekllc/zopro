@@ -588,31 +588,33 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
               </CardDescription>
             </div>
             {selectedItems.size > 0 && (
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
+                  size="sm"
                   onClick={handleBulkRestore}
                   disabled={bulkRestoreMutation.isPending || bulkDeleteMutation.isPending}
-                  className="gap-2"
+                  className="gap-1.5"
                 >
                   {bulkRestoreMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <RotateCcw className="w-4 h-4" />
                   )}
-                  Restore Selected ({selectedItems.size})
+                  <span className="hidden sm:inline">Restore</span> ({selectedItems.size})
                 </Button>
                 <Button
+                  size="sm"
                   variant="destructive"
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={bulkRestoreMutation.isPending || bulkDeleteMutation.isPending}
-                  className="gap-2"
+                  className="gap-1.5"
                 >
                   {bulkDeleteMutation.isPending ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Trash2 className="w-4 h-4" />
                   )}
-                  Delete Permanently
+                  <span className="hidden sm:inline">Delete</span> ({selectedItems.size})
                 </Button>
               </div>
             )}
