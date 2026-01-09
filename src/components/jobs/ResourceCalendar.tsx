@@ -52,7 +52,7 @@ export default function ResourceCalendar({
   onSlotSelect 
 }: ResourceCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<'day' | 'week'>(Views.DAY as 'day' | 'week');
+  const [view, setView] = useState<'day' | 'week' | 'month'>(Views.DAY as 'day' | 'week' | 'month');
   const updateJob = useUpdateJob();
 
   // Create resources (technicians as columns)
@@ -269,9 +269,14 @@ export default function ResourceCalendar({
     if (direction === 'today') {
       setCurrentDate(new Date());
     } else {
-      const days = view === 'week' ? 7 : 1;
       const newDate = new Date(currentDate);
-      newDate.setDate(newDate.getDate() + (direction === 'next' ? days : -days));
+      if (view === 'month') {
+        newDate.setMonth(newDate.getMonth() + (direction === 'next' ? 1 : -1));
+      } else if (view === 'week') {
+        newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
+      } else {
+        newDate.setDate(newDate.getDate() + (direction === 'next' ? 1 : -1));
+      }
       setCurrentDate(newDate);
     }
   };
@@ -291,9 +296,11 @@ export default function ResourceCalendar({
             Today
           </Button>
           <h2 className="font-semibold ml-2">
-            {view === 'week' 
-              ? `Week of ${format(currentDate, 'MMM d, yyyy')}`
-              : format(currentDate, 'EEEE, MMMM d, yyyy')
+            {view === 'month' 
+              ? format(currentDate, 'MMMM yyyy')
+              : view === 'week' 
+                ? `Week of ${format(currentDate, 'MMM d, yyyy')}`
+                : format(currentDate, 'EEEE, MMMM d, yyyy')
             }
           </h2>
         </div>
@@ -314,6 +321,13 @@ export default function ResourceCalendar({
               onClick={() => setView('week')}
             >
               Week
+            </Button>
+            <Button
+              variant={view === 'month' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setView('month')}
+            >
+              Month
             </Button>
           </div>
         </div>
@@ -343,8 +357,8 @@ export default function ResourceCalendar({
           date={currentDate}
           onNavigate={setCurrentDate}
           view={view}
-          onView={(v) => setView(v as 'day' | 'week')}
-          views={['day', 'week']}
+          onView={(v) => setView(v as 'day' | 'week' | 'month')}
+          views={['day', 'week', 'month']}
           min={new Date(1970, 0, 1, 6, 0, 0)} // 6 AM
           max={new Date(1970, 0, 1, 20, 0, 0)} // 8 PM
           step={15} // 15 minute slots
