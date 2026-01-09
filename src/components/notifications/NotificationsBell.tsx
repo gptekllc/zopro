@@ -5,7 +5,18 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bell, Check, Loader2 } from 'lucide-react';
+import { Bell, Check, Loader2, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Notification {
@@ -94,6 +105,20 @@ const NotificationsBell = () => {
     },
   });
 
+  const clearAllMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) return;
+      const { error } = await (supabase as any)
+        .from('notifications')
+        .delete()
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  });
+
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'join_request':
@@ -126,22 +151,59 @@ const NotificationsBell = () => {
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between px-4 py-3 border-b">
           <h4 className="font-semibold">Notifications</h4>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-7"
-              onClick={() => markAllAsReadMutation.mutate()}
-              disabled={markAllAsReadMutation.isPending}
-            >
-              {markAllAsReadMutation.isPending ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <Check className="w-3 h-3 mr-1" />
-              )}
-              Mark all read
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-7"
+                onClick={() => markAllAsReadMutation.mutate()}
+                disabled={markAllAsReadMutation.isPending}
+              >
+                {markAllAsReadMutation.isPending ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Check className="w-3 h-3 mr-1" />
+                )}
+                Mark all read
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-7 text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Clear
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete all your notifications. This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => clearAllMutation.mutate()}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {clearAllMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        'Yes, clear all'
+                      )}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </div>
         <ScrollArea className="h-80">
           {isLoading ? (
