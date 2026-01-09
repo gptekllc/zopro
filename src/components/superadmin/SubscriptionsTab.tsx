@@ -146,6 +146,7 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
           max_jobs_per_month: editForm.max_jobs_per_month,
           max_photos_per_document: editForm.max_photos_per_document,
           storage_limit_bytes: storageBytes,
+          max_storage_gb: editForm.storage_limit_gb,
           storage_addon_price_per_gb: editForm.storage_addon_price_per_gb,
           features: editForm.features,
           is_active: editForm.is_active,
