@@ -1763,6 +1763,51 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_providers: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          docs_url: string | null
+          icon_bg_color: string | null
+          icon_text: string | null
+          id: string
+          is_coming_soon: boolean | null
+          is_enabled: boolean | null
+          name: string
+          provider_key: string
+          updated_at: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          docs_url?: string | null
+          icon_bg_color?: string | null
+          icon_text?: string | null
+          id?: string
+          is_coming_soon?: boolean | null
+          is_enabled?: boolean | null
+          name: string
+          provider_key: string
+          updated_at?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          docs_url?: string | null
+          icon_bg_color?: string | null
+          icon_text?: string | null
+          id?: string
+          is_coming_soon?: boolean | null
+          is_enabled?: boolean | null
+          name?: string
+          provider_key?: string
+          updated_at?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number

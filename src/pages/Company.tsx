@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
 import { useDocumentMinNumbers } from '@/hooks/useDocumentMinNumbers';
+import { usePaymentProviders } from '@/hooks/usePaymentProviders';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
 import SocialLinksManager, { SocialLinksManagerRef } from '@/components/company/SocialLinksManager';
+import { ComingSoonPaymentCard } from '@/components/company/ComingSoonPaymentCard';
 import { TIMEZONES } from '@/lib/timezones';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -32,6 +34,7 @@ const Company = () => {
   const { isAdmin } = useAuth();
   const { data: company, isLoading } = useCompany();
   const { data: minNumbers } = useDocumentMinNumbers();
+  const { providers, comingSoonProviders, isLoading: providersLoading } = usePaymentProviders();
   const updateCompany = useUpdateCompany();
   const queryClient = useQueryClient();
   
@@ -1908,59 +1911,27 @@ const Company = () => {
         {isAdmin && (
           <TabsContent value="payments">
             <div className="max-w-2xl mx-auto space-y-6">
-              <StripeConnectSection company={company} />
+              {/* Stripe Section - Always show if enabled */}
+              {providers.find(p => p.provider_key === 'stripe' && p.is_enabled) && (
+                <StripeConnectSection company={company} />
+              )}
               
-              {/* PayPal - Coming Soon */}
-              <Card className="relative overflow-hidden">
-                <div className="absolute top-3 right-3">
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                    Coming Soon
-                  </Badge>
-                </div>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-[#003087] flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">PP</span>
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">PayPal Payments</CardTitle>
-                      <CardDescription>Accept payments via PayPal</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    We're working on PayPal integration to give your customers more payment options. 
-                    Accept PayPal, Venmo, and Pay Later options for maximum flexibility.
-                  </p>
-                </CardContent>
-              </Card>
+              {/* Coming Soon Providers */}
+              {comingSoonProviders.map((provider) => (
+                <ComingSoonPaymentCard key={provider.id} provider={provider} />
+              ))}
 
-              {/* Square - Coming Soon */}
-              <Card className="relative overflow-hidden">
-                <div className="absolute top-3 right-3">
-                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
-                    Coming Soon
-                  </Badge>
-                </div>
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center">
-                      <span className="text-white font-bold text-sm">□</span>
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">Square Payments</CardTitle>
-                      <CardDescription>Accept payments via Square</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground">
-                    Square integration is on our roadmap. Accept in-person and online payments 
-                    with competitive rates and seamless POS integration.
-                  </p>
-                </CardContent>
-              </Card>
+              {/* If no providers at all */}
+              {providers.length === 0 && !providersLoading && (
+                <Card>
+                  <CardContent className="py-8 text-center">
+                    <CreditCard className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                    <p className="text-muted-foreground">
+                      No payment providers are currently available. Contact your administrator.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
         )}
