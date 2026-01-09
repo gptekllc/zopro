@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AlertCircle, ArrowLeft, CheckCircle, Lock, Mail } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle, Lock, Mail, History } from 'lucide-react';
 import zoproLogo from '@/assets/zopro-logo.png';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import PasswordStrength, { validatePassword } from '@/components/auth/PasswordStrength';
+import { getLastVisitedPage, getPageName, clearLastVisitedPage } from '@/hooks/useLastVisitedPage';
 
 type AuthView = 'auth' | 'forgot-password' | 'reset-success' | 'verify-email';
 
@@ -132,7 +133,36 @@ const Login = () => {
       // Record successful attempt
       await recordAttempt(email, true);
       toast.success('Welcome back!');
-      navigate(from);
+      
+      // Check if there's a last visited page to offer
+      const lastPage = getLastVisitedPage();
+      if (from === '/dashboard' && lastPage && lastPage !== '/dashboard') {
+        // Navigate to dashboard first, then offer to return to last page
+        navigate('/dashboard');
+        const pageName = getPageName(lastPage);
+        toast(
+          <div className="flex items-center gap-3">
+            <History className="h-4 w-4 text-primary" />
+            <span>Continue where you left off?</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                navigate(lastPage);
+                toast.dismiss();
+              }}
+            >
+              Go to {pageName}
+            </Button>
+          </div>,
+          {
+            duration: 8000,
+            id: 'last-page-toast',
+          }
+        );
+      } else {
+        navigate(from);
+      }
     }
     setIsLoading(false);
   };
