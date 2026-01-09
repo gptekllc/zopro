@@ -58,12 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMFALoading, setIsMFALoading] = useState(true);
-  // Initialize from localStorage synchronously to prevent race condition
+  // Initialize from localStorage synchronously - assume trusted if token exists
+  // The actual verification happens in refreshMFAStatus before isMFALoading becomes false
   const [isDeviceTrusted, setIsDeviceTrusted] = useState(() => {
-    // Quick sync check - if token exists, assume trusted until verified
     return !!localStorage.getItem('mfa_trusted_device_token');
   });
-  const [isTrustedDeviceVerified, setIsTrustedDeviceVerified] = useState(false);
   const [mfaFactors, setMFAFactors] = useState<Factor[]>([]);
   const [aal, setAAL] = useState<{ currentLevel: string; nextLevel: string } | null>(null);
 
@@ -71,11 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isManager = roles.some(r => r.role === 'manager');
   const isSuperAdmin = roles.some(r => r.role === 'super_admin');
   const hasMFA = mfaFactors.some(f => f.status === 'verified');
-  // Only show MFA challenge after trusted device check is complete AND device is not trusted
+  // Show MFA challenge only if user has MFA, is at aal1, needs aal2, AND device is not trusted
+  // isMFALoading blocks rendering in ProtectedRoute until trusted device check is complete
   const needsMFAChallenge = hasMFA && 
     aal?.currentLevel === 'aal1' && 
     aal?.nextLevel === 'aal2' && 
-    isTrustedDeviceVerified && 
     !isDeviceTrusted;
 
   const fetchProfile = async (userId: string) => {
@@ -118,7 +117,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshMFAStatus = async (userId?: string) => {
     setIsMFALoading(true);
-    setIsTrustedDeviceVerified(false);
     try {
       const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (data) {
@@ -129,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       await listMFAFactors();
       
-      // Check if device is trusted
+      // Check if device is trusted - this MUST complete before isMFALoading becomes false
       if (userId) {
         const storedToken = localStorage.getItem('mfa_trusted_device_token');
         if (storedToken) {
@@ -150,7 +148,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsDeviceTrusted(false);
       }
     } finally {
-      setIsTrustedDeviceVerified(true);
       setIsMFALoading(false);
     }
   };
@@ -334,7 +331,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMFAFactors([]);
     setAAL(null);
     setIsDeviceTrusted(false);
-    setIsTrustedDeviceVerified(false);
   };
 
   const refreshProfile = async () => {
