@@ -2529,6 +2529,72 @@ export type Database = {
       }
       generate_job_number: { Args: { _company_id: string }; Returns: string }
       generate_quote_number: { Args: { _company_id: string }; Returns: string }
+      get_company_for_user: {
+        Args: { _company_id: string }
+        Returns: {
+          address: string
+          auto_apply_late_fees: boolean
+          auto_archive_days: number
+          auto_expire_quotes: boolean
+          auto_send_invoice_reminders: boolean
+          auto_send_job_scheduled_email: boolean
+          brand_primary_color: string
+          business_hours: Json
+          city: string
+          created_at: string
+          custom_domain: string
+          customer_portal_welcome_message: string
+          default_job_duration: number
+          default_job_priority: string
+          default_payment_method: string
+          default_quote_validity_days: number
+          email: string
+          email_invoice_body: string
+          email_job_body: string
+          email_on_new_job: boolean
+          email_on_payment_received: boolean
+          email_quote_body: string
+          id: string
+          invoice_reminder_days: number
+          late_fee_percentage: number
+          logo_url: string
+          name: string
+          notify_on_automation_run: boolean
+          notify_on_job_assignment: boolean
+          payment_terms_days: number
+          pdf_footer_text: string
+          pdf_show_invoice_photos: boolean
+          pdf_show_job_photos: boolean
+          pdf_show_line_item_details: boolean
+          pdf_show_logo: boolean
+          pdf_show_notes: boolean
+          pdf_show_quote_photos: boolean
+          pdf_show_signature: boolean
+          pdf_terms_conditions: string
+          phone: string
+          platform_fee_percentage: number
+          require_job_completion_signature: boolean
+          require_mfa: boolean
+          require_quote_signature: boolean
+          send_weekly_summary: boolean
+          state: string
+          stripe_account_id: string
+          stripe_charges_enabled: boolean
+          stripe_onboarding_complete: boolean
+          stripe_payments_enabled: boolean
+          stripe_payouts_enabled: boolean
+          tax_rate: number
+          timeclock_allow_manual_labor_edit: boolean
+          timeclock_auto_start_break_reminder: number
+          timeclock_enforce_job_labor: boolean
+          timeclock_max_shift_hours: number
+          timeclock_require_job_selection: boolean
+          timezone: string
+          updated_at: string
+          website: string
+          zip: string
+        }[]
+      }
       get_effective_limit: {
         Args: { p_company_id: string; p_limit_key: string }
         Returns: number
