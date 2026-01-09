@@ -895,6 +895,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           customer_id: string
+          deleted_at: string | null
           discount_type: string | null
           discount_value: number | null
           due_date: string | null
@@ -921,6 +922,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id: string
+          deleted_at?: string | null
           discount_type?: string | null
           discount_value?: number | null
           due_date?: string | null
@@ -947,6 +949,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id?: string
+          deleted_at?: string | null
           discount_type?: string | null
           discount_value?: number | null
           due_date?: string | null
@@ -1508,6 +1511,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           customer_id: string
+          deleted_at: string | null
           description: string | null
           discount_type: string | null
           discount_value: number | null
@@ -1539,6 +1543,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id: string
+          deleted_at?: string | null
           description?: string | null
           discount_type?: string | null
           discount_value?: number | null
@@ -1570,6 +1575,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id?: string
+          deleted_at?: string | null
           description?: string | null
           discount_type?: string | null
           discount_value?: number | null
@@ -2060,6 +2066,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           customer_id: string
+          deleted_at: string | null
           discount_type: string | null
           discount_value: number | null
           id: string
@@ -2081,6 +2088,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id: string
+          deleted_at?: string | null
           discount_type?: string | null
           discount_value?: number | null
           id?: string
@@ -2102,6 +2110,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_id?: string
+          deleted_at?: string | null
           discount_type?: string | null
           discount_value?: number | null
           id?: string
@@ -2655,6 +2664,19 @@ export type Database = {
           zip: string
         }[]
       }
+      get_deleted_documents: {
+        Args: { p_company_id: string }
+        Returns: {
+          customer_name: string
+          deleted_at: string
+          document_number: string
+          document_type: string
+          id: string
+          permanent_delete_at: string
+          title: string
+          total: number
+        }[]
+      }
       get_effective_limit: {
         Args: { p_company_id: string; p_limit_key: string }
         Returns: number
@@ -2671,6 +2693,15 @@ export type Database = {
         Args: { p_bytes: number; p_company_id: string; p_type: string }
         Returns: undefined
       }
+      permanent_delete_old_soft_deleted_records: {
+        Args: never
+        Returns: {
+          customers_deleted: number
+          invoices_deleted: number
+          jobs_deleted: number
+          quotes_deleted: number
+        }[]
+      }
       recalculate_company_storage: {
         Args: { p_company_id: string }
         Returns: undefined
@@ -2682,6 +2713,10 @@ export type Database = {
           attempt_success: boolean
         }
         Returns: undefined
+      }
+      restore_deleted_document: {
+        Args: { p_document_id: string; p_table_name: string }
+        Returns: boolean
       }
       sync_invoice_status_for_invoice: {
         Args: { _invoice_id: string }

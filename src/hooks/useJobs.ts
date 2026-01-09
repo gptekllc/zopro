@@ -166,6 +166,7 @@ export function useJobs(includeArchived: boolean = false) {
           photos:job_photos(*),
           items:job_items(*)
         `)
+        .is('deleted_at', null) // Exclude soft-deleted items
         .order('created_at', { ascending: false });
       
       if (!includeArchived) {
@@ -429,9 +430,10 @@ export function useDeleteJob() {
   
   return useMutation({
     mutationFn: async (jobId: string) => {
+      // Soft delete - set deleted_at timestamp
       const { error } = await (supabase as any)
         .from('jobs')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', jobId);
       
       if (error) throw error;
