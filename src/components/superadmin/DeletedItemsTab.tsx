@@ -577,10 +577,10 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex-1 min-w-0">
               <CardTitle className="flex items-center gap-2">
-                <Trash2 className="w-5 h-5" />
+                <Trash2 className="w-5 h-5 flex-shrink-0" />
                 Deleted Documents Recovery
               </CardTitle>
               <CardDescription>
@@ -588,7 +588,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
               </CardDescription>
             </div>
             {selectedItems.size > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex gap-2 flex-shrink-0">
                 <Button
                   size="sm"
                   onClick={handleBulkRestore}
@@ -600,7 +600,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
                   ) : (
                     <RotateCcw className="w-4 h-4" />
                   )}
-                  <span className="hidden sm:inline">Restore</span> ({selectedItems.size})
+                  Restore ({selectedItems.size})
                 </Button>
                 <Button
                   size="sm"
@@ -614,7 +614,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
                   ) : (
                     <Trash2 className="w-4 h-4" />
                   )}
-                  <span className="hidden sm:inline">Delete</span> ({selectedItems.size})
+                  Delete ({selectedItems.size})
                 </Button>
               </div>
             )}
