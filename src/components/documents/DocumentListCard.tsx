@@ -56,11 +56,11 @@ export function DocumentListCard({
           {/* Row 1: Document Info + Total */}
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 text-primary">
-                <span className={`font-semibold text-sm ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{documentNumber}</span>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-primary">
+                <span className={`font-semibold text-sm whitespace-nowrap shrink-0 ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{documentNumber}</span>
                 {title && <>
                     <span className="text-muted-foreground">•</span>
-                    <span className={`font-medium text-sm truncate ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{title}</span>
+                    <span className={`font-medium text-sm ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{title}</span>
                   </>}
               </div>
               <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap text-secondary-foreground">
@@ -103,11 +103,11 @@ export function DocumentListCard({
             <div className="flex items-start gap-4 min-w-0 flex-1">
               {icon}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap text-primary text-[sidebar-primary-foreground]">
-                  <h3 className={`font-semibold ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{documentNumber}</h3>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-primary">
+                  <h3 className={`font-semibold whitespace-nowrap shrink-0 ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{documentNumber}</h3>
                   {title && <>
                       <span className="text-muted-foreground">•</span>
-                      <span className={`font-medium truncate ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{title}</span>
+                      <span className={`font-medium ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{title}</span>
                     </>}
                 </div>
                 <div className="flex items-center gap-2 text-sm mt-0.5 flex-wrap font-semibold text-popover-foreground">
