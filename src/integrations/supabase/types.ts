@@ -2711,6 +2711,7 @@ export type Database = {
           jobs_deleted: number
           photos_deleted: number
           quotes_deleted: number
+          users_deleted: number
         }[]
       }
       recalculate_company_storage: {

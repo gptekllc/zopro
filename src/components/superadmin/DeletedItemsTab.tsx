@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Loader2, RotateCcw, Trash2, AlertTriangle, FileText, Briefcase, Receipt, Image } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Loader2, RotateCcw, Trash2, AlertTriangle, FileText, Briefcase, Receipt, Image, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { formatAmount } from '@/lib/formatAmount';
@@ -36,6 +37,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
   const queryClient = useQueryClient();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
 
   // Fetch deleted documents for selected company
   const { data: deletedDocuments = [], isLoading } = useQuery({
@@ -56,6 +58,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
       job: [],
       quote: [],
       invoice: [],
+      user: [],
       photo: [],
     };
 
@@ -85,6 +88,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
     },
     onError: (error: any) => {
       toast.error('Failed to restore: ' + error.message);
@@ -107,6 +111,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
       setSelectedItems(new Set());
       toast.success('Selected items restored successfully');
     },
@@ -126,7 +131,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
       queryClient.invalidateQueries({ queryKey: ['deleted-documents'] });
       const result = data?.[0];
       if (result) {
-        const total = result.jobs_deleted + result.quotes_deleted + result.invoices_deleted + result.customers_deleted + (result.photos_deleted || 0);
+        const total = result.jobs_deleted + result.quotes_deleted + result.invoices_deleted + result.customers_deleted + (result.photos_deleted || 0) + (result.users_deleted || 0);
         toast.success(`Permanently deleted ${total} records`);
       } else {
         toast.success('Cleanup complete - no records older than 6 months');
@@ -146,6 +151,8 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
         return <FileText className="w-4 h-4" />;
       case 'invoice':
         return <Receipt className="w-4 h-4" />;
+      case 'user':
+        return <User className="w-4 h-4" />;
       default:
         return <FileText className="w-4 h-4" />;
     }
@@ -159,6 +166,8 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
         return 'quotes';
       case 'invoice':
         return 'invoices';
+      case 'user':
+        return 'profiles';
       case 'job_photo':
         return 'job_photos';
       case 'quote_photo':
@@ -202,6 +211,11 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
     bulkRestoreMutation.mutate(items);
   };
 
+  const handleCleanupConfirm = () => {
+    cleanupMutation.mutate();
+    setShowCleanupConfirm(false);
+  };
+
   const renderSection = (title: string, icon: React.ReactNode, docs: DeletedDocument[], variant: 'default' | 'secondary' | 'outline' | 'destructive') => {
     if (docs.length === 0) return null;
 
@@ -228,6 +242,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
             const key = `${doc.document_type}:${doc.id}`;
             const isSelected = selectedItems.has(key);
             const isPhoto = doc.document_type.includes('photo');
+            const isUser = doc.document_type === 'user';
 
             return (
               <div
@@ -247,6 +262,12 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
                     alt={doc.title || 'Photo'}
                     className="w-12 h-12 rounded object-cover"
                   />
+                ) : isUser && doc.photo_url ? (
+                  <img
+                    src={doc.photo_url}
+                    alt={doc.title || 'User'}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
                 ) : (
                   <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
                     {getDocumentIcon(doc.document_type)}
@@ -255,14 +276,29 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-medium">{doc.document_number}</span>
-                    {doc.title && (
-                      <span className="text-sm truncate">{doc.title}</span>
+                    {isUser ? (
+                      <>
+                        <span className="font-medium">{doc.title || 'Unknown User'}</span>
+                        <span className="text-sm text-muted-foreground truncate">{doc.document_number}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-mono text-sm font-medium">{doc.document_number}</span>
+                        {doc.title && (
+                          <span className="text-sm truncate">{doc.title}</span>
+                        )}
+                      </>
                     )}
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {doc.customer_name && <span>{doc.customer_name}</span>}
-                    {doc.total != null && <span>• {formatAmount(doc.total)}</span>}
+                    {isUser ? (
+                      <span className="capitalize">{doc.customer_name || 'No role'}</span>
+                    ) : (
+                      <>
+                        {doc.customer_name && <span>{doc.customer_name}</span>}
+                        {doc.total != null && <span>• {formatAmount(doc.total)}</span>}
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -294,7 +330,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
                 Deleted Documents Recovery
               </CardTitle>
               <CardDescription>
-                Recover deleted jobs, quotes, invoices, and photos. Documents are permanently deleted after 6 months.
+                Recover deleted jobs, quotes, invoices, users, and photos. Documents are permanently deleted after 6 months.
               </CardDescription>
             </div>
             {selectedItems.size > 0 && (
@@ -337,7 +373,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
             </div>
             <Button
               variant="destructive"
-              onClick={() => cleanupMutation.mutate()}
+              onClick={() => setShowCleanupConfirm(true)}
               disabled={cleanupMutation.isPending}
               className="gap-2"
             >
@@ -367,11 +403,33 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
               {renderSection('Jobs', <Briefcase className="w-3 h-3" />, groupedDocuments.job, 'default')}
               {renderSection('Quotes', <FileText className="w-3 h-3" />, groupedDocuments.quote, 'secondary')}
               {renderSection('Invoices', <Receipt className="w-3 h-3" />, groupedDocuments.invoice, 'outline')}
+              {renderSection('Users', <User className="w-3 h-3" />, groupedDocuments.user, 'default')}
               {renderSection('Photos', <Image className="w-3 h-3" />, groupedDocuments.photo, 'destructive')}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Cleanup Confirmation Dialog */}
+      <AlertDialog open={showCleanupConfirm} onOpenChange={setShowCleanupConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete Old Records?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all soft-deleted records older than 6 months across all companies. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleCleanupConfirm}
+            >
+              Yes, Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
