@@ -45,6 +45,7 @@ export interface Job {
   discount_type: 'amount' | 'percentage' | null;
   discount_value: number | null;
   estimated_duration?: number | null;
+  labor_hourly_rate?: number | null;
   customer?: { name: string; email: string | null; phone: string | null; address: string | null; city: string | null; state: string | null; zip: string | null };
   assignee?: { full_name: string | null; employment_status?: string | null };
   assignees?: JobAssignee[];
