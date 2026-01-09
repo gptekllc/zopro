@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 import { Shield, Loader2, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useTrustedDevice } from '@/hooks/useTrustedDevice';
 import { toast } from 'sonner';
 
 interface MFAChallengeProps {
@@ -14,7 +17,9 @@ interface MFAChallengeProps {
 const MFAChallenge = ({ onVerified, onCancel }: MFAChallengeProps) => {
   const [code, setCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
-  const { challengeAndVerifyMFA, signOut } = useAuth();
+  const [rememberDevice, setRememberDevice] = useState(false);
+  const { user, challengeAndVerifyMFA, signOut } = useAuth();
+  const { trustDevice } = useTrustedDevice();
 
   const handleVerify = async () => {
     if (code.length !== 6) {
@@ -29,6 +34,13 @@ const MFAChallenge = ({ onVerified, onCancel }: MFAChallengeProps) => {
         toast.error(result.error.message || 'Invalid verification code');
         setCode('');
       } else {
+        // If remember device is checked, trust this device
+        if (rememberDevice && user?.id) {
+          const trusted = await trustDevice(user.id);
+          if (trusted) {
+            toast.success('Device trusted for 90 days');
+          }
+        }
         toast.success('Verification successful');
         onVerified();
       }
@@ -78,6 +90,21 @@ const MFAChallenge = ({ onVerified, onCancel }: MFAChallengeProps) => {
                 <InputOTPSlot index={5} />
               </InputOTPGroup>
             </InputOTP>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="remember-device"
+              checked={rememberDevice}
+              onCheckedChange={(checked) => setRememberDevice(checked === true)}
+              disabled={isVerifying}
+            />
+            <Label
+              htmlFor="remember-device"
+              className="text-sm text-muted-foreground cursor-pointer"
+            >
+              Remember this device for 90 days
+            </Label>
           </div>
 
           <Button 

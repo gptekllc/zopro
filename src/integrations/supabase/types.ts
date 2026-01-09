@@ -2437,6 +2437,36 @@ export type Database = {
           },
         ]
       }
+      trusted_devices: {
+        Row: {
+          created_at: string
+          device_name: string | null
+          device_token: string
+          expires_at: string
+          id: string
+          last_used_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_name?: string | null
+          device_token: string
+          expires_at: string
+          id?: string
+          last_used_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_name?: string | null
+          device_token?: string
+          expires_at?: string
+          id?: string
+          last_used_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2469,6 +2499,11 @@ export type Database = {
       }
       auto_archive_old_records: { Args: never; Returns: undefined }
       check_account_lockout: { Args: { check_email: string }; Returns: Json }
+      check_trusted_device: {
+        Args: { p_device_token: string; p_user_id: string }
+        Returns: boolean
+      }
+      cleanup_expired_trusted_devices: { Args: never; Returns: number }
       cleanup_old_login_attempts: { Args: never; Returns: undefined }
       create_company_and_set_admin: {
         Args: {

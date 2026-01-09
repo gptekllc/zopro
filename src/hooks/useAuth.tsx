@@ -25,6 +25,7 @@ interface AuthContextType {
   roles: UserRole[];
   isLoading: boolean;
   isMFALoading: boolean;
+  isDeviceTrusted: boolean;
   isAdmin: boolean;
   isManager: boolean;
   isSuperAdmin: boolean;
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMFALoading, setIsMFALoading] = useState(true);
+  const [isDeviceTrusted, setIsDeviceTrusted] = useState(false);
   const [mfaFactors, setMFAFactors] = useState<Factor[]>([]);
   const [aal, setAAL] = useState<{ currentLevel: string; nextLevel: string } | null>(null);
 
@@ -64,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isManager = roles.some(r => r.role === 'manager');
   const isSuperAdmin = roles.some(r => r.role === 'super_admin');
   const hasMFA = mfaFactors.some(f => f.status === 'verified');
-  const needsMFAChallenge = hasMFA && aal?.currentLevel === 'aal1' && aal?.nextLevel === 'aal2';
+  const needsMFAChallenge = hasMFA && aal?.currentLevel === 'aal1' && aal?.nextLevel === 'aal2' && !isDeviceTrusted;
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await (supabase as any)
@@ -104,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return factors;
   };
 
-  const refreshMFAStatus = async () => {
+  const refreshMFAStatus = async (userId?: string) => {
     setIsMFALoading(true);
     try {
       const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -115,6 +117,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       }
       await listMFAFactors();
+      
+      // Check if device is trusted
+      if (userId) {
+        const storedToken = localStorage.getItem('mfa_trusted_device_token');
+        if (storedToken) {
+          const { data: isTrusted } = await supabase.rpc('check_trusted_device', {
+            p_user_id: userId,
+            p_device_token: storedToken,
+          });
+          setIsDeviceTrusted(isTrusted === true);
+        } else {
+          setIsDeviceTrusted(false);
+        }
+      }
     } finally {
       setIsMFALoading(false);
     }
@@ -206,8 +222,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setProfile(profileData);
             const rolesData = await fetchRoles(session.user.id);
             setRoles(rolesData);
-            // Fetch MFA status
-            await refreshMFAStatus();
+            // Fetch MFA status with user ID for trusted device check
+            await refreshMFAStatus(session.user.id);
           }, 0);
         } else {
           setProfile(null);
@@ -215,6 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setMFAFactors([]);
           setAAL(null);
           setIsMFALoading(false);
+          setIsDeviceTrusted(false);
         }
       }
     );
@@ -229,8 +246,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(profileData);
         const rolesData = await fetchRoles(session.user.id);
         setRoles(rolesData);
-        // Fetch MFA status
-        await refreshMFAStatus();
+        // Fetch MFA status with user ID for trusted device check
+        await refreshMFAStatus(session.user.id);
       }
       
       setIsLoading(false);
@@ -297,6 +314,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoles([]);
     setMFAFactors([]);
     setAAL(null);
+    setIsDeviceTrusted(false);
   };
 
   const refreshProfile = async () => {
@@ -317,6 +335,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roles,
         isLoading,
         isMFALoading,
+        isDeviceTrusted,
         isAdmin,
         isManager,
         isSuperAdmin,
