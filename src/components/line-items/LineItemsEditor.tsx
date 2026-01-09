@@ -27,6 +27,7 @@ interface LineItemsEditorProps {
   showTypeColumn?: boolean;
   quantityLabel?: string;
   minItems?: number;
+  showAutoLaborBadge?: boolean;
 }
 
 export const LineItemsEditor = ({
@@ -38,6 +39,7 @@ export const LineItemsEditor = ({
   showTypeColumn = false,
   quantityLabel = 'Quantity',
   minItems = 0,
+  showAutoLaborBadge = false,
 }: LineItemsEditorProps) => {
   const products = items.filter(item => item.type === 'product');
   const services = items.filter(item => item.type === 'service');
@@ -59,7 +61,7 @@ export const LineItemsEditor = ({
   };
 
   const renderItemRow = (item: LineItem, canRemove: boolean) => {
-    const isAutoLabor = item.description.toLowerCase() === 'labor';
+    const isAutoLabor = showAutoLaborBadge && item.description.toLowerCase() === 'labor';
     
     return (
       <div key={item.id} className="space-y-1.5">
