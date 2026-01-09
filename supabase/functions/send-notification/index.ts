@@ -403,27 +403,6 @@ const handler = async (req: Request): Promise<Response> => {
         recipientEmail,
         subject,
         type,
-        'sent',
-        emailResponse?.id || null,
-        null,
-        companyId || null,
-        { notificationType: type, recipientName }
-      );
-
-      return new Response(JSON.stringify(emailResponse), {
-        status: 200,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    } catch (emailError: unknown) {
-      const errorMessage = emailError instanceof Error ? emailError.message : "Unknown email error";
-      console.error("Failed to send notification email:", emailError);
-
-      // Log failed email
-      await logEmail(
-        adminClient,
-        recipientEmail,
-        subject,
-        type,
         'failed',
         null,
         errorMessage,
