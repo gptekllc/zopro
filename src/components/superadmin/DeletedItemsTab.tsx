@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Loader2, RotateCcw, Trash2, AlertTriangle, FileText, Briefcase, Receipt, Image, User } from 'lucide-react';
+import { Loader2, RotateCcw, Trash2, AlertTriangle, FileText, Briefcase, Receipt, Image, User, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { formatAmount } from '@/lib/formatAmount';
@@ -59,6 +59,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
       job: [],
       quote: [],
       invoice: [],
+      customer: [],
       user: [],
       photo: [],
     };
@@ -89,6 +90,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
     },
     onError: (error: any) => {
@@ -112,6 +114,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
       setSelectedItems(new Set());
       toast.success('Selected items restored successfully');
@@ -137,6 +140,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
       const count = selectedItems.size;
       setSelectedItems(new Set());
@@ -178,6 +182,8 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
         return <FileText className="w-4 h-4" />;
       case 'invoice':
         return <Receipt className="w-4 h-4" />;
+      case 'customer':
+        return <Users className="w-4 h-4" />;
       case 'user':
         return <User className="w-4 h-4" />;
       default:
@@ -193,6 +199,8 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
         return 'quotes';
       case 'invoice':
         return 'invoices';
+      case 'customer':
+        return 'customers';
       case 'user':
         return 'profiles';
       case 'job_photo':
@@ -279,6 +287,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
             const isSelected = selectedItems.has(key);
             const isPhoto = doc.document_type.includes('photo');
             const isUser = doc.document_type === 'user';
+            const isCustomer = doc.document_type === 'customer';
 
             return (
               <div
@@ -317,6 +326,13 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
                         <span className="font-medium">{doc.title || 'Unknown User'}</span>
                         <span className="text-sm text-muted-foreground truncate">{doc.document_number}</span>
                       </>
+                    ) : isCustomer ? (
+                      <>
+                        <span className="font-medium">{doc.title || 'Unknown Customer'}</span>
+                        {doc.document_number && (
+                          <span className="text-sm text-muted-foreground truncate">{doc.document_number}</span>
+                        )}
+                      </>
                     ) : (
                       <>
                         <span className="font-mono text-sm font-medium">{doc.document_number}</span>
@@ -329,6 +345,8 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     {isUser ? (
                       <span className="capitalize">{doc.customer_name || 'No role'}</span>
+                    ) : isCustomer ? (
+                      <span>{doc.customer_name || 'No additional info'}</span>
                     ) : (
                       <>
                         {doc.customer_name && <span>{doc.customer_name}</span>}
@@ -366,7 +384,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
                 Deleted Documents Recovery
               </CardTitle>
               <CardDescription>
-                Recover deleted jobs, quotes, invoices, users, and photos. Documents are permanently deleted after 6 months.
+                Recover deleted jobs, quotes, invoices, customers, users, and photos. Documents are permanently deleted after 6 months.
               </CardDescription>
             </div>
             {selectedItems.size > 0 && (
@@ -454,6 +472,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
               {renderSection('Jobs', <Briefcase className="w-3 h-3" />, groupedDocuments.job, 'default')}
               {renderSection('Quotes', <FileText className="w-3 h-3" />, groupedDocuments.quote, 'secondary')}
               {renderSection('Invoices', <Receipt className="w-3 h-3" />, groupedDocuments.invoice, 'outline')}
+              {renderSection('Customers', <Users className="w-3 h-3" />, groupedDocuments.customer, 'default')}
               {renderSection('Users', <User className="w-3 h-3" />, groupedDocuments.user, 'default')}
               {renderSection('Photos', <Image className="w-3 h-3" />, groupedDocuments.photo, 'destructive')}
             </div>
