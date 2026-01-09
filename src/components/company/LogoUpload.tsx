@@ -79,30 +79,49 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
       canvas.width = outputSize;
       canvas.height = outputSize;
 
+      // Fill with white background (prevents black areas)
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, outputSize, outputSize);
+
       const img = imageRef.current;
       const container = containerRef.current;
       const containerRect = container.getBoundingClientRect();
+      const containerSize = containerRect.width; // Container is square (aspect-square)
+
+      // Get the natural dimensions of the image
+      const naturalWidth = img.naturalWidth;
+      const naturalHeight = img.naturalHeight;
+
+      // The image is displayed at its natural size * zoom, centered in the container
+      const displayedWidth = naturalWidth * zoom;
+      const displayedHeight = naturalHeight * zoom;
+
+      // The center of the image in the container (before position offset)
+      // Image is centered via CSS: left: 50%, top: 50%, marginLeft: -50%, marginTop: -50%
+      // This means the image's center is at the container's center initially
       
-      // Calculate the visible area in image coordinates
-      const scale = zoom;
-      const imgDisplayWidth = img.naturalWidth * scale;
-      const imgDisplayHeight = img.naturalHeight * scale;
+      // Calculate where the top-left of the image is in container coordinates
+      const imgLeft = (containerSize - displayedWidth) / 2 + position.x;
+      const imgTop = (containerSize - displayedHeight) / 2 + position.y;
+
+      // The visible crop area is the container itself (0,0 to containerSize,containerSize)
+      // We need to find what part of the original image corresponds to this area
+
+      // Convert container coordinates to image natural coordinates
+      const scaleRatio = 1 / zoom;
       
-      // Center offset
-      const centerX = (containerRect.width - imgDisplayWidth) / 2 + position.x;
-      const centerY = (containerRect.height - imgDisplayHeight) / 2 + position.y;
-      
-      // Calculate source coordinates
-      const sourceX = (-centerX / scale);
-      const sourceY = (-centerY / scale);
-      const sourceSize = containerRect.width / scale;
+      // Source rectangle in natural image coordinates
+      const sourceX = -imgLeft * scaleRatio;
+      const sourceY = -imgTop * scaleRatio;
+      const sourceWidth = containerSize * scaleRatio;
+      const sourceHeight = containerSize * scaleRatio;
 
       ctx.drawImage(
         img,
         sourceX,
         sourceY,
-        sourceSize,
-        sourceSize,
+        sourceWidth,
+        sourceHeight,
         0,
         0,
         outputSize,
