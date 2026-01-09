@@ -4,7 +4,6 @@ import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
 export interface Company {
-  timezone?: string;
   id: string;
   name: string;
   email: string | null;
@@ -14,76 +13,87 @@ export interface Company {
   state: string | null;
   zip: string | null;
   website: string | null;
-  facebook_url: string | null;
-  instagram_url: string | null;
-  linkedin_url: string | null;
   logo_url: string | null;
+  brand_primary_color: string | null;
   tax_rate: number | null;
   payment_terms_days: number | null;
   late_fee_percentage: number | null;
+  timezone: string | null;
+  business_hours: Record<string, unknown> | null;
+  custom_domain: string | null;
+  customer_portal_welcome_message: string | null;
+  // Settings
+  default_job_duration: number | null;
+  default_job_priority: string | null;
+  default_quote_validity_days: number | null;
   default_payment_method: string | null;
-  // Stripe Connect fields
+  // Email settings
+  email_on_new_job: boolean | null;
+  email_on_payment_received: boolean | null;
+  email_invoice_body: string | null;
+  email_job_body: string | null;
+  email_quote_body: string | null;
+  // PDF settings
+  pdf_show_logo: boolean | null;
+  pdf_show_notes: boolean | null;
+  pdf_show_signature: boolean | null;
+  pdf_show_line_item_details: boolean | null;
+  pdf_footer_text: string | null;
+  pdf_terms_conditions: string | null;
+  pdf_show_job_photos: boolean | null;
+  pdf_show_quote_photos: boolean | null;
+  pdf_show_invoice_photos: boolean | null;
+  // Automation settings
+  auto_archive_days: number | null;
+  auto_send_invoice_reminders: boolean | null;
+  invoice_reminder_days: number | null;
+  auto_expire_quotes: boolean | null;
+  auto_apply_late_fees: boolean | null;
+  auto_send_job_scheduled_email: boolean | null;
+  // Notification settings
+  notify_on_job_assignment: boolean | null;
+  notify_on_automation_run: boolean | null;
+  send_weekly_summary: boolean | null;
+  // Timeclock settings
+  timeclock_require_job_selection: boolean | null;
+  timeclock_enforce_job_labor: boolean | null;
+  timeclock_allow_manual_labor_edit: boolean | null;
+  timeclock_auto_start_break_reminder: number | null;
+  timeclock_max_shift_hours: number | null;
+  // Signature settings
+  require_quote_signature: boolean | null;
+  require_job_completion_signature: boolean | null;
+  require_mfa: boolean | null;
+  // Stripe fields (null for non-admins)
   stripe_account_id: string | null;
   stripe_onboarding_complete: boolean | null;
   stripe_charges_enabled: boolean | null;
   stripe_payouts_enabled: boolean | null;
   stripe_payments_enabled: boolean | null;
   platform_fee_percentage: number | null;
-  // Signature settings
-  require_job_completion_signature: boolean | null;
-  // PDF Preferences
-  pdf_show_notes: boolean | null;
-  pdf_show_signature: boolean | null;
-  pdf_terms_conditions: string | null;
-  pdf_show_logo: boolean | null;
-  pdf_show_line_item_details: boolean | null;
-  pdf_footer_text: string | null;
-  // Job Settings
-  default_job_duration: number | null;
-  default_job_priority: string | null;
-  auto_archive_days: number | null;
-  notify_on_job_assignment: boolean | null;
-  auto_send_job_scheduled_email: boolean | null;
-  // Quote Settings
-  default_quote_validity_days: number | null;
-  auto_expire_quotes: boolean | null;
-  require_quote_signature: boolean | null;
-  // Invoice Settings
-  auto_send_invoice_reminders: boolean | null;
-  invoice_reminder_days: number | null;
-  auto_apply_late_fees: boolean | null;
-  // Notification Preferences
-  email_on_new_job: boolean | null;
-  email_on_payment_received: boolean | null;
-  send_weekly_summary: boolean | null;
-  // Branding
-  brand_primary_color: string | null;
-  customer_portal_welcome_message: string | null;
-  custom_domain: string | null;
-  // Automation notifications
-  notify_on_automation_run: boolean | null;
-  // MFA/Security
-  require_mfa: boolean;
+  // Timestamps
   created_at: string;
   updated_at: string;
 }
 
 export function useCompany() {
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
   
   return useQuery({
-    queryKey: ['company', profile?.company_id],
+    queryKey: ['company', profile?.company_id, isAdmin],
     queryFn: async () => {
       if (!profile?.company_id) return null;
       
-      const { data, error } = await (supabase as any)
-        .from('companies')
-        .select('*')
-        .eq('id', profile.company_id)
-        .maybeSingle();
+      // Use secure function that hides Stripe credentials for non-admins
+      const { data, error } = await supabase.rpc('get_company_for_user', {
+        _company_id: profile.company_id
+      });
       
       if (error) throw error;
-      return data as Company | null;
+      
+      // RPC returns an array, get first item
+      const company = Array.isArray(data) ? data[0] : data;
+      return company as Company | null;
     },
     enabled: !!profile?.company_id,
   });
