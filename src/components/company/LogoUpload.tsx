@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Slider } from '@/components/ui/slider';
-import { Camera, Loader2, Upload, ZoomIn } from 'lucide-react';
+import { Camera, Loader2, Upload, ZoomIn, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,17 +21,23 @@ interface LogoUploadProps {
   currentLogoUrl: string | null;
   companyName: string;
   onUploadSuccess: (url: string) => void;
+  showRemoveButton?: boolean;
 }
 
-const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }: LogoUploadProps) => {
+const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess, showRemoveButton = true }: LogoUploadProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  
+  // Pinch-to-zoom state
+  const [initialPinchDistance, setInitialPinchDistance] = useState<number | null>(null);
+  const [initialZoom, setInitialZoom] = useState(1);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -68,6 +74,57 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
 
   const handleMouseUp = () => {
     setIsDragging(false);
+  };
+
+  // Calculate distance between two touch points
+  const getTouchDistance = (touches: React.TouchList): number => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Touch support with pinch-to-zoom
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Pinch gesture start
+      e.preventDefault();
+      const distance = getTouchDistance(e.touches);
+      setInitialPinchDistance(distance);
+      setInitialZoom(zoom);
+    } else if (e.touches.length === 1) {
+      // Single finger drag
+      const touch = e.touches[0];
+      setIsDragging(true);
+      setDragStart({ x: touch.clientX - position.x, y: touch.clientY - position.y });
+    }
+  };
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && initialPinchDistance !== null) {
+      // Pinch-to-zoom
+      e.preventDefault();
+      const currentDistance = getTouchDistance(e.touches);
+      const scale = currentDistance / initialPinchDistance;
+      const newZoom = Math.min(Math.max(initialZoom * scale, 0.1), 3);
+      setZoom(newZoom);
+    } else if (e.touches.length === 1 && isDragging) {
+      // Single finger drag
+      const touch = e.touches[0];
+      setPosition({
+        x: touch.clientX - dragStart.x,
+        y: touch.clientY - dragStart.y
+      });
+    }
+  }, [isDragging, dragStart, initialPinchDistance, initialZoom]);
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length < 2) {
+      setInitialPinchDistance(null);
+    }
+    if (e.touches.length === 0) {
+      setIsDragging(false);
+    }
   };
 
   const cropAndCompress = async (): Promise<Blob> => {
@@ -224,6 +281,35 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
     }
   };
 
+  const handleRemoveLogo = async () => {
+    if (!currentLogoUrl) return;
+
+    setIsRemoving(true);
+    try {
+      // Delete from storage
+      const oldPath = extractStoragePath(currentLogoUrl, 'company-logos');
+      if (oldPath) {
+        await supabase.storage.from('company-logos').remove([oldPath]);
+      }
+
+      // Update company record to remove logo
+      const { error: updateError } = await supabase
+        .from('companies')
+        .update({ logo_url: null })
+        .eq('id', companyId);
+
+      if (updateError) throw updateError;
+
+      onUploadSuccess('');
+      toast.success('Logo removed successfully');
+    } catch (error: any) {
+      console.error('Remove error:', error);
+      toast.error(error.message || 'Failed to remove logo');
+    } finally {
+      setIsRemoving(false);
+    }
+  };
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
@@ -247,7 +333,7 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
             <Camera className="w-6 h-6 text-white" />
           </button>
         </div>
-        <div>
+        <div className="space-y-1">
           <Button
             type="button"
             variant="outline"
@@ -257,7 +343,24 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
             <Upload className="w-4 h-4 mr-2" />
             Upload Logo
           </Button>
-          <p className="text-xs text-muted-foreground mt-1">
+          {showRemoveButton && currentLogoUrl && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10 w-full justify-start"
+              onClick={handleRemoveLogo}
+              disabled={isRemoving}
+            >
+              {isRemoving ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              Remove Logo
+            </Button>
+          )}
+          <p className="text-xs text-muted-foreground">
             Recommended: Square image, will be cropped to 1:1
           </p>
         </div>
@@ -278,14 +381,17 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* Crop area */}
+            {/* Crop area with touch support */}
             <div
               ref={containerRef}
-              className="relative w-full aspect-square bg-muted rounded-lg overflow-hidden cursor-move border-2 border-dashed border-border"
+              className="relative w-full aspect-square bg-muted rounded-lg overflow-hidden cursor-move border-2 border-dashed border-border touch-none"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
             >
               {previewUrl && (
                 <img
@@ -327,7 +433,7 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              Drag to position, use slider to zoom. Image will be compressed to 50-70 KB.
+              Drag to position, use slider or pinch to zoom. Image will be compressed to 50-70 KB.
             </p>
 
             <div className="flex gap-2">
