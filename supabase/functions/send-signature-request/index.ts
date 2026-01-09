@@ -57,12 +57,44 @@ async function generateSignedToken(customerId: string, expiresAt: Date): Promise
   return `${payload}.${signature}`;
 }
 
+// Helper to log email to email_logs table
+async function logEmail(
+  adminClient: any,
+  recipientEmail: string,
+  subject: string,
+  emailType: string,
+  status: 'sent' | 'failed',
+  resendId: string | null,
+  errorMessage: string | null,
+  companyId: string | null = null,
+  customerId: string | null = null,
+  metadata: Record<string, any> = {}
+) {
+  try {
+    await adminClient.from('email_logs').insert({
+      recipient_email: recipientEmail,
+      sender_email: 'noreply@email.zopro.app',
+      subject,
+      email_type: emailType,
+      status,
+      resend_id: resendId,
+      error_message: errorMessage,
+      company_id: companyId,
+      customer_id: customerId,
+      metadata,
+    });
+  } catch (err) {
+    console.error('Failed to log email:', err);
+  }
+}
+
 interface SignatureRequestBody {
   documentType: 'quote' | 'invoice' | 'job';
   documentId: string;
   recipientEmail: string;
   recipientName: string;
   companyName: string;
+  companyId?: string;
   documentNumber: string;
   customerId: string;
 }
@@ -75,7 +107,11 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
+
+    // Create admin client for logging
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify caller authentication
     const authHeader = req.headers.get('Authorization');
@@ -103,7 +139,7 @@ Deno.serve(async (req) => {
     }
 
     const body: SignatureRequestBody = await req.json();
-    const { documentType, documentId, recipientEmail, recipientName, companyName, documentNumber, customerId } = body;
+    const { documentType, documentId, recipientEmail, recipientName, companyName, companyId, documentNumber, customerId } = body;
 
     console.log('Processing signature request:', { documentType, documentId, recipientEmail });
 
@@ -136,6 +172,7 @@ Deno.serve(async (req) => {
     };
 
     const documentLabel = documentTypeLabels[documentType] || documentType;
+    const subject = `Signature Required: ${documentLabel} ${documentNumber}`;
 
     // Send email if Resend is configured
     if (!resendApiKey) {
@@ -149,10 +186,10 @@ Deno.serve(async (req) => {
     try {
       const resend = new Resend(resendApiKey);
       
-      await resend.emails.send({
+      const emailResponse = await resend.emails.send({
         from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [recipientEmail],
-        subject: `Signature Required: ${documentLabel} ${documentNumber}`,
+        subject,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 12px 12px 0 0; padding: 30px; text-align: center;">
@@ -193,12 +230,41 @@ Deno.serve(async (req) => {
       
       console.log('Signature request email sent successfully');
       
+      // Log successful email
+      await logEmail(
+        adminClient,
+        recipientEmail,
+        subject,
+        'signature_request',
+        'sent',
+        (emailResponse as any)?.data?.id || null,
+        null,
+        companyId || null,
+        customerId,
+        { documentType, documentId, documentNumber }
+      );
+      
       return new Response(
         JSON.stringify({ success: true, message: 'Signature request sent successfully' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } catch (emailError) {
       console.error('Failed to send signature request email:', emailError);
+      
+      // Log failed email
+      await logEmail(
+        adminClient,
+        recipientEmail,
+        subject,
+        'signature_request',
+        'failed',
+        null,
+        emailError instanceof Error ? emailError.message : 'Unknown error',
+        companyId || null,
+        customerId,
+        { documentType, documentId, documentNumber }
+      );
+      
       return new Response(
         JSON.stringify({ error: 'Failed to send email', details: emailError instanceof Error ? emailError.message : 'Unknown error' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
