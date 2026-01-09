@@ -619,7 +619,7 @@ export function InvoiceDetailDialog({
                       <div className="flex justify-between text-xs text-destructive">
                         <span className="flex items-center gap-1">
                           <AlertCircle className="w-3 h-3" />
-                          Late Fee {lateFeePercentage > 0 && `(${lateFeePercentage}%)`}
+                          Late Fee {lateFeePercentage > 0 ? `(${lateFeePercentage}%)` : ''}
                         </span>
                         <span>+${formatAmount(invoice.late_fee_amount)}</span>
                       </div>
@@ -638,7 +638,7 @@ export function InvoiceDetailDialog({
                         {remainingBalance > 0 && invoice.status !== 'paid' ? 'Balance Due' : 'Total'}
                       </span>
                       <span className={`text-xs ${remainingBalance > 0 && invoice.status !== 'paid' ? 'text-destructive' : ''}`}>
-                        {remainingBalance > 0 ? formatAmount(remainingBalance) : formatAmount(totalDue)}
+                        ${remainingBalance > 0 ? formatAmount(remainingBalance) : formatAmount(totalDue)}
                       </span>
                     </div>
                     {canApplyLateFee && onApplyLateFee && (
