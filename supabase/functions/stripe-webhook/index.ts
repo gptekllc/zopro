@@ -87,45 +87,103 @@ serve(async (req) => {
       if (invoiceId) {
         logStep("Found invoice ID in metadata", { invoiceId });
         
-        const { data: invoice, error: updateError } = await supabase
+        // Get invoice details first
+        const { data: invoice, error: invoiceError } = await supabase
           .from("invoices")
-          .update({
-            status: "paid",
-            paid_at: new Date().toISOString(),
-          })
-          .eq("id", invoiceId)
           .select(`
             *,
-            customers (name, email),
+            customers (id, name, email),
             companies (name, email, id)
           `)
+          .eq("id", invoiceId)
           .single();
 
-        if (updateError) {
-          logStep("ERROR: Failed to update invoice", { error: updateError.message });
-          return new Response(`Failed to update invoice: ${updateError.message}`, { status: 500 });
+        if (invoiceError || !invoice) {
+          logStep("ERROR: Failed to fetch invoice", { error: invoiceError?.message });
+          return new Response(`Failed to fetch invoice: ${invoiceError?.message}`, { status: 500 });
         }
 
-        logStep("Invoice marked as paid", { invoiceId, invoiceNumber: invoice.invoice_number });
+        // Get payment amount from session
+        const paymentAmount = session.amount_total ? session.amount_total / 100 : Number(invoice.total);
+        const stripePaymentIntentId = typeof session.payment_intent === 'string' 
+          ? session.payment_intent 
+          : session.payment_intent?.id || null;
 
-        // Auto-sync job status to 'paid' if there's a linked job
-        const { data: linkedJobs, error: jobsError } = await supabase
-          .from("jobs")
-          .select("id, job_number")
-          .eq("quote_id", invoice.quote_id)
-          .in("status", ["completed", "invoiced"]);
+        logStep("Payment details", { paymentAmount, stripePaymentIntentId });
 
-        if (!jobsError && linkedJobs && linkedJobs.length > 0) {
-          for (const job of linkedJobs) {
-            const { error: jobUpdateError } = await supabase
-              .from("jobs")
-              .update({ status: "paid" })
-              .eq("id", job.id);
+        // Create payment record in payments table
+        const { data: newPayment, error: paymentError } = await supabase
+          .from("payments")
+          .insert({
+            invoice_id: invoiceId,
+            company_id: invoice.company_id,
+            amount: paymentAmount,
+            method: "credit_debit", // Stripe payments are card payments
+            payment_date: new Date().toISOString(),
+            notes: `Stripe payment (${stripePaymentIntentId || session.id})`,
+            status: "completed",
+          })
+          .select()
+          .single();
 
-            if (jobUpdateError) {
-              logStep("WARNING: Failed to update job status", { jobId: job.id, error: jobUpdateError.message });
-            } else {
-              logStep("Job status synced to paid", { jobId: job.id, jobNumber: job.job_number });
+        if (paymentError) {
+          logStep("WARNING: Failed to create payment record", { error: paymentError.message });
+        } else {
+          logStep("Payment record created", { paymentId: newPayment.id, amount: paymentAmount });
+        }
+
+        // Get all completed payments to calculate totals
+        const { data: allPayments } = await supabase
+          .from("payments")
+          .select("amount, status")
+          .eq("invoice_id", invoiceId)
+          .eq("status", "completed");
+
+        const totalPaid = (allPayments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+        const totalDue = Number(invoice.total) + Number(invoice.late_fee_amount || 0);
+        const isFullyPaid = totalPaid >= totalDue;
+        const hasPartialPayment = totalPaid > 0 && totalPaid < totalDue;
+
+        logStep("Payment totals", { totalPaid, totalDue, isFullyPaid, hasPartialPayment });
+
+        // Update invoice status based on payment totals
+        const newStatus = isFullyPaid ? "paid" : hasPartialPayment ? "partially_paid" : invoice.status;
+        const paidAt = isFullyPaid ? new Date().toISOString() : null;
+
+        const { error: updateError } = await supabase
+          .from("invoices")
+          .update({
+            status: newStatus,
+            paid_at: paidAt,
+          })
+          .eq("id", invoiceId);
+
+        if (updateError) {
+          logStep("ERROR: Failed to update invoice status", { error: updateError.message });
+        } else {
+          logStep("Invoice status updated", { invoiceId, status: newStatus });
+        }
+
+        // Auto-sync job status to 'paid' if fully paid and there's a linked job
+        if (isFullyPaid && invoice.quote_id) {
+          const { data: linkedJobs, error: jobsError } = await supabase
+            .from("jobs")
+            .select("id, job_number")
+            .eq("quote_id", invoice.quote_id)
+            .in("status", ["completed", "invoiced"]);
+
+          if (!jobsError && linkedJobs && linkedJobs.length > 0) {
+            for (const job of linkedJobs) {
+              const { error: jobUpdateError } = await supabase
+                .from("jobs")
+                .update({ status: "paid" })
+                .eq("id", job.id);
+
+              if (jobUpdateError) {
+                logStep("WARNING: Failed to update job status", { jobId: job.id, error: jobUpdateError.message });
+              } else {
+                logStep("Job status synced to paid", { jobId: job.id, jobNumber: job.job_number });
+              }
             }
           }
         }
@@ -138,12 +196,24 @@ serve(async (req) => {
           .in("role", ["admin", "manager"]);
 
         if (admins && admins.length > 0) {
+          const remainingBalance = Math.max(0, totalDue - totalPaid);
+          const notificationMessage = isFullyPaid
+            ? `${invoice.customers?.name} paid Invoice #${invoice.invoice_number} in full - $${paymentAmount.toFixed(2)}`
+            : `${invoice.customers?.name} made a payment of $${paymentAmount.toFixed(2)} on Invoice #${invoice.invoice_number} ($${remainingBalance.toFixed(2)} remaining)`;
+          
           const notifications = admins.map((admin) => ({
             user_id: admin.id,
             type: "payment_received",
-            title: "Payment Received",
-            message: `${invoice.customers?.name} paid Invoice #${invoice.invoice_number} - $${Number(invoice.total).toFixed(2)}`,
-            data: { invoiceId, invoiceNumber: invoice.invoice_number, amount: invoice.total, customerName: invoice.customers?.name },
+            title: isFullyPaid ? "Invoice Paid in Full" : "Partial Payment Received",
+            message: notificationMessage,
+            data: { 
+              invoiceId, 
+              invoiceNumber: invoice.invoice_number, 
+              amount: paymentAmount, 
+              customerName: invoice.customers?.name,
+              isFullyPaid,
+              remainingBalance,
+            },
           }));
           
           await supabase.from("notifications").insert(notifications);
@@ -153,6 +223,7 @@ serve(async (req) => {
         // Send email notification
         if (invoice.customers?.email && invoice.companies?.email) {
           try {
+            const remainingBalance = Math.max(0, totalDue - totalPaid);
             await fetch(`${supabaseUrl}/functions/v1/send-payment-notification`, {
               method: "POST",
               headers: {
@@ -160,13 +231,21 @@ serve(async (req) => {
                 "Authorization": `Bearer ${supabaseServiceKey}`,
               },
               body: JSON.stringify({
-                type: "invoice_paid",
+                type: isFullyPaid ? "invoice_paid" : "payment_recorded",
                 invoiceNumber: invoice.invoice_number,
                 customerName: invoice.customers.name,
                 customerEmail: invoice.customers.email,
+                customerId: invoice.customers.id,
                 companyName: invoice.companies.name,
                 companyEmail: invoice.companies.email,
-                amount: invoice.total,
+                companyId: invoice.company_id,
+                amount: isFullyPaid ? invoice.total : undefined,
+                paymentAmount,
+                paymentMethod: "credit_debit",
+                totalPaid,
+                totalDue,
+                remainingBalance,
+                isFullyPaid,
               }),
             });
             logStep("Payment notification email sent");
