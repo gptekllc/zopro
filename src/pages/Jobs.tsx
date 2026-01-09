@@ -494,6 +494,20 @@ const Jobs = () => {
     }
   };
 
+  // Handle scheduler slot selection to create job with pre-filled schedule
+  const handleSchedulerSlotSelect = (technicianId: string, start: Date, end: Date) => {
+    resetForm();
+    setFormData(prev => ({
+      ...prev,
+      assignee_ids: [technicianId],
+      scheduled_start: format(start, "yyyy-MM-dd'T'HH:mm"),
+      scheduled_end: format(end, "yyyy-MM-dd'T'HH:mm"),
+      status: 'scheduled',
+      estimated_duration: Math.max(60, Math.round((end.getTime() - start.getTime()) / 60000))
+    }));
+    openEditDialog(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -815,7 +829,14 @@ const Jobs = () => {
       {viewMode === 'calendar' && <JobCalendar jobs={safeJobs} onJobClick={setViewingJob} />}
 
       {/* Scheduler View - Admin/Manager only */}
-      {viewMode === 'scheduler' && isAdmin && <SchedulerView jobs={safeJobs} technicians={technicians} onJobClick={setViewingJob} />}
+      {viewMode === 'scheduler' && isAdmin && (
+        <SchedulerView 
+          jobs={safeJobs} 
+          technicians={technicians} 
+          onJobClick={setViewingJob}
+          onSlotSelect={handleSchedulerSlotSelect}
+        />
+      )}
 
       {/* Job List View */}
       {viewMode === 'list' && (
