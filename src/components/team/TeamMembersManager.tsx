@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useTeamMembers, TeamMember } from '@/hooks/useCompany';
 import { useTeamInvitations, useCancelInvitation, useResendInvitation } from '@/hooks/useTeamInvitations';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,8 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { compressImageToFile } from '@/lib/imageCompression';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AvatarUpload from '@/components/common/AvatarUpload';
 import {
   Table,
   TableBody,
@@ -45,7 +45,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { Users, UserCog, UserMinus, Loader2, Shield, Mail, UserPlus, RefreshCw, X, RotateCcw, Clock, Edit, Calendar, AlertTriangle, Camera } from 'lucide-react';
+import { Users, UserCog, UserMinus, Loader2, Shield, Mail, UserPlus, RefreshCw, X, RotateCcw, Clock, Edit, Calendar, AlertTriangle } from 'lucide-react';
 import ViewMemberDialog from './ViewMemberDialog';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -93,8 +93,6 @@ const TeamMembersManager = () => {
   const [editState, setEditState] = useState('');
   const [editZip, setEditZip] = useState('');
   const [editAvatarUrl, setEditAvatarUrl] = useState('');
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch deleted team members
   const { data: deletedMembers = [] } = useQuery({
@@ -387,34 +385,8 @@ const TeamMembersManager = () => {
       removeMemberMutation.mutate(selectedMember.id);
     }
   };
-
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !selectedMember) return;
-
-    setIsUploadingAvatar(true);
-    try {
-      const compressedFile = await compressImageToFile(file, 200, 400);
-      const fileName = `${selectedMember.id}-${Date.now()}.jpg`;
-      const filePath = `avatars/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('company-logos')
-        .upload(filePath, compressedFile, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('company-logos')
-        .getPublicUrl(filePath);
-
-      setEditAvatarUrl(publicUrl);
-      toast.success('Avatar uploaded');
-    } catch (error: any) {
-      toast.error('Failed to upload avatar: ' + error.message);
-    } finally {
-      setIsUploadingAvatar(false);
-    }
+  const handleAvatarUploadSuccess = (newUrl: string) => {
+    setEditAvatarUrl(newUrl);
   };
 
   const handleSaveEdit = () => {
@@ -949,35 +921,13 @@ const TeamMembersManager = () => {
           <div className="space-y-4 py-4">
             {/* Avatar Upload */}
             <div className="flex flex-col items-center gap-3">
-              <div className="relative">
-                <Avatar className="w-20 h-20">
-                  <AvatarImage src={editAvatarUrl} alt={editFullName} />
-                  <AvatarFallback className="text-lg">
-                    {editFullName ? editFullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={isUploadingAvatar}
-                >
-                  {isUploadingAvatar ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Camera className="h-4 w-4" />
-                  )}
-                </Button>
-                <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarUpload}
-                />
-              </div>
+              <AvatarUpload
+                entityId={selectedMember?.id || ''}
+                currentAvatarUrl={editAvatarUrl || null}
+                name={editFullName || 'User'}
+                onUploadSuccess={handleAvatarUploadSuccess}
+                size="lg"
+              />
               <p className="text-xs text-muted-foreground">Click the camera to upload a photo</p>
             </div>
 

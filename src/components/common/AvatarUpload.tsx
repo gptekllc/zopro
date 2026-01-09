@@ -3,27 +3,20 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Slider } from '@/components/ui/slider';
-import { Camera, Loader2, Upload, ZoomIn } from 'lucide-react';
+import { Camera, Loader2, ZoomIn } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { extractStoragePath } from '@/components/company/LogoUpload';
 
-// Helper to extract storage path from Supabase public URL
-export const extractStoragePath = (url: string | null, bucket: string): string | null => {
-  if (!url) return null;
-  const marker = `/storage/v1/object/public/${bucket}/`;
-  const index = url.indexOf(marker);
-  if (index === -1) return null;
-  return url.substring(index + marker.length);
-};
-
-interface LogoUploadProps {
-  companyId: string;
-  currentLogoUrl: string | null;
-  companyName: string;
+interface AvatarUploadProps {
+  entityId: string;
+  currentAvatarUrl: string | null;
+  name: string;
   onUploadSuccess: (url: string) => void;
+  size?: 'sm' | 'md' | 'lg';
 }
 
-const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }: LogoUploadProps) => {
+const AvatarUpload = ({ entityId, currentAvatarUrl, name, onUploadSuccess, size = 'lg' }: AvatarUploadProps) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -36,6 +29,24 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const sizeClasses = {
+    sm: 'w-12 h-12',
+    md: 'w-16 h-16',
+    lg: 'w-20 h-20',
+  };
+
+  const buttonSizeClasses = {
+    sm: 'h-6 w-6 -bottom-0.5 -right-0.5',
+    md: 'h-7 w-7 -bottom-1 -right-1',
+    lg: 'h-8 w-8 -bottom-1 -right-1',
+  };
+
+  const iconSizeClasses = {
+    sm: 'h-3 w-3',
+    md: 'h-3.5 w-3.5',
+    lg: 'h-4 w-4',
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -70,6 +81,26 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
     setIsDragging(false);
   };
 
+  // Touch support
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setIsDragging(true);
+    setDragStart({ x: touch.clientX - position.x, y: touch.clientY - position.y });
+  };
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const touch = e.touches[0];
+    setPosition({
+      x: touch.clientX - dragStart.x,
+      y: touch.clientY - dragStart.y
+    });
+  }, [isDragging, dragStart]);
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
   const cropAndCompress = async (): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       if (!imageRef.current || !containerRef.current) {
@@ -84,44 +115,30 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
         return;
       }
 
-      const outputSize = 400; // Output 400x400 for good quality
+      const outputSize = 400;
       canvas.width = outputSize;
       canvas.height = outputSize;
 
-      // Fill with white background (prevents black areas)
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, outputSize, outputSize);
 
       const img = imageRef.current;
       const container = containerRef.current;
       const containerRect = container.getBoundingClientRect();
-      const containerSize = containerRect.width; // Container is square (aspect-square)
+      const containerSize = containerRect.width;
 
-      // Get the natural dimensions of the image
       const naturalWidth = img.naturalWidth;
       const naturalHeight = img.naturalHeight;
 
-      // The image is displayed with:
-      // - left: 50%, top: 50% positions image's top-left at container center
-      // - transform: translate(-50%, -50%) moves image so its center is at container center
-      // - translate(position.x, position.y) applies user drag offset
-      // - scale(zoom) scales from the center
-      
       const displayedWidth = naturalWidth * zoom;
       const displayedHeight = naturalHeight * zoom;
 
-      // After all transforms, the image center is at:
-      // Container center (containerSize/2, containerSize/2) + position offset
       const imgCenterX = containerSize / 2 + position.x;
       const imgCenterY = containerSize / 2 + position.y;
 
-      // The top-left of the displayed (scaled) image
       const imgLeft = imgCenterX - displayedWidth / 2;
       const imgTop = imgCenterY - displayedHeight / 2;
 
-      // The visible crop area is the container (0,0 to containerSize,containerSize)
-      // Convert to source image coordinates (before zoom)
-      // Source coordinates = (container coord - imgLeft) / zoom
       const sourceX = (0 - imgLeft) / zoom;
       const sourceY = (0 - imgTop) / zoom;
       const sourceWidth = containerSize / zoom;
@@ -139,7 +156,6 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
         outputSize
       );
 
-      // Compress to target size (50-70kb)
       const compressImage = (quality: number): Promise<Blob> => {
         return new Promise((res) => {
           canvas.toBlob((blob) => res(blob!), 'image/jpeg', quality);
@@ -151,7 +167,6 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
         let maxQuality = 0.95;
         let targetBlob: Blob | null = null;
 
-        // Binary search for optimal quality
         for (let i = 0; i < 8; i++) {
           const midQuality = (minQuality + maxQuality) / 2;
           const blob = await compressImage(midQuality);
@@ -168,7 +183,6 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
           targetBlob = blob;
         }
 
-        // If we couldn't hit the exact range, return closest result
         resolve(targetBlob!);
       };
 
@@ -181,14 +195,14 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
 
     setIsUploading(true);
     try {
-      // Delete old logo from storage if it exists
-      const oldPath = extractStoragePath(currentLogoUrl, 'company-logos');
+      // Delete old avatar from storage if it exists
+      const oldPath = extractStoragePath(currentAvatarUrl, 'company-logos');
       if (oldPath) {
         await supabase.storage.from('company-logos').remove([oldPath]);
       }
 
       const croppedBlob = await cropAndCompress();
-      const fileName = `${companyId}/logo-${Date.now()}.jpg`;
+      const fileName = `avatars/${entityId}-${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from('company-logos')
@@ -203,64 +217,42 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
         .from('company-logos')
         .getPublicUrl(fileName);
 
-      // Update company record
-      const { error: updateError } = await supabase
-        .from('companies')
-        .update({ logo_url: publicUrl })
-        .eq('id', companyId);
-
-      if (updateError) throw updateError;
-
       onUploadSuccess(publicUrl);
-      toast.success('Logo uploaded successfully');
+      toast.success('Photo updated successfully');
       setIsDialogOpen(false);
       setSelectedFile(null);
       setPreviewUrl(null);
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error(error.message || 'Failed to upload logo');
+      toast.error(error.message || 'Failed to upload photo');
     } finally {
       setIsUploading(false);
     }
   };
 
   const getInitials = (name: string) => {
+    if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
   return (
     <>
-      <div className="flex items-center gap-4">
-        <div className="relative group">
-          <Avatar className="w-20 h-20 border-2 border-border">
-            {currentLogoUrl ? (
-              <AvatarImage src={currentLogoUrl} alt={companyName} />
-            ) : null}
-            <AvatarFallback className="text-xl bg-primary/10 text-primary">
-              {getInitials(companyName)}
-            </AvatarFallback>
-          </Avatar>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <Camera className="w-6 h-6 text-white" />
-          </button>
-        </div>
-        <div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            Upload Logo
-          </Button>
-          <p className="text-xs text-muted-foreground mt-1">
-            Recommended: Square image, will be cropped to 1:1
-          </p>
-        </div>
+      <div className="relative">
+        <Avatar className={sizeClasses[size]}>
+          <AvatarImage src={currentAvatarUrl || undefined} alt={name} />
+          <AvatarFallback className="bg-primary text-primary-foreground">
+            {getInitials(name)}
+          </AvatarFallback>
+        </Avatar>
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className={`absolute rounded-full ${buttonSizeClasses[size]}`}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Camera className={iconSizeClasses[size]} />
+        </Button>
       </div>
 
       <input
@@ -274,11 +266,10 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Crop Logo</DialogTitle>
+            <DialogTitle>Crop Photo</DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* Crop area */}
             <div
               ref={containerRef}
               className="relative w-full aspect-square bg-muted rounded-lg overflow-hidden cursor-move border-2 border-dashed border-border"
@@ -286,6 +277,9 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
             >
               {previewUrl && (
                 <img
@@ -304,13 +298,11 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
                   draggable={false}
                 />
               )}
-              {/* Crop overlay */}
               <div className="absolute inset-0 pointer-events-none">
                 <div className="absolute inset-0 border-4 border-primary/50 rounded-full" />
               </div>
             </div>
 
-            {/* Zoom control */}
             <div className="flex items-center gap-3">
               <ZoomIn className="w-4 h-4 text-muted-foreground" />
               <Slider
@@ -353,7 +345,7 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
                     Uploading...
                   </>
                 ) : (
-                  'Save Logo'
+                  'Save Photo'
                 )}
               </Button>
             </div>
@@ -364,4 +356,4 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
   );
 };
 
-export default LogoUpload;
+export default AvatarUpload;

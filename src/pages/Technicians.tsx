@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useProfiles, useUpdateProfile, Profile } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -11,16 +11,16 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, UserCog, Mail, Phone, Edit, Shield, Loader2, UserPlus, Camera, AlertTriangle, Calendar } from 'lucide-react';
+import { Search, UserCog, Mail, Phone, Edit, Shield, Loader2, UserPlus, AlertTriangle, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { compressImageToFile } from '@/lib/imageCompression';
 import { format } from 'date-fns';
 import ViewMemberDialog from '@/components/team/ViewMemberDialog';
 import PageContainer from '@/components/layout/PageContainer';
 import { FeatureGate } from '@/components/FeatureGate';
 import { UsageLimitWarning, UsageLimitBadge } from '@/components/UsageLimitWarning';
 import { useUsageLimits } from '@/hooks/useUsageLimits';
+import AvatarUpload from '@/components/common/AvatarUpload';
 
 const AVAILABLE_ROLES = ['admin', 'manager', 'technician'] as const;
 type AppRole = typeof AVAILABLE_ROLES[number];
@@ -50,8 +50,6 @@ const TechniciansContent = () => {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewingMember, setViewingMember] = useState<Profile | null>(null);
   const [editingUser, setEditingUser] = useState<string | null>(null);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-  const avatarInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState({
     full_name: '',
@@ -247,33 +245,9 @@ const TechniciansContent = () => {
     });
   };
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !editingUser) return;
-
-    setIsUploadingAvatar(true);
-    try {
-      const compressedFile = await compressImageToFile(file, 70, 400);
-      const fileName = `${editingUser}-${Date.now()}.jpg`;
-      const filePath = `avatars/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('company-logos')
-        .upload(filePath, compressedFile, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('company-logos')
-        .getPublicUrl(filePath);
-
-      setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
-      toast.success('Avatar uploaded');
-    } catch (error: any) {
-      toast.error('Failed to upload avatar: ' + error.message);
-    } finally {
-      setIsUploadingAvatar(false);
-    }
+  const handleAvatarUploadSuccess = (newUrl: string) => {
+    setFormData(prev => ({ ...prev, avatar_url: newUrl }));
+    toast.success('Avatar updated');
   };
 
   const handleEdit = (profile: typeof profiles[0]) => {
@@ -409,35 +383,13 @@ const TechniciansContent = () => {
           <form onSubmit={handleSubmit} className="space-y-4 py-4">
             {/* Avatar Upload */}
             <div className="flex flex-col items-center gap-3">
-              <div className="relative">
-                <Avatar className="w-20 h-20">
-                  <AvatarImage src={formData.avatar_url} alt={formData.full_name} />
-                  <AvatarFallback className="text-lg">
-                    {formData.full_name ? formData.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="icon"
-                  className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={isUploadingAvatar}
-                >
-                  {isUploadingAvatar ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Camera className="h-4 w-4" />
-                  )}
-                </Button>
-                <input
-                  ref={avatarInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarUpload}
-                />
-              </div>
+              <AvatarUpload
+                entityId={editingUser || ''}
+                currentAvatarUrl={formData.avatar_url || null}
+                name={formData.full_name || 'User'}
+                onUploadSuccess={handleAvatarUploadSuccess}
+                size="lg"
+              />
               <p className="text-xs text-muted-foreground">Click the camera to upload a photo</p>
             </div>
 
