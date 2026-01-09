@@ -308,7 +308,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
             {!sidebarCollapsed && (
               <div className="flex-1 min-w-0">
                 <h1 className="font-bold text-lg">ZoPro</h1>
-                <p className="text-xs text-sidebar-foreground/60 truncate">{company?.name || 'No Company'}</p>
+                <p className="text-xs text-sidebar-foreground/60 line-clamp-2">{company?.name || 'No Company'}</p>
               </div>
             )}
             <Tooltip>
