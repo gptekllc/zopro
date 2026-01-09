@@ -245,9 +245,25 @@ const TechniciansContent = () => {
     });
   };
 
-  const handleAvatarUploadSuccess = (newUrl: string) => {
+  const handleAvatarUploadSuccess = async (newUrl: string) => {
     setFormData(prev => ({ ...prev, avatar_url: newUrl }));
-    toast.success('Avatar updated');
+    
+    // Immediately update the profile in the database
+    if (editingUser) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: newUrl || null })
+        .eq('id', editingUser);
+      
+      if (error) {
+        console.error('Failed to update avatar:', error);
+        toast.error('Failed to save avatar');
+      } else {
+        // Invalidate queries to refresh the list immediately
+        queryClient.invalidateQueries({ queryKey: ['profiles'] });
+        toast.success('Avatar updated');
+      }
+    }
   };
 
   const handleEdit = (profile: typeof profiles[0]) => {
