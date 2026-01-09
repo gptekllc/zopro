@@ -67,7 +67,7 @@ serve(async (req) => {
     logStep("Customer found", { email: customer.email, companyId: customer.company_id });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const origin = Deno.env.get("APP_BASE_URL") || "https://zopro.app";
+    const origin = Deno.env.get("APP_BASE_URL") || "https://fsm.zopro.app";
 
     // Check if customer already has a Stripe account record
     const { data: stripeAccount } = await adminClient
