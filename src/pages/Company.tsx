@@ -4,7 +4,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
 import { useDocumentMinNumbers } from '@/hooks/useDocumentMinNumbers';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -1906,8 +1907,60 @@ const Company = () => {
 
         {isAdmin && (
           <TabsContent value="payments">
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-2xl mx-auto space-y-6">
               <StripeConnectSection company={company} />
+              
+              {/* PayPal - Coming Soon */}
+              <Card className="relative overflow-hidden">
+                <div className="absolute top-3 right-3">
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                    Coming Soon
+                  </Badge>
+                </div>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#003087] flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">PP</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">PayPal Payments</CardTitle>
+                      <CardDescription>Accept payments via PayPal</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    We're working on PayPal integration to give your customers more payment options. 
+                    Accept PayPal, Venmo, and Pay Later options for maximum flexibility.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Square - Coming Soon */}
+              <Card className="relative overflow-hidden">
+                <div className="absolute top-3 right-3">
+                  <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                    Coming Soon
+                  </Badge>
+                </div>
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center">
+                      <span className="text-white font-bold text-sm">□</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">Square Payments</CardTitle>
+                      <CardDescription>Accept payments via Square</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Square integration is on our roadmap. Accept in-person and online payments 
+                    with competitive rates and seamless POS integration.
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           </TabsContent>
         )}
