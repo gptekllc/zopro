@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -549,7 +550,7 @@ export const EmailTemplatesTab = () => {
             <div 
               className="text-sm prose prose-sm dark:prose-invert max-w-none"
               dangerouslySetInnerHTML={{ 
-                __html: replacePlaceholdersWithSamples(formData.body)
+                __html: DOMPurify.sanitize(replacePlaceholdersWithSamples(formData.body))
                   || '<span class="text-muted-foreground italic">No message body yet</span>' 
               }}
             />
@@ -822,7 +823,7 @@ export const EmailTemplatesTab = () => {
                     <div 
                       className="prose prose-sm dark:prose-invert max-w-none text-sm"
                       dangerouslySetInnerHTML={{ 
-                        __html: replacePlaceholdersWithSamples(viewingTemplate.body)
+                        __html: DOMPurify.sanitize(replacePlaceholdersWithSamples(viewingTemplate.body))
                       }}
                     />
                   </div>
