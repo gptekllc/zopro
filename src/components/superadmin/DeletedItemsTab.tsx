@@ -651,7 +651,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
               ) : (
                 <Trash2 className="w-4 h-4" />
               )}
-              Cleanup Old Records (&gt;6 months)
+              Delete (&gt;6 months)
             </Button>
           </div>
 
