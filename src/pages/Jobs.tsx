@@ -18,12 +18,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { Plus, Loader2, List, CalendarDays, Users, FileText, ChevronsUpDown } from 'lucide-react';
+import { Plus, Loader2, List, CalendarDays, FileText, ChevronsUpDown } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import JobCalendar from '@/components/jobs/JobCalendar';
-import SchedulerView from '@/components/jobs/SchedulerView';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
 import { SaveAsTemplateDialog } from '@/components/jobs/SaveAsTemplateDialog';
 import { DiscountInput, calculateDiscountAmount, formatDiscount } from "@/components/ui/discount-input";
@@ -82,7 +81,7 @@ const Jobs = () => {
   const availableTechnicians = technicians.filter(p => p.employment_status !== 'on_leave');
 
   // View mode state
-  const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'scheduler'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [viewingJob, setViewingJob] = useState<Job | null>(null);
   
   // Search and filter state (lifted for header placement)
@@ -494,20 +493,6 @@ const Jobs = () => {
     }
   };
 
-  // Handle scheduler slot selection to create job with pre-filled schedule
-  const handleSchedulerSlotSelect = (technicianId: string, start: Date, end: Date) => {
-    resetForm();
-    setFormData(prev => ({
-      ...prev,
-      assignee_ids: [technicianId],
-      scheduled_start: format(start, "yyyy-MM-dd'T'HH:mm"),
-      scheduled_end: format(end, "yyyy-MM-dd'T'HH:mm"),
-      status: 'scheduled',
-      estimated_duration: Math.max(60, Math.round((end.getTime() - start.getTime()) / 60000))
-    }));
-    openEditDialog(true);
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -551,11 +536,6 @@ const Jobs = () => {
               <Button variant={viewMode === 'calendar' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('calendar')} title="Calendar View">
                 <CalendarDays className="w-4 h-4" />
               </Button>
-              {isAdmin && (
-                <Button variant={viewMode === 'scheduler' ? 'default' : 'ghost'} size="sm" onClick={() => setViewMode('scheduler')} title="Scheduler View">
-                  <Users className="w-4 h-4" />
-                </Button>
-              )}
             </div>
 
             <Dialog open={isDialogOpen} onOpenChange={open => {
@@ -827,16 +807,6 @@ const Jobs = () => {
 
       {/* Calendar View */}
       {viewMode === 'calendar' && <JobCalendar jobs={safeJobs} onJobClick={setViewingJob} />}
-
-      {/* Scheduler View - Admin/Manager only */}
-      {viewMode === 'scheduler' && isAdmin && (
-        <SchedulerView 
-          jobs={safeJobs} 
-          technicians={technicians} 
-          onJobClick={setViewingJob}
-          onSlotSelect={handleSchedulerSlotSelect}
-        />
-      )}
 
       {/* Job List View */}
       {viewMode === 'list' && (
