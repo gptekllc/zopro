@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
+import { useDocumentMinNumbers } from '@/hooks/useDocumentMinNumbers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,7 @@ import SecuritySettingsContent from '@/components/settings/SecuritySettingsConte
 const Company = () => {
   const { isAdmin } = useAuth();
   const { data: company, isLoading } = useCompany();
+  const { data: minNumbers } = useDocumentMinNumbers();
   const updateCompany = useUpdateCompany();
   const queryClient = useQueryClient();
   
@@ -864,14 +866,18 @@ const Company = () => {
                             <Label className="text-xs text-muted-foreground">Start From</Label>
                             <Input
                               type="number"
-                              min={1}
+                              min={minNumbers?.job || 1}
                               value={documentNumbering.job_next_number}
                               onChange={(e) => {
                                 const value = Math.max(1, parseInt(e.target.value) || 1);
                                 setDocumentNumbering({ ...documentNumbering, job_next_number: value });
                               }}
                               placeholder="1"
+                              className={documentNumbering.job_next_number < (minNumbers?.job || 1) ? 'border-destructive' : ''}
                             />
+                            {minNumbers && documentNumbering.job_next_number < minNumbers.job && (
+                              <p className="text-xs text-destructive">Min: {minNumbers.job}</p>
+                            )}
                           </div>
                         </div>
                         <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
@@ -951,14 +957,18 @@ const Company = () => {
                             <Label className="text-xs text-muted-foreground">Start From</Label>
                             <Input
                               type="number"
-                              min={1}
+                              min={minNumbers?.quote || 1}
                               value={documentNumbering.quote_next_number}
                               onChange={(e) => {
                                 const value = Math.max(1, parseInt(e.target.value) || 1);
                                 setDocumentNumbering({ ...documentNumbering, quote_next_number: value });
                               }}
                               placeholder="1"
+                              className={documentNumbering.quote_next_number < (minNumbers?.quote || 1) ? 'border-destructive' : ''}
                             />
+                            {minNumbers && documentNumbering.quote_next_number < minNumbers.quote && (
+                              <p className="text-xs text-destructive">Min: {minNumbers.quote}</p>
+                            )}
                           </div>
                         </div>
                         <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
@@ -1038,14 +1048,18 @@ const Company = () => {
                             <Label className="text-xs text-muted-foreground">Start From</Label>
                             <Input
                               type="number"
-                              min={1}
+                              min={minNumbers?.invoice || 1}
                               value={documentNumbering.invoice_next_number}
                               onChange={(e) => {
                                 const value = Math.max(1, parseInt(e.target.value) || 1);
                                 setDocumentNumbering({ ...documentNumbering, invoice_next_number: value });
                               }}
                               placeholder="1"
+                              className={documentNumbering.invoice_next_number < (minNumbers?.invoice || 1) ? 'border-destructive' : ''}
                             />
+                            {minNumbers && documentNumbering.invoice_next_number < minNumbers.invoice && (
+                              <p className="text-xs text-destructive">Min: {minNumbers.invoice}</p>
+                            )}
                           </div>
                         </div>
                         <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
@@ -1063,24 +1077,39 @@ const Company = () => {
                           size="sm"
                           variant="outline"
                           className="gap-2"
-                          disabled={savingSection === 'numbering' || !documentNumbering.job_number_prefix || !documentNumbering.quote_number_prefix || !documentNumbering.invoice_number_prefix}
-                          onClick={() => handleSaveSection('numbering', {
-                            job_number_prefix: documentNumbering.job_number_prefix,
-                            job_number_padding: documentNumbering.job_number_padding,
-                            job_number_include_year: documentNumbering.job_number_include_year,
-                            job_next_number: documentNumbering.job_next_number,
-                            job_number_use_hyphens: documentNumbering.job_number_use_hyphens,
-                            quote_number_prefix: documentNumbering.quote_number_prefix,
-                            quote_number_padding: documentNumbering.quote_number_padding,
-                            quote_number_include_year: documentNumbering.quote_number_include_year,
-                            quote_next_number: documentNumbering.quote_next_number,
-                            quote_number_use_hyphens: documentNumbering.quote_number_use_hyphens,
-                            invoice_number_prefix: documentNumbering.invoice_number_prefix,
-                            invoice_number_padding: documentNumbering.invoice_number_padding,
-                            invoice_number_include_year: documentNumbering.invoice_number_include_year,
-                            invoice_next_number: documentNumbering.invoice_next_number,
-                            invoice_number_use_hyphens: documentNumbering.invoice_number_use_hyphens,
-                          } as any)}
+                          disabled={
+                            savingSection === 'numbering' || 
+                            !documentNumbering.job_number_prefix || 
+                            !documentNumbering.quote_number_prefix || 
+                            !documentNumbering.invoice_number_prefix ||
+                            (minNumbers && documentNumbering.job_next_number < minNumbers.job) ||
+                            (minNumbers && documentNumbering.quote_next_number < minNumbers.quote) ||
+                            (minNumbers && documentNumbering.invoice_next_number < minNumbers.invoice)
+                          }
+                          onClick={() => {
+                            // Enforce minimum values on save
+                            const safeJobNext = Math.max(documentNumbering.job_next_number, minNumbers?.job || 1);
+                            const safeQuoteNext = Math.max(documentNumbering.quote_next_number, minNumbers?.quote || 1);
+                            const safeInvoiceNext = Math.max(documentNumbering.invoice_next_number, minNumbers?.invoice || 1);
+                            
+                            handleSaveSection('numbering', {
+                              job_number_prefix: documentNumbering.job_number_prefix,
+                              job_number_padding: documentNumbering.job_number_padding,
+                              job_number_include_year: documentNumbering.job_number_include_year,
+                              job_next_number: safeJobNext,
+                              job_number_use_hyphens: documentNumbering.job_number_use_hyphens,
+                              quote_number_prefix: documentNumbering.quote_number_prefix,
+                              quote_number_padding: documentNumbering.quote_number_padding,
+                              quote_number_include_year: documentNumbering.quote_number_include_year,
+                              quote_next_number: safeQuoteNext,
+                              quote_number_use_hyphens: documentNumbering.quote_number_use_hyphens,
+                              invoice_number_prefix: documentNumbering.invoice_number_prefix,
+                              invoice_number_padding: documentNumbering.invoice_number_padding,
+                              invoice_number_include_year: documentNumbering.invoice_number_include_year,
+                              invoice_next_number: safeInvoiceNext,
+                              invoice_number_use_hyphens: documentNumbering.invoice_number_use_hyphens,
+                            } as any);
+                          }}
                         >
                           {savingSection === 'numbering' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                           Save Numbering Settings
