@@ -371,7 +371,7 @@ const Quotes = () => {
                 <DialogTitle>{editingQuote ? 'Edit Quote' : 'Create New Quote'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-4">
                   <InlineCustomerForm
                     customers={customers}
                     selectedCustomerId={formData.customerId}
@@ -384,6 +384,19 @@ const Quotes = () => {
                       value={formData.validDays}
                       onChange={e => setFormData({ ...formData, validDays: parseInt(e.target.value) || 30 })}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select value={formData.status} onValueChange={value => setFormData({ ...formData, status: value })}>
+                      <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="draft" className="capitalize">Draft</SelectItem>
+                        <SelectItem value="sent" className="capitalize">Sent</SelectItem>
+                        <SelectItem value="accepted" className="capitalize">Accepted</SelectItem>
+                        <SelectItem value="rejected" className="capitalize">Rejected</SelectItem>
+                        <SelectItem value="expired" className="capitalize">Expired</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
