@@ -15,6 +15,7 @@ interface NotificationRequest {
   recipientEmail: string;
   recipientName: string;
   companyName?: string;
+  companyId?: string;
   roles?: string[];
   previousRoles?: string[];
   requesterName?: string;
@@ -22,6 +23,35 @@ interface NotificationRequest {
   assignedRole?: string;
   memberName?: string;
   memberEmail?: string;
+}
+
+// Helper to log email to email_logs table
+async function logEmail(
+  adminClient: any,
+  recipientEmail: string,
+  subject: string,
+  emailType: string,
+  status: 'sent' | 'failed',
+  resendId: string | null,
+  errorMessage: string | null,
+  companyId: string | null = null,
+  metadata: Record<string, any> = {}
+) {
+  try {
+    await adminClient.from('email_logs').insert({
+      recipient_email: recipientEmail,
+      sender_email: 'noreply@email.zopro.app',
+      subject,
+      email_type: emailType,
+      status,
+      resend_id: resendId,
+      error_message: errorMessage,
+      company_id: companyId,
+      metadata,
+    });
+  } catch (err) {
+    console.error('Failed to log email:', err);
+  }
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -33,6 +63,10 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    
+    // Create admin client for logging
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify caller authentication
     const authHeader = req.headers.get("Authorization");
@@ -81,7 +115,8 @@ const handler = async (req: Request): Promise<Response> => {
       type, 
       recipientEmail, 
       recipientName, 
-      companyName, 
+      companyName,
+      companyId,
       roles: notificationRoles, 
       previousRoles,
       requesterName,
@@ -331,19 +366,73 @@ const handler = async (req: Request): Promise<Response> => {
       `;
     }
 
-    const emailResponse = await resend.emails.send({
-      from: "ZoPro Notifications <noreply@email.zopro.app>",
-      to: [recipientEmail],
-      subject,
-      html: htmlContent,
-    });
+    try {
+      const emailResponse = await resend.emails.send({
+        from: "ZoPro Notifications <noreply@email.zopro.app>",
+        to: [recipientEmail],
+        subject,
+        html: htmlContent,
+      });
 
-    console.log("Notification email sent successfully:", emailResponse);
+      console.log("Notification email sent successfully:", emailResponse);
 
-    return new Response(JSON.stringify(emailResponse), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
+      // Log successful email
+      await logEmail(
+        adminClient,
+        recipientEmail,
+        subject,
+        type,
+        'sent',
+        (emailResponse as any)?.data?.id || null,
+        null,
+        companyId || null,
+        { notificationType: type, recipientName }
+      );
+
+      return new Response(JSON.stringify(emailResponse), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    } catch (emailError: unknown) {
+      const errorMessage = emailError instanceof Error ? emailError.message : "Unknown email error";
+      console.error("Failed to send notification email:", emailError);
+
+      // Log failed email
+      await logEmail(
+        adminClient,
+        recipientEmail,
+        subject,
+        type,
+        'sent',
+        emailResponse?.id || null,
+        null,
+        companyId || null,
+        { notificationType: type, recipientName }
+      );
+
+      return new Response(JSON.stringify(emailResponse), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    } catch (emailError: unknown) {
+      const errorMessage = emailError instanceof Error ? emailError.message : "Unknown email error";
+      console.error("Failed to send notification email:", emailError);
+
+      // Log failed email
+      await logEmail(
+        adminClient,
+        recipientEmail,
+        subject,
+        type,
+        'failed',
+        null,
+        errorMessage,
+        companyId || null,
+        { notificationType: type, recipientName }
+      );
+
+      throw emailError;
+    }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Error in send-notification function:", error);

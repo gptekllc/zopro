@@ -76,6 +76,37 @@ function formatDateTime(dateStr: string, timezone: string = 'America/New_York'):
   }
 }
 
+// Helper to log email to email_logs table
+async function logEmail(
+  adminClient: any,
+  recipientEmail: string,
+  subject: string,
+  emailType: string,
+  status: 'sent' | 'failed',
+  resendId: string | null,
+  errorMessage: string | null,
+  companyId: string | null = null,
+  customerId: string | null = null,
+  metadata: Record<string, any> = {}
+) {
+  try {
+    await adminClient.from('email_logs').insert({
+      recipient_email: recipientEmail,
+      sender_email: 'noreply@email.zopro.app',
+      subject,
+      email_type: emailType,
+      status,
+      resend_id: resendId,
+      error_message: errorMessage,
+      company_id: companyId,
+      customer_id: customerId,
+      metadata,
+    });
+  } catch (err) {
+    console.error('Failed to log email:', err);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -192,7 +223,6 @@ Deno.serve(async (req) => {
     // Format scheduled times
     const timezone = company?.timezone || 'America/New_York';
     const scheduledStart = job.scheduled_start ? formatDateTime(job.scheduled_start, timezone) : null;
-    const scheduledEnd = job.scheduled_end ? formatDateTime(job.scheduled_end, timezone) : null;
 
     // Build customer address
     const customerAddress = [
@@ -202,6 +232,7 @@ Deno.serve(async (req) => {
 
     // Build email HTML
     const brandColor = company?.brand_primary_color || '#0066CC';
+    const subject = `${statusMessage} - ${job.job_number}`;
     
     const emailHtml = `
 <!DOCTYPE html>
@@ -360,14 +391,28 @@ Deno.serve(async (req) => {
     try {
       const resend = new Resend(resendApiKey);
       
-      await resend.emails.send({
+      const emailResponse = await resend.emails.send({
         from: "ZoPro Notifications <noreply@email.zopro.app>",
         to: [customer.email],
-        subject: `${statusMessage} - ${job.job_number}`,
+        subject,
         html: emailHtml,
       });
       
       console.log('Email sent successfully to:', customer.email);
+      
+      // Log successful email
+      await logEmail(
+        adminClient,
+        customer.email,
+        subject,
+        'job_notification',
+        'sent',
+        (emailResponse as any)?.data?.id || null,
+        null,
+        company.id,
+        customerId,
+        { jobId, jobNumber: job.job_number, status: job.status }
+      );
       
       // Record the notification
       await adminClient
@@ -392,6 +437,21 @@ Deno.serve(async (req) => {
       );
     } catch (emailError: any) {
       console.error('Failed to send email:', emailError);
+      
+      // Log failed email
+      await logEmail(
+        adminClient,
+        customer.email,
+        subject,
+        'job_notification',
+        'failed',
+        null,
+        emailError.message,
+        company.id,
+        customerId,
+        { jobId, jobNumber: job.job_number, status: job.status }
+      );
+      
       return new Response(
         JSON.stringify({ 
           error: 'Failed to send email', 

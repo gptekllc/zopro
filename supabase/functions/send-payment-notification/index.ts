@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -13,14 +14,47 @@ const logStep = (step: string, details?: any) => {
   console.log(`[SEND-PAYMENT-NOTIFICATION] ${step}${detailsStr}`);
 };
 
+// Helper to log email to email_logs table
+async function logEmail(
+  adminClient: any,
+  recipientEmail: string,
+  subject: string,
+  emailType: string,
+  status: 'sent' | 'failed',
+  resendId: string | null,
+  errorMessage: string | null,
+  companyId: string | null = null,
+  customerId: string | null = null,
+  metadata: Record<string, any> = {}
+) {
+  try {
+    await adminClient.from('email_logs').insert({
+      recipient_email: recipientEmail,
+      sender_email: 'noreply@email.zopro.app',
+      subject,
+      email_type: emailType,
+      status,
+      resend_id: resendId,
+      error_message: errorMessage,
+      company_id: companyId,
+      customer_id: customerId,
+      metadata,
+    });
+  } catch (err) {
+    console.error('Failed to log email:', err);
+  }
+}
+
 interface NotificationRequest {
   type: "invoice_paid" | "quote_approved" | "payment_failed" | "late_fee_applied" | "payment_reminder" | "payment_recorded" | "payment_refunded";
   invoiceNumber?: string;
   quoteNumber?: string;
   customerName: string;
   customerEmail: string;
+  customerId?: string;
   companyName: string;
   companyEmail: string;
+  companyId?: string;
   amount?: number;
   originalAmount?: number;
   lateFeeAmount?: number;
@@ -43,51 +77,72 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Create admin client for logging
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+
   try {
     const payload: NotificationRequest = await req.json();
     logStep("Received notification request", { type: payload.type });
 
+    const { companyId, customerId } = payload;
+
     if (payload.type === "invoice_paid") {
       // Email to company about payment received
-      const companyEmailResponse = await resend.emails.send({
-        from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [payload.companyEmail],
-        subject: `Payment Received - Invoice #${payload.invoiceNumber}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #16a34a;">Payment Received!</h1>
-            <p>Great news! <strong>${payload.customerName}</strong> has paid Invoice #${payload.invoiceNumber}.</p>
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 0;"><strong>Amount:</strong> $${payload.amount?.toFixed(2)}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Customer:</strong> ${payload.customerName}</p>
+      const companySubject = `Payment Received - Invoice #${payload.invoiceNumber}`;
+      try {
+        const companyEmailResponse = await resend.emails.send({
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
+          to: [payload.companyEmail],
+          subject: companySubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #16a34a;">Payment Received!</h1>
+              <p>Great news! <strong>${payload.customerName}</strong> has paid Invoice #${payload.invoiceNumber}.</p>
+              <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0;"><strong>Amount:</strong> $${payload.amount?.toFixed(2)}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Customer:</strong> ${payload.customerName}</p>
+              </div>
+              <p>The invoice has been automatically marked as paid in your system.</p>
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
             </div>
-            <p>The invoice has been automatically marked as paid in your system.</p>
-            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
-          </div>
-        `,
-      });
-      logStep("Company email sent", { response: companyEmailResponse });
+          `,
+        });
+        logStep("Company email sent", { response: companyEmailResponse });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'invoice_paid_company', 'sent', (companyEmailResponse as any)?.data?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+      } catch (err: any) {
+        logStep("Company email failed", { error: err.message });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'invoice_paid_company', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+      }
 
       // Email to customer confirming payment
-      const customerEmailResponse = await resend.emails.send({
-        from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [payload.customerEmail],
-        reply_to: payload.companyEmail || undefined,
-        subject: `Payment Confirmation - Invoice #${payload.invoiceNumber}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #16a34a;">Payment Confirmed!</h1>
-            <p>Thank you for your payment to <strong>${payload.companyName}</strong>.</p>
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Amount Paid:</strong> $${payload.amount?.toFixed(2)}</p>
+      const customerSubject = `Payment Confirmation - Invoice #${payload.invoiceNumber}`;
+      try {
+        const customerEmailResponse = await resend.emails.send({
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
+          to: [payload.customerEmail],
+          reply_to: payload.companyEmail || undefined,
+          subject: customerSubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #16a34a;">Payment Confirmed!</h1>
+              <p>Thank you for your payment to <strong>${payload.companyName}</strong>.</p>
+              <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Amount Paid:</strong> $${payload.amount?.toFixed(2)}</p>
+              </div>
+              <p>This email serves as your payment receipt.</p>
+              <p style="color: #6b7280; font-size: 14px;">Thank you for your business!<br>${payload.companyName}</p>
             </div>
-            <p>This email serves as your payment receipt.</p>
-            <p style="color: #6b7280; font-size: 14px;">Thank you for your business!<br>${payload.companyName}</p>
-          </div>
-        `,
-      });
-      logStep("Customer email sent", { response: customerEmailResponse });
+          `,
+        });
+        logStep("Customer email sent", { response: customerEmailResponse });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'invoice_paid_customer', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+      } catch (err: any) {
+        logStep("Customer email failed", { error: err.message });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'invoice_paid_customer', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+      }
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -96,26 +151,32 @@ serve(async (req) => {
     }
 
     if (payload.type === "quote_approved") {
-      // Email to company about quote approval
-      const companyEmailResponse = await resend.emails.send({
-        from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [payload.companyEmail],
-        subject: `Quote Approved - #${payload.quoteNumber}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #2563eb;">Quote Approved!</h1>
-            <p><strong>${payload.customerName}</strong> has approved Quote #${payload.quoteNumber}.</p>
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 0;"><strong>Quote:</strong> #${payload.quoteNumber}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Customer:</strong> ${payload.customerName}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Email:</strong> ${payload.customerEmail}</p>
+      const companySubject = `Quote Approved - #${payload.quoteNumber}`;
+      try {
+        const companyEmailResponse = await resend.emails.send({
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
+          to: [payload.companyEmail],
+          subject: companySubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #2563eb;">Quote Approved!</h1>
+              <p><strong>${payload.customerName}</strong> has approved Quote #${payload.quoteNumber}.</p>
+              <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0;"><strong>Quote:</strong> #${payload.quoteNumber}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Customer:</strong> ${payload.customerName}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Email:</strong> ${payload.customerEmail}</p>
+              </div>
+              <p>You can now proceed with scheduling the work or converting this quote to an invoice.</p>
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
             </div>
-            <p>You can now proceed with scheduling the work or converting this quote to an invoice.</p>
-            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
-          </div>
-        `,
-      });
-      logStep("Quote approval email sent to company", { response: companyEmailResponse });
+          `,
+        });
+        logStep("Quote approval email sent to company", { response: companyEmailResponse });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'quote_approved', 'sent', companyEmailResponse?.id || null, null, companyId, customerId, { quoteNumber: payload.quoteNumber });
+      } catch (err: any) {
+        logStep("Quote approval email failed", { error: err.message });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'quote_approved', 'failed', null, err.message, companyId, customerId, { quoteNumber: payload.quoteNumber });
+      }
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -124,27 +185,33 @@ serve(async (req) => {
     }
 
     if (payload.type === "payment_failed") {
-      // Email to customer about failed payment
-      const customerEmailResponse = await resend.emails.send({
-        from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [payload.customerEmail],
-        reply_to: payload.companyEmail || undefined,
-        subject: `Payment Issue - Invoice #${payload.invoiceNumber}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #dc2626;">Payment Could Not Be Processed</h1>
-            <p>Hello ${payload.customerName},</p>
-            <p>We were unable to process your payment for Invoice #${payload.invoiceNumber}.</p>
-            <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
-              <p style="margin: 0;"><strong>Amount:</strong> $${payload.amount?.toFixed(2)}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Reason:</strong> ${payload.errorMessage || 'Payment declined'}</p>
+      const customerSubject = `Payment Issue - Invoice #${payload.invoiceNumber}`;
+      try {
+        const customerEmailResponse = await resend.emails.send({
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
+          to: [payload.customerEmail],
+          reply_to: payload.companyEmail || undefined,
+          subject: customerSubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #dc2626;">Payment Could Not Be Processed</h1>
+              <p>Hello ${payload.customerName},</p>
+              <p>We were unable to process your payment for Invoice #${payload.invoiceNumber}.</p>
+              <div style="background: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+                <p style="margin: 0;"><strong>Amount:</strong> $${payload.amount?.toFixed(2)}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Reason:</strong> ${payload.errorMessage || 'Payment declined'}</p>
+              </div>
+              <p>Please try again with a different payment method or contact us if you need assistance.</p>
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>${payload.companyName}</p>
             </div>
-            <p>Please try again with a different payment method or contact us if you need assistance.</p>
-            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>${payload.companyName}</p>
-          </div>
-        `,
-      });
-      logStep("Failed payment email sent to customer", { response: customerEmailResponse });
+          `,
+        });
+        logStep("Failed payment email sent to customer", { response: customerEmailResponse });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_failed', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+      } catch (err: any) {
+        logStep("Failed payment email failed", { error: err.message });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_failed', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+      }
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -154,52 +221,66 @@ serve(async (req) => {
 
     if (payload.type === "late_fee_applied") {
       // Email to customer about late fee
-      const customerEmailResponse = await resend.emails.send({
-        from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [payload.customerEmail],
-        reply_to: payload.companyEmail || undefined,
-        subject: `Late Fee Applied - Invoice #${payload.invoiceNumber}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #f59e0b;">Late Fee Notice</h1>
-            <p>Hello ${payload.customerName},</p>
-            <p>A late fee has been applied to your overdue Invoice #${payload.invoiceNumber} from <strong>${payload.companyName}</strong>.</p>
-            <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-              <p style="margin: 0;"><strong>Original Amount:</strong> $${payload.originalAmount?.toFixed(2)}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Late Fee (${payload.lateFeePercentage}%):</strong> $${payload.lateFeeAmount?.toFixed(2)}</p>
-              <p style="margin: 10px 0 0 0; font-size: 18px; font-weight: bold;"><strong>New Total Due:</strong> $${payload.amount?.toFixed(2)}</p>
-              ${payload.dueDate ? `<p style="margin: 10px 0 0 0; color: #dc2626;"><strong>Original Due Date:</strong> ${payload.dueDate}</p>` : ''}
+      const customerSubject = `Late Fee Applied - Invoice #${payload.invoiceNumber}`;
+      try {
+        const customerEmailResponse = await resend.emails.send({
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
+          to: [payload.customerEmail],
+          reply_to: payload.companyEmail || undefined,
+          subject: customerSubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #f59e0b;">Late Fee Notice</h1>
+              <p>Hello ${payload.customerName},</p>
+              <p>A late fee has been applied to your overdue Invoice #${payload.invoiceNumber} from <strong>${payload.companyName}</strong>.</p>
+              <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                <p style="margin: 0;"><strong>Original Amount:</strong> $${payload.originalAmount?.toFixed(2)}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Late Fee (${payload.lateFeePercentage}%):</strong> $${payload.lateFeeAmount?.toFixed(2)}</p>
+                <p style="margin: 10px 0 0 0; font-size: 18px; font-weight: bold;"><strong>New Total Due:</strong> $${payload.amount?.toFixed(2)}</p>
+                ${payload.dueDate ? `<p style="margin: 10px 0 0 0; color: #dc2626;"><strong>Original Due Date:</strong> ${payload.dueDate}</p>` : ''}
+              </div>
+              <p>Please submit payment as soon as possible to avoid any additional fees.</p>
+              <p>If you have any questions or have already made a payment, please contact us.</p>
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>${payload.companyName}</p>
             </div>
-            <p>Please submit payment as soon as possible to avoid any additional fees.</p>
-            <p>If you have any questions or have already made a payment, please contact us.</p>
-            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>${payload.companyName}</p>
-          </div>
-        `,
-      });
-      logStep("Late fee email sent to customer", { response: customerEmailResponse });
+          `,
+        });
+        logStep("Late fee email sent to customer", { response: customerEmailResponse });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'late_fee_customer', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+      } catch (err: any) {
+        logStep("Late fee email failed to customer", { error: err.message });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'late_fee_customer', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+      }
 
       // Email to company about late fee applied
-      const companyEmailResponse = await resend.emails.send({
-        from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [payload.companyEmail],
-        subject: `Late Fee Applied - Invoice #${payload.invoiceNumber}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #f59e0b;">Late Fee Applied</h1>
-            <p>A late fee has been applied to an overdue invoice.</p>
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Customer:</strong> ${payload.customerName}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Original Amount:</strong> $${payload.originalAmount?.toFixed(2)}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Late Fee (${payload.lateFeePercentage}%):</strong> $${payload.lateFeeAmount?.toFixed(2)}</p>
-              <p style="margin: 10px 0 0 0; font-size: 18px; font-weight: bold;"><strong>New Total:</strong> $${payload.amount?.toFixed(2)}</p>
+      const companySubject = `Late Fee Applied - Invoice #${payload.invoiceNumber}`;
+      try {
+        const companyEmailResponse = await resend.emails.send({
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
+          to: [payload.companyEmail],
+          subject: companySubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #f59e0b;">Late Fee Applied</h1>
+              <p>A late fee has been applied to an overdue invoice.</p>
+              <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Customer:</strong> ${payload.customerName}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Original Amount:</strong> $${payload.originalAmount?.toFixed(2)}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Late Fee (${payload.lateFeePercentage}%):</strong> $${payload.lateFeeAmount?.toFixed(2)}</p>
+                <p style="margin: 10px 0 0 0; font-size: 18px; font-weight: bold;"><strong>New Total:</strong> $${payload.amount?.toFixed(2)}</p>
+              </div>
+              <p>The customer has been notified via email.</p>
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
             </div>
-            <p>The customer has been notified via email.</p>
-            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
-          </div>
-        `,
-      });
-      logStep("Late fee email sent to company", { response: companyEmailResponse });
+          `,
+        });
+        logStep("Late fee email sent to company", { response: companyEmailResponse });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'late_fee_company', 'sent', companyEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+      } catch (err: any) {
+        logStep("Late fee email failed to company", { error: err.message });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'late_fee_company', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber });
+      }
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -213,29 +294,36 @@ serve(async (req) => {
         ? (payload.amount || 0) + payload.lateFeeAmount
         : payload.amount || 0;
       
-      const customerEmailResponse = await resend.emails.send({
-        from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [payload.customerEmail],
-        reply_to: payload.companyEmail || undefined,
-        subject: `${isOverdue ? 'Overdue ' : ''}Payment Reminder - Invoice #${payload.invoiceNumber}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: ${isOverdue ? '#dc2626' : '#2563eb'};">${isOverdue ? 'Overdue Payment Reminder' : 'Payment Reminder'}</h1>
-            <p>Hello ${payload.customerName},</p>
-            <p>This is a friendly reminder that Invoice #${payload.invoiceNumber} from <strong>${payload.companyName}</strong> ${isOverdue ? 'is overdue' : 'is awaiting payment'}.</p>
-            <div style="background: ${isOverdue ? '#fef2f2' : '#f3f4f6'}; padding: 20px; border-radius: 8px; margin: 20px 0; ${isOverdue ? 'border-left: 4px solid #dc2626;' : ''}">
-              <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Amount Due:</strong> $${totalDue.toFixed(2)}</p>
-              ${payload.lateFeeAmount ? `<p style="margin: 10px 0 0 0; color: #dc2626;"><strong>Includes Late Fee:</strong> $${payload.lateFeeAmount.toFixed(2)}</p>` : ''}
-              ${payload.dueDate ? `<p style="margin: 10px 0 0 0; ${isOverdue ? 'color: #dc2626;' : ''}"><strong>${isOverdue ? 'Was Due:' : 'Due Date:'}</strong> ${payload.dueDate}</p>` : ''}
+      const customerSubject = `${isOverdue ? 'Overdue ' : ''}Payment Reminder - Invoice #${payload.invoiceNumber}`;
+      try {
+        const customerEmailResponse = await resend.emails.send({
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
+          to: [payload.customerEmail],
+          reply_to: payload.companyEmail || undefined,
+          subject: customerSubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: ${isOverdue ? '#dc2626' : '#2563eb'};">${isOverdue ? 'Overdue Payment Reminder' : 'Payment Reminder'}</h1>
+              <p>Hello ${payload.customerName},</p>
+              <p>This is a friendly reminder that Invoice #${payload.invoiceNumber} from <strong>${payload.companyName}</strong> ${isOverdue ? 'is overdue' : 'is awaiting payment'}.</p>
+              <div style="background: ${isOverdue ? '#fef2f2' : '#f3f4f6'}; padding: 20px; border-radius: 8px; margin: 20px 0; ${isOverdue ? 'border-left: 4px solid #dc2626;' : ''}">
+                <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Amount Due:</strong> $${totalDue.toFixed(2)}</p>
+                ${payload.lateFeeAmount ? `<p style="margin: 10px 0 0 0; color: #dc2626;"><strong>Includes Late Fee:</strong> $${payload.lateFeeAmount.toFixed(2)}</p>` : ''}
+                ${payload.dueDate ? `<p style="margin: 10px 0 0 0; ${isOverdue ? 'color: #dc2626;' : ''}"><strong>${isOverdue ? 'Was Due:' : 'Due Date:'}</strong> ${payload.dueDate}</p>` : ''}
+              </div>
+              <p>Please submit payment at your earliest convenience${isOverdue ? ' to avoid any additional fees' : ''}.</p>
+              <p>If you have already made a payment, please disregard this reminder.</p>
+              <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Thank you for your business!<br>${payload.companyName}</p>
             </div>
-            <p>Please submit payment at your earliest convenience${isOverdue ? ' to avoid any additional fees' : ''}.</p>
-            <p>If you have already made a payment, please disregard this reminder.</p>
-            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Thank you for your business!<br>${payload.companyName}</p>
-          </div>
-        `,
-      });
-      logStep("Payment reminder email sent to customer", { response: customerEmailResponse });
+          `,
+        });
+        logStep("Payment reminder email sent to customer", { response: customerEmailResponse });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_reminder', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isOverdue });
+      } catch (err: any) {
+        logStep("Payment reminder email failed", { error: err.message });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_reminder', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isOverdue });
+      }
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -259,72 +347,86 @@ serve(async (req) => {
       };
       
       // Email to customer confirming payment
-      const customerEmailResponse = await resend.emails.send({
-        from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [payload.customerEmail],
-        reply_to: payload.companyEmail || undefined,
-        subject: payload.isFullyPaid 
-          ? `Payment Confirmed - Invoice #${payload.invoiceNumber} Paid in Full`
-          : `Payment Received - Invoice #${payload.invoiceNumber}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #16a34a;">${payload.isFullyPaid ? 'Payment Confirmed - Paid in Full!' : 'Payment Received!'}</h1>
-            <p>Hello ${payload.customerName},</p>
-            <p>Thank you for your payment to <strong>${payload.companyName}</strong>.</p>
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Payment Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
-              ${!payload.isFullyPaid ? `
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
-                  <p style="margin: 0;"><strong>Total Invoice Amount:</strong> $${payload.totalDue?.toFixed(2)}</p>
-                  <p style="margin: 10px 0 0 0;"><strong>Total Paid:</strong> $${payload.totalPaid?.toFixed(2)}</p>
-                  <p style="margin: 10px 0 0 0; color: #dc2626;"><strong>Remaining Balance:</strong> $${payload.remainingBalance?.toFixed(2)}</p>
-                </div>
-              ` : ''}
+      const customerSubject = payload.isFullyPaid 
+        ? `Payment Confirmed - Invoice #${payload.invoiceNumber} Paid in Full`
+        : `Payment Received - Invoice #${payload.invoiceNumber}`;
+      try {
+        const customerEmailResponse = await resend.emails.send({
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
+          to: [payload.customerEmail],
+          reply_to: payload.companyEmail || undefined,
+          subject: customerSubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #16a34a;">${payload.isFullyPaid ? 'Payment Confirmed - Paid in Full!' : 'Payment Received!'}</h1>
+              <p>Hello ${payload.customerName},</p>
+              <p>Thank you for your payment to <strong>${payload.companyName}</strong>.</p>
+              <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Payment Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
+                ${!payload.isFullyPaid ? `
+                  <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                    <p style="margin: 0;"><strong>Total Invoice Amount:</strong> $${payload.totalDue?.toFixed(2)}</p>
+                    <p style="margin: 10px 0 0 0;"><strong>Total Paid:</strong> $${payload.totalPaid?.toFixed(2)}</p>
+                    <p style="margin: 10px 0 0 0; color: #dc2626;"><strong>Remaining Balance:</strong> $${payload.remainingBalance?.toFixed(2)}</p>
+                  </div>
+                ` : ''}
+              </div>
+              ${payload.isFullyPaid 
+                ? '<p style="color: #16a34a; font-weight: bold;">Your invoice has been paid in full. Thank you!</p>'
+                : '<p>Please remit the remaining balance at your earliest convenience.</p>'
+              }
+              <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Thank you for your business!<br>${payload.companyName}</p>
             </div>
-            ${payload.isFullyPaid 
-              ? '<p style="color: #16a34a; font-weight: bold;">Your invoice has been paid in full. Thank you!</p>'
-              : '<p>Please remit the remaining balance at your earliest convenience.</p>'
-            }
-            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Thank you for your business!<br>${payload.companyName}</p>
-          </div>
-        `,
-      });
-      logStep("Payment recorded email sent to customer", { response: customerEmailResponse });
+          `,
+        });
+        logStep("Payment recorded email sent to customer", { response: customerEmailResponse });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_recorded_customer', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isFullyPaid: payload.isFullyPaid });
+      } catch (err: any) {
+        logStep("Payment recorded email failed to customer", { error: err.message });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_recorded_customer', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isFullyPaid: payload.isFullyPaid });
+      }
 
       // Email to company about payment received
-      const companyEmailResponse = await resend.emails.send({
-        from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [payload.companyEmail],
-        subject: payload.isFullyPaid 
-          ? `Payment Received - Invoice #${payload.invoiceNumber} Paid in Full`
-          : `Partial Payment Received - Invoice #${payload.invoiceNumber}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #16a34a;">${payload.isFullyPaid ? 'Invoice Paid in Full!' : 'Partial Payment Received'}</h1>
-            <p><strong>${payload.customerName}</strong> has made a payment on Invoice #${payload.invoiceNumber}.</p>
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 0;"><strong>Payment Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Customer:</strong> ${payload.customerName}</p>
-              ${!payload.isFullyPaid ? `
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
-                  <p style="margin: 0;"><strong>Total Due:</strong> $${payload.totalDue?.toFixed(2)}</p>
-                  <p style="margin: 10px 0 0 0;"><strong>Total Paid:</strong> $${payload.totalPaid?.toFixed(2)}</p>
-                  <p style="margin: 10px 0 0 0; color: #f59e0b;"><strong>Remaining Balance:</strong> $${payload.remainingBalance?.toFixed(2)}</p>
-                </div>
-              ` : ''}
+      const companySubject = payload.isFullyPaid 
+        ? `Payment Received - Invoice #${payload.invoiceNumber} Paid in Full`
+        : `Partial Payment Received - Invoice #${payload.invoiceNumber}`;
+      try {
+        const companyEmailResponse = await resend.emails.send({
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
+          to: [payload.companyEmail],
+          subject: companySubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #16a34a;">${payload.isFullyPaid ? 'Invoice Paid in Full!' : 'Partial Payment Received'}</h1>
+              <p><strong>${payload.customerName}</strong> has made a payment on Invoice #${payload.invoiceNumber}.</p>
+              <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0;"><strong>Payment Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Customer:</strong> ${payload.customerName}</p>
+                ${!payload.isFullyPaid ? `
+                  <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                    <p style="margin: 0;"><strong>Total Due:</strong> $${payload.totalDue?.toFixed(2)}</p>
+                    <p style="margin: 10px 0 0 0;"><strong>Total Paid:</strong> $${payload.totalPaid?.toFixed(2)}</p>
+                    <p style="margin: 10px 0 0 0; color: #f59e0b;"><strong>Remaining Balance:</strong> $${payload.remainingBalance?.toFixed(2)}</p>
+                  </div>
+                ` : ''}
+              </div>
+              ${payload.isFullyPaid 
+                ? '<p>The invoice has been automatically marked as paid in your system.</p>'
+                : '<p>The customer still has an outstanding balance.</p>'
+              }
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
             </div>
-            ${payload.isFullyPaid 
-              ? '<p>The invoice has been automatically marked as paid in your system.</p>'
-              : '<p>The customer still has an outstanding balance.</p>'
-            }
-            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
-          </div>
-        `,
-      });
-      logStep("Payment recorded email sent to company", { response: companyEmailResponse });
+          `,
+        });
+        logStep("Payment recorded email sent to company", { response: companyEmailResponse });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'payment_recorded_company', 'sent', companyEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isFullyPaid: payload.isFullyPaid });
+      } catch (err: any) {
+        logStep("Payment recorded email failed to company", { error: err.message });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'payment_recorded_company', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber, isFullyPaid: payload.isFullyPaid });
+      }
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -350,64 +452,78 @@ serve(async (req) => {
       };
       
       // Email to customer about refund
-      const customerEmailResponse = await resend.emails.send({
-        from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [payload.customerEmail],
-        reply_to: payload.companyEmail || undefined,
-        subject: `Payment ${actionWord} - Invoice #${payload.invoiceNumber}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #f59e0b;">Payment ${actionWord}</h1>
-            <p>Hello ${payload.customerName},</p>
-            <p>A payment on your Invoice #${payload.invoiceNumber} from <strong>${payload.companyName}</strong> has been ${isVoided ? 'voided' : 'refunded'}.</p>
-            <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-              <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
-              <p style="margin: 10px 0 0 0;"><strong>${actionWord} Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
-              ${payload.refundReason ? `<p style="margin: 10px 0 0 0;"><strong>Reason:</strong> ${payload.refundReason}</p>` : ''}
-              ${payload.remainingBalance !== undefined && payload.remainingBalance > 0 ? `
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #fcd34d;">
-                  <p style="margin: 0; color: #dc2626;"><strong>New Balance Due:</strong> $${payload.remainingBalance.toFixed(2)}</p>
-                </div>
-              ` : ''}
+      const customerSubject = `Payment ${actionWord} - Invoice #${payload.invoiceNumber}`;
+      try {
+        const customerEmailResponse = await resend.emails.send({
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
+          to: [payload.customerEmail],
+          reply_to: payload.companyEmail || undefined,
+          subject: customerSubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #f59e0b;">Payment ${actionWord}</h1>
+              <p>Hello ${payload.customerName},</p>
+              <p>A payment on your Invoice #${payload.invoiceNumber} from <strong>${payload.companyName}</strong> has been ${isVoided ? 'voided' : 'refunded'}.</p>
+              <div style="background: #fffbeb; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                <p style="margin: 0;"><strong>Invoice:</strong> #${payload.invoiceNumber}</p>
+                <p style="margin: 10px 0 0 0;"><strong>${actionWord} Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
+                ${payload.refundReason ? `<p style="margin: 10px 0 0 0;"><strong>Reason:</strong> ${payload.refundReason}</p>` : ''}
+                ${payload.remainingBalance !== undefined && payload.remainingBalance > 0 ? `
+                  <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #fcd34d;">
+                    <p style="margin: 0; color: #dc2626;"><strong>New Balance Due:</strong> $${payload.remainingBalance.toFixed(2)}</p>
+                  </div>
+                ` : ''}
+              </div>
+              ${isVoided 
+                ? '<p>This payment has been voided and removed from your invoice balance.</p>'
+                : '<p>The refund has been processed. Please allow a few business days for the refund to appear in your account.</p>'
+              }
+              <p>If you have any questions, please contact us.</p>
+              <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Best regards,<br>${payload.companyName}</p>
             </div>
-            ${isVoided 
-              ? '<p>This payment has been voided and removed from your invoice balance.</p>'
-              : '<p>The refund has been processed. Please allow a few business days for the refund to appear in your account.</p>'
-            }
-            <p>If you have any questions, please contact us.</p>
-            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">Best regards,<br>${payload.companyName}</p>
-          </div>
-        `,
-      });
-      logStep("Payment refund email sent to customer", { response: customerEmailResponse });
+          `,
+        });
+        logStep("Payment refund email sent to customer", { response: customerEmailResponse });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_refunded_customer', 'sent', customerEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, refundType: payload.refundType });
+      } catch (err: any) {
+        logStep("Payment refund email failed to customer", { error: err.message });
+        await logEmail(adminClient, payload.customerEmail, customerSubject, 'payment_refunded_customer', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber, refundType: payload.refundType });
+      }
 
       // Email to company about refund
-      const companyEmailResponse = await resend.emails.send({
-        from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [payload.companyEmail],
-        subject: `Payment ${actionWord} - Invoice #${payload.invoiceNumber}`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h1 style="color: #f59e0b;">Payment ${actionWord}</h1>
-            <p>A payment has been ${isVoided ? 'voided' : 'refunded'} on Invoice #${payload.invoiceNumber}.</p>
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 0;"><strong>Customer:</strong> ${payload.customerName}</p>
-              <p style="margin: 10px 0 0 0;"><strong>${actionWord} Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
-              <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
-              ${payload.refundReason ? `<p style="margin: 10px 0 0 0;"><strong>Reason:</strong> ${payload.refundReason}</p>` : ''}
-              ${payload.remainingBalance !== undefined ? `
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
-                  <p style="margin: 0;"><strong>New Balance Due:</strong> $${payload.remainingBalance.toFixed(2)}</p>
-                </div>
-              ` : ''}
+      const companySubject = `Payment ${actionWord} - Invoice #${payload.invoiceNumber}`;
+      try {
+        const companyEmailResponse = await resend.emails.send({
+          from: "ZoPro Notifications <noreply@email.zopro.app>",
+          to: [payload.companyEmail],
+          subject: companySubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h1 style="color: #f59e0b;">Payment ${actionWord}</h1>
+              <p>A payment has been ${isVoided ? 'voided' : 'refunded'} on Invoice #${payload.invoiceNumber}.</p>
+              <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0;"><strong>Customer:</strong> ${payload.customerName}</p>
+                <p style="margin: 10px 0 0 0;"><strong>${actionWord} Amount:</strong> $${payload.paymentAmount?.toFixed(2)}</p>
+                <p style="margin: 10px 0 0 0;"><strong>Payment Method:</strong> ${formatMethod(payload.paymentMethod || 'other')}</p>
+                ${payload.refundReason ? `<p style="margin: 10px 0 0 0;"><strong>Reason:</strong> ${payload.refundReason}</p>` : ''}
+                ${payload.remainingBalance !== undefined ? `
+                  <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e5e7eb;">
+                    <p style="margin: 0;"><strong>New Balance Due:</strong> $${payload.remainingBalance.toFixed(2)}</p>
+                  </div>
+                ` : ''}
+              </div>
+              <p>The customer has been notified via email.</p>
+              <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
             </div>
-            <p>The customer has been notified via email.</p>
-            <p style="color: #6b7280; font-size: 14px;">Best regards,<br>FieldFlow</p>
-          </div>
-        `,
-      });
-      logStep("Payment refund email sent to company", { response: companyEmailResponse });
+          `,
+        });
+        logStep("Payment refund email sent to company", { response: companyEmailResponse });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'payment_refunded_company', 'sent', companyEmailResponse?.id || null, null, companyId, customerId, { invoiceNumber: payload.invoiceNumber, refundType: payload.refundType });
+      } catch (err: any) {
+        logStep("Payment refund email failed to company", { error: err.message });
+        await logEmail(adminClient, payload.companyEmail, companySubject, 'payment_refunded_company', 'failed', null, err.message, companyId, customerId, { invoiceNumber: payload.invoiceNumber, refundType: payload.refundType });
+      }
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
