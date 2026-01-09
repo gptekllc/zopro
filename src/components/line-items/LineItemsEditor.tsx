@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Plus, X, Clock, Package, Wrench, ChevronDown } from 'lucide-react';
+import { Plus, X, Clock, Package, Wrench, ChevronDown, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ItemsPicker } from './ItemsPicker';
 import { Item } from '@/hooks/useItems';
 import { formatAmount } from '@/lib/formatAmount';
+import { useJobLaborFromTimeEntries, LaborSummary } from '@/hooks/useJobLaborFromTimeEntries';
+
 export interface LineItem {
   id: string;
   description: string;
@@ -28,6 +31,10 @@ interface LineItemsEditorProps {
   quantityLabel?: string;
   minItems?: number;
   showAutoLaborBadge?: boolean;
+  // Job time clock integration props
+  jobId?: string | null;
+  laborHourlyRate?: number;
+  onSyncLabor?: (hours: number, rate: number) => void;
 }
 
 export const LineItemsEditor = ({
@@ -40,12 +47,21 @@ export const LineItemsEditor = ({
   quantityLabel = 'Quantity',
   minItems = 0,
   showAutoLaborBadge = false,
+  jobId = null,
+  laborHourlyRate = 0,
+  onSyncLabor,
 }: LineItemsEditorProps) => {
   const products = items.filter(item => item.type === 'product');
   const services = items.filter(item => item.type === 'service');
   
   const [productsOpen, setProductsOpen] = useState(true);
   const [servicesOpen, setServicesOpen] = useState(true);
+  
+  // Get labor summary from time entries if jobId is provided
+  const { laborSummary, isLoading: isLoadingLabor, hasTimeEntries } = useJobLaborFromTimeEntries(
+    showAutoLaborBadge ? jobId : null
+  );
+  
   const handleCatalogSelect = (catalogItem: Item) => {
     // Check if item with same name and type already exists
     const existingItem = items.find(
@@ -57,6 +73,12 @@ export const LineItemsEditor = ({
       onUpdateItem(existingItem.id, 'quantity', existingItem.quantity + 1);
     } else if (onAddFromCatalog) {
       onAddFromCatalog(catalogItem);
+    }
+  };
+
+  const handleSyncLabor = () => {
+    if (laborSummary && onSyncLabor) {
+      onSyncLabor(laborSummary.totalHours, laborHourlyRate);
     }
   };
 
@@ -243,6 +265,51 @@ export const LineItemsEditor = ({
           </Label>
         </CollapsibleTrigger>
         <CollapsibleContent className="mt-2 space-y-2">
+          {/* Labor from Time Clock Summary */}
+          {showAutoLaborBadge && jobId && laborSummary && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    Time Tracked: {laborSummary.formattedTotal}
+                  </span>
+                </div>
+                {onSyncLabor && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleSyncLabor}
+                          className="h-7 text-xs bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800"
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Sync Labor
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Update labor line item with {laborSummary.totalHours} hours @ ${formatAmount(laborHourlyRate)}/hr</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+              {laborSummary.entries.length > 1 && (
+                <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-700 space-y-1">
+                  {laborSummary.entries.map((entry, idx) => (
+                    <div key={idx} className="flex justify-between text-xs text-blue-600 dark:text-blue-400">
+                      <span>{entry.workerName}</span>
+                      <span>{entry.hours > 0 ? `${entry.hours}h ${entry.minutes}m` : `${entry.minutes}m`}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          
           {services.length > 0 ? (
             <div className="space-y-2">
               {services.map(item => renderItemRow(item, canRemoveItem))}

@@ -117,7 +117,8 @@ const Jobs = () => {
     notes: '',
     estimated_duration: 60,
     discountType: 'amount' as 'amount' | 'percentage',
-    discountValue: 0
+    discountValue: 0,
+    laborHourlyRate: 0
   });
 
   // Line items state
@@ -240,7 +241,8 @@ const Jobs = () => {
           notes: '',
           estimated_duration: 60,
           discountType: quote.discount_type || 'amount',
-          discountValue: Number(quote.discount_value) || 0
+          discountValue: Number(quote.discount_value) || 0,
+          laborHourlyRate: 0
         });
         if (quote.items && quote.items.length > 0) {
           setLineItems(quote.items.map((item: any) => ({
@@ -274,7 +276,8 @@ const Jobs = () => {
       notes: '',
       estimated_duration: 60,
       discountType: 'amount',
-      discountValue: 0
+      discountValue: 0,
+      laborHourlyRate: 0
     });
     setLineItems([]);
     setEditingJob(null);
@@ -291,6 +294,35 @@ const Jobs = () => {
 
   const updateLineItem = (id: string, field: keyof LineItem, value: string | number) => {
     setLineItems(lineItems.map(item => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  // Handle syncing labor from time clock entries
+  const handleSyncLabor = (hours: number, rate: number) => {
+    // Find existing labor item
+    const existingLaborIndex = lineItems.findIndex(
+      item => item.description.toLowerCase() === 'labor' && item.type === 'service'
+    );
+    
+    if (existingLaborIndex >= 0) {
+      // Update existing labor item
+      const updated = [...lineItems];
+      updated[existingLaborIndex] = {
+        ...updated[existingLaborIndex],
+        quantity: hours,
+        unitPrice: rate
+      };
+      setLineItems(updated);
+    } else {
+      // Add new labor item
+      setLineItems([...lineItems, {
+        id: crypto.randomUUID(),
+        description: 'Labor',
+        quantity: hours,
+        unitPrice: rate,
+        type: 'service'
+      }]);
+    }
+    toast.success(`Synced ${hours} hours of labor @ $${rate}/hr`);
   };
 
   const calculateSubtotal = () => lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
@@ -318,6 +350,7 @@ const Jobs = () => {
       estimated_duration: formData.estimated_duration || 60,
       discount_type: formData.discountValue > 0 ? formData.discountType : null,
       discount_value: formData.discountValue > 0 ? formData.discountValue : 0,
+      labor_hourly_rate: formData.laborHourlyRate || null,
       items: lineItems.map(item => ({
         description: item.description,
         item_description: item.itemDescription || null,
@@ -365,7 +398,8 @@ const Jobs = () => {
       notes: job.notes || '',
       estimated_duration: job.estimated_duration ?? 60,
       discountType: job.discount_type || 'amount',
-      discountValue: Number(job.discount_value) || 0
+      discountValue: Number(job.discount_value) || 0,
+      laborHourlyRate: job.labor_hourly_rate || 0
     });
     if (job.items && job.items.length > 0) {
       setLineItems(job.items.map(item => ({
@@ -398,7 +432,8 @@ const Jobs = () => {
       notes: job.notes || '',
       estimated_duration: job.estimated_duration ?? 60,
       discountType: job.discount_type || 'amount',
-      discountValue: Number(job.discount_value) || 0
+      discountValue: Number(job.discount_value) || 0,
+      laborHourlyRate: job.labor_hourly_rate || 0
     });
     if (job.items && job.items.length > 0) {
       setLineItems(job.items.map(item => ({
@@ -681,7 +716,7 @@ const Jobs = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Scheduled Start</Label>
                       <Input type="datetime-local" value={formData.scheduled_start} onChange={e => setFormData({ ...formData, scheduled_start: e.target.value })} />
@@ -689,6 +724,17 @@ const Jobs = () => {
                     <div className="space-y-2">
                       <Label>Scheduled End</Label>
                       <Input type="datetime-local" value={formData.scheduled_end} onChange={e => setFormData({ ...formData, scheduled_end: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Labor Rate ($/hr)</Label>
+                      <Input 
+                        type="number" 
+                        min="0" 
+                        step="0.01" 
+                        placeholder="0.00"
+                        value={formData.laborHourlyRate || ''} 
+                        onChange={e => setFormData({ ...formData, laborHourlyRate: parseFloat(e.target.value) || 0 })} 
+                      />
                     </div>
                   </div>
 
@@ -710,6 +756,10 @@ const Jobs = () => {
                     onRemoveItem={removeLineItem}
                     onUpdateItem={updateLineItem}
                     quantityLabel="Qty (hrs)"
+                    showAutoLaborBadge={!!editingJob}
+                    jobId={editingJob?.id || null}
+                    laborHourlyRate={formData.laborHourlyRate}
+                    onSyncLabor={editingJob ? handleSyncLabor : undefined}
                   />
 
                   {/* Discount and Totals */}
