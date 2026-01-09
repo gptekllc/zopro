@@ -176,7 +176,12 @@ export function useJobs(includeArchived: boolean = false) {
       const { data, error } = await query;
       
       if (error) throw error;
-      return data as Job[];
+      
+      // Filter out soft-deleted photos from each job
+      return (data as Job[]).map(job => ({
+        ...job,
+        photos: job.photos?.filter((p: any) => !p.deleted_at) || []
+      }));
     },
     enabled: !!profile?.company_id,
   });
@@ -201,7 +206,12 @@ export function useJob(jobId: string | null) {
         .single();
       
       if (error) throw error;
-      return data as Job;
+      
+      // Filter out soft-deleted photos
+      return {
+        ...data,
+        photos: data.photos?.filter((p: any) => !p.deleted_at) || []
+      } as Job;
     },
     enabled: !!jobId,
   });
@@ -520,31 +530,10 @@ export function useDeleteJobPhoto() {
   
   return useMutation({
     mutationFn: async (photoId: string) => {
-      // First, get the photo record to find the storage path
-      const { data: photo, error: fetchError } = await (supabase as any)
-        .from('job_photos')
-        .select('photo_url')
-        .eq('id', photoId)
-        .single();
-      
-      if (fetchError) throw fetchError;
-      
-      // Delete the file from storage if we have a path
-      if (photo?.photo_url) {
-        const { error: storageError } = await supabase.storage
-          .from('job-photos')
-          .remove([photo.photo_url]);
-        
-        if (storageError) {
-          console.error('Failed to delete storage file:', storageError);
-          // Continue with DB deletion even if storage deletion fails
-        }
-      }
-      
-      // Delete the database record
+      // Soft delete - set deleted_at timestamp (keep file in storage for recovery)
       const { error } = await (supabase as any)
         .from('job_photos')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', photoId);
       
       if (error) throw error;
@@ -552,6 +541,7 @@ export function useDeleteJobPhoto() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['job'] });
+      queryClient.invalidateQueries({ queryKey: ['job-photos'] });
       toast.success('Photo deleted');
     },
     onError: (error: unknown) => {

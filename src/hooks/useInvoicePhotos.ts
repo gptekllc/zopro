@@ -25,6 +25,7 @@ export function useInvoicePhotos(invoiceId: string | null) {
         .from('invoice_photos')
         .select('*')
         .eq('invoice_id', invoiceId)
+        .is('deleted_at', null) // Exclude soft-deleted photos
         .order('display_order', { ascending: true });
       
       if (error) throw error;
@@ -138,20 +139,11 @@ export function useDeleteInvoicePhoto() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ photoId, photoUrl, invoiceId }: { photoId: string; photoUrl: string; invoiceId: string }) => {
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('invoice-photos')
-        .remove([photoUrl]);
-
-      if (storageError) {
-        console.warn('Failed to delete from storage:', storageError);
-      }
-
-      // Delete record
+    mutationFn: async ({ photoId, invoiceId }: { photoId: string; photoUrl?: string; invoiceId: string }) => {
+      // Soft delete - set deleted_at timestamp (keep file in storage for recovery)
       const { error } = await supabase
         .from('invoice_photos')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', photoId);
 
       if (error) throw error;
@@ -159,6 +151,7 @@ export function useDeleteInvoicePhoto() {
     },
     onSuccess: (invoiceId) => {
       queryClient.invalidateQueries({ queryKey: ['invoice-photos', invoiceId] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
       toast.success('Photo deleted');
     },
     onError: (error) => {
