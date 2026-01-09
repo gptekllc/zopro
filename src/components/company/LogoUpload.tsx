@@ -92,29 +92,31 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
       const naturalWidth = img.naturalWidth;
       const naturalHeight = img.naturalHeight;
 
-      // The image is displayed at its natural size * zoom, centered in the container
+      // The image is displayed with:
+      // - left: 50%, top: 50% positions image's top-left at container center
+      // - transform: translate(-50%, -50%) moves image so its center is at container center
+      // - translate(position.x, position.y) applies user drag offset
+      // - scale(zoom) scales from the center
+      
       const displayedWidth = naturalWidth * zoom;
       const displayedHeight = naturalHeight * zoom;
 
-      // The center of the image in the container (before position offset)
-      // Image is centered via CSS: left: 50%, top: 50%, marginLeft: -50%, marginTop: -50%
-      // This means the image's center is at the container's center initially
-      
-      // Calculate where the top-left of the image is in container coordinates
-      const imgLeft = (containerSize - displayedWidth) / 2 + position.x;
-      const imgTop = (containerSize - displayedHeight) / 2 + position.y;
+      // After all transforms, the image center is at:
+      // Container center (containerSize/2, containerSize/2) + position offset
+      const imgCenterX = containerSize / 2 + position.x;
+      const imgCenterY = containerSize / 2 + position.y;
 
-      // The visible crop area is the container itself (0,0 to containerSize,containerSize)
-      // We need to find what part of the original image corresponds to this area
+      // The top-left of the displayed (scaled) image
+      const imgLeft = imgCenterX - displayedWidth / 2;
+      const imgTop = imgCenterY - displayedHeight / 2;
 
-      // Convert container coordinates to image natural coordinates
-      const scaleRatio = 1 / zoom;
-      
-      // Source rectangle in natural image coordinates
-      const sourceX = -imgLeft * scaleRatio;
-      const sourceY = -imgTop * scaleRatio;
-      const sourceWidth = containerSize * scaleRatio;
-      const sourceHeight = containerSize * scaleRatio;
+      // The visible crop area is the container (0,0 to containerSize,containerSize)
+      // Convert to source image coordinates (before zoom)
+      // Source coordinates = (container coord - imgLeft) / zoom
+      const sourceX = (0 - imgLeft) / zoom;
+      const sourceY = (0 - imgTop) / zoom;
+      const sourceWidth = containerSize / zoom;
+      const sourceHeight = containerSize / zoom;
 
       ctx.drawImage(
         img,
@@ -277,12 +279,10 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
                   alt="Preview"
                   className="absolute select-none pointer-events-none"
                   style={{
-                    transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
-                    transformOrigin: 'center',
                     left: '50%',
                     top: '50%',
-                    marginLeft: '-50%',
-                    marginTop: '-50%',
+                    transform: `translate(-50%, -50%) translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+                    transformOrigin: 'center',
                     maxWidth: 'none',
                     maxHeight: 'none',
                   }}
