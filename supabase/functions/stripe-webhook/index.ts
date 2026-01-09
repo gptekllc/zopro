@@ -24,6 +24,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+  let logEntryId: string | null = null;
+  const startTime = Date.now();
+
   try {
     logStep("Webhook received");
     
@@ -51,7 +55,27 @@ serve(async (req) => {
       return new Response(`Webhook signature verification failed: ${errorMessage}`, { status: 400 });
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Log the webhook event to database
+    try {
+      const { data: logEntry } = await supabase
+        .from("webhook_event_logs")
+        .insert({
+          provider: "stripe",
+          event_type: event.type,
+          event_id: event.id,
+          status: "processing",
+          payload: { id: event.id, type: event.type, created: event.created },
+        })
+        .select("id")
+        .single();
+      
+      if (logEntry) {
+        logEntryId = logEntry.id;
+      }
+    } catch (logErr) {
+      // Don't fail the webhook if logging fails
+      logStep("WARNING: Failed to log webhook event", { error: String(logErr) });
+    }
 
     // Handle checkout.session.completed event
     if (event.type === "checkout.session.completed") {
@@ -467,6 +491,21 @@ serve(async (req) => {
       }
     }
 
+    // Update log entry to processed
+    if (logEntryId) {
+      try {
+        await supabase
+          .from("webhook_event_logs")
+          .update({
+            status: "processed",
+            processing_time_ms: Date.now() - startTime,
+          })
+          .eq("id", logEntryId);
+      } catch (updateErr) {
+        logStep("WARNING: Failed to update log entry", { error: String(updateErr) });
+      }
+    }
+
     return new Response(JSON.stringify({ received: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
@@ -474,6 +513,23 @@ serve(async (req) => {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR: Unexpected error", { error: errorMessage });
+
+    // Update log entry to failed
+    if (logEntryId) {
+      try {
+        await supabase
+          .from("webhook_event_logs")
+          .update({
+            status: "failed",
+            error_message: errorMessage,
+            processing_time_ms: Date.now() - startTime,
+          })
+          .eq("id", logEntryId);
+      } catch (updateErr) {
+        logStep("WARNING: Failed to update log entry with error", { error: String(updateErr) });
+      }
+    }
+
     return new Response(`Webhook error: ${errorMessage}`, {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

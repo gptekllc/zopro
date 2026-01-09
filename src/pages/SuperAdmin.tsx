@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog, LayoutDashboard, CreditCard, Wrench, History, BarChart3, ToggleLeft, Gauge, RotateCcw, MoreHorizontal } from 'lucide-react';
+import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog, LayoutDashboard, CreditCard, Wrench, History, BarChart3, ToggleLeft, Gauge, RotateCcw, MoreHorizontal, Webhook } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -26,6 +26,7 @@ import { AnalyticsTab } from '@/components/superadmin/AnalyticsTab';
 import { FeatureFlagsTab } from '@/components/superadmin/FeatureFlagsTab';
 import UsageLimitsTab from '@/components/superadmin/UsageLimitsTab';
 import { DeletedItemsTab } from '@/components/superadmin/DeletedItemsTab';
+import { WebhooksTab } from '@/components/superadmin/WebhooksTab';
 
 interface Company {
   id: string;
@@ -405,6 +406,10 @@ const SuperAdmin = () => {
           <TabsTrigger value="deleted" className="gap-2">
             <RotateCcw className="w-4 h-4" />
             Deleted Items
+          </TabsTrigger>
+          <TabsTrigger value="webhooks" className="gap-2">
+            <Webhook className="w-4 h-4" />
+            Webhooks
           </TabsTrigger>
           <TabsTrigger value="audit" className="gap-2">
             <History className="w-4 h-4" />
@@ -829,6 +834,11 @@ const SuperAdmin = () => {
         {/* Deleted Items Tab */}
         <TabsContent value="deleted">
           <DeletedItemsTab companies={companies} />
+        </TabsContent>
+
+        {/* Webhooks Tab */}
+        <TabsContent value="webhooks">
+          <WebhooksTab />
         </TabsContent>
 
         {/* Audit Log Tab */}
