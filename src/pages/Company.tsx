@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link as LinkIcon, Clock, BookTemplate, CalendarClock, Shield, ShieldCheck } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link as LinkIcon, Clock, BookTemplate, CalendarClock, Shield, ShieldCheck, Hash } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -97,6 +97,17 @@ const Company = () => {
     // Security
     require_mfa: false,
   });
+  const [documentNumbering, setDocumentNumbering] = useState({
+    job_number_prefix: 'J',
+    job_number_padding: 3,
+    job_number_include_year: true,
+    quote_number_prefix: 'Q',
+    quote_number_padding: 4,
+    quote_number_include_year: true,
+    invoice_number_prefix: 'I',
+    invoice_number_padding: 4,
+    invoice_number_include_year: true,
+  });
   const [runningAutomations, setRunningAutomations] = useState(false);
   const [savingSection, setSavingSection] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -180,6 +191,17 @@ const Company = () => {
     });
     setBusinessHours((company as any).business_hours ?? defaultBusinessHours);
     setLogoUrl(company.logo_url || null);
+    setDocumentNumbering({
+      job_number_prefix: (company as any).job_number_prefix ?? 'J',
+      job_number_padding: (company as any).job_number_padding ?? 3,
+      job_number_include_year: (company as any).job_number_include_year ?? true,
+      quote_number_prefix: (company as any).quote_number_prefix ?? 'Q',
+      quote_number_padding: (company as any).quote_number_padding ?? 4,
+      quote_number_include_year: (company as any).quote_number_include_year ?? true,
+      invoice_number_prefix: (company as any).invoice_number_prefix ?? 'I',
+      invoice_number_padding: (company as any).invoice_number_padding ?? 4,
+      invoice_number_include_year: (company as any).invoice_number_include_year ?? true,
+    });
     setFormInitialized(true);
   }
 
@@ -749,6 +771,222 @@ const Company = () => {
             <CardContent>
               <form onSubmit={handlePreferencesSubmit} className="space-y-6">
                 <Accordion type="multiple" defaultValue={[]} className="w-full">
+                  {/* Document Numbering */}
+                  <AccordionItem value="document-numbering">
+                    <AccordionTrigger className="text-base font-medium">
+                      <div className="flex items-center gap-2">
+                        <Hash className="w-4 h-4" />
+                        Document Numbering
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="space-y-6 pt-4">
+                      <p className="text-sm text-muted-foreground">
+                        Customize the format of job, quote, and invoice numbers. Changes only affect new documents.
+                      </p>
+                      
+                      {/* Job Numbers */}
+                      <div className="space-y-3 p-4 border rounded-lg">
+                        <Label className="font-medium">Job Numbers</Label>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Prefix</Label>
+                            <Input
+                              value={documentNumbering.job_number_prefix}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 10);
+                                setDocumentNumbering({ ...documentNumbering, job_number_prefix: value });
+                              }}
+                              placeholder="J"
+                              maxLength={10}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Include Year</Label>
+                            <Select
+                              value={documentNumbering.job_number_include_year ? 'yes' : 'no'}
+                              onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, job_number_include_year: value === 'yes' })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="yes">Yes</SelectItem>
+                                <SelectItem value="no">No</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Digits</Label>
+                            <Select
+                              value={documentNumbering.job_number_padding.toString()}
+                              onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, job_number_padding: parseInt(value) })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="2">2</SelectItem>
+                                <SelectItem value="3">3</SelectItem>
+                                <SelectItem value="4">4</SelectItem>
+                                <SelectItem value="5">5</SelectItem>
+                                <SelectItem value="6">6</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
+                          Preview: <span className="font-mono font-medium text-foreground">
+                            {documentNumbering.job_number_prefix}-
+                            {documentNumbering.job_number_include_year ? `${new Date().getFullYear()}-` : ''}
+                            {'0'.repeat(documentNumbering.job_number_padding - 1)}1
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Quote Numbers */}
+                      <div className="space-y-3 p-4 border rounded-lg">
+                        <Label className="font-medium">Quote Numbers</Label>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Prefix</Label>
+                            <Input
+                              value={documentNumbering.quote_number_prefix}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 10);
+                                setDocumentNumbering({ ...documentNumbering, quote_number_prefix: value });
+                              }}
+                              placeholder="Q"
+                              maxLength={10}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Include Year</Label>
+                            <Select
+                              value={documentNumbering.quote_number_include_year ? 'yes' : 'no'}
+                              onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, quote_number_include_year: value === 'yes' })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="yes">Yes</SelectItem>
+                                <SelectItem value="no">No</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Digits</Label>
+                            <Select
+                              value={documentNumbering.quote_number_padding.toString()}
+                              onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, quote_number_padding: parseInt(value) })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="2">2</SelectItem>
+                                <SelectItem value="3">3</SelectItem>
+                                <SelectItem value="4">4</SelectItem>
+                                <SelectItem value="5">5</SelectItem>
+                                <SelectItem value="6">6</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
+                          Preview: <span className="font-mono font-medium text-foreground">
+                            {documentNumbering.quote_number_prefix}-
+                            {documentNumbering.quote_number_include_year ? `${new Date().getFullYear()}-` : ''}
+                            {'0'.repeat(documentNumbering.quote_number_padding - 1)}1
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Invoice Numbers */}
+                      <div className="space-y-3 p-4 border rounded-lg">
+                        <Label className="font-medium">Invoice Numbers</Label>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Prefix</Label>
+                            <Input
+                              value={documentNumbering.invoice_number_prefix}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/[^A-Za-z0-9]/g, '').slice(0, 10);
+                                setDocumentNumbering({ ...documentNumbering, invoice_number_prefix: value });
+                              }}
+                              placeholder="I"
+                              maxLength={10}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Include Year</Label>
+                            <Select
+                              value={documentNumbering.invoice_number_include_year ? 'yes' : 'no'}
+                              onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, invoice_number_include_year: value === 'yes' })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="yes">Yes</SelectItem>
+                                <SelectItem value="no">No</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Digits</Label>
+                            <Select
+                              value={documentNumbering.invoice_number_padding.toString()}
+                              onValueChange={(value) => setDocumentNumbering({ ...documentNumbering, invoice_number_padding: parseInt(value) })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="2">2</SelectItem>
+                                <SelectItem value="3">3</SelectItem>
+                                <SelectItem value="4">4</SelectItem>
+                                <SelectItem value="5">5</SelectItem>
+                                <SelectItem value="6">6</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
+                          Preview: <span className="font-mono font-medium text-foreground">
+                            {documentNumbering.invoice_number_prefix}-
+                            {documentNumbering.invoice_number_include_year ? `${new Date().getFullYear()}-` : ''}
+                            {'0'.repeat(documentNumbering.invoice_number_padding - 1)}1
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 border-t">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          disabled={savingSection === 'numbering' || !documentNumbering.job_number_prefix || !documentNumbering.quote_number_prefix || !documentNumbering.invoice_number_prefix}
+                          onClick={() => handleSaveSection('numbering', {
+                            job_number_prefix: documentNumbering.job_number_prefix,
+                            job_number_padding: documentNumbering.job_number_padding,
+                            job_number_include_year: documentNumbering.job_number_include_year,
+                            quote_number_prefix: documentNumbering.quote_number_prefix,
+                            quote_number_padding: documentNumbering.quote_number_padding,
+                            quote_number_include_year: documentNumbering.quote_number_include_year,
+                            invoice_number_prefix: documentNumbering.invoice_number_prefix,
+                            invoice_number_padding: documentNumbering.invoice_number_padding,
+                            invoice_number_include_year: documentNumbering.invoice_number_include_year,
+                          } as any)}
+                        >
+                          {savingSection === 'numbering' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          Save Numbering Settings
+                        </Button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
                   {/* PDF Preferences */}
                   <AccordionItem value="pdf">
                     <AccordionTrigger className="text-base font-medium">
