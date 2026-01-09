@@ -38,6 +38,7 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Fetch deleted documents for selected company
   const { data: deletedDocuments = [], isLoading } = useQuery({
@@ -117,6 +118,32 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
     },
     onError: (error: any) => {
       toast.error('Failed to restore: ' + error.message);
+    },
+  });
+
+  // Bulk permanent delete mutation
+  const bulkDeleteMutation = useMutation({
+    mutationFn: async (items: { tableName: string; documentId: string }[]) => {
+      for (const item of items) {
+        const { error } = await supabase.rpc('permanent_delete_document', {
+          p_table_name: item.tableName,
+          p_document_id: item.documentId,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['deleted-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      const count = selectedItems.size;
+      setSelectedItems(new Set());
+      toast.success(`Permanently deleted ${count} items`);
+    },
+    onError: (error: any) => {
+      toast.error('Failed to delete: ' + error.message);
     },
   });
 
@@ -214,6 +241,15 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
   const handleCleanupConfirm = () => {
     cleanupMutation.mutate();
     setShowCleanupConfirm(false);
+  };
+
+  const handleBulkDelete = () => {
+    const items = Array.from(selectedItems).map((key) => {
+      const [docType, docId] = key.split(':');
+      return { tableName: getTableName(docType), documentId: docId };
+    });
+    bulkDeleteMutation.mutate(items);
+    setShowDeleteConfirm(false);
   };
 
   const renderSection = (title: string, icon: React.ReactNode, docs: DeletedDocument[], variant: 'default' | 'secondary' | 'outline' | 'destructive') => {
@@ -334,18 +370,33 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
               </CardDescription>
             </div>
             {selectedItems.size > 0 && (
-              <Button
-                onClick={handleBulkRestore}
-                disabled={bulkRestoreMutation.isPending}
-                className="gap-2"
-              >
-                {bulkRestoreMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <RotateCcw className="w-4 h-4" />
-                )}
-                Restore Selected ({selectedItems.size})
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleBulkRestore}
+                  disabled={bulkRestoreMutation.isPending || bulkDeleteMutation.isPending}
+                  className="gap-2"
+                >
+                  {bulkRestoreMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-4 h-4" />
+                  )}
+                  Restore Selected ({selectedItems.size})
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={bulkRestoreMutation.isPending || bulkDeleteMutation.isPending}
+                  className="gap-2"
+                >
+                  {bulkDeleteMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  Delete Permanently
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>
@@ -424,6 +475,27 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleCleanupConfirm}
+            >
+              Yes, Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Selected Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanently Delete Selected Items?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to permanently delete {selectedItems.size} selected item(s). This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleBulkDelete}
             >
               Yes, Delete Permanently
             </AlertDialogAction>

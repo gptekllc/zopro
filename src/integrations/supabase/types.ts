@@ -2703,6 +2703,10 @@ export type Database = {
         Args: { p_bytes: number; p_company_id: string; p_type: string }
         Returns: undefined
       }
+      permanent_delete_document: {
+        Args: { p_document_id: string; p_table_name: string }
+        Returns: boolean
+      }
       permanent_delete_old_soft_deleted_records: {
         Args: never
         Returns: {
