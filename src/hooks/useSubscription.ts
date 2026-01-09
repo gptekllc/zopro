@@ -10,6 +10,7 @@ interface SubscriptionPlan {
   price_yearly: number | null;
   max_users: number | null;
   max_jobs_per_month: number | null;
+  max_storage_gb?: number | null;
   features: Record<string, boolean> | null;
 }
 

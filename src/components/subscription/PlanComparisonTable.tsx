@@ -13,6 +13,7 @@ interface Plan {
   price_yearly: number | null;
   max_users: number | null;
   max_jobs_per_month: number | null;
+  max_storage_gb?: number | null;
   features: Record<string, boolean> | null;
 }
 
@@ -107,6 +108,12 @@ export function PlanComparisonTable({
                       {plan.max_jobs_per_month === null ? 'Unlimited' : plan.max_jobs_per_month}
                     </span>
                   </li>
+                  <li className="flex items-center gap-2">
+                    <span className="text-muted-foreground">Storage:</span>
+                    <span className="font-medium">
+                      {plan.max_storage_gb === null ? 'Unlimited' : `${plan.max_storage_gb} GB`}
+                    </span>
+                  </li>
                 </ul>
               </CardContent>
 
@@ -191,6 +198,18 @@ export function PlanComparisonTable({
                   <Infinity className="w-4 h-4 mx-auto text-success" />
                 ) : (
                   <span className="font-medium">{plan.max_jobs_per_month}</span>
+                )}
+              </td>
+            ))}
+          </tr>
+          <tr className="border-b">
+            <td className="p-4 font-medium">Storage</td>
+            {plans.map((plan) => (
+              <td key={plan.id} className="text-center p-4">
+                {plan.max_storage_gb === null ? (
+                  <Infinity className="w-4 h-4 mx-auto text-success" />
+                ) : (
+                  <span className="font-medium">{plan.max_storage_gb} GB</span>
                 )}
               </td>
             ))}

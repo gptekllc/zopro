@@ -2409,6 +2409,7 @@ export type Database = {
           is_active: boolean | null
           max_jobs_per_month: number | null
           max_photos_per_document: number | null
+          max_storage_gb: number | null
           max_users: number | null
           name: string
           price_monthly: number | null
@@ -2425,6 +2426,7 @@ export type Database = {
           is_active?: boolean | null
           max_jobs_per_month?: number | null
           max_photos_per_document?: number | null
+          max_storage_gb?: number | null
           max_users?: number | null
           name: string
           price_monthly?: number | null
@@ -2441,6 +2443,7 @@ export type Database = {
           is_active?: boolean | null
           max_jobs_per_month?: number | null
           max_photos_per_document?: number | null
+          max_storage_gb?: number | null
           max_users?: number | null
           name?: string
           price_monthly?: number | null
