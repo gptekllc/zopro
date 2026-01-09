@@ -493,6 +493,20 @@ const Jobs = () => {
     }
   };
 
+  // Handle calendar slot click to create job with pre-filled schedule
+  const handleCalendarSlotClick = (date: Date) => {
+    resetForm();
+    const endDate = new Date(date.getTime() + 60 * 60 * 1000); // 1 hour later
+    setFormData(prev => ({
+      ...prev,
+      scheduled_start: format(date, "yyyy-MM-dd'T'HH:mm"),
+      scheduled_end: format(endDate, "yyyy-MM-dd'T'HH:mm"),
+      status: 'scheduled',
+      estimated_duration: 60
+    }));
+    openEditDialog(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -806,7 +820,13 @@ const Jobs = () => {
       </div>
 
       {/* Calendar View */}
-      {viewMode === 'calendar' && <JobCalendar jobs={safeJobs} onJobClick={setViewingJob} />}
+      {viewMode === 'calendar' && (
+        <JobCalendar 
+          jobs={safeJobs} 
+          onJobClick={setViewingJob} 
+          onSlotClick={handleCalendarSlotClick}
+        />
+      )}
 
       {/* Job List View */}
       {viewMode === 'list' && (
