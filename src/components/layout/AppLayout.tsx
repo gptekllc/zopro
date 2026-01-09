@@ -296,8 +296,29 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
           sidebarCollapsed ? "w-[72px]" : "w-64"
         )}
       >
-        <div className="flex flex-col h-full">
-          {/* Sidebar header with toggle button */}
+        <div className="flex flex-col h-full relative">
+          {/* Floating toggle button */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleSidebar}
+                className="absolute top-4 -right-3 z-10 h-6 w-6 rounded-full border bg-background shadow-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              >
+                {sidebarCollapsed ? (
+                  <PanelLeft className="w-3 h-3" />
+                ) : (
+                  <PanelLeftClose className="w-3 h-3" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Sidebar header */}
           <div className={cn(
             "flex items-center gap-3 shrink-0",
             sidebarCollapsed ? "p-3 justify-center" : "p-6"
@@ -311,28 +332,6 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
                 <p className="text-xs text-sidebar-foreground/60 line-clamp-2">{company?.name || 'No Company'}</p>
               </div>
             )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleSidebar}
-                  className={cn(
-                    "shrink-0 text-sidebar-foreground hover:bg-sidebar-accent",
-                    sidebarCollapsed && "mt-2"
-                  )}
-                >
-                  {sidebarCollapsed ? (
-                    <PanelLeft className="w-5 h-5" />
-                  ) : (
-                    <PanelLeftClose className="w-5 h-5" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                {sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              </TooltipContent>
-            </Tooltip>
           </div>
 
           {/* Navigation - scrollable */}
