@@ -483,7 +483,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
             <span>Completed</span>
           </div>
           <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded border-l-4 border-l-destructive" />
+            <div className="w-3 h-3 rounded bg-destructive" />
             <span>Urgent</span>
           </div>
           <div className="flex items-center gap-1 ml-auto">
