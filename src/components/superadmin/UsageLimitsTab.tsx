@@ -82,21 +82,31 @@ export default function UsageLimitsTab() {
       if (error) throw error;
 
       return (data || []).map((c: any) => {
-        const subscription = c.company_subscriptions?.[0];
+        const subscriptionRaw = c.company_subscriptions;
+        const subscription = Array.isArray(subscriptionRaw) ? subscriptionRaw[0] : subscriptionRaw;
+
         // subscription_plans can be an object or array depending on the relationship
         const plan = subscription?.subscription_plans;
         const planData = Array.isArray(plan) ? plan[0] : plan;
-        
+
+        const storageUsageRaw = c.company_storage_usage;
+        const storage_usage = Array.isArray(storageUsageRaw) ? storageUsageRaw[0] : storageUsageRaw;
+
+        const overridesRaw = c.company_usage_limits;
+        const overrides = Array.isArray(overridesRaw) ? overridesRaw : (overridesRaw ? [overridesRaw] : []);
+
         return {
           id: c.id,
           name: c.name,
-          subscription: subscription ? {
-            plan_name: planData?.name,
-            display_name: planData?.display_name,
-            status: subscription.status,
-          } : undefined,
-          storage_usage: c.company_storage_usage?.[0],
-          overrides: c.company_usage_limits || [],
+          subscription: subscription
+            ? {
+                plan_name: planData?.name,
+                display_name: planData?.display_name,
+                status: subscription.status,
+              }
+            : undefined,
+          storage_usage,
+          overrides,
         };
       }) as Company[];
     },
