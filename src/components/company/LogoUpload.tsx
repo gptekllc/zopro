@@ -282,7 +282,7 @@ const LogoUpload = ({ companyId, currentLogoUrl, companyName, onUploadSuccess }:
               <Slider
                 value={[zoom]}
                 onValueChange={([val]) => setZoom(val)}
-                min={0.5}
+                min={0.1}
                 max={3}
                 step={0.1}
                 className="flex-1"
