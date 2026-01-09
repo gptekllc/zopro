@@ -389,8 +389,13 @@ const TechniciansContent = () => {
                 name={formData.full_name || 'User'}
                 onUploadSuccess={handleAvatarUploadSuccess}
                 size="lg"
+                canEdit={editingUser === user?.id || isAdmin}
               />
-              <p className="text-xs text-muted-foreground">Click the camera to upload a photo</p>
+              {(editingUser === user?.id || isAdmin) ? (
+                <p className="text-xs text-muted-foreground">Click the camera to upload a photo</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Only admins can change other users' photos</p>
+              )}
             </div>
 
             <div className="space-y-2">
