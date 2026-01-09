@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -34,12 +34,27 @@ interface DeletedItemsTabProps {
   companies: Company[];
 }
 
+// Helper to determine bucket name from document type
+const getBucketName = (documentType: string): string => {
+  switch (documentType) {
+    case 'job_photo':
+      return 'job-photos';
+    case 'quote_photo':
+      return 'quote-photos';
+    case 'invoice_photo':
+      return 'invoice-photos';
+    default:
+      return '';
+  }
+};
+
 export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
   const queryClient = useQueryClient();
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
 
   // Fetch deleted documents for selected company
   const { data: deletedDocuments = [], isLoading } = useQuery({
@@ -53,6 +68,44 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
     },
     enabled: !!selectedCompanyId,
   });
+
+  // Generate signed URLs for photo thumbnails
+  useEffect(() => {
+    const generateSignedUrls = async () => {
+      const photoItems = deletedDocuments.filter(d => d.document_type.includes('photo') && d.photo_url);
+      if (photoItems.length === 0) {
+        setSignedUrls({});
+        return;
+      }
+
+      const urls: Record<string, string> = {};
+      
+      await Promise.all(photoItems.map(async (photo) => {
+        const bucketName = getBucketName(photo.document_type);
+        if (!bucketName || !photo.photo_url) return;
+        
+        try {
+          const { data } = await supabase.storage
+            .from(bucketName)
+            .createSignedUrl(photo.photo_url, 3600); // 1 hour expiry
+          
+          if (data?.signedUrl) {
+            urls[photo.id] = data.signedUrl;
+          }
+        } catch (err) {
+          console.warn('Failed to generate signed URL for photo:', photo.id, err);
+        }
+      }));
+      
+      setSignedUrls(urls);
+    };
+
+    if (deletedDocuments.length > 0) {
+      generateSignedUrls();
+    } else {
+      setSignedUrls({});
+    }
+  }, [deletedDocuments]);
 
   // Group documents by type
   const groupedDocuments = useMemo(() => {
@@ -89,10 +142,14 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deleted-documents'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['job'] });
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['job-photos'] });
+      queryClient.invalidateQueries({ queryKey: ['quote-photos'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-photos'] });
     },
     onError: (error: any) => {
       toast.error('Failed to restore: ' + error.message);
@@ -113,10 +170,14 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deleted-documents'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['job'] });
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['job-photos'] });
+      queryClient.invalidateQueries({ queryKey: ['quote-photos'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-photos'] });
       setSelectedItems(new Set());
       toast.success('Selected items restored successfully');
     },
@@ -129,6 +190,22 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
   const bulkDeleteMutation = useMutation({
     mutationFn: async (items: { tableName: string; documentId: string }[]) => {
       for (const item of items) {
+        // For photos, also delete the file from storage
+        if (item.tableName.includes('photos')) {
+          const doc = deletedDocuments.find(d => d.id === item.documentId);
+          if (doc?.photo_url) {
+            const bucketName = getBucketName(doc.document_type);
+            if (bucketName) {
+              const { error: storageError } = await supabase.storage
+                .from(bucketName)
+                .remove([doc.photo_url]);
+              if (storageError) {
+                console.warn('Failed to delete photo from storage:', storageError);
+              }
+            }
+          }
+        }
+        
         const { error } = await supabase.rpc('permanent_delete_document', {
           p_table_name: item.tableName,
           p_document_id: item.documentId,
@@ -143,6 +220,9 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['job-photos'] });
+      queryClient.invalidateQueries({ queryKey: ['quote-photos'] });
+      queryClient.invalidateQueries({ queryKey: ['invoice-photos'] });
       const count = selectedItems.size;
       setSelectedItems(new Set());
       toast.success(`Permanently deleted ${count} items`);
@@ -306,11 +386,14 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
                     onCheckedChange={() => toggleItem(doc.id, doc.document_type)}
                   />
                   
-                  {isPhoto && doc.photo_url ? (
+                  {isPhoto && (doc.photo_url || signedUrls[doc.id]) ? (
                     <img
-                      src={doc.photo_url}
+                      src={signedUrls[doc.id] || doc.photo_url || ''}
                       alt={doc.title || 'Photo'}
-                      className="w-12 h-12 rounded object-cover"
+                      className="w-12 h-12 rounded object-cover bg-muted"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
                     />
                   ) : isUser && doc.photo_url ? (
                     <img

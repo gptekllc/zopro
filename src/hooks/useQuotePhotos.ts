@@ -25,6 +25,7 @@ export function useQuotePhotos(quoteId: string | null) {
         .from('quote_photos')
         .select('*')
         .eq('quote_id', quoteId)
+        .is('deleted_at', null) // Exclude soft-deleted photos
         .order('display_order', { ascending: true });
       
       if (error) throw error;
@@ -138,20 +139,11 @@ export function useDeleteQuotePhoto() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ photoId, photoUrl, quoteId }: { photoId: string; photoUrl: string; quoteId: string }) => {
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from('quote-photos')
-        .remove([photoUrl]);
-
-      if (storageError) {
-        console.warn('Failed to delete from storage:', storageError);
-      }
-
-      // Delete record
+    mutationFn: async ({ photoId, quoteId }: { photoId: string; photoUrl?: string; quoteId: string }) => {
+      // Soft delete - set deleted_at timestamp (keep file in storage for recovery)
       const { error } = await supabase
         .from('quote_photos')
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq('id', photoId);
 
       if (error) throw error;
@@ -159,6 +151,7 @@ export function useDeleteQuotePhoto() {
     },
     onSuccess: (quoteId) => {
       queryClient.invalidateQueries({ queryKey: ['quote-photos', quoteId] });
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
       toast.success('Photo deleted');
     },
     onError: (error) => {
