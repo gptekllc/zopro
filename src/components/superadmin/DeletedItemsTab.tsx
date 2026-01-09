@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Loader2, RotateCcw, Trash2, AlertTriangle, FileText, Briefcase, Receipt, Image, User, Users, ChevronDown } from 'lucide-react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Loader2, RotateCcw, Trash2, AlertTriangle, FileText, Briefcase, Receipt, Image, User, Users, ChevronDown, ChevronLeft, ChevronRight, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { formatAmount } from '@/lib/formatAmount';
@@ -55,6 +56,13 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  
+  // Lightbox state
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   // Fetch deleted documents for selected company
   const { data: deletedDocuments = [], isLoading } = useQuery({
@@ -106,6 +114,101 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
       setSignedUrls({});
     }
   }, [deletedDocuments]);
+
+  // Get photo documents for lightbox
+  const photoDocuments = useMemo(() => 
+    deletedDocuments.filter(d => d.document_type.includes('photo')),
+    [deletedDocuments]
+  );
+
+  // Lightbox handlers
+  const resetZoom = useCallback(() => {
+    setZoomLevel(1);
+    setPanPosition({ x: 0, y: 0 });
+  }, []);
+
+  const openLightbox = useCallback((photoId: string) => {
+    const index = photoDocuments.findIndex(p => p.id === photoId);
+    if (index !== -1) {
+      setLightboxIndex(index);
+      resetZoom();
+    }
+  }, [photoDocuments, resetZoom]);
+
+  const closeLightbox = useCallback(() => {
+    setLightboxIndex(null);
+    resetZoom();
+  }, [resetZoom]);
+
+  const goToNext = useCallback(() => {
+    if (lightboxIndex !== null && photoDocuments.length > 0) {
+      setLightboxIndex((lightboxIndex + 1) % photoDocuments.length);
+      resetZoom();
+    }
+  }, [lightboxIndex, photoDocuments.length, resetZoom]);
+
+  const goToPrev = useCallback(() => {
+    if (lightboxIndex !== null && photoDocuments.length > 0) {
+      setLightboxIndex((lightboxIndex - 1 + photoDocuments.length) % photoDocuments.length);
+      resetZoom();
+    }
+  }, [lightboxIndex, photoDocuments.length, resetZoom]);
+
+  const handleZoomIn = useCallback(() => {
+    setZoomLevel(prev => Math.min(prev + 0.5, 4));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoomLevel(prev => {
+      const newZoom = Math.max(prev - 0.5, 1);
+      if (newZoom === 1) {
+        setPanPosition({ x: 0, y: 0 });
+      }
+      return newZoom;
+    });
+  }, []);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (zoomLevel > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
+    }
+  }, [zoomLevel, panPosition]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDragging && zoomLevel > 1) {
+      setPanPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    }
+  }, [isDragging, zoomLevel, dragStart]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Keyboard navigation for lightbox
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (lightboxIndex === null) return;
+      
+      if (e.key === 'ArrowRight') {
+        goToNext();
+      } else if (e.key === 'ArrowLeft') {
+        goToPrev();
+      } else if (e.key === 'Escape') {
+        closeLightbox();
+      } else if (e.key === '+' || e.key === '=') {
+        handleZoomIn();
+      } else if (e.key === '-') {
+        handleZoomOut();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxIndex, goToNext, goToPrev, closeLightbox, handleZoomIn, handleZoomOut]);
 
   // Group documents by type
   const groupedDocuments = useMemo(() => {
@@ -387,14 +490,22 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
                   />
                   
                   {isPhoto && (doc.photo_url || signedUrls[doc.id]) ? (
-                    <img
-                      src={signedUrls[doc.id] || doc.photo_url || ''}
-                      alt={doc.title || 'Photo'}
-                      className="w-12 h-12 rounded object-cover bg-muted"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openLightbox(doc.id);
                       }}
-                    />
+                      className="shrink-0 focus:outline-none focus:ring-2 focus:ring-primary rounded"
+                    >
+                      <img
+                        src={signedUrls[doc.id] || doc.photo_url || ''}
+                        alt={doc.title || 'Photo'}
+                        className="w-12 h-12 rounded object-cover bg-muted hover:opacity-80 transition-opacity cursor-pointer"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </button>
                   ) : isUser && doc.photo_url ? (
                     <img
                       src={doc.photo_url}
@@ -610,6 +721,116 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Photo Lightbox */}
+      <Dialog open={lightboxIndex !== null} onOpenChange={() => closeLightbox()}>
+        <DialogContent className="max-w-[100vw] sm:max-w-4xl h-[100dvh] sm:h-auto p-0 bg-black/95 border-none">
+          {lightboxIndex !== null && photoDocuments[lightboxIndex] && (
+            <div className="relative flex flex-col h-full">
+              {/* Header */}
+              <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/70 to-transparent p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-white">
+                    <span className="text-sm opacity-80">
+                      {lightboxIndex + 1} / {photoDocuments.length}
+                    </span>
+                    <span className="ml-3 text-sm capitalize">
+                      {photoDocuments[lightboxIndex].document_type.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-white hover:bg-white/20"
+                      onClick={handleZoomOut}
+                      disabled={zoomLevel <= 1}
+                    >
+                      <ZoomOut className="w-5 h-5" />
+                    </Button>
+                    <span className="text-white text-sm min-w-[3rem] text-center">
+                      {Math.round(zoomLevel * 100)}%
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-white hover:bg-white/20"
+                      onClick={handleZoomIn}
+                      disabled={zoomLevel >= 4}
+                    >
+                      <ZoomIn className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-white hover:bg-white/20"
+                      onClick={closeLightbox}
+                    >
+                      <X className="w-5 h-5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Image */}
+              <div 
+                className="flex-1 flex items-center justify-center overflow-hidden select-none"
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                style={{ cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default' }}
+              >
+                <img
+                  src={signedUrls[photoDocuments[lightboxIndex].id] || photoDocuments[lightboxIndex].photo_url || ''}
+                  alt={photoDocuments[lightboxIndex].title || 'Deleted photo'}
+                  className="max-h-[80vh] max-w-full object-contain transition-transform duration-200"
+                  style={{
+                    transform: `scale(${zoomLevel}) translate(${panPosition.x / zoomLevel}px, ${panPosition.y / zoomLevel}px)`,
+                  }}
+                  draggable={false}
+                />
+              </div>
+
+              {/* Navigation */}
+              {photoDocuments.length > 1 && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 text-white hover:bg-white/20 hidden sm:flex"
+                    onClick={goToPrev}
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 text-white hover:bg-white/20 hidden sm:flex"
+                    onClick={goToNext}
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </Button>
+                </>
+              )}
+
+              {/* Footer info */}
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                <div className="text-white text-sm">
+                  <p className="opacity-80">
+                    Deleted {formatDistanceToNow(new Date(photoDocuments[lightboxIndex].deleted_at), { addSuffix: true })}
+                  </p>
+                  {photoDocuments[lightboxIndex].customer_name && (
+                    <p className="opacity-60 text-xs mt-1">
+                      {photoDocuments[lightboxIndex].customer_name}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
