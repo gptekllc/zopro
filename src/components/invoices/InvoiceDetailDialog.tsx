@@ -198,7 +198,7 @@ export function InvoiceDetailDialog({
   if (!invoice) return null;
 
   const isOverdue = invoice.due_date && new Date(invoice.due_date) < new Date() && invoice.status !== 'paid';
-  const hasLateFee = invoice.late_fee_amount && Number(invoice.late_fee_amount) > 0;
+  const hasLateFee = Number(invoice.late_fee_amount ?? 0) > 0;
   const canApplyLateFee = isOverdue && !hasLateFee && lateFeePercentage > 0;
   const linkedDocsCount = (linkedQuote ? 1 : 0) + (linkedJob ? 1 : 0);
   const isVoided = invoice.status === 'voided';
@@ -638,7 +638,7 @@ export function InvoiceDetailDialog({
                         {remainingBalance > 0 && invoice.status !== 'paid' ? 'Balance Due' : 'Total'}
                       </span>
                       <span className={`text-xs ${remainingBalance > 0 && invoice.status !== 'paid' ? 'text-destructive' : ''}`}>
-                        ${remainingBalance > 0 ? formatAmount(remainingBalance) : formatAmount(totalDue)}
+                        {remainingBalance > 0 ? formatAmount(remainingBalance) : formatAmount(totalDue)}
                       </span>
                     </div>
                     {canApplyLateFee && onApplyLateFee && (
