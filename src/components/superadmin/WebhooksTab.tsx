@@ -101,7 +101,9 @@ export function WebhooksTab() {
       case 'failed':
         return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Failed</Badge>;
       case 'processing':
-        return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Processing</Badge>;
+        return <Badge variant="secondary"><Loader2 className="w-3 h-3 mr-1 animate-spin" />Processing</Badge>;
+      case 'received':
+        return <Badge variant="outline"><Clock className="w-3 h-3 mr-1" />Received</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -292,6 +294,7 @@ export function WebhooksTab() {
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="processed">Processed</SelectItem>
                   <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
                   <SelectItem value="received">Received</SelectItem>
                 </SelectContent>
               </Select>
