@@ -24,6 +24,7 @@ interface AuthContextType {
   profile: Profile | null;
   roles: UserRole[];
   isLoading: boolean;
+  isMFALoading: boolean;
   isAdmin: boolean;
   isManager: boolean;
   isSuperAdmin: boolean;
@@ -55,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMFALoading, setIsMFALoading] = useState(true);
   const [mfaFactors, setMFAFactors] = useState<Factor[]>([]);
   const [aal, setAAL] = useState<{ currentLevel: string; nextLevel: string } | null>(null);
 
@@ -103,14 +105,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshMFAStatus = async () => {
-    const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (data) {
-      setAAL({
-        currentLevel: data.currentLevel,
-        nextLevel: data.nextLevel,
-      });
+    setIsMFALoading(true);
+    try {
+      const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (data) {
+        setAAL({
+          currentLevel: data.currentLevel,
+          nextLevel: data.nextLevel,
+        });
+      }
+      await listMFAFactors();
+    } finally {
+      setIsMFALoading(false);
     }
-    await listMFAFactors();
   };
 
   const enrollMFA = async () => {
@@ -207,6 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setRoles([]);
           setMFAFactors([]);
           setAAL(null);
+          setIsMFALoading(false);
         }
       }
     );
@@ -308,6 +316,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         roles,
         isLoading,
+        isMFALoading,
         isAdmin,
         isManager,
         isSuperAdmin,
