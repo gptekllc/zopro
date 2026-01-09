@@ -134,7 +134,8 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
   // Update plan mutation
   const updatePlanMutation = useMutation({
     mutationFn: async (planId: string) => {
-      const storageBytes = editForm.storage_limit_gb * 1024 * 1024 * 1024;
+      // Treat "GB" as decimal gigabytes (1 GB = 1000 MB) so 0.250 GB displays as 250 MB.
+      const storageBytes = Math.round(editForm.storage_limit_gb * 1000 * 1000 * 1000);
       
       const { error } = await supabase
         .from('subscription_plans')
@@ -146,7 +147,6 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
           max_jobs_per_month: editForm.max_jobs_per_month,
           max_photos_per_document: editForm.max_photos_per_document,
           storage_limit_bytes: storageBytes,
-          max_storage_gb: editForm.storage_limit_gb,
           storage_addon_price_per_gb: editForm.storage_addon_price_per_gb,
           features: editForm.features,
           is_active: editForm.is_active,

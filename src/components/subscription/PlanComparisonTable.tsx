@@ -14,6 +14,7 @@ interface Plan {
   max_users: number | null;
   max_jobs_per_month: number | null;
   max_storage_gb?: number | null;
+  storage_limit_bytes?: number | null;
   features: Record<string, boolean> | null;
 }
 
@@ -53,12 +54,21 @@ export function PlanComparisonTable({
     return plan.features[feature] === true;
   };
 
-  const formatStorage = (gb: number | null | undefined): string => {
-    if (gb === null || gb === undefined) return 'Unlimited';
-    if (gb < 1) {
-      return `${Math.round(gb * 1024)} MB`;
+  const formatStorage = (plan: Plan): string => {
+    // Prefer bytes (authoritative, supports decimals), fall back to max_storage_gb.
+    if (plan.storage_limit_bytes === null || plan.storage_limit_bytes === undefined) {
+      if (plan.max_storage_gb === null || plan.max_storage_gb === undefined) return 'Unlimited';
+      // Treat GB as decimal here too (1 GB = 1000 MB)
+      return plan.max_storage_gb < 1
+        ? `${Math.round(plan.max_storage_gb * 1000)} MB`
+        : `${plan.max_storage_gb} GB`;
     }
-    return `${gb} GB`;
+
+    const gb = plan.storage_limit_bytes / 1_000_000_000;
+    if (gb < 1) return `${Math.round(plan.storage_limit_bytes / 1_000_000)} MB`;
+
+    const rounded = Math.round(gb * 100) / 100;
+    return `${Number.isInteger(rounded) ? Math.trunc(rounded) : rounded} GB`;
   };
 
   if (compact) {
@@ -131,7 +141,7 @@ export function PlanComparisonTable({
                   <li className="flex items-center gap-2">
                     <span className="text-muted-foreground">Storage:</span>
                     <span className="font-medium">
-                      {formatStorage(plan.max_storage_gb)}
+                      {formatStorage(plan)}
                     </span>
                   </li>
                 </ul>
@@ -236,10 +246,10 @@ export function PlanComparisonTable({
             <td className="p-4 font-medium">Storage</td>
             {plans.map((plan) => (
               <td key={plan.id} className="text-center p-4">
-                {plan.max_storage_gb === null ? (
+                {plan.storage_limit_bytes === null ? (
                   <Infinity className="w-4 h-4 mx-auto text-success" />
                 ) : (
-                  <span className="font-medium">{formatStorage(plan.max_storage_gb)}</span>
+                  <span className="font-medium">{formatStorage(plan)}</span>
                 )}
               </td>
             ))}
