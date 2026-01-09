@@ -71,6 +71,16 @@ export interface Company {
   stripe_payouts_enabled: boolean | null;
   stripe_payments_enabled: boolean | null;
   platform_fee_percentage: number | null;
+  // Document numbering settings
+  job_number_prefix: string | null;
+  job_number_padding: number | null;
+  job_number_include_year: boolean | null;
+  quote_number_prefix: string | null;
+  quote_number_padding: number | null;
+  quote_number_include_year: boolean | null;
+  invoice_number_prefix: string | null;
+  invoice_number_padding: number | null;
+  invoice_number_include_year: boolean | null;
   // Timestamps
   created_at: string;
   updated_at: string;

@@ -2555,7 +2555,13 @@ export type Database = {
           email_on_payment_received: boolean
           email_quote_body: string
           id: string
+          invoice_number_include_year: boolean
+          invoice_number_padding: number
+          invoice_number_prefix: string
           invoice_reminder_days: number
+          job_number_include_year: boolean
+          job_number_padding: number
+          job_number_prefix: string
           late_fee_percentage: number
           logo_url: string
           name: string
@@ -2573,6 +2579,9 @@ export type Database = {
           pdf_terms_conditions: string
           phone: string
           platform_fee_percentage: number
+          quote_number_include_year: boolean
+          quote_number_padding: number
+          quote_number_prefix: string
           require_job_completion_signature: boolean
           require_mfa: boolean
           require_quote_signature: boolean
