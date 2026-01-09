@@ -83,10 +83,12 @@ export type Database = {
           email_on_payment_received: boolean
           email_quote_body: string | null
           id: string
+          invoice_next_number: number | null
           invoice_number_include_year: boolean
           invoice_number_padding: number
           invoice_number_prefix: string
           invoice_reminder_days: number
+          job_next_number: number | null
           job_number_include_year: boolean
           job_number_padding: number
           job_number_prefix: string
@@ -107,6 +109,7 @@ export type Database = {
           pdf_terms_conditions: string | null
           phone: string | null
           platform_fee_percentage: number | null
+          quote_next_number: number | null
           quote_number_include_year: boolean
           quote_number_padding: number
           quote_number_prefix: string
@@ -155,10 +158,12 @@ export type Database = {
           email_on_payment_received?: boolean
           email_quote_body?: string | null
           id?: string
+          invoice_next_number?: number | null
           invoice_number_include_year?: boolean
           invoice_number_padding?: number
           invoice_number_prefix?: string
           invoice_reminder_days?: number
+          job_next_number?: number | null
           job_number_include_year?: boolean
           job_number_padding?: number
           job_number_prefix?: string
@@ -179,6 +184,7 @@ export type Database = {
           pdf_terms_conditions?: string | null
           phone?: string | null
           platform_fee_percentage?: number | null
+          quote_next_number?: number | null
           quote_number_include_year?: boolean
           quote_number_padding?: number
           quote_number_prefix?: string
@@ -227,10 +233,12 @@ export type Database = {
           email_on_payment_received?: boolean
           email_quote_body?: string | null
           id?: string
+          invoice_next_number?: number | null
           invoice_number_include_year?: boolean
           invoice_number_padding?: number
           invoice_number_prefix?: string
           invoice_reminder_days?: number
+          job_next_number?: number | null
           job_number_include_year?: boolean
           job_number_padding?: number
           job_number_prefix?: string
@@ -251,6 +259,7 @@ export type Database = {
           pdf_terms_conditions?: string | null
           phone?: string | null
           platform_fee_percentage?: number | null
+          quote_next_number?: number | null
           quote_number_include_year?: boolean
           quote_number_padding?: number
           quote_number_prefix?: string
@@ -2551,11 +2560,11 @@ export type Database = {
         Returns: undefined
       }
       generate_invoice_number: {
-        Args: { _company_id: string }
+        Args: { p_company_id: string }
         Returns: string
       }
-      generate_job_number: { Args: { _company_id: string }; Returns: string }
-      generate_quote_number: { Args: { _company_id: string }; Returns: string }
+      generate_job_number: { Args: { p_company_id: string }; Returns: string }
+      generate_quote_number: { Args: { p_company_id: string }; Returns: string }
       get_company_for_user: {
         Args: { _company_id: string }
         Returns: {

@@ -101,12 +101,15 @@ const Company = () => {
     job_number_prefix: 'J',
     job_number_padding: 3,
     job_number_include_year: true,
+    job_next_number: 1,
     quote_number_prefix: 'Q',
     quote_number_padding: 4,
     quote_number_include_year: true,
+    quote_next_number: 1,
     invoice_number_prefix: 'I',
     invoice_number_padding: 4,
     invoice_number_include_year: true,
+    invoice_next_number: 1,
   });
   const [runningAutomations, setRunningAutomations] = useState(false);
   const [savingSection, setSavingSection] = useState<string | null>(null);
@@ -195,12 +198,15 @@ const Company = () => {
       job_number_prefix: (company as any).job_number_prefix ?? 'J',
       job_number_padding: (company as any).job_number_padding ?? 3,
       job_number_include_year: (company as any).job_number_include_year ?? true,
+      job_next_number: (company as any).job_next_number ?? 1,
       quote_number_prefix: (company as any).quote_number_prefix ?? 'Q',
       quote_number_padding: (company as any).quote_number_padding ?? 4,
       quote_number_include_year: (company as any).quote_number_include_year ?? true,
+      quote_next_number: (company as any).quote_next_number ?? 1,
       invoice_number_prefix: (company as any).invoice_number_prefix ?? 'I',
       invoice_number_padding: (company as any).invoice_number_padding ?? 4,
       invoice_number_include_year: (company as any).invoice_number_include_year ?? true,
+      invoice_next_number: (company as any).invoice_next_number ?? 1,
     });
     setFormInitialized(true);
   }
@@ -787,7 +793,7 @@ const Company = () => {
                       {/* Job Numbers */}
                       <div className="space-y-3 p-4 border rounded-lg">
                         <Label className="font-medium">Job Numbers</Label>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Prefix</Label>
                             <Input
@@ -833,12 +839,25 @@ const Company = () => {
                               </SelectContent>
                             </Select>
                           </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Start From</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={documentNumbering.job_next_number}
+                              onChange={(e) => {
+                                const value = Math.max(1, parseInt(e.target.value) || 1);
+                                setDocumentNumbering({ ...documentNumbering, job_next_number: value });
+                              }}
+                              placeholder="1"
+                            />
+                          </div>
                         </div>
                         <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
-                          Preview: <span className="font-mono font-medium text-foreground">
+                          Next number: <span className="font-mono font-medium text-foreground">
                             {documentNumbering.job_number_prefix}-
                             {documentNumbering.job_number_include_year ? `${new Date().getFullYear()}-` : ''}
-                            {'0'.repeat(documentNumbering.job_number_padding - 1)}1
+                            {documentNumbering.job_next_number.toString().padStart(documentNumbering.job_number_padding, '0')}
                           </span>
                         </div>
                       </div>
@@ -846,7 +865,7 @@ const Company = () => {
                       {/* Quote Numbers */}
                       <div className="space-y-3 p-4 border rounded-lg">
                         <Label className="font-medium">Quote Numbers</Label>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Prefix</Label>
                             <Input
@@ -892,12 +911,25 @@ const Company = () => {
                               </SelectContent>
                             </Select>
                           </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Start From</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={documentNumbering.quote_next_number}
+                              onChange={(e) => {
+                                const value = Math.max(1, parseInt(e.target.value) || 1);
+                                setDocumentNumbering({ ...documentNumbering, quote_next_number: value });
+                              }}
+                              placeholder="1"
+                            />
+                          </div>
                         </div>
                         <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
-                          Preview: <span className="font-mono font-medium text-foreground">
+                          Next number: <span className="font-mono font-medium text-foreground">
                             {documentNumbering.quote_number_prefix}-
                             {documentNumbering.quote_number_include_year ? `${new Date().getFullYear()}-` : ''}
-                            {'0'.repeat(documentNumbering.quote_number_padding - 1)}1
+                            {documentNumbering.quote_next_number.toString().padStart(documentNumbering.quote_number_padding, '0')}
                           </span>
                         </div>
                       </div>
@@ -905,7 +937,7 @@ const Company = () => {
                       {/* Invoice Numbers */}
                       <div className="space-y-3 p-4 border rounded-lg">
                         <Label className="font-medium">Invoice Numbers</Label>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Prefix</Label>
                             <Input
@@ -951,12 +983,25 @@ const Company = () => {
                               </SelectContent>
                             </Select>
                           </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Start From</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              value={documentNumbering.invoice_next_number}
+                              onChange={(e) => {
+                                const value = Math.max(1, parseInt(e.target.value) || 1);
+                                setDocumentNumbering({ ...documentNumbering, invoice_next_number: value });
+                              }}
+                              placeholder="1"
+                            />
+                          </div>
                         </div>
                         <div className="text-sm text-muted-foreground bg-muted/50 px-3 py-2 rounded">
-                          Preview: <span className="font-mono font-medium text-foreground">
+                          Next number: <span className="font-mono font-medium text-foreground">
                             {documentNumbering.invoice_number_prefix}-
                             {documentNumbering.invoice_number_include_year ? `${new Date().getFullYear()}-` : ''}
-                            {'0'.repeat(documentNumbering.invoice_number_padding - 1)}1
+                            {documentNumbering.invoice_next_number.toString().padStart(documentNumbering.invoice_number_padding, '0')}
                           </span>
                         </div>
                       </div>
@@ -972,12 +1017,15 @@ const Company = () => {
                             job_number_prefix: documentNumbering.job_number_prefix,
                             job_number_padding: documentNumbering.job_number_padding,
                             job_number_include_year: documentNumbering.job_number_include_year,
+                            job_next_number: documentNumbering.job_next_number,
                             quote_number_prefix: documentNumbering.quote_number_prefix,
                             quote_number_padding: documentNumbering.quote_number_padding,
                             quote_number_include_year: documentNumbering.quote_number_include_year,
+                            quote_next_number: documentNumbering.quote_next_number,
                             invoice_number_prefix: documentNumbering.invoice_number_prefix,
                             invoice_number_padding: documentNumbering.invoice_number_padding,
                             invoice_number_include_year: documentNumbering.invoice_number_include_year,
+                            invoice_next_number: documentNumbering.invoice_next_number,
                           } as any)}
                         >
                           {savingSection === 'numbering' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
