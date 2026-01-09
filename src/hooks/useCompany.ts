@@ -75,12 +75,18 @@ export interface Company {
   job_number_prefix: string | null;
   job_number_padding: number | null;
   job_number_include_year: boolean | null;
+  job_next_number: number | null;
+  job_number_use_hyphens: boolean | null;
   quote_number_prefix: string | null;
   quote_number_padding: number | null;
   quote_number_include_year: boolean | null;
+  quote_next_number: number | null;
+  quote_number_use_hyphens: boolean | null;
   invoice_number_prefix: string | null;
   invoice_number_padding: number | null;
   invoice_number_include_year: boolean | null;
+  invoice_next_number: number | null;
+  invoice_number_use_hyphens: boolean | null;
   // Timestamps
   created_at: string;
   updated_at: string;
