@@ -87,11 +87,13 @@ export type Database = {
           invoice_number_include_year: boolean
           invoice_number_padding: number
           invoice_number_prefix: string
+          invoice_number_use_hyphens: boolean
           invoice_reminder_days: number
           job_next_number: number | null
           job_number_include_year: boolean
           job_number_padding: number
           job_number_prefix: string
+          job_number_use_hyphens: boolean
           late_fee_percentage: number | null
           logo_url: string | null
           name: string
@@ -113,6 +115,7 @@ export type Database = {
           quote_number_include_year: boolean
           quote_number_padding: number
           quote_number_prefix: string
+          quote_number_use_hyphens: boolean
           require_job_completion_signature: boolean
           require_mfa: boolean
           require_quote_signature: boolean
@@ -162,11 +165,13 @@ export type Database = {
           invoice_number_include_year?: boolean
           invoice_number_padding?: number
           invoice_number_prefix?: string
+          invoice_number_use_hyphens?: boolean
           invoice_reminder_days?: number
           job_next_number?: number | null
           job_number_include_year?: boolean
           job_number_padding?: number
           job_number_prefix?: string
+          job_number_use_hyphens?: boolean
           late_fee_percentage?: number | null
           logo_url?: string | null
           name: string
@@ -188,6 +193,7 @@ export type Database = {
           quote_number_include_year?: boolean
           quote_number_padding?: number
           quote_number_prefix?: string
+          quote_number_use_hyphens?: boolean
           require_job_completion_signature?: boolean
           require_mfa?: boolean
           require_quote_signature?: boolean
@@ -237,11 +243,13 @@ export type Database = {
           invoice_number_include_year?: boolean
           invoice_number_padding?: number
           invoice_number_prefix?: string
+          invoice_number_use_hyphens?: boolean
           invoice_reminder_days?: number
           job_next_number?: number | null
           job_number_include_year?: boolean
           job_number_padding?: number
           job_number_prefix?: string
+          job_number_use_hyphens?: boolean
           late_fee_percentage?: number | null
           logo_url?: string | null
           name?: string
@@ -263,6 +271,7 @@ export type Database = {
           quote_number_include_year?: boolean
           quote_number_padding?: number
           quote_number_prefix?: string
+          quote_number_use_hyphens?: boolean
           require_job_completion_signature?: boolean
           require_mfa?: boolean
           require_quote_signature?: boolean
