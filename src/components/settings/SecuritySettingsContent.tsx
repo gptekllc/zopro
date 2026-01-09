@@ -322,15 +322,15 @@ const SecuritySettingsContent = () => {
               {otherTeamMembers.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No other team members to manage.</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {otherTeamMembers.map((member) => (
                     <div
                       key={member.id}
-                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                      className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-md"
                     >
-                      <div>
-                        <p className="font-medium">{member.full_name || 'Unnamed'}</p>
-                        <p className="text-sm text-muted-foreground">{member.email}</p>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium text-sm truncate">{member.full_name || 'Unnamed'}</span>
+                        <span className="text-xs text-muted-foreground truncate hidden sm:inline">({member.email})</span>
                       </div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
