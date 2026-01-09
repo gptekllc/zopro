@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -67,6 +68,7 @@ const SuperAdmin = () => {
   const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
   const [selectedUserRoles, setSelectedUserRoles] = useState<string[]>([]);
+  const [deleteCompanyId, setDeleteCompanyId] = useState<string | null>(null);
   
   const [companyForm, setCompanyForm] = useState({
     name: '',
@@ -553,11 +555,7 @@ const SuperAdmin = () => {
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   className="text-destructive"
-                                  onClick={() => {
-                                    if (confirm('Delete this company?')) {
-                                      deleteCompanyMutation.mutate(company.id);
-                                    }
-                                  }}
+                                  onClick={() => setDeleteCompanyId(company.id)}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />
                                   Delete
@@ -838,6 +836,32 @@ const SuperAdmin = () => {
           <AuditLogTab profiles={profiles} />
         </TabsContent>
       </Tabs>
+
+      {/* Delete Company Confirmation Dialog */}
+      <AlertDialog open={!!deleteCompanyId} onOpenChange={(open) => !open && setDeleteCompanyId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Company?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this company? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteCompanyId) {
+                  deleteCompanyMutation.mutate(deleteCompanyId);
+                  setDeleteCompanyId(null);
+                }
+              }}
+            >
+              Yes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageContainer>
   );
 };
