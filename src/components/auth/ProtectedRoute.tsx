@@ -7,12 +7,13 @@ import MFAEnrollment from '@/components/auth/MFAEnrollment';
 import { useState } from 'react';
 
 const ProtectedRoute = () => {
-  const { user, profile, roles, isLoading, isSuperAdmin, needsMFAChallenge, hasMFA, refreshMFAStatus } = useAuth();
+  const { user, profile, roles, isLoading, isMFALoading, isSuperAdmin, needsMFAChallenge, hasMFA, refreshMFAStatus } = useAuth();
   const { data: company, isLoading: companyLoading } = useCompany();
   const [mfaVerified, setMfaVerified] = useState(false);
   const [mfaEnrolled, setMfaEnrolled] = useState(false);
 
-  if (isLoading) {
+  // Wait for both auth and MFA status to be fully loaded
+  if (isLoading || isMFALoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">Loading...</div>
@@ -22,6 +23,19 @@ const ProtectedRoute = () => {
 
   if (!user) {
     return <Navigate to="/" replace />;
+  }
+
+  // MFA Challenge - Check IMMEDIATELY after confirming user exists
+  // This prevents any protected content from flashing before MFA verification
+  if (needsMFAChallenge && !mfaVerified) {
+    return (
+      <MFAChallenge 
+        onVerified={() => {
+          setMfaVerified(true);
+          refreshMFAStatus();
+        }} 
+      />
+    );
   }
 
   // Wait for profile to load before determining onboarding
@@ -52,17 +66,6 @@ const ProtectedRoute = () => {
     );
   }
 
-  // MFA Challenge - user has MFA enrolled but needs to verify this session
-  if (needsMFAChallenge && !mfaVerified) {
-    return (
-      <MFAChallenge 
-        onVerified={() => {
-          setMfaVerified(true);
-          refreshMFAStatus();
-        }} 
-      />
-    );
-  }
 
   // MFA Enrollment Required - company requires MFA but user hasn't enrolled
   if (company?.require_mfa && !hasMFA && !isSuperAdmin && !hasCustomerRole && !mfaEnrolled) {
