@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
+import { useLastVisitedPage } from '@/hooks/useLastVisitedPage';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -79,6 +80,9 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
     const stored = localStorage.getItem('sidebar-collapsed');
     return stored === 'true';
   });
+
+  // Track last visited page for "return to last page" feature
+  useLastVisitedPage(!!user);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(prev => {
