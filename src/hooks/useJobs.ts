@@ -236,7 +236,7 @@ export function useCreateJob() {
       
       // Generate job number
       const { data: jobNumberData, error: jobNumberError } = await (supabase as any)
-        .rpc('generate_job_number', { _company_id: profile.company_id });
+        .rpc('generate_job_number', { p_company_id: profile.company_id });
       
       if (jobNumberError) throw jobNumberError;
       
@@ -646,7 +646,7 @@ export function useImportQuoteToJob() {
       
       // Generate job number
       const { data: jobNumber, error: jobNumberError } = await (supabase as any)
-        .rpc('generate_job_number', { _company_id: profile.company_id });
+        .rpc('generate_job_number', { p_company_id: profile.company_id });
       
       if (jobNumberError) throw jobNumberError;
       
@@ -769,7 +769,7 @@ export function useConvertJobToInvoice() {
       
       // Generate invoice number using database function
       const { data: invoiceNumberData, error: invoiceNumberError } = await (supabase as any)
-        .rpc('generate_invoice_number', { _company_id: profile.company_id });
+        .rpc('generate_invoice_number', { p_company_id: profile.company_id });
       
       if (invoiceNumberError) throw invoiceNumberError;
       const invoiceNumber = invoiceNumberData;
@@ -943,7 +943,7 @@ export function useConvertJobToQuote() {
       
       // Generate quote number
       const { data: quoteNumberData, error: quoteNumberError } = await (supabase as any)
-        .rpc('generate_quote_number', { _company_id: profile.company_id });
+        .rpc('generate_quote_number', { p_company_id: profile.company_id });
       
       if (quoteNumberError) throw quoteNumberError;
       
@@ -1089,7 +1089,7 @@ export function useCreateJobFromQuoteItems() {
       
       // Generate job number
       const { data: jobNumber, error: jobNumberError } = await (supabase as any)
-        .rpc('generate_job_number', { _company_id: profile.company_id });
+        .rpc('generate_job_number', { p_company_id: profile.company_id });
       
       if (jobNumberError) throw jobNumberError;
       

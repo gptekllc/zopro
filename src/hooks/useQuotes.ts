@@ -151,7 +151,7 @@ export function useCreateQuote() {
       
       // Generate quote number using database function
       const { data: quoteNumberData, error: quoteNumberError } = await (supabase as any)
-        .rpc('generate_quote_number', { _company_id: profile.company_id });
+        .rpc('generate_quote_number', { p_company_id: profile.company_id });
       
       if (quoteNumberError) throw quoteNumberError;
       const quoteNumber = quoteNumberData;

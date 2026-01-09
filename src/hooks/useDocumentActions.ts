@@ -32,7 +32,7 @@ export function useConvertQuoteToInvoice() {
 
       // Generate invoice number using database function
       const { data: invoiceNumberData, error: invoiceNumberError } = await (supabase as any)
-        .rpc('generate_invoice_number', { _company_id: profile.company_id });
+        .rpc('generate_invoice_number', { p_company_id: profile.company_id });
 
       if (invoiceNumberError) throw invoiceNumberError;
       const invoiceNumber = invoiceNumberData;
