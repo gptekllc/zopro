@@ -229,7 +229,14 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b z-40 px-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
-          <span className="font-semibold">ZoPro</span>
+          <div className="flex flex-col">
+            <span className="font-semibold leading-tight">ZoPro</span>
+            {company?.name && (
+              <span className="text-xs text-muted-foreground leading-tight truncate max-w-[120px]">
+                {company.name}
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-1">
