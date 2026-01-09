@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Loader2, RotateCcw, Trash2, AlertTriangle, FileText, Briefcase, Receipt, Image, User, Users } from 'lucide-react';
+import { Loader2, RotateCcw, Trash2, AlertTriangle, FileText, Briefcase, Receipt, Image, User, Users, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { formatAmount } from '@/lib/formatAmount';
@@ -268,108 +269,113 @@ export function DeletedItemsTab({ companies }: DeletedItemsTabProps) {
     const someSelected = sectionKeys.some((k) => selectedItems.has(k));
 
     return (
-      <div className="space-y-3">
+      <Collapsible defaultOpen className="space-y-3">
         <div className="flex items-center gap-3 pb-2 border-b">
           <Checkbox 
             checked={allSelected} 
             onCheckedChange={() => toggleSection(docs)}
             className={someSelected && !allSelected ? 'data-[state=checked]:bg-primary/50' : ''}
           />
-          <Badge variant={variant} className="gap-1">
-            {icon}
-            {title}
-          </Badge>
-          <span className="text-sm text-muted-foreground">({docs.length})</span>
+          <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-80 transition-opacity group flex-1">
+            <Badge variant={variant} className="gap-1">
+              {icon}
+              {title}
+            </Badge>
+            <span className="text-sm text-muted-foreground">({docs.length})</span>
+            <ChevronDown className="w-4 h-4 text-muted-foreground ml-auto transition-transform group-data-[state=open]:rotate-180" />
+          </CollapsibleTrigger>
         </div>
-        <div className="space-y-2 pl-2">
-          {docs.map((doc) => {
-            const key = `${doc.document_type}:${doc.id}`;
-            const isSelected = selectedItems.has(key);
-            const isPhoto = doc.document_type.includes('photo');
-            const isUser = doc.document_type === 'user';
-            const isCustomer = doc.document_type === 'customer';
+        <CollapsibleContent>
+          <div className="space-y-2 pl-2">
+            {docs.map((doc) => {
+              const key = `${doc.document_type}:${doc.id}`;
+              const isSelected = selectedItems.has(key);
+              const isPhoto = doc.document_type.includes('photo');
+              const isUser = doc.document_type === 'user';
+              const isCustomer = doc.document_type === 'customer';
 
-            return (
-              <div
-                key={key}
-                className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                  isSelected ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'
-                }`}
-              >
-                <Checkbox
-                  checked={isSelected}
-                  onCheckedChange={() => toggleItem(doc.id, doc.document_type)}
-                />
-                
-                {isPhoto && doc.photo_url ? (
-                  <img
-                    src={doc.photo_url}
-                    alt={doc.title || 'Photo'}
-                    className="w-12 h-12 rounded object-cover"
+              return (
+                <div
+                  key={key}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                    isSelected ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'
+                  }`}
+                >
+                  <Checkbox
+                    checked={isSelected}
+                    onCheckedChange={() => toggleItem(doc.id, doc.document_type)}
                   />
-                ) : isUser && doc.photo_url ? (
-                  <img
-                    src={doc.photo_url}
-                    alt={doc.title || 'User'}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                    {getDocumentIcon(doc.document_type)}
-                  </div>
-                )}
+                  
+                  {isPhoto && doc.photo_url ? (
+                    <img
+                      src={doc.photo_url}
+                      alt={doc.title || 'Photo'}
+                      className="w-12 h-12 rounded object-cover"
+                    />
+                  ) : isUser && doc.photo_url ? (
+                    <img
+                      src={doc.photo_url}
+                      alt={doc.title || 'User'}
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                      {getDocumentIcon(doc.document_type)}
+                    </div>
+                  )}
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    {isUser ? (
-                      <>
-                        <span className="font-medium">{doc.title || 'Unknown User'}</span>
-                        <span className="text-sm text-muted-foreground truncate">{doc.document_number}</span>
-                      </>
-                    ) : isCustomer ? (
-                      <>
-                        <span className="font-medium">{doc.title || 'Unknown Customer'}</span>
-                        {doc.document_number && (
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      {isUser ? (
+                        <>
+                          <span className="font-medium">{doc.title || 'Unknown User'}</span>
                           <span className="text-sm text-muted-foreground truncate">{doc.document_number}</span>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <span className="font-mono text-sm font-medium">{doc.document_number}</span>
-                        {doc.title && (
-                          <span className="text-sm truncate">{doc.title}</span>
-                        )}
-                      </>
-                    )}
+                        </>
+                      ) : isCustomer ? (
+                        <>
+                          <span className="font-medium">{doc.title || 'Unknown Customer'}</span>
+                          {doc.document_number && (
+                            <span className="text-sm text-muted-foreground truncate">{doc.document_number}</span>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-mono text-sm font-medium">{doc.document_number}</span>
+                          {doc.title && (
+                            <span className="text-sm truncate">{doc.title}</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {isUser ? (
+                        <span className="capitalize">{doc.customer_name || 'No role'}</span>
+                      ) : isCustomer ? (
+                        <span>{doc.customer_name || 'No additional info'}</span>
+                      ) : (
+                        <>
+                          {doc.customer_name && <span>{doc.customer_name}</span>}
+                          {doc.total != null && <span>• {formatAmount(doc.total)}</span>}
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {isUser ? (
-                      <span className="capitalize">{doc.customer_name || 'No role'}</span>
-                    ) : isCustomer ? (
-                      <span>{doc.customer_name || 'No additional info'}</span>
-                    ) : (
-                      <>
-                        {doc.customer_name && <span>{doc.customer_name}</span>}
-                        {doc.total != null && <span>• {formatAmount(doc.total)}</span>}
-                      </>
-                    )}
-                  </div>
-                </div>
 
-                <div className="flex flex-col items-end text-xs">
-                  <span className="text-muted-foreground">
-                    {formatDistanceToNow(new Date(doc.deleted_at), { addSuffix: true })}
-                  </span>
-                  <div className="flex items-center gap-1 text-amber-600">
-                    <AlertTriangle className="w-3 h-3" />
-                    <span>{format(new Date(doc.permanent_delete_at), 'MMM d')}</span>
+                  <div className="flex flex-col items-end text-xs">
+                    <span className="text-muted-foreground">
+                      {formatDistanceToNow(new Date(doc.deleted_at), { addSuffix: true })}
+                    </span>
+                    <div className="flex items-center gap-1 text-amber-600">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>{format(new Date(doc.permanent_delete_at), 'MMM d')}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+              );
+            })}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     );
   };
 
