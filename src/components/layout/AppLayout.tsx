@@ -232,7 +232,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
           <div className="flex flex-col">
             <span className="font-semibold leading-tight">ZoPro</span>
             {company?.name && (
-              <span className="text-xs text-muted-foreground leading-tight truncate max-w-[120px]">
+              <span className="text-xs text-muted-foreground leading-tight line-clamp-2 max-w-[160px]">
                 {company.name}
               </span>
             )}
