@@ -65,23 +65,17 @@ export function JobListCard({
   onSwipeHintDismiss
 }: JobListCardProps) {
   const signatureId = (job as any).completion_signature_id as string | undefined;
-  
+
   // Get assignee names - prefer new assignees array, fallback to single assignee
-  const assigneeNames = job.assignees && job.assignees.length > 0
-    ? job.assignees.map(a => a.profile?.full_name || a.profile?.email || 'Unknown').join(', ')
-    : job.assignee?.full_name || null;
-  
-  const hasOnLeaveAssignee = job.assignees?.some(a => a.profile?.employment_status === 'on_leave') 
-    || job.assignee?.employment_status === 'on_leave';
-  
+  const assigneeNames = job.assignees && job.assignees.length > 0 ? job.assignees.map(a => a.profile?.full_name || a.profile?.email || 'Unknown').join(', ') : job.assignee?.full_name || null;
+  const hasOnLeaveAssignee = job.assignees?.some(a => a.profile?.employment_status === 'on_leave') || job.assignee?.employment_status === 'on_leave';
+
   // Determine which date to show (only one)
   const now = new Date();
   const isCompleted = job.status === 'completed' || job.status === 'invoiced';
   const scheduledPast = job.scheduled_start && new Date(job.scheduled_start) < now;
-  
   let displayDate: string | null = null;
   let dateLabel: 'completed' | 'scheduled' | 'created' = 'created';
-  
   if (isCompleted || scheduledPast) {
     // Show completed/actual end time if available, otherwise fall back to scheduled or created
     displayDate = (job as any).actual_end || job.scheduled_start || job.created_at;
@@ -93,9 +87,8 @@ export function JobListCard({
     displayDate = job.created_at;
     dateLabel = 'created';
   }
-  
   const metadataRow = <>
-      {assigneeNames && <span className="flex items-center gap-1 mx-0 px-[5px] bg-inherit text-primary">
+      {assigneeNames && <span className="flex items-center gap-1 mx-0 px-[5px] bg-inherit text-muted-foreground">
           <UserCog className="w-3 h-3" />
           {assigneeNames}
           {hasOnLeaveAssignee && <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-[10px] px-1 py-0 ml-1">
