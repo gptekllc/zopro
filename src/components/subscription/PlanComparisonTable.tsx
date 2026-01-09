@@ -53,6 +53,14 @@ export function PlanComparisonTable({
     return plan.features[feature] === true;
   };
 
+  const formatStorage = (gb: number | null | undefined): string => {
+    if (gb === null || gb === undefined) return 'Unlimited';
+    if (gb < 1) {
+      return `${Math.round(gb * 1024)} MB`;
+    }
+    return `${gb} GB`;
+  };
+
   if (compact) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -123,7 +131,7 @@ export function PlanComparisonTable({
                   <li className="flex items-center gap-2">
                     <span className="text-muted-foreground">Storage:</span>
                     <span className="font-medium">
-                      {plan.max_storage_gb === null ? 'Unlimited' : `${plan.max_storage_gb} GB`}
+                      {formatStorage(plan.max_storage_gb)}
                     </span>
                   </li>
                 </ul>
@@ -231,7 +239,7 @@ export function PlanComparisonTable({
                 {plan.max_storage_gb === null ? (
                   <Infinity className="w-4 h-4 mx-auto text-success" />
                 ) : (
-                  <span className="font-medium">{plan.max_storage_gb} GB</span>
+                  <span className="font-medium">{formatStorage(plan.max_storage_gb)}</span>
                 )}
               </td>
             ))}
