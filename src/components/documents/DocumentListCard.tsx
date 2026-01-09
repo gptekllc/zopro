@@ -56,14 +56,14 @@ export function DocumentListCard({
           {/* Row 1: Document Info + Total */}
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-primary">
                 <span className={`font-semibold text-sm ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{documentNumber}</span>
                 {title && <>
                     <span className="text-muted-foreground">•</span>
                     <span className={`font-medium text-sm truncate ${isVoided ? 'line-through text-muted-foreground' : ''}`}>{title}</span>
                   </>}
               </div>
-              <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap text-red-700">
+              <div className="flex items-center gap-2 text-xs mt-0.5 flex-wrap text-secondary-foreground">
                 <span className={`truncate ${isVoided ? 'line-through' : ''}`}>{customerName}</span>
                 {customerEmail && <>
                     <span>•</span>
