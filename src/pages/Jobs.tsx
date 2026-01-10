@@ -543,7 +543,7 @@ const Jobs = () => {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h1 className="font-bold flex items-center gap-2 text-2xl">
+            <h1 className="font-bold flex items-center gap-2 text-2xl sm:text-3xl">
               Jobs
               <UsageLimitBadge type="jobs" />
             </h1>
