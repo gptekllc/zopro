@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link as LinkIcon, Clock, BookTemplate, CalendarClock, Shield, ShieldCheck, Hash } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link as LinkIcon, Clock, BookTemplate, CalendarClock, Shield, ShieldCheck, Hash, ExternalLink, AlertCircle, Lock } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -29,14 +29,20 @@ import PageContainer from '@/components/layout/PageContainer';
 import { JobTemplatesTab, QuoteTemplatesTab } from '@/pages/Templates';
 import { EmailTemplatesTab } from '@/components/templates/EmailTemplatesTab';
 import SecuritySettingsContent from '@/components/settings/SecuritySettingsContent';
+import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 const Company = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, profile } = useAuth();
   const { data: company, isLoading } = useCompany();
   const { data: minNumbers } = useDocumentMinNumbers();
   const { providers, comingSoonProviders, isLoading: providersLoading } = usePaymentProviders();
+  const { isFeatureEnabled } = useFeatureFlags();
   const updateCompany = useUpdateCompany();
   const queryClient = useQueryClient();
+  
+  const isCustomDomainEnabled = isFeatureEnabled('custom_domain');
+  const [customDomainError, setCustomDomainError] = useState<string | null>(null);
+  const [sendingDomainNotification, setSendingDomainNotification] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -1631,31 +1637,137 @@ const Company = () => {
                           rows={3}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Custom Domain URL</Label>
-                        <Input
-                          placeholder="https://yourdomain.com"
-                          value={preferences.custom_domain}
-                          onChange={(e) => setPreferences({ ...preferences, custom_domain: e.target.value })}
-                        />
+                      {/* Custom Domain URL - Feature Gated */}
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Label className={!isCustomDomainEnabled ? 'text-muted-foreground' : ''}>
+                            Custom Domain URL
+                          </Label>
+                          <Badge variant="secondary" className="text-xs">Professional+</Badge>
+                          {!isCustomDomainEnabled && <Lock className="w-3.5 h-3.5 text-muted-foreground" />}
+                        </div>
+                        
+                        <div className="relative">
+                          <Input
+                            placeholder="https://portal.yourdomain.com"
+                            value={preferences.custom_domain}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setPreferences({ ...preferences, custom_domain: value });
+                              
+                              // Validate URL format
+                              if (value && value.trim() !== '') {
+                                try {
+                                  const url = new URL(value);
+                                  if (url.protocol !== 'https:') {
+                                    setCustomDomainError('URL must use HTTPS protocol');
+                                  } else if (!url.hostname.includes('.')) {
+                                    setCustomDomainError('Please enter a valid domain (e.g., portal.yourdomain.com)');
+                                  } else {
+                                    setCustomDomainError(null);
+                                  }
+                                } catch {
+                                  setCustomDomainError('Please enter a valid URL (e.g., https://portal.yourdomain.com)');
+                                }
+                              } else {
+                                setCustomDomainError(null);
+                              }
+                            }}
+                            disabled={!isCustomDomainEnabled}
+                            className={!isCustomDomainEnabled ? 'bg-muted cursor-not-allowed' : ''}
+                          />
+                        </div>
+                        
+                        {customDomainError && (
+                          <div className="flex items-center gap-2 text-sm text-destructive">
+                            <AlertCircle className="w-4 h-4" />
+                            {customDomainError}
+                          </div>
+                        )}
+                        
+                        {!isCustomDomainEnabled ? (
+                          <div className="p-3 bg-muted/50 border border-border rounded-lg">
+                            <p className="text-sm text-muted-foreground">
+                              Custom domains are available on Professional and Enterprise plans.{' '}
+                              <a href="/subscription" className="text-primary hover:underline">
+                                Upgrade your plan
+                              </a>{' '}
+                              to use this feature.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
+                            <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                              Setup Required
+                            </p>
+                            <p className="text-sm text-blue-700 dark:text-blue-300">
+                              Before using a custom domain, you need to configure DNS settings:
+                            </p>
+                            <ul className="text-sm text-blue-700 dark:text-blue-300 list-disc list-inside space-y-1">
+                              <li>Contact support to initiate custom domain setup</li>
+                              <li>Add an A record pointing to our servers (185.158.133.1)</li>
+                              <li>SSL certificate will be provisioned automatically</li>
+                            </ul>
+                            <a 
+                              href="https://docs.lovable.dev/features/custom-domain"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              View documentation
+                            </a>
+                          </div>
+                        )}
+                        
                         <p className="text-sm text-muted-foreground">
-                          The base URL for customer portal links in emails (e.g., https://zopro.app). Leave blank to use the default.
+                          The base URL for customer portal links in emails (e.g., https://portal.yourdomain.com). Leave blank to use the default.
                         </p>
                       </div>
+                      
                       <div className="pt-4 border-t">
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
                           className="gap-2"
-                          disabled={savingSection === 'branding'}
-                          onClick={() => handleSaveSection('branding', {
-                            brand_primary_color: preferences.brand_primary_color,
-                            customer_portal_welcome_message: preferences.customer_portal_welcome_message || null,
-                            custom_domain: preferences.custom_domain || null,
-                          } as any)}
+                          disabled={savingSection === 'branding' || !!customDomainError || sendingDomainNotification}
+                          onClick={async () => {
+                            const previousDomain = company?.custom_domain || '';
+                            const newDomain = preferences.custom_domain || '';
+                            
+                            // Check if custom domain was added (wasn't set before, but is now)
+                            const domainWasAdded = !previousDomain && newDomain && isCustomDomainEnabled;
+                            
+                            await handleSaveSection('branding', {
+                              brand_primary_color: preferences.brand_primary_color,
+                              customer_portal_welcome_message: preferences.customer_portal_welcome_message || null,
+                              custom_domain: newDomain || null,
+                            } as any);
+                            
+                            // Send notification to admins if custom domain was set up
+                            if (domainWasAdded && company?.id) {
+                              setSendingDomainNotification(true);
+                              try {
+                                await supabase.functions.invoke('send-notification', {
+                                  body: {
+                                    type: 'custom_domain_setup',
+                                    companyId: company.id,
+                                    companyName: company.name,
+                                    customDomain: newDomain,
+                                    requestedBy: profile?.email || 'Unknown user',
+                                  }
+                                });
+                                toast.info('Our team has been notified about your custom domain setup request.');
+                              } catch (error) {
+                                console.error('Failed to send custom domain notification:', error);
+                              } finally {
+                                setSendingDomainNotification(false);
+                              }
+                            }
+                          }}
                         >
-                          {savingSection === 'branding' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                          {(savingSection === 'branding' || sendingDomainNotification) ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                           Save Branding Settings
                         </Button>
                       </div>

@@ -17,6 +17,7 @@ export const FEATURE_FLAGS = {
   signatures: 'Capture customer signatures',
   api_access: 'API access for integrations',
   white_label: 'White-label branding',
+  custom_domain: 'Use a custom domain for customer portal',
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

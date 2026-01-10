@@ -40,6 +40,7 @@ const FEATURE_ORDER: FeatureFlag[] = [
   'signatures',
   'api_access',
   'white_label',
+  'custom_domain',
 ];
 
 export function PlanComparisonTable({ 
