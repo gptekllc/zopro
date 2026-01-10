@@ -150,11 +150,6 @@ export function InvoiceListCard({
       {archivedAt && (
         <Badge variant="outline" className="text-muted-foreground text-xs">Archived</Badge>
       )}
-      {hasPartialPayment && (
-        <Badge variant="outline" className="text-warning text-xs">
-          Balance: ${remainingBalance.toFixed(2)}
-        </Badge>
-      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <span className={`px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity flex items-center gap-1 ${invoiceStatusColors[invoice.status] || "bg-muted"}`}>
