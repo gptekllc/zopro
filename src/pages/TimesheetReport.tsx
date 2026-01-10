@@ -6,7 +6,7 @@ const TimesheetReport = () => {
   return (
     <PageContainer width="full" className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Weekly Timesheet</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Weekly Timesheet</h1>
         <p className="text-muted-foreground text-sm">
           Team hours overview — <Link to="/reports" className="text-primary hover:underline">View all reports</Link>
         </p>

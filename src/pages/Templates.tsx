@@ -69,7 +69,7 @@ const Templates = () => {
         {/* Header with tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
               <BookTemplate className="w-6 h-6" />
               Templates
             </h1>
