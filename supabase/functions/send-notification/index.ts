@@ -11,9 +11,9 @@ const corsHeaders = {
 };
 
 interface NotificationRequest {
-  type: 'company_assigned' | 'roles_changed' | 'join_request_admin' | 'join_request_approved' | 'join_request_rejected' | 'member_on_leave';
-  recipientEmail: string;
-  recipientName: string;
+  type: 'company_assigned' | 'roles_changed' | 'join_request_admin' | 'join_request_approved' | 'join_request_rejected' | 'member_on_leave' | 'custom_domain_setup';
+  recipientEmail?: string;
+  recipientName?: string;
   companyName?: string;
   companyId?: string;
   roles?: string[];
@@ -23,6 +23,8 @@ interface NotificationRequest {
   assignedRole?: string;
   memberName?: string;
   memberEmail?: string;
+  customDomain?: string;
+  requestedBy?: string;
 }
 
 // Helper to log email to email_logs table
@@ -111,6 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    const body = await req.json();
     const { 
       type, 
       recipientEmail, 
@@ -123,13 +126,137 @@ const handler = async (req: Request): Promise<Response> => {
       requesterEmail,
       assignedRole,
       memberName,
-      memberEmail
-    }: NotificationRequest = await req.json();
+      memberEmail,
+      customDomain,
+      requestedBy
+    } = body as NotificationRequest;
 
     console.log("Processing notification:", { type, recipientEmail, companyName, callingUserId: user.id });
 
     let subject = '';
     let htmlContent = '';
+    let finalRecipientEmail = recipientEmail || '';
+    let finalRecipientName = recipientName || '';
+
+    // For custom_domain_setup, find all admin emails for the company
+    if (type === 'custom_domain_setup' && companyId) {
+      // Get all admins for this company
+      const { data: companyAdmins } = await adminClient
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .eq('company_id', companyId);
+
+      if (companyAdmins && companyAdmins.length > 0) {
+        // Find admins by checking their roles
+        const adminIds = companyAdmins.map(a => a.id);
+        const { data: adminRoles } = await adminClient
+          .from('user_roles')
+          .select('user_id')
+          .in('user_id', adminIds)
+          .eq('role', 'admin');
+
+        const adminUserIds = new Set(adminRoles?.map(r => r.user_id) || []);
+        const adminProfiles = companyAdmins.filter(p => adminUserIds.has(p.id));
+
+        // Send email to each admin
+        const adminEmails = adminProfiles.map(p => p.email).filter(Boolean);
+        
+        subject = `Custom Domain Setup Request: ${customDomain}`;
+        htmlContent = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; border-radius: 10px 10px 0 0; }
+                .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+                .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #6366f1; }
+                .steps { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
+                .steps ol { margin: 0; padding-left: 20px; }
+                .steps li { margin-bottom: 10px; }
+                .footer { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <div class="header">
+                  <h1 style="margin: 0;">🌐 Custom Domain Setup Request</h1>
+                </div>
+                <div class="content">
+                  <p>A custom domain has been configured and needs DNS setup assistance.</p>
+                  
+                  <div class="info-box">
+                    <p><strong>Request Details:</strong></p>
+                    <p>Company: ${companyName || 'Unknown'}</p>
+                    <p>Custom Domain: <code>${customDomain}</code></p>
+                    <p>Requested by: ${requestedBy || 'Unknown'}</p>
+                  </div>
+                  
+                  <div class="steps">
+                    <p><strong>Next Steps:</strong></p>
+                    <ol>
+                      <li>Verify the domain ownership</li>
+                      <li>Configure the A record to point to 185.158.133.1</li>
+                      <li>Wait for DNS propagation (up to 72 hours)</li>
+                      <li>SSL certificate will be provisioned automatically</li>
+                    </ol>
+                  </div>
+                  
+                  <p>Please contact support if you need assistance with the DNS configuration.</p>
+                  
+                  <div class="footer">
+                    <p>This is an automated notification from ZoPro.</p>
+                  </div>
+                </div>
+              </div>
+            </body>
+          </html>
+        `;
+
+        // Send to all admins
+        for (const adminEmail of adminEmails) {
+          if (!adminEmail) continue;
+          try {
+            const emailResponse = await resend.emails.send({
+              from: "ZoPro Notifications <noreply@email.zopro.app>",
+              to: [adminEmail],
+              subject,
+              html: htmlContent,
+            });
+
+            console.log("Custom domain notification sent to admin:", adminEmail, emailResponse);
+
+            await logEmail(
+              adminClient,
+              adminEmail,
+              subject,
+              type,
+              'sent',
+              (emailResponse as any)?.data?.id || null,
+              null,
+              companyId,
+              { notificationType: type, customDomain, requestedBy }
+            );
+          } catch (emailErr) {
+            console.error("Failed to send to admin:", adminEmail, emailErr);
+          }
+        }
+
+        return new Response(JSON.stringify({ success: true, notifiedAdmins: adminEmails.length }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+    }
+
+    // Validate required fields for other notification types
+    if (!finalRecipientEmail) {
+      return new Response(
+        JSON.stringify({ error: "recipientEmail is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (type === 'company_assigned') {
       subject = companyName ? `You've been assigned to ${companyName}` : 'Company Assignment Updated';
@@ -369,7 +496,7 @@ const handler = async (req: Request): Promise<Response> => {
     try {
       const emailResponse = await resend.emails.send({
         from: "ZoPro Notifications <noreply@email.zopro.app>",
-        to: [recipientEmail],
+        to: [finalRecipientEmail],
         subject,
         html: htmlContent,
       });
@@ -379,14 +506,14 @@ const handler = async (req: Request): Promise<Response> => {
       // Log successful email
       await logEmail(
         adminClient,
-        recipientEmail,
+        finalRecipientEmail,
         subject,
         type,
         'sent',
         (emailResponse as any)?.data?.id || null,
         null,
         companyId || null,
-        { notificationType: type, recipientName }
+        { notificationType: type, recipientName: finalRecipientName }
       );
 
       return new Response(JSON.stringify(emailResponse), {
@@ -400,14 +527,14 @@ const handler = async (req: Request): Promise<Response> => {
       // Log failed email
       await logEmail(
         adminClient,
-        recipientEmail,
+        finalRecipientEmail,
         subject,
         type,
         'failed',
         null,
         errorMessage,
         companyId || null,
-        { notificationType: type, recipientName }
+        { notificationType: type, recipientName: finalRecipientName }
       );
 
       throw emailError;
