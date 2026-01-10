@@ -157,7 +157,7 @@ const JobTemplates = () => {
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
             <BookTemplate className="w-6 h-6" />
             Job Templates
           </h1>
