@@ -210,7 +210,7 @@ export function QuoteListManager({
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(25);
 
   // Calculate paginated quotes
   const totalPages = Math.ceil(filteredQuotes.length / pageSize);
@@ -503,7 +503,7 @@ export function QuoteListManager({
               setCurrentPage(1);
             }}
             itemLabel="quotes"
-            pageSizeOptions={[50, 100, 150]}
+            pageSizeOptions={[25, 50, 100, 150]}
           />
         </div>
       </PullToRefresh>
