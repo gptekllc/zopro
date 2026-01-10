@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, UserCog, Mail, Phone, Edit, Shield, Loader2, UserPlus, AlertTriangle, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -21,6 +22,7 @@ import { FeatureGate } from '@/components/FeatureGate';
 import { UsageLimitWarning, UsageLimitBadge } from '@/components/UsageLimitWarning';
 import { useUsageLimits } from '@/hooks/useUsageLimits';
 import AvatarUpload from '@/components/common/AvatarUpload';
+import { UserPermissionsEditor } from '@/components/team/UserPermissionsEditor';
 
 const AVAILABLE_ROLES = ['admin', 'manager', 'technician'] as const;
 type AppRole = typeof AVAILABLE_ROLES[number];
@@ -398,14 +400,25 @@ const TechniciansContent = () => {
         setIsDialogOpen(open);
         if (!open) resetForm();
       }}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Team Member</DialogTitle>
             <DialogDescription>
               Update details for {formData.full_name || formData.email}
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="profile">Profile</TabsTrigger>
+              <TabsTrigger value="permissions">
+                <Shield className="w-4 h-4 mr-2" />
+                Permissions
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="profile">
+              <form onSubmit={handleSubmit} className="space-y-4 py-4">
             {/* Avatar Upload */}
             <div className="flex flex-col items-center gap-3">
               <AvatarUpload
@@ -606,6 +619,18 @@ const TechniciansContent = () => {
               </Button>
             </DialogFooter>
           </form>
+            </TabsContent>
+            
+            <TabsContent value="permissions" className="py-4">
+              {editingUser && currentProfile?.company_id && (
+                <UserPermissionsEditor
+                  userId={editingUser}
+                  companyId={currentProfile.company_id}
+                  userRole={formData.role}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
 

@@ -1885,6 +1885,39 @@ export type Database = {
           },
         ]
       }
+      permission_definitions: {
+        Row: {
+          allowed_roles: Json
+          category: string
+          created_at: string
+          description: string | null
+          display_name: string
+          display_order: number
+          id: string
+          permission_key: string
+        }
+        Insert: {
+          allowed_roles?: Json
+          category: string
+          created_at?: string
+          description?: string | null
+          display_name: string
+          display_order?: number
+          id?: string
+          permission_key: string
+        }
+        Update: {
+          allowed_roles?: Json
+          category?: string
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          display_order?: number
+          id?: string
+          permission_key?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
@@ -2278,6 +2311,38 @@ export type Database = {
           },
         ]
       }
+      role_default_permissions: {
+        Row: {
+          created_at: string
+          default_enabled: boolean
+          id: string
+          permission_key: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          default_enabled?: boolean
+          id?: string
+          permission_key: string
+          role: string
+        }
+        Update: {
+          created_at?: string
+          default_enabled?: boolean
+          id?: string
+          permission_key?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_default_permissions_permission_key_fkey"
+            columns: ["permission_key"]
+            isOneToOne: false
+            referencedRelation: "permission_definitions"
+            referencedColumns: ["permission_key"]
+          },
+        ]
+      }
       signature_history: {
         Row: {
           company_id: string
@@ -2638,6 +2703,71 @@ export type Database = {
         }
         Relationships: []
       }
+      user_permissions: {
+        Row: {
+          company_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          permission_key: string
+          reason: string | null
+          set_by: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          enabled: boolean
+          id?: string
+          permission_key: string
+          reason?: string | null
+          set_by?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          permission_key?: string
+          reason?: string | null
+          set_by?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_permissions_permission_key_fkey"
+            columns: ["permission_key"]
+            isOneToOne: false
+            referencedRelation: "permission_definitions"
+            referencedColumns: ["permission_key"]
+          },
+          {
+            foreignKeyName: "user_permissions_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2722,6 +2852,10 @@ export type Database = {
       check_account_lockout: { Args: { check_email: string }; Returns: Json }
       check_trusted_device: {
         Args: { p_device_token: string; p_user_id: string }
+        Returns: boolean
+      }
+      check_user_permission: {
+        Args: { p_permission_key: string; p_user_id: string }
         Returns: boolean
       }
       cleanup_expired_trusted_devices: { Args: never; Returns: number }
