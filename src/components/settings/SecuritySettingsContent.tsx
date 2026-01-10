@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Shield, ShieldCheck, Loader2, Trash2, LogOut, Monitor, Smartphone, Users, RotateCcw, Laptop, TabletSmartphone, Link2, Unlink, Key, Eye, EyeOff, Check, X, Mail, MailCheck, RefreshCw } from 'lucide-react';
+import { Shield, ShieldCheck, Loader2, Trash2, LogOut, Monitor, Smartphone, Users, RotateCcw, Laptop, TabletSmartphone, Link2, Unlink, Key, Eye, EyeOff, Check, X, Mail, MailCheck, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -18,8 +18,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { Separator } from '@/components/ui/separator';
 
-const SecuritySettingsContent = () => {
+interface SecuritySettingsContentProps {
+  showAdminControls?: boolean;
+}
+
+const SecuritySettingsContent = ({ showAdminControls = true }: SecuritySettingsContentProps) => {
   const navigate = useNavigate();
   const { profile, isAdmin, mfaFactors, listMFAFactors, unenrollMFA, refreshMFAStatus, session } = useAuth();
   const { data: company } = useCompany();
@@ -53,6 +58,12 @@ const SecuritySettingsContent = () => {
   const [isResendingVerification, setIsResendingVerification] = useState(false);
   const emailVerified = session?.user?.email_confirmed_at != null;
   const userEmail = session?.user?.email;
+
+  // Email change state
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
+  const [emailChangeConfirmOpen, setEmailChangeConfirmOpen] = useState(false);
 
   // Get current device token to identify it in the list
   const currentDeviceToken = getStoredToken();
@@ -329,6 +340,40 @@ const SecuritySettingsContent = () => {
     }
   };
 
+  const handleChangeEmail = async () => {
+    if (!newEmail || newEmail === userEmail) {
+      toast.error('Please enter a different email address');
+      return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    
+    setIsSavingEmail(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        email: newEmail,
+      }, {
+        emailRedirectTo: `${window.location.origin}/security-settings`,
+      });
+      
+      if (error) throw error;
+      
+      toast.success('Verification email sent to your new email address. Please check both your current and new email inboxes to confirm the change.');
+      setNewEmail('');
+      setIsChangingEmail(false);
+      setEmailChangeConfirmOpen(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update email');
+    } finally {
+      setIsSavingEmail(false);
+    }
+  };
+
   if (isEnrolling) {
     return (
       <div className="max-w-md mx-auto py-8">
@@ -452,7 +497,7 @@ const SecuritySettingsContent = () => {
             </Badge>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {emailVerified ? (
             <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
               <Check className="w-4 h-4 text-green-600" />
@@ -488,6 +533,79 @@ const SecuritySettingsContent = () => {
               </Button>
             </div>
           )}
+
+          <Separator className="my-4" />
+
+          {/* Change Email Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">Change Email Address</p>
+                <p className="text-xs text-muted-foreground">
+                  Update your account email address
+                </p>
+              </div>
+              {!isChangingEmail && (
+                <Button variant="outline" size="sm" onClick={() => setIsChangingEmail(true)}>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Change Email
+                </Button>
+              )}
+            </div>
+            
+            {isChangingEmail && (
+              <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                <div className="space-y-2">
+                  <Label htmlFor="new-email">New Email Address</Label>
+                  <Input
+                    id="new-email"
+                    type="email"
+                    placeholder="Enter new email address"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                  />
+                </div>
+                
+                <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    You'll need to verify both your current and new email addresses to complete the change.
+                  </p>
+                </div>
+                
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => { setIsChangingEmail(false); setNewEmail(''); }}>
+                    Cancel
+                  </Button>
+                  <AlertDialog open={emailChangeConfirmOpen} onOpenChange={setEmailChangeConfirmOpen}>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" disabled={!newEmail || newEmail === userEmail || isSavingEmail}>
+                        {isSavingEmail ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        Update Email
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Email Change</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to change your email from <strong>{userEmail}</strong> to <strong>{newEmail}</strong>?
+                          <br /><br />
+                          Verification links will be sent to both email addresses. You must confirm from both to complete the change.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleChangeEmail} disabled={isSavingEmail}>
+                          {isSavingEmail ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                          Confirm Change
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -871,8 +989,8 @@ const SecuritySettingsContent = () => {
         </Card>
       )}
 
-      {/* Admin Controls */}
-      {isAdmin && company && (
+      {/* Admin Controls - Only show when showAdminControls is true */}
+      {showAdminControls && isAdmin && company && (
         <>
           <Card>
             <CardHeader>
