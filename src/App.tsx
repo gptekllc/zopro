@@ -34,6 +34,7 @@ import StripeConnectReturn from "./pages/StripeConnectReturn";
 import StripeConnectRefresh from "./pages/StripeConnectRefresh";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import ScrollToTop from "./components/layout/ScrollToTop";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +57,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
