@@ -250,43 +250,22 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
 
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <CardTitle className="flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5" />
-            {getHeaderTitle()}
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            {/* View Toggle */}
-            <div className="flex gap-1 border rounded-md p-1">
-              <Button
-                variant={view === 'month' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setView('month')}
-              >
-                Month
-              </Button>
-              <Button
-                variant={view === 'week' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setView('week')}
-              >
-                Week
-              </Button>
-              <Button
-                variant={view === 'day' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setView('day')}
-              >
-                Day
-              </Button>
-            </div>
+      <CardHeader className="pb-2 px-3 sm:px-6">
+        {/* Mobile: Stack vertically, Desktop: Side by side */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          {/* Title + Navigation row on mobile */}
+          <div className="flex items-center justify-between sm:justify-start gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="truncate">{getHeaderTitle()}</span>
+            </CardTitle>
             
-            {/* Navigation */}
-            <div className="flex gap-1">
+            {/* Navigation - always visible */}
+            <div className="flex gap-1 shrink-0">
               <Button
                 variant="outline"
                 size="icon"
+                className="h-8 w-8 sm:h-9 sm:w-9"
                 onClick={() => navigateDate('prev')}
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -294,6 +273,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
               <Button
                 variant="outline"
                 size="sm"
+                className="h-8 px-2 sm:px-3 text-xs sm:text-sm"
                 onClick={() => navigateDate('today')}
               >
                 Today
@@ -301,32 +281,66 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
               <Button
                 variant="outline"
                 size="icon"
+                className="h-8 w-8 sm:h-9 sm:w-9"
                 onClick={() => navigateDate('next')}
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
           </div>
+
+          {/* View Toggle - full width on mobile */}
+          <div className="flex gap-1 border rounded-md p-1 w-full sm:w-auto">
+            <Button
+              variant={view === 'month' ? 'default' : 'ghost'}
+              size="sm"
+              className="flex-1 sm:flex-none h-7 text-xs sm:text-sm"
+              onClick={() => setView('month')}
+            >
+              Month
+            </Button>
+            <Button
+              variant={view === 'week' ? 'default' : 'ghost'}
+              size="sm"
+              className="flex-1 sm:flex-none h-7 text-xs sm:text-sm"
+              onClick={() => setView('week')}
+            >
+              Week
+            </Button>
+            <Button
+              variant={view === 'day' ? 'default' : 'ghost'}
+              size="sm"
+              className="flex-1 sm:flex-none h-7 text-xs sm:text-sm"
+              onClick={() => setView('day')}
+            >
+              Day
+            </Button>
+          </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
+        <p className="text-xs text-muted-foreground mt-2 hidden sm:block">
           {onSlotClick ? 'Click on a time slot to create a job, or drag existing jobs to reschedule' : 'Drag and drop jobs to reschedule them'}
         </p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="px-2 sm:px-6">
         {/* Month View */}
         {view === 'month' && (
           <>
-            {/* Day headers */}
-            <div className="grid grid-cols-7 gap-1 mb-1">
+            {/* Day headers - abbreviated on mobile */}
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1">
+              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                <div key={idx} className="text-center text-xs sm:text-sm font-medium text-muted-foreground py-1 sm:py-2 sm:hidden">
+                  {day}
+                </div>
+              ))}
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2">
+                <div key={day} className="text-center text-sm font-medium text-muted-foreground py-2 hidden sm:block">
                   {day}
                 </div>
               ))}
             </div>
 
             {/* Calendar grid */}
-            <div className="grid grid-cols-7 gap-1">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
               {days.map(day => {
                 const dateKey = format(day, 'yyyy-MM-dd');
                 const dayJobs = jobsByDate.get(dateKey) || [];
@@ -336,7 +350,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
                 return (
                   <div
                     key={dateKey}
-                    className={`min-h-[100px] p-1 rounded-md border transition-colors cursor-pointer hover:bg-accent/50 ${
+                    className={`min-h-[60px] sm:min-h-[100px] p-0.5 sm:p-1 rounded-md border transition-colors cursor-pointer hover:bg-accent/50 ${
                       isDropTarget
                         ? 'bg-primary/20 border-primary border-2'
                         : isToday(day) 
@@ -350,7 +364,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
                     onDrop={(e) => handleDrop(e, day)}
                     onClick={() => handleSlotClick(day)}
                   >
-                    <div className={`text-sm font-medium mb-1 ${
+                    <div className={`text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 ${
                       isToday(day) 
                         ? 'text-primary' 
                         : isCurrentMonth 
@@ -359,11 +373,11 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
                     }`}>
                       {format(day, 'd')}
                     </div>
-                    <div className="space-y-1 overflow-hidden max-h-[80px]">
-                      {dayJobs.slice(0, 3).map(job => renderJobItem(job))}
-                      {dayJobs.length > 3 && (
-                        <div className="text-xs text-muted-foreground text-center">
-                          +{dayJobs.length - 3} more
+                    <div className="space-y-0.5 sm:space-y-1 overflow-hidden max-h-[40px] sm:max-h-[80px]">
+                      {dayJobs.slice(0, view === 'month' ? (window.innerWidth < 640 ? 1 : 3) : 3).map(job => renderJobItem(job))}
+                      {dayJobs.length > (window.innerWidth < 640 ? 1 : 3) && (
+                        <div className="text-[10px] sm:text-xs text-muted-foreground text-center">
+                          +{dayJobs.length - (window.innerWidth < 640 ? 1 : 3)} more
                         </div>
                       )}
                     </div>
@@ -376,20 +390,21 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
 
         {/* Week View */}
         {view === 'week' && (
-          <div className="overflow-auto">
-            <div className="min-w-[700px]">
+          <div className="overflow-auto -mx-2 sm:mx-0">
+            <div className="min-w-[500px] sm:min-w-[700px] px-2 sm:px-0">
               {/* Day headers */}
-              <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-1 mb-1 sticky top-0 bg-background z-10">
+              <div className="grid grid-cols-[40px_repeat(7,1fr)] sm:grid-cols-[60px_repeat(7,1fr)] gap-0.5 sm:gap-1 mb-1 sticky top-0 bg-background z-10">
                 <div className="text-sm font-medium text-muted-foreground py-2"></div>
                 {days.map(day => (
                   <div 
                     key={format(day, 'yyyy-MM-dd')} 
-                    className={`text-center text-sm font-medium py-2 rounded ${
+                    className={`text-center text-xs sm:text-sm font-medium py-1 sm:py-2 rounded ${
                       isToday(day) ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
                     }`}
                   >
-                    <div>{format(day, 'EEE')}</div>
-                    <div className={`text-lg ${isToday(day) ? 'text-primary font-bold' : 'text-foreground'}`}>
+                    <div className="hidden sm:block">{format(day, 'EEE')}</div>
+                    <div className="sm:hidden">{format(day, 'EEEEE')}</div>
+                    <div className={`text-sm sm:text-lg ${isToday(day) ? 'text-primary font-bold' : 'text-foreground'}`}>
                       {format(day, 'd')}
                     </div>
                   </div>
@@ -397,12 +412,12 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
               </div>
 
               {/* Time grid */}
-              <div className="max-h-[500px] overflow-y-auto">
+              <div className="max-h-[400px] sm:max-h-[500px] overflow-y-auto">
                 {hours.map(hourDate => {
                   const hour = hourDate.getHours();
                   return (
-                    <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] gap-1">
-                      <div className="text-xs text-muted-foreground py-2 text-right pr-2">
+                    <div key={hour} className="grid grid-cols-[40px_repeat(7,1fr)] sm:grid-cols-[60px_repeat(7,1fr)] gap-0.5 sm:gap-1">
+                      <div className="text-[10px] sm:text-xs text-muted-foreground py-2 text-right pr-1 sm:pr-2">
                         {format(hourDate, 'h a')}
                       </div>
                       {days.map(day => {
@@ -413,7 +428,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
                         return (
                           <div
                             key={dateKey}
-                            className={`min-h-[50px] p-1 border-t border-border transition-colors cursor-pointer hover:bg-accent/50 ${
+                            className={`min-h-[40px] sm:min-h-[50px] p-0.5 sm:p-1 border-t border-border transition-colors cursor-pointer hover:bg-accent/50 ${
                               isDropTarget ? 'bg-primary/20' : ''
                             }`}
                             onDragOver={(e) => handleDragOver(e, dateKey)}
@@ -421,7 +436,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
                             onDrop={(e) => handleDrop(e, day, hour)}
                             onClick={() => handleSlotClick(day, hour)}
                           >
-                            <div className="space-y-1">
+                            <div className="space-y-0.5 sm:space-y-1">
                               {hourJobs.map(job => renderJobItem(job, false))}
                             </div>
                           </div>
@@ -437,7 +452,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
 
         {/* Day View */}
         {view === 'day' && (
-          <div className="max-h-[500px] overflow-y-auto">
+          <div className="max-h-[400px] sm:max-h-[500px] overflow-y-auto">
             {hours.map(hourDate => {
               const hour = hourDate.getHours();
               const day = days[0];
@@ -448,7 +463,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
               return (
                 <div 
                   key={hour} 
-                  className={`grid grid-cols-[80px_1fr] gap-2 border-t border-border transition-colors cursor-pointer hover:bg-accent/50 ${
+                  className={`grid grid-cols-[60px_1fr] sm:grid-cols-[80px_1fr] gap-1 sm:gap-2 border-t border-border transition-colors cursor-pointer hover:bg-accent/50 ${
                     isDropTarget ? 'bg-primary/20' : ''
                   }`}
                   onDragOver={(e) => handleDragOver(e, dateKey)}
@@ -456,10 +471,10 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
                   onDrop={(e) => handleDrop(e, day, hour)}
                   onClick={() => handleSlotClick(day, hour)}
                 >
-                  <div className="text-sm text-muted-foreground py-3 text-right pr-2 font-medium">
+                  <div className="text-xs sm:text-sm text-muted-foreground py-2 sm:py-3 text-right pr-1 sm:pr-2 font-medium">
                     {format(hourDate, 'h:mm a')}
                   </div>
-                  <div className="min-h-[60px] p-2 space-y-1">
+                  <div className="min-h-[50px] sm:min-h-[60px] p-1 sm:p-2 space-y-1">
                     {hourJobs.map(job => renderJobItem(job, false))}
                   </div>
                 </div>
@@ -468,8 +483,8 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
           </div>
         )}
 
-        {/* Legend */}
-        <div className="flex flex-wrap gap-3 mt-4 pt-4 border-t text-xs">
+        {/* Legend - hidden on mobile, visible on larger screens */}
+        <div className="hidden sm:flex flex-wrap gap-3 mt-4 pt-4 border-t text-xs">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-blue-500" />
             <span>Scheduled</span>
