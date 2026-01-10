@@ -653,7 +653,7 @@ const Company = () => {
         </TabsContent>
 
         <TabsContent value="security">
-          <SecuritySettingsContent showAdminControls={true} />
+          <SecuritySettingsContent mode="admin" />
         </TabsContent>
 
         <TabsContent value="billing">
