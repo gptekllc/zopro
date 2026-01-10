@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Shield, ShieldCheck, Loader2, Trash2, LogOut, Monitor, Smartphone, Users, RotateCcw, Laptop, TabletSmartphone, Link2, Unlink, Key, Eye, EyeOff, Check, X } from 'lucide-react';
+import { Shield, ShieldCheck, Loader2, Trash2, LogOut, Monitor, Smartphone, Users, RotateCcw, Laptop, TabletSmartphone, Link2, Unlink, Key, Eye, EyeOff, Check, X, Mail, MailCheck, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -48,6 +48,11 @@ const SecuritySettingsContent = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [hasPassword, setHasPassword] = useState(false);
+  
+  // Email verification state
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
+  const emailVerified = session?.user?.email_confirmed_at != null;
+  const userEmail = session?.user?.email;
 
   // Get current device token to identify it in the list
   const currentDeviceToken = getStoredToken();
@@ -299,6 +304,31 @@ const SecuritySettingsContent = () => {
 
   const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
 
+  const handleResendVerificationEmail = async () => {
+    if (!userEmail) {
+      toast.error('No email address found');
+      return;
+    }
+    
+    setIsResendingVerification(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: userEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/dashboard`,
+        },
+      });
+      
+      if (error) throw error;
+      toast.success('Verification email sent! Check your inbox.');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to resend verification email');
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
+
   if (isEnrolling) {
     return (
       <div className="max-w-md mx-auto py-8">
@@ -390,6 +420,71 @@ const SecuritySettingsContent = () => {
               <Button onClick={() => setIsEnrolling(true)}>
                 <Shield className="h-4 w-4 mr-2" />
                 Enable Two-Factor Authentication
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Email Verification Status */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {emailVerified ? (
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                  <MailCheck className="w-5 h-5 text-green-600" />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                  <Mail className="w-5 h-5 text-amber-600" />
+                </div>
+              )}
+              <div>
+                <CardTitle>Email Verification</CardTitle>
+                <CardDescription>
+                  {userEmail || 'No email associated'}
+                </CardDescription>
+              </div>
+            </div>
+            <Badge variant={emailVerified ? 'default' : 'secondary'} className={emailVerified ? 'bg-green-600' : 'bg-amber-500'}>
+              {emailVerified ? 'Verified' : 'Unverified'}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {emailVerified ? (
+            <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+              <Check className="w-4 h-4 text-green-600" />
+              <p className="text-sm text-green-700 dark:text-green-400">
+                Your email address has been verified. You can use it for account recovery and notifications.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-start gap-2 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
+                <X className="w-4 h-4 text-amber-600 mt-0.5" />
+                <div>
+                  <p className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+                    Your email address is not verified
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                    Verify your email to enable account recovery and receive important notifications.
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleResendVerificationEmail}
+                disabled={isResendingVerification}
+                className="w-full"
+              >
+                {isResendingVerification ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                )}
+                Resend Verification Email
               </Button>
             </div>
           )}
