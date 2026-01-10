@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCompany } from '@/hooks/useCompany';
@@ -16,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { Search, Loader2, Filter, Archive } from 'lucide-react';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { ViewSignatureDialog } from '@/components/signatures/ViewSignatureDialog';
@@ -188,10 +188,19 @@ export function InvoiceListManager({
     return filterPendingInvoiceDeletes(filtered);
   }, [invoices, customers, searchQuery, statusFilter, customerId, filterPendingInvoiceDeletes]);
 
-  // Infinite scroll
-  const { visibleItems: visibleInvoices, hasMore, loadMoreRef, loadAll, totalCount } = useInfiniteScroll(filteredInvoices, { pageSize: 20 });
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
-  // Helpers
+  // Calculate paginated invoices
+  const totalPages = Math.ceil(filteredInvoices.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedInvoices = filteredInvoices.slice(startIndex, startIndex + pageSize);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, customerId, pageSize]);
   const getCustomerName = (customerId: string) => customers.find(c => c.id === customerId)?.name || 'Unknown';
   const getCustomerEmail = (customerId: string) => customers.find(c => c.id === customerId)?.email || '';
   const lateFeePercentage = company?.late_fee_percentage ?? 0;
@@ -453,7 +462,7 @@ export function InvoiceListManager({
       {/* Invoice List */}
       <PullToRefresh onRefresh={async () => { if (onRefetch) await onRefetch(); }} className="sm:contents">
         <div className="space-y-3">
-          {visibleInvoices.map((invoice, index) => (
+          {paginatedInvoices.map((invoice, index) => (
             <InvoiceListCard
               key={invoice.id}
               invoice={invoice}
@@ -483,17 +492,19 @@ export function InvoiceListManager({
               <CardContent className="py-8 text-center text-muted-foreground">No invoices found</CardContent>
             </Card>
           )}
-          {hasMore && (
-            <div ref={loadMoreRef} className="py-4 flex flex-col items-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Showing {visibleInvoices.length} of {totalCount}</span>
-                <Button variant="ghost" size="sm" onClick={loadAll} className="h-7 text-xs">
-                  Load All
-                </Button>
-              </div>
-            </div>
-          )}
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filteredInvoices.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size);
+              setCurrentPage(1);
+            }}
+            itemLabel="invoices"
+            pageSizeOptions={[50, 100, 150]}
+          />
         </div>
       </PullToRefresh>
 
