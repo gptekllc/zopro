@@ -142,7 +142,7 @@ const Customers = () => {
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h1 className="text-3xl font-bold">Customers</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Customers</h1>
           <p className="text-muted-foreground mt-1 hidden sm:block">
             {showDeleted ? `${deletedCustomers.length} deleted` : `${customers.length} total`} customers
           </p>
