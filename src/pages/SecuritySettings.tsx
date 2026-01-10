@@ -11,7 +11,7 @@ const SecuritySettings = () => {
             Manage your account security and connected accounts
           </p>
         </div>
-        <SecuritySettingsContent showAdminControls={false} />
+        <SecuritySettingsContent mode="personal" />
       </div>
     </PageContainer>
   );

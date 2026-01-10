@@ -21,10 +21,10 @@ import { useNavigate } from 'react-router-dom';
 import { Separator } from '@/components/ui/separator';
 
 interface SecuritySettingsContentProps {
-  showAdminControls?: boolean;
+  mode?: 'personal' | 'admin' | 'all';
 }
 
-const SecuritySettingsContent = ({ showAdminControls = true }: SecuritySettingsContentProps) => {
+const SecuritySettingsContent = ({ mode = 'all' }: SecuritySettingsContentProps) => {
   const navigate = useNavigate();
   const { profile, isAdmin, mfaFactors, listMFAFactors, unenrollMFA, refreshMFAStatus, session } = useAuth();
   const { data: company } = useCompany();
@@ -385,11 +385,17 @@ const SecuritySettingsContent = ({ showAdminControls = true }: SecuritySettingsC
     );
   }
 
+  const showPersonal = mode === 'personal' || mode === 'all';
+  const showAdmin = mode === 'admin' || mode === 'all';
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* MFA Status Card */}
-      <Card>
-        <CardHeader>
+      {/* Personal Security Features */}
+      {showPersonal && (
+        <>
+          {/* MFA Status Card */}
+          <Card>
+            <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {hasMFA ? (
@@ -988,9 +994,11 @@ const SecuritySettingsContent = ({ showAdminControls = true }: SecuritySettingsC
           </CardContent>
         </Card>
       )}
+        </>
+      )}
 
-      {/* Admin Controls - Only show when showAdminControls is true */}
-      {showAdminControls && isAdmin && company && (
+      {/* Admin Controls - Only show when mode is 'admin' or 'all' */}
+      {showAdmin && isAdmin && company && (
         <>
           <Card>
             <CardHeader>
