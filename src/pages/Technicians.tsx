@@ -96,6 +96,7 @@ const TechniciansContent = () => {
       state: string | null;
       zip: string | null;
       avatar_url: string | null;
+      canEditHourlyRate: boolean;
     }) => {
       // Update role in user_roles table
       const { error: deleteError } = await (supabase as any)
@@ -117,13 +118,17 @@ const TechniciansContent = () => {
         employment_status: data.employment_status,
         hire_date: data.hire_date || null,
         phone: data.phone || null,
-        hourly_rate: data.hourly_rate,
         address: data.address || null,
         city: data.city || null,
         state: data.state || null,
         zip: data.zip || null,
         avatar_url: data.avatar_url || null,
       };
+
+      // Only include hourly_rate if user has permission to edit it
+      if (data.canEditHourlyRate) {
+        updates.hourly_rate = data.hourly_rate;
+      }
 
       // If terminating, also set deleted_at
       if (data.employment_status === 'terminated') {
@@ -227,6 +232,9 @@ const TechniciansContent = () => {
       toast.info('New team members must be added via Supabase Auth');
       return;
     }
+
+    // Determine if current user can edit hourly rate for this member
+    const canEditHourlyRate = isAdmin || (isManager && formData.role === 'technician');
     
     updateTeamMemberMutation.mutate({
       userId: editingUser,
@@ -242,6 +250,7 @@ const TechniciansContent = () => {
       state: formData.state || null,
       zip: formData.zip || null,
       avatar_url: formData.avatar_url || null,
+      canEditHourlyRate,
     });
   };
 
@@ -533,7 +542,12 @@ const TechniciansContent = () => {
                 value={formData.hourly_rate}
                 onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
                 placeholder="0.00"
+                disabled={!isAdmin && !(isManager && formData.role === 'technician')}
+                className={!isAdmin && !(isManager && formData.role === 'technician') ? 'bg-muted' : ''}
               />
+              {!isAdmin && !(isManager && formData.role === 'technician') && (
+                <p className="text-xs text-muted-foreground">Managers can only edit technicians' hourly rates</p>
+              )}
             </div>
 
             {/* Address Section */}
