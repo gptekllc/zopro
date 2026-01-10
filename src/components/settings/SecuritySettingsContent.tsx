@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Shield, ShieldCheck, Loader2, Trash2, LogOut, Monitor, Smartphone, Users, RotateCcw, Laptop, TabletSmartphone, Link2, Unlink, Key, Eye, EyeOff, Check, X, Mail, MailCheck, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Shield, ShieldCheck, Loader2, Trash2, LogOut, Monitor, Smartphone, Users, RotateCcw, Laptop, TabletSmartphone, Link2, Unlink, Key, Eye, EyeOff, Check, X, Mail, MailCheck, RefreshCw, AlertTriangle, KeyRound, UserX } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
 import { useProfiles } from '@/hooks/useProfiles';
@@ -39,6 +39,10 @@ const SecuritySettingsContent = ({ mode = 'all' }: SecuritySettingsContentProps)
   const [isSigningOutAll, setIsSigningOutAll] = useState(false);
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
   const [revokingDeviceId, setRevokingDeviceId] = useState<string | null>(null);
+  const [forceResetUserId, setForceResetUserId] = useState<string | null>(null);
+  const [forceResetAll, setForceResetAll] = useState(false);
+  const [forceSignoutUserId, setForceSignoutUserId] = useState<string | null>(null);
+  const [forceSignoutAll, setForceSignoutAll] = useState(false);
   
   // Connected accounts state
   const [identities, setIdentities] = useState<any[]>([]);
@@ -166,6 +170,62 @@ const SecuritySettingsContent = ({ mode = 'all' }: SecuritySettingsContentProps)
       toast.error(error.message || 'Failed to reset MFA');
     } finally {
       setResettingUserId(null);
+    }
+  };
+
+  const handleForcePasswordReset = async (userId?: string, userName?: string) => {
+    if (userId) {
+      setForceResetUserId(userId);
+    } else {
+      setForceResetAll(true);
+    }
+    try {
+      const response = await supabase.functions.invoke('force-password-reset', {
+        body: userId ? { userId } : { allMembers: true }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to send password reset');
+      }
+
+      if (userId && userName) {
+        toast.success(`Password reset email sent to ${userName}`);
+      } else {
+        toast.success('Password reset emails sent to all team members');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send password reset');
+    } finally {
+      setForceResetUserId(null);
+      setForceResetAll(false);
+    }
+  };
+
+  const handleForceSignout = async (userId?: string, userName?: string) => {
+    if (userId) {
+      setForceSignoutUserId(userId);
+    } else {
+      setForceSignoutAll(true);
+    }
+    try {
+      const response = await supabase.functions.invoke('force-signout-user', {
+        body: userId ? { userId } : { allMembers: true }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to sign out user');
+      }
+
+      if (userId && userName) {
+        toast.success(`${userName} has been signed out from all devices`);
+      } else {
+        toast.success('All team members have been signed out');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to sign out user');
+    } finally {
+      setForceSignoutUserId(null);
+      setForceSignoutAll(false);
     }
   };
 
@@ -1086,6 +1146,198 @@ const SecuritySettingsContent = ({ mode = 'all' }: SecuritySettingsContentProps)
                       </AlertDialog>
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Force Password Reset */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <KeyRound className="w-5 h-5" />
+                Force Password Reset
+              </CardTitle>
+              <CardDescription>
+                Send password reset emails to team members who need to update their passwords
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {otherTeamMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No other team members to manage.</p>
+              ) : (
+                <div className="space-y-3">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full" disabled={forceResetAll}>
+                        {forceResetAll ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <KeyRound className="h-4 w-4 mr-2" />
+                        )}
+                        Reset All Team Passwords
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reset passwords for all team members?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will send password reset emails to all {otherTeamMembers.length} team members. They will need to create new passwords.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => handleForcePasswordReset()}>
+                          Send Reset Emails
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  <div className="space-y-1">
+                    {otherTeamMembers.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-md"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-medium text-sm truncate">{member.full_name || 'Unnamed'}</span>
+                          <span className="text-xs text-muted-foreground truncate hidden sm:inline">({member.email})</span>
+                        </div>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={forceResetUserId === member.id}
+                            >
+                              {forceResetUserId === member.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <KeyRound className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Reset password for {member.full_name || member.email}?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will send a password reset email to {member.email}. They will need to create a new password.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleForcePasswordReset(member.id, member.full_name || member.email)}
+                              >
+                                Send Reset Email
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Team Session Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <UserX className="w-5 h-5" />
+                Team Session Management
+              </CardTitle>
+              <CardDescription>
+                Force sign out team members from all their devices and sessions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {otherTeamMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No other team members to manage.</p>
+              ) : (
+                <div className="space-y-3">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full text-destructive hover:text-destructive" disabled={forceSignoutAll}>
+                        {forceSignoutAll ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <LogOut className="h-4 w-4 mr-2" />
+                        )}
+                        Sign Out All Team Members
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Sign out all team members?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will immediately sign out all {otherTeamMembers.length} team members from all their devices. They will need to sign in again.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => handleForceSignout()}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Sign Out Everyone
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+
+                  <div className="space-y-1">
+                    {otherTeamMembers.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-md"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-medium text-sm truncate">{member.full_name || 'Unnamed'}</span>
+                          <span className="text-xs text-muted-foreground truncate hidden sm:inline">({member.email})</span>
+                        </div>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={forceSignoutUserId === member.id}
+                            >
+                              {forceSignoutUserId === member.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <LogOut className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Sign out {member.full_name || member.email}?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will immediately sign them out from all devices and revoke their trusted devices. They will need to sign in again.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleForceSignout(member.id, member.full_name || member.email)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Sign Out
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    Use this if you suspect unauthorized access or when an employee leaves.
+                  </p>
                 </div>
               )}
             </CardContent>
