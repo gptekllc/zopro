@@ -1067,7 +1067,7 @@ const SecuritySettingsContent = ({ mode = 'all' }: SecuritySettingsContentProps)
                 Manage security requirements for your team
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="require-mfa">Require MFA for all team members</Label>
@@ -1081,6 +1081,25 @@ const SecuritySettingsContent = ({ mode = 'all' }: SecuritySettingsContentProps)
                   onCheckedChange={handleRequireMFAToggle}
                   disabled={updateCompany.isPending}
                 />
+              </div>
+              
+              {company.require_mfa && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                    <strong>Note:</strong> Team members without MFA enabled will be required to set it up on their next login.
+                  </p>
+                </div>
+              )}
+              
+              <Separator />
+              
+              <div>
+                <p className="text-sm font-medium mb-2">Active Security Policies</p>
+                <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                  <li>Account lockout after 5 failed login attempts (15 min)</li>
+                  <li>Email verification required for new accounts</li>
+                  <li>Password requirements: 10+ chars, uppercase, lowercase, number, special char</li>
+                </ul>
               </div>
             </CardContent>
           </Card>

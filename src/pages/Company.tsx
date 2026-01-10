@@ -1765,62 +1765,6 @@ const Company = () => {
                     </AccordionContent>
                   </AccordionItem>
 
-                  {/* Security Settings */}
-                  <AccordionItem value="security">
-                    <AccordionTrigger className="text-base font-medium">
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-4 h-4" />
-                        Security
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="space-y-4 pt-4">
-                      <div className="flex items-center justify-between space-x-4">
-                        <div className="space-y-0.5">
-                          <Label className="font-medium">Require MFA for All Team Members</Label>
-                          <p className="text-sm text-muted-foreground">
-                            When enabled, all team members must set up two-factor authentication to access the app
-                          </p>
-                        </div>
-                        <Switch
-                          checked={preferences.require_mfa}
-                          onCheckedChange={(checked) => setPreferences({ ...preferences, require_mfa: checked })}
-                        />
-                      </div>
-                      {preferences.require_mfa && (
-                        <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-                          <p className="text-sm text-amber-800 dark:text-amber-200">
-                            <strong>Note:</strong> Team members without MFA enabled will be required to set it up on their next login.
-                          </p>
-                        </div>
-                      )}
-                      <div className="pt-2 border-t">
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Additional security features:
-                        </p>
-                        <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                          <li>Account lockout after 5 failed login attempts (15 min)</li>
-                          <li>Email verification required for new accounts</li>
-                          <li>Password requirements: 10+ chars, uppercase, lowercase, number, special char</li>
-                        </ul>
-                      </div>
-                      <div className="pt-4 border-t">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="gap-2"
-                          disabled={savingSection === 'security'}
-                          onClick={() => handleSaveSection('security', {
-                            require_mfa: preferences.require_mfa,
-                          } as any)}
-                        >
-                          {savingSection === 'security' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                          Save Security Settings
-                        </Button>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-
                   {/* Automations */}
                   <AccordionItem value="automations">
                     <AccordionTrigger className="text-base font-medium">
