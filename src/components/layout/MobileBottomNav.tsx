@@ -13,6 +13,7 @@ import {
   Package,
   BarChart3,
   Clock,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -25,7 +26,7 @@ import {
 
 const MobileBottomNav = () => {
   const location = useLocation();
-  const { roles } = useAuth();
+  const { roles, isSuperAdmin } = useAuth();
   
   const userRoles = roles.map(r => r.role);
   const isAdmin = userRoles.includes('admin');
@@ -49,10 +50,13 @@ const MobileBottomNav = () => {
     { icon: Bell, label: 'Notifications', path: '/notifications', showFor: 'admin' },
     { icon: UserCog, label: 'Technicians', path: '/technicians', showFor: 'admin' },
     { icon: Building2, label: 'Company', path: '/company', showFor: 'admin' },
+    { icon: ShieldAlert, label: 'Super Admin', path: '/super-admin', showFor: 'super_admin' },
   ];
 
   const filteredMoreItems = moreNavItems.filter(item => 
-    item.showFor === 'all' || (item.showFor === 'admin' && isAdmin)
+    item.showFor === 'all' || 
+    (item.showFor === 'admin' && isAdmin) ||
+    (item.showFor === 'super_admin' && isSuperAdmin)
   );
 
   const isActive = (path: string) => location.pathname === path;
