@@ -13,7 +13,7 @@ import PageContainer from '@/components/layout/PageContainer';
 import AvatarUpload from '@/components/common/AvatarUpload';
 
 const Profile = () => {
-  const { user, profile, roles, isLoading: authLoading, refreshProfile } = useAuth();
+  const { user, profile, roles, isLoading: authLoading, refreshProfile, isAdmin } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [formData, setFormData] = useState({
@@ -64,13 +64,19 @@ const Profile = () => {
     setIsLoading(true);
 
     try {
+      const updateData: Record<string, any> = {
+        full_name: formData.full_name,
+        phone: formData.phone || null,
+      };
+      
+      // Only admins can update their own hourly rate
+      if (isAdmin) {
+        updateData.hourly_rate = formData.hourly_rate || 0;
+      }
+
       const { error } = await (supabase as any)
         .from('profiles')
-        .update({
-          full_name: formData.full_name,
-          phone: formData.phone || null,
-          hourly_rate: formData.hourly_rate || 0,
-        })
+        .update(updateData)
         .eq('id', user.id);
 
       if (error) throw error;
@@ -254,9 +260,13 @@ const Profile = () => {
                     value={formData.hourly_rate}
                     onChange={(e) => setFormData({ ...formData, hourly_rate: parseFloat(e.target.value) || 0 })}
                     placeholder="0.00"
-                    className="pl-9"
+                    className={`pl-9 ${!isAdmin ? 'bg-muted' : ''}`}
+                    disabled={!isAdmin}
                   />
                 </div>
+                {!isAdmin && (
+                  <p className="text-xs text-muted-foreground">Only admins can change hourly rate</p>
+                )}
               </div>
             </div>
 
