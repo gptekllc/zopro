@@ -234,7 +234,7 @@ export function JobListManager({
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(25);
 
   // Calculate paginated jobs
   const totalPages = Math.ceil(filteredJobs.length / pageSize);
@@ -558,7 +558,7 @@ export function JobListManager({
               setCurrentPage(1);
             }}
             itemLabel="jobs"
-            pageSizeOptions={[50, 100, 150]}
+            pageSizeOptions={[25, 50, 100, 150]}
           />
         </div>
       </PullToRefresh>

@@ -190,7 +190,7 @@ export function InvoiceListManager({
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useState(25);
 
   // Calculate paginated invoices
   const totalPages = Math.ceil(filteredInvoices.length / pageSize);
@@ -503,7 +503,7 @@ export function InvoiceListManager({
               setCurrentPage(1);
             }}
             itemLabel="invoices"
-            pageSizeOptions={[50, 100, 150]}
+            pageSizeOptions={[25, 50, 100, 150]}
           />
         </div>
       </PullToRefresh>
