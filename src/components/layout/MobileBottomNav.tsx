@@ -91,15 +91,15 @@ const MobileBottomNav = () => {
               <span className="text-xs font-medium">More</span>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" className="mb-2 w-48">
+          <DropdownMenuContent align="end" side="top" className="mb-2 w-56 p-2">
             {filteredMoreItems.map((item, index) => (
               <div key={item.path}>
-                {index === 1 && isAdmin && <DropdownMenuSeparator />}
-                {index === 4 && <DropdownMenuSeparator />}
-                <DropdownMenuItem asChild>
-                  <Link to={item.path} className="flex items-center gap-2">
-                    <item.icon className="w-4 h-4" />
-                    {item.label}
+                {index === 1 && isAdmin && <DropdownMenuSeparator className="my-2" />}
+                {index === 4 && <DropdownMenuSeparator className="my-2" />}
+                <DropdownMenuItem asChild className="py-3 px-3 min-h-[44px]">
+                  <Link to={item.path} className="flex items-center gap-3">
+                    <item.icon className="w-5 h-5" />
+                    <span className="text-base">{item.label}</span>
                   </Link>
                 </DropdownMenuItem>
               </div>
