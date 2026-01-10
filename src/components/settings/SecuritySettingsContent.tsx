@@ -4,14 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Shield, ShieldCheck, Loader2, Trash2, LogOut, Monitor, Smartphone, Users, RotateCcw, Laptop, TabletSmartphone } from 'lucide-react';
+import { Shield, ShieldCheck, Loader2, Trash2, LogOut, Monitor, Smartphone, Users, RotateCcw, Laptop, TabletSmartphone, Link2, Unlink, Key, Eye, EyeOff, Check, X } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany, useUpdateCompany } from '@/hooks/useCompany';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useTrustedDevices } from '@/hooks/useTrustedDevices';
 import { useTrustedDevice } from '@/hooks/useTrustedDevice';
 import MFAEnrollment from '@/components/auth/MFAEnrollment';
+import PasswordStrength from '@/components/auth/PasswordStrength';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -32,6 +34,20 @@ const SecuritySettingsContent = () => {
   const [isSigningOutAll, setIsSigningOutAll] = useState(false);
   const [resettingUserId, setResettingUserId] = useState<string | null>(null);
   const [revokingDeviceId, setRevokingDeviceId] = useState<string | null>(null);
+  
+  // Connected accounts state
+  const [identities, setIdentities] = useState<any[]>([]);
+  const [isLoadingIdentities, setIsLoadingIdentities] = useState(true);
+  const [isUnlinking, setIsUnlinking] = useState<string | null>(null);
+  const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
+  
+  // Password setup state
+  const [isSettingPassword, setIsSettingPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [hasPassword, setHasPassword] = useState(false);
 
   // Get current device token to identify it in the list
   const currentDeviceToken = getStoredToken();
@@ -49,6 +65,26 @@ const SecuritySettingsContent = () => {
       setIsLoadingFactors(false);
     };
     loadFactors();
+  }, []);
+
+  // Load connected identities
+  useEffect(() => {
+    const loadIdentities = async () => {
+      setIsLoadingIdentities(true);
+      try {
+        const { data, error } = await supabase.auth.getUserIdentities();
+        if (error) throw error;
+        setIdentities(data?.identities || []);
+        // Check if user has email/password identity
+        const emailIdentity = data?.identities?.find(i => i.provider === 'email');
+        setHasPassword(!!emailIdentity);
+      } catch (error) {
+        console.error('Failed to load identities:', error);
+      } finally {
+        setIsLoadingIdentities(false);
+      }
+    };
+    loadIdentities();
   }, []);
 
   const handleEnrollmentComplete = async () => {
@@ -157,6 +193,111 @@ const SecuritySettingsContent = () => {
     }
     return <Laptop className="w-4 h-4" />;
   };
+
+  // Handle unlinking social account
+  const handleUnlinkIdentity = async (identity: any) => {
+    // Prevent unlinking if it's the only identity and no password set
+    if (identities.length <= 1 && !hasPassword) {
+      toast.error('Cannot remove your only sign-in method. Set up a password first.');
+      return;
+    }
+    
+    setIsUnlinking(identity.id);
+    try {
+      const { error } = await supabase.auth.unlinkIdentity(identity);
+      if (error) throw error;
+      
+      // Refresh identities
+      const { data } = await supabase.auth.getUserIdentities();
+      setIdentities(data?.identities || []);
+      toast.success(`${getProviderDisplayName(identity.provider)} account disconnected`);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to disconnect account');
+    } finally {
+      setIsUnlinking(null);
+    }
+  };
+
+  // Handle linking Google account
+  const handleLinkGoogle = async () => {
+    setIsLinkingGoogle(true);
+    try {
+      const { error } = await supabase.auth.linkIdentity({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/security-settings`,
+        },
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to link Google account');
+      setIsLinkingGoogle(false);
+    }
+  };
+
+  // Handle setting up password
+  const handleSetPassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+    
+    setIsSavingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+      if (error) throw error;
+      
+      // Refresh identities
+      const { data } = await supabase.auth.getUserIdentities();
+      setIdentities(data?.identities || []);
+      const emailIdentity = data?.identities?.find(i => i.provider === 'email');
+      setHasPassword(!!emailIdentity);
+      
+      setNewPassword('');
+      setConfirmPassword('');
+      setIsSettingPassword(false);
+      toast.success(hasPassword ? 'Password updated successfully' : 'Password set up successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to set password');
+    } finally {
+      setIsSavingPassword(false);
+    }
+  };
+
+  const getProviderDisplayName = (provider: string) => {
+    const names: Record<string, string> = {
+      google: 'Google',
+      github: 'GitHub',
+      email: 'Email/Password',
+      facebook: 'Facebook',
+      twitter: 'Twitter',
+      discord: 'Discord',
+      apple: 'Apple',
+    };
+    return names[provider] || provider.charAt(0).toUpperCase() + provider.slice(1);
+  };
+
+  const getProviderIcon = (provider: string) => {
+    // Using simple colored backgrounds with initials for providers
+    const colors: Record<string, string> = {
+      google: 'bg-red-500',
+      github: 'bg-gray-800',
+      email: 'bg-blue-500',
+      facebook: 'bg-blue-600',
+      twitter: 'bg-sky-500',
+      discord: 'bg-indigo-500',
+      apple: 'bg-gray-900',
+    };
+    return colors[provider] || 'bg-gray-500';
+  };
+
+  const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
 
   if (isEnrolling) {
     return (
@@ -325,6 +466,202 @@ const SecuritySettingsContent = () => {
           <p className="text-xs text-muted-foreground">
             If you suspect unauthorized access, sign out from all devices and change your password.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Connected Accounts */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Link2 className="w-5 h-5" />
+            Connected Accounts
+          </CardTitle>
+          <CardDescription>
+            Manage your social login connections and backup sign-in methods
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoadingIdentities ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              {/* Connected social accounts */}
+              <div className="space-y-2">
+                {identities.filter(i => i.provider !== 'email').map((identity) => (
+                  <div
+                    key={identity.id}
+                    className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full ${getProviderIcon(identity.provider)} flex items-center justify-center text-white text-xs font-bold`}>
+                        {getProviderDisplayName(identity.provider).charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-medium text-sm">{getProviderDisplayName(identity.provider)}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {identity.identity_data?.email || 'Connected'}
+                        </p>
+                      </div>
+                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={isUnlinking === identity.id || (identities.length <= 1 && !hasPassword)}
+                        >
+                          {isUnlinking === identity.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Unlink className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Disconnect {getProviderDisplayName(identity.provider)}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            You won't be able to sign in with this {getProviderDisplayName(identity.provider)} account anymore.
+                            {identities.length <= 2 && !hasPassword && (
+                              <span className="block mt-2 text-amber-600 font-medium">
+                                Warning: This is your only connected account. Set up a password first to avoid losing access.
+                              </span>
+                            )}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleUnlinkIdentity(identity)}>
+                            Disconnect
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                ))}
+              </div>
+
+              {/* Link new account */}
+              {!identities.find(i => i.provider === 'google') && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleLinkGoogle}
+                  disabled={isLinkingGoogle}
+                >
+                  {isLinkingGoogle ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <div className="w-4 h-4 mr-2 rounded-full bg-red-500 flex items-center justify-center text-white text-[10px] font-bold">G</div>
+                  )}
+                  Connect Google Account
+                </Button>
+              )}
+
+              {/* Password setup section */}
+              <div className="border-t pt-4 mt-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                    <Key className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">Email & Password</p>
+                    <p className="text-xs text-muted-foreground">
+                      {hasPassword ? 'Password is set up' : 'Set up a password as a backup login method'}
+                    </p>
+                  </div>
+                  {hasPassword && (
+                    <Badge variant="outline" className="text-green-600 border-green-600">
+                      <Check className="w-3 h-3 mr-1" />
+                      Active
+                    </Badge>
+                  )}
+                </div>
+
+                {!isSettingPassword ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsSettingPassword(true)}
+                  >
+                    <Key className="h-4 w-4 mr-2" />
+                    {hasPassword ? 'Change Password' : 'Set Up Password'}
+                  </Button>
+                ) : (
+                  <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">{hasPassword ? 'New Password' : 'Password'}</Label>
+                      <div className="relative">
+                        <Input
+                          id="new-password"
+                          type={showPassword ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Enter password"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-0 top-0 h-full"
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                      <PasswordStrength password={newPassword} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                      <div className="relative">
+                        <Input
+                          id="confirm-password"
+                          type={showPassword ? 'text' : 'password'}
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Confirm password"
+                        />
+                        {confirmPassword && (
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                            {passwordsMatch ? (
+                              <Check className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <X className="h-4 w-4 text-red-500" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleSetPassword}
+                        disabled={!passwordsMatch || newPassword.length < 8 || isSavingPassword}
+                      >
+                        {isSavingPassword ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : null}
+                        {hasPassword ? 'Update Password' : 'Set Password'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setIsSettingPassword(false);
+                          setNewPassword('');
+                          setConfirmPassword('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

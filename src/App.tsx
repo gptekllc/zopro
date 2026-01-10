@@ -85,6 +85,7 @@ const App = () => (
                 <Route path="/company" element={<Company />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/settings/security" element={<SecuritySettings />} />
+                <Route path="/security-settings" element={<SecuritySettings />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/subscription" element={<Subscription />} />
