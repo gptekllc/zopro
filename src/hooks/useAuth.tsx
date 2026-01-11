@@ -6,6 +6,8 @@ interface Profile {
   id: string;
   email: string;
   full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
   company_id: string | null;
   phone: string | null;
   avatar_url: string | null;

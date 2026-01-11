@@ -2483,6 +2483,48 @@ export type Database = {
           },
         ]
       }
+      software_versions: {
+        Row: {
+          bug_fixes: string[] | null
+          created_at: string | null
+          created_by: string | null
+          features: string[] | null
+          id: string
+          is_current: boolean | null
+          notes: string | null
+          release_date: string | null
+          title: string | null
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          bug_fixes?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          features?: string[] | null
+          id?: string
+          is_current?: boolean | null
+          notes?: string | null
+          release_date?: string | null
+          title?: string | null
+          updated_at?: string | null
+          version: string
+        }
+        Update: {
+          bug_fixes?: string[] | null
+          created_at?: string | null
+          created_by?: string | null
+          features?: string[] | null
+          id?: string
+          is_current?: boolean | null
+          notes?: string | null
+          release_date?: string | null
+          title?: string | null
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
       subscription_plans: {
         Row: {
           created_at: string | null

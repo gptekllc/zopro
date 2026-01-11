@@ -45,6 +45,8 @@ interface Profile {
   id: string;
   email: string;
   full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
   company_id: string | null;
   role: string;
   created_at: string;
@@ -343,6 +345,8 @@ const SuperAdmin = () => {
 
   const filteredProfiles = profiles.filter(p =>
     p.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.first_name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (p.last_name?.toLowerCase().includes(searchQuery.toLowerCase())) ||
     (p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -616,7 +620,8 @@ const SuperAdmin = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Name</TableHead>
+                        <TableHead>First Name</TableHead>
+                        <TableHead>Last Name</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Company</TableHead>
                         <TableHead>Roles</TableHead>
@@ -629,7 +634,8 @@ const SuperAdmin = () => {
                         const userRoles = getUserRoles(profile.id);
                         return (
                           <TableRow key={profile.id}>
-                            <TableCell className="font-medium">{profile.full_name || '-'}</TableCell>
+                            <TableCell className="font-medium">{profile.first_name || '-'}</TableCell>
+                            <TableCell>{profile.last_name || '-'}</TableCell>
                             <TableCell>{profile.email}</TableCell>
                             <TableCell>
                               <Badge variant={profile.company_id ? 'default' : 'secondary'}>
@@ -679,7 +685,7 @@ const SuperAdmin = () => {
                       })}
                       {filteredProfiles.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                             No users found
                           </TableCell>
                         </TableRow>

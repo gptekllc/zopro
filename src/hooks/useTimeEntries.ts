@@ -55,12 +55,16 @@ export function useActiveTimeEntry() {
         .select('*')
         .eq('user_id', user.id)
         .is('clock_out', null)
+        .order('clock_in', { ascending: false })
+        .limit(1)
         .maybeSingle();
       
       if (error) throw error;
       return data as TimeEntry | null;
     },
     enabled: !!user && !!profile?.company_id,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 
@@ -95,6 +99,13 @@ export function useClockIn() {
     mutationFn: async ({ notes }: { notes?: string }) => {
       if (!user || !profile?.company_id) throw new Error('Not authenticated');
       
+      // Close any existing open entries first (safety measure to prevent duplicates)
+      await (supabase as any)
+        .from('time_entries')
+        .update({ clock_out: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .is('clock_out', null);
+      
       const { data, error } = await (supabase as any)
         .from('time_entries')
         .insert({
@@ -112,7 +123,7 @@ export function useClockIn() {
     },
     onSuccess: async () => {
       // Force immediate refetch to update UI
-      await queryClient.invalidateQueries({ queryKey: ['active_time_entry'] });
+      await queryClient.refetchQueries({ queryKey: ['active_time_entry'] });
       await queryClient.invalidateQueries({ queryKey: ['time_entries'] });
     },
     onError: (error: any) => {

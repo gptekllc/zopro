@@ -17,7 +17,8 @@ const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
     hourly_rate: 0,
@@ -28,7 +29,8 @@ const Profile = () => {
   useEffect(() => {
     if (profile) {
       setFormData({
-        full_name: profile.full_name || '',
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
         email: profile.email || '',
         phone: profile.phone || '',
         hourly_rate: profile.hourly_rate || 0,
@@ -64,8 +66,11 @@ const Profile = () => {
     setIsLoading(true);
 
     try {
+      const fullName = [formData.first_name.trim(), formData.last_name.trim()].filter(Boolean).join(' ');
       const updateData: Record<string, any> = {
-        full_name: formData.full_name,
+        first_name: formData.first_name.trim() || null,
+        last_name: formData.last_name.trim() || null,
+        full_name: fullName || null,
         phone: formData.phone || null,
       };
       
@@ -167,12 +172,14 @@ const Profile = () => {
             <AvatarUpload
               entityId={user?.id || ''}
               currentAvatarUrl={formData.avatar_url || null}
-              name={profile?.full_name || 'User'}
+              name={[profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || profile?.full_name || 'User'}
               onUploadSuccess={handleAvatarUploadSuccess}
               size="lg"
             />
             <div className="flex-1">
-              <h2 className="text-2xl font-semibold">{profile?.full_name || 'User'}</h2>
+              <h2 className="text-2xl font-semibold">
+                {[profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || profile?.full_name || 'User'}
+              </h2>
               <p className="text-muted-foreground">{profile?.email}</p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {roles.map(r => (
@@ -207,14 +214,28 @@ const Profile = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="full_name">Full Name</Label>
+                <Label htmlFor="first_name">First Name</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
-                    id="full_name"
-                    value={formData.full_name}
-                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                    placeholder="John Smith"
+                    id="first_name"
+                    value={formData.first_name}
+                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                    placeholder="John"
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="last_name">Last Name</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="last_name"
+                    value={formData.last_name}
+                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                    placeholder="Smith"
                     className="pl-9"
                   />
                 </div>

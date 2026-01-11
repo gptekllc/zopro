@@ -32,6 +32,7 @@ import {
   ArrowRightLeft,
   PanelLeftClose,
   PanelLeft,
+  HelpCircle,
 } from 'lucide-react';
 import zoproLogo from '@/assets/zopro-logo.png';
 import { cn } from '@/lib/utils';
@@ -276,6 +277,12 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
               <DropdownMenuItem onClick={() => navigate('/security-settings')}>
                 <Shield className="w-4 h-4 mr-2" /> Security
               </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <a href="https://zopro.app/contact" target="_blank" rel="noopener noreferrer">
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  Software Support
+                </a>
+              </DropdownMenuItem>
               {canSwitchPortals && (
                 <>
                   <DropdownMenuSeparator />
@@ -444,6 +451,12 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
                     </DropdownMenuItem>
                   </>
                 )}
+                <DropdownMenuItem asChild>
+                  <a href="https://zopro.app/contact" target="_blank" rel="noopener noreferrer">
+                    <HelpCircle className="w-4 h-4 mr-2" />
+                    Software Support
+                  </a>
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" />
