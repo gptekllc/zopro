@@ -161,8 +161,8 @@ export function useJobs(includeArchived: boolean = false) {
         .select(`
           *,
           customer:customers(name, email, phone, address, city, state, zip),
-          assignee:profiles!jobs_assigned_to_fkey(full_name, employment_status),
-          assignees:job_assignees(id, job_id, profile_id, created_at, profile:profiles(id, full_name, email, employment_status)),
+          assignee:profiles!jobs_assigned_to_fkey(full_name, employment_status, avatar_url),
+          assignees:job_assignees(id, job_id, profile_id, created_at, profile:profiles(id, full_name, email, employment_status, avatar_url)),
           photos:job_photos(*),
           items:job_items(*)
         `)
@@ -197,8 +197,8 @@ export function useJob(jobId: string | null) {
         .select(`
           *,
           customer:customers(name, email, phone, address, city, state, zip),
-          assignee:profiles!jobs_assigned_to_fkey(full_name, employment_status),
-          assignees:job_assignees(id, job_id, profile_id, created_at, profile:profiles(id, full_name, email, employment_status)),
+          assignee:profiles!jobs_assigned_to_fkey(full_name, employment_status, avatar_url),
+          assignees:job_assignees(id, job_id, profile_id, created_at, profile:profiles(id, full_name, email, employment_status, avatar_url)),
           photos:job_photos(*),
           items:job_items(*)
         `)

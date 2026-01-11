@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +23,6 @@ import {
   PenTool,
   Send,
   Trash2,
-  UserCog,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { Invoice } from "@/hooks/useInvoices";
@@ -71,6 +71,11 @@ const invoiceStatusColors: Record<string, string> = {
   voided: "bg-muted text-muted-foreground line-through",
 };
 
+const getInitials = (name: string | null | undefined): string => {
+  if (!name) return '?';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+};
+
 export function InvoiceListCard({
   invoice,
   lateFeePercentage,
@@ -111,23 +116,31 @@ export function InvoiceListCard({
   const displayTotal = isVoided ? 0 : (hasPartialPayment ? remainingBalance : totalDue);
   const customerName = invoice.customer?.name || "Unknown";
   const customerEmail = invoice.customer?.email || null;
-  const creatorName = (invoice as any).creator?.full_name || null;
   const dueText = invoice.due_date ? format(new Date(invoice.due_date), "MMM d") : null;
   
-  // Get linked job number - prefer direct job_id link, fallback to quote's job
-  const linkedJobNumber = (invoice as any).job?.job_number || (invoice as any).quote?.job?.job_number || null;
+  // Get linked job number and assignee - prefer direct job_id link, fallback to quote's job
+  const linkedJob = (invoice as any).job || (invoice as any).quote?.job || null;
+  const linkedJobNumber = linkedJob?.job_number || null;
+  
+  // Get assignee from linked job, fallback to assigned_technician, then creator
+  const jobAssignee = linkedJob?.assignee || (invoice as any).assigned_technician;
+  const displayProfile = jobAssignee || (invoice as any).creator;
 
   const metadataRow = (
     <>
-      {creatorName && (
+      {displayProfile && (
         <span className="flex items-center gap-1">
-          <UserCog className="w-3 h-3" />
-          {creatorName}
+          <Avatar className="w-5 h-5">
+            <AvatarImage src={displayProfile.avatar_url || undefined} />
+            <AvatarFallback className="text-[10px] bg-muted">
+              {getInitials(displayProfile.full_name)}
+            </AvatarFallback>
+          </Avatar>
         </span>
       )}
       {linkedJobNumber && (
         <>
-          {creatorName && <span>•</span>}
+          {displayProfile && <span>•</span>}
           <span className="flex items-center gap-1">
             <Briefcase className="w-3 h-3" />
             {linkedJobNumber}
@@ -136,7 +149,7 @@ export function InvoiceListCard({
       )}
       {dueText && (
         <>
-          {(creatorName || linkedJobNumber) && <span>•</span>}
+          {(displayProfile || linkedJobNumber) && <span>•</span>}
           <span className="shrink-0">Due {dueText}</span>
         </>
       )}

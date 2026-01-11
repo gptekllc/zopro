@@ -1,9 +1,10 @@
-import { useState, useMemo, DragEvent } from 'react';
+import { useState, useMemo, DragEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { Job, useUpdateJob } from '@/hooks/useJobs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, GripVertical } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, GripVertical, ChevronsUpDown } from 'lucide-react';
 import { 
   format, 
   startOfWeek, 
@@ -25,7 +26,9 @@ import {
   setMinutes,
   eachHourOfInterval,
   startOfDay,
-  endOfDay
+  endOfDay,
+  differenceInMinutes,
+  addMinutes
 } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -37,11 +40,17 @@ interface JobCalendarProps {
   onSlotClick?: (date: Date) => void;
 }
 
+const getInitials = (name: string | null | undefined): string => {
+  if (!name) return '?';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+};
+
 const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<CalendarView>('month');
+  const [view, setView] = useState<CalendarView>('week'); // Default to week view
   const [draggedJob, setDraggedJob] = useState<Job | null>(null);
   const [dropTargetDate, setDropTargetDate] = useState<string | null>(null);
+  const [resizingJob, setResizingJob] = useState<{ job: Job; startY: number; originalMinutes: number } | null>(null);
   const updateJob = useUpdateJob();
 
   // Calculate date ranges based on view
@@ -72,6 +81,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
     }
   }, [currentDate, view]);
 
+  // Group ALL jobs by date (including draft, completed, etc.)
   const jobsByDate = useMemo(() => {
     const map = new Map<string, Job[]>();
     jobs.forEach(job => {
@@ -97,9 +107,19 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
     });
   };
 
+  // Calculate job height based on duration (for week/day views)
+  const getJobHeight = (job: Job) => {
+    if (!job.scheduled_start || !job.scheduled_end) return 40; // Default height
+    const start = parseISO(job.scheduled_start);
+    const end = parseISO(job.scheduled_end);
+    const durationMinutes = differenceInMinutes(end, start);
+    // 50px per hour = ~0.83px per minute
+    return Math.max(40, (durationMinutes / 60) * 50);
+  };
+
   const getStatusColor = (status: Job['status']) => {
     switch (status) {
-      case 'draft': return 'bg-muted text-muted-foreground';
+      case 'draft': return 'bg-muted text-muted-foreground border-muted-foreground/30';
       case 'scheduled': return 'bg-blue-500 text-white';
       case 'in_progress': return 'bg-warning text-warning-foreground';
       case 'completed': return 'bg-success text-white';
@@ -113,8 +133,16 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
     switch (priority) {
       case 'urgent': return 'border-l-4 border-l-destructive';
       case 'high': return 'border-l-4 border-l-warning';
+      case 'medium': return 'border-l-2 border-l-blue-400';
+      case 'low': return 'border-l-2 border-l-muted-foreground/30';
       default: return '';
     }
+  };
+
+  const getPriorityIndicator = (priority: Job['priority']) => {
+    if (priority === 'urgent') return 'U';
+    if (priority === 'high') return 'H';
+    return null;
   };
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, job: Job) => {
@@ -186,6 +214,55 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
     setDraggedJob(null);
   };
 
+  // Resize handlers for week/day views
+  const handleResizeStart = (e: ReactMouseEvent, job: Job) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!job.scheduled_start || !job.scheduled_end) return;
+    
+    const start = parseISO(job.scheduled_start);
+    const end = parseISO(job.scheduled_end);
+    const originalMinutes = differenceInMinutes(end, start);
+    
+    setResizingJob({ job, startY: e.clientY, originalMinutes });
+    
+    const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
+      const deltaY = moveEvent.clientY - e.clientY;
+      // Each 50px = 1 hour = 60 minutes
+      const deltaMinutes = Math.round((deltaY / 50) * 60 / 15) * 15; // Round to 15-minute increments
+      const newDuration = Math.max(15, originalMinutes + deltaMinutes);
+      
+      // Visual feedback would go here
+    };
+    
+    const handleMouseUp = async (upEvent: globalThis.MouseEvent) => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      
+      const deltaY = upEvent.clientY - e.clientY;
+      const deltaMinutes = Math.round((deltaY / 50) * 60 / 15) * 15;
+      const newDuration = Math.max(15, originalMinutes + deltaMinutes);
+      
+      if (newDuration !== originalMinutes) {
+        const newEnd = addMinutes(start, newDuration);
+        try {
+          await updateJob.mutateAsync({
+            id: job.id,
+            scheduled_end: newEnd.toISOString(),
+          });
+          toast.success(`Job duration updated to ${Math.floor(newDuration / 60)}h ${newDuration % 60}m`);
+        } catch (error) {
+          toast.error('Failed to update job duration');
+        }
+      }
+      
+      setResizingJob(null);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   const handleSlotClick = (day: Date, hour?: number) => {
     if (!onSlotClick) return;
     
@@ -220,8 +297,16 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
     return format(currentDate, 'EEEE, MMMM d, yyyy');
   };
 
-  // Render job item
-  const renderJobItem = (job: Job, showTime = true) => (
+  // Get first assignee for avatar
+  const getJobAssignee = (job: Job) => {
+    if (job.assignees && job.assignees.length > 0) {
+      return job.assignees[0].profile;
+    }
+    return job.assignee;
+  };
+
+  // Render job item for Month view (compact)
+  const renderMonthJobItem = (job: Job) => (
     <div
       key={job.id}
       draggable
@@ -231,14 +316,14 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
         e.stopPropagation();
         onJobClick(job);
       }}
-      className={`text-xs p-1 rounded cursor-grab hover:opacity-80 transition-opacity truncate flex items-center gap-1 ${getStatusColor(job.status)} ${getPriorityBorder(job.priority)} ${
+      className={`text-xs p-1 rounded cursor-pointer hover:opacity-80 transition-opacity truncate flex items-center gap-1 ${getStatusColor(job.status)} ${getPriorityBorder(job.priority)} ${
         draggedJob?.id === job.id ? 'opacity-50' : ''
       }`}
-      title={`${job.job_number}: ${job.title} (Drag to reschedule)`}
+      title={`${job.job_number}: ${job.title} - Click to edit, Drag to reschedule`}
     >
-      <GripVertical className="w-3 h-3 flex-shrink-0 opacity-50" />
+      <GripVertical className="w-3 h-3 flex-shrink-0 opacity-50 cursor-grab" />
       <span className="truncate">
-        {showTime && job.scheduled_start && (
+        {job.scheduled_start && (
           <span className="font-medium">
             {format(parseISO(job.scheduled_start), 'HH:mm')}
           </span>
@@ -247,6 +332,67 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
       </span>
     </div>
   );
+
+  // Render enhanced job item for Week/Day views
+  const renderWeekDayJobItem = (job: Job, showResize = true) => {
+    const assignee = getJobAssignee(job);
+    const priorityIndicator = getPriorityIndicator(job.priority);
+    const height = view !== 'month' && job.scheduled_end ? getJobHeight(job) : 'auto';
+    
+    return (
+      <div
+        key={job.id}
+        draggable
+        onDragStart={(e) => handleDragStart(e, job)}
+        onDragEnd={handleDragEnd}
+        onClick={(e) => {
+          e.stopPropagation();
+          onJobClick(job);
+        }}
+        className={`text-xs p-1.5 rounded cursor-pointer hover:opacity-90 transition-all relative ${getStatusColor(job.status)} ${getPriorityBorder(job.priority)} ${
+          draggedJob?.id === job.id ? 'opacity-50' : ''
+        }`}
+        style={{ minHeight: 40, height: typeof height === 'number' ? `${height}px` : height }}
+        title={`${job.job_number}: ${job.title} - ${job.customer?.name || 'Unknown'}`}
+      >
+        <div className="flex items-start justify-between gap-1">
+          <GripVertical className="w-3 h-3 flex-shrink-0 opacity-50 cursor-grab mt-0.5" />
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex items-center gap-1">
+              <span className="font-bold truncate">{job.job_number}</span>
+              {priorityIndicator && (
+                <Badge className={`h-3 px-1 text-[8px] ${
+                  job.priority === 'urgent' ? 'bg-destructive text-destructive-foreground' : 'bg-warning text-warning-foreground'
+                }`}>
+                  {priorityIndicator}
+                </Badge>
+              )}
+            </div>
+            <div className="truncate text-[10px] opacity-90 font-medium">{job.title}</div>
+            <div className="truncate text-[10px] opacity-80">{job.customer?.name || 'Unknown'}</div>
+          </div>
+          {assignee && (
+            <Avatar className="w-5 h-5 flex-shrink-0">
+              <AvatarImage src={(assignee as any).avatar_url} />
+              <AvatarFallback className="text-[8px] bg-background/50">
+                {getInitials(assignee.full_name)}
+              </AvatarFallback>
+            </Avatar>
+          )}
+        </div>
+        
+        {/* Resize handle for week/day views */}
+        {showResize && job.scheduled_end && (
+          <div 
+            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-white/30 flex items-center justify-center"
+            onMouseDown={(e) => handleResizeStart(e, job)}
+          >
+            <ChevronsUpDown className="w-3 h-3 opacity-50" />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <Card>
@@ -318,7 +464,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
           </div>
         </div>
         <p className="text-xs text-muted-foreground mt-2 hidden sm:block">
-          {onSlotClick ? 'Click on a time slot to create a job, or drag existing jobs to reschedule' : 'Drag and drop jobs to reschedule them'}
+          {onSlotClick ? 'Click on a time slot to create a job, drag jobs to reschedule, or drag the bottom edge to resize' : 'Drag and drop jobs to reschedule, drag the bottom edge to resize duration'}
         </p>
       </CardHeader>
       <CardContent className="px-2 sm:px-6">
@@ -374,7 +520,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
                       {format(day, 'd')}
                     </div>
                     <div className="space-y-0.5 sm:space-y-1 overflow-hidden max-h-[40px] sm:max-h-[80px]">
-                      {dayJobs.slice(0, view === 'month' ? (window.innerWidth < 640 ? 1 : 3) : 3).map(job => renderJobItem(job))}
+                      {dayJobs.slice(0, view === 'month' ? (window.innerWidth < 640 ? 1 : 3) : 3).map(job => renderMonthJobItem(job))}
                       {dayJobs.length > (window.innerWidth < 640 ? 1 : 3) && (
                         <div className="text-[10px] sm:text-xs text-muted-foreground text-center">
                           +{dayJobs.length - (window.innerWidth < 640 ? 1 : 3)} more
@@ -428,7 +574,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
                         return (
                           <div
                             key={dateKey}
-                            className={`min-h-[40px] sm:min-h-[50px] p-0.5 sm:p-1 border-t border-border transition-colors cursor-pointer hover:bg-accent/50 ${
+                            className={`min-h-[50px] p-0.5 sm:p-1 border-t border-border transition-colors cursor-pointer hover:bg-accent/50 ${
                               isDropTarget ? 'bg-primary/20' : ''
                             }`}
                             onDragOver={(e) => handleDragOver(e, dateKey)}
@@ -437,7 +583,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
                             onClick={() => handleSlotClick(day, hour)}
                           >
                             <div className="space-y-0.5 sm:space-y-1">
-                              {hourJobs.map(job => renderJobItem(job, false))}
+                              {hourJobs.map(job => renderWeekDayJobItem(job))}
                             </div>
                           </div>
                         );
@@ -475,7 +621,7 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
                     {format(hourDate, 'h:mm a')}
                   </div>
                   <div className="min-h-[50px] sm:min-h-[60px] p-1 sm:p-2 space-y-1">
-                    {hourJobs.map(job => renderJobItem(job, false))}
+                    {hourJobs.map(job => renderWeekDayJobItem(job))}
                   </div>
                 </div>
               );
@@ -485,6 +631,10 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
 
         {/* Legend - hidden on mobile, visible on larger screens */}
         <div className="hidden sm:flex flex-wrap gap-3 mt-4 pt-4 border-t text-xs">
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded bg-muted border border-muted-foreground/30" />
+            <span>Draft</span>
+          </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded bg-blue-500" />
             <span>Scheduled</span>
@@ -497,13 +647,21 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
             <div className="w-3 h-3 rounded bg-success" />
             <span>Completed</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded bg-destructive" />
+          <div className="flex items-center gap-1 border-l pl-3">
+            <div className="w-3 h-3 rounded border-l-2 border-l-destructive bg-muted" />
             <span>Urgent</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-3 h-3 rounded border-l-2 border-l-warning bg-muted" />
+            <span>High</span>
           </div>
           <div className="flex items-center gap-1 ml-auto">
             <GripVertical className="w-3 h-3" />
             <span className="text-muted-foreground">Drag to reschedule</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <ChevronsUpDown className="w-3 h-3" />
+            <span className="text-muted-foreground">Resize duration</span>
           </div>
         </div>
       </CardContent>

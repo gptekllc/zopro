@@ -104,7 +104,7 @@ export function useQuotes(includeArchived: boolean = false) {
         .select(`
           *,
           customer:customers(name, email),
-          creator:profiles!quotes_created_by_fkey(full_name),
+          creator:profiles!quotes_created_by_fkey(full_name, avatar_url),
           items:quote_items(*)
         `)
         .is('deleted_at', null) // Exclude soft-deleted items
