@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import ZoProLogo from '@/assets/ZoPro_Logo.png';
@@ -611,21 +611,36 @@ const CustomerPortal = () => {
   const [isLoadingPaymentHistory, setIsLoadingPaymentHistory] = useState(false);
   const [downloadingReceipt, setDownloadingReceipt] = useState<string | null>(null);
 
+  // Guard to prevent repeated verification from sessionStorage
+  const didVerifyFromStorageRef = useRef(false);
+  const lastProcessedParamsRef = useRef<string>('');
+
   // Check for magic link token and payment status in URL
   useEffect(() => {
+    const paramsString = searchParams.toString();
+    
+    // Prevent processing the same params multiple times
+    if (paramsString === lastProcessedParamsRef.current && !paramsString) {
+      return;
+    }
+    
     const token = searchParams.get('token');
     const customerId = searchParams.get('customer');
     const paymentStatus = searchParams.get('payment');
     const signDocType = searchParams.get('sign') as 'quote' | 'invoice' | 'job' | null;
     const signDocId = searchParams.get('doc');
     
+    // Handle payment status - only if we have this param
     if (paymentStatus === 'success') {
       toast.success('Payment successful! Thank you.');
-      // Clean the URL
       navigate('/customer-portal', { replace: true });
+      lastProcessedParamsRef.current = '';
+      return;
     } else if (paymentStatus === 'cancelled') {
       toast.info('Payment was cancelled.');
       navigate('/customer-portal', { replace: true });
+      lastProcessedParamsRef.current = '';
+      return;
     }
     
     // Check for signing mode params
@@ -634,18 +649,21 @@ const CustomerPortal = () => {
     }
     
     if (token && customerId) {
-      verifyToken(token, customerId, signDocType, signDocId);
-    } else {
-      // Check if already authenticated via sessionStorage (more secure than localStorage)
+      // URL token verification - clean URL after verifying
+      lastProcessedParamsRef.current = paramsString;
+      verifyToken(token, customerId, signDocType, signDocId, true);
+    } else if (!didVerifyFromStorageRef.current) {
+      // Check sessionStorage only once per page load
       const savedCustomerId = sessionStorage.getItem('customer_portal_id');
       const savedToken = sessionStorage.getItem('customer_portal_token');
       if (savedCustomerId && savedToken) {
-        verifyToken(savedToken, savedCustomerId, signDocType, signDocId);
+        didVerifyFromStorageRef.current = true;
+        verifyToken(savedToken, savedCustomerId, signDocType, signDocId, false);
       } else {
         setIsLoading(false);
       }
     }
-  }, [searchParams]);
+  }, [searchParams.toString()]);
 
   // Play notification sound
   const playNotificationSound = () => {
@@ -754,7 +772,8 @@ const CustomerPortal = () => {
     token: string, 
     customerId: string, 
     signDocType?: 'quote' | 'invoice' | 'job' | null, 
-    signDocId?: string | null
+    signDocId?: string | null,
+    shouldCleanUrl: boolean = false
   ) => {
     try {
       const { data, error } = await supabase.functions.invoke('customer-portal-auth', {
@@ -765,6 +784,7 @@ const CustomerPortal = () => {
         toast.error('Invalid or expired link. Please request a new one.');
         sessionStorage.removeItem('customer_portal_id');
         sessionStorage.removeItem('customer_portal_token');
+        didVerifyFromStorageRef.current = false; // Allow retry
         setIsLoading(false);
         return;
       }
@@ -786,11 +806,14 @@ const CustomerPortal = () => {
         fetchDocumentForSigning(signDocType, signDocId, customerId, token);
       }
       
-      // Clean URL
-      navigate('/customer-portal', { replace: true });
+      // Only clean URL if there were params to clean (prevents infinite loop)
+      if (shouldCleanUrl) {
+        navigate('/customer-portal', { replace: true });
+      }
     } catch (err) {
       console.error('Token verification error:', err);
       toast.error('Failed to verify access. Please try again.');
+      didVerifyFromStorageRef.current = false; // Allow retry
     } finally {
       setIsLoading(false);
     }
