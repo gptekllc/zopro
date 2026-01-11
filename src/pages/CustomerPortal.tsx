@@ -534,6 +534,61 @@ const CustomerPortal = () => {
   // Tab control state for programmatic tab switching
   const [activeTab, setActiveTab] = useState('jobs');
 
+  // Compute derived data - MUST be before any conditional returns to follow React hooks rules
+  const unpaidInvoices = useMemo(() => invoices.filter(i => i.status !== 'paid'), [invoices]);
+  const pendingQuotes = useMemo(() => quotes.filter(q => q.status === 'sent' || q.status === 'pending' || q.status === 'draft'), [quotes]);
+
+  // Group unpaid invoices by company for multi-company payment flow
+  const unpaidInvoicesByCompany = useMemo(() => {
+    const grouped: Record<string, { 
+      companyId: string; 
+      companyName: string; 
+      invoices: Invoice[]; 
+      total: number;
+      stripeEnabled: boolean;
+    }> = {};
+    
+    unpaidInvoices.forEach(invoice => {
+      const companyId = invoice.company_id || customerData?.company?.id || 'default';
+      const companyName = invoice.company_name || customerData?.company?.name || 'Unknown Company';
+      if (!grouped[companyId]) {
+        grouped[companyId] = { 
+          companyId, 
+          companyName, 
+          invoices: [], 
+          total: 0,
+          stripeEnabled: customerData?.company?.stripe_payments_enabled !== false,
+        };
+      }
+      grouped[companyId].invoices.push(invoice);
+      grouped[companyId].total += Number(invoice.total);
+    });
+    
+    return Object.values(grouped);
+  }, [unpaidInvoices, customerData?.company]);
+
+  const hasMultipleCompanies = unpaidInvoicesByCompany.length > 1;
+
+  // Handle opening payment selection - checks for multi-company
+  const handleOpenPaymentSelection = () => {
+    if (unpaidInvoices.length === 0) {
+      setActiveTab('invoices');
+      return;
+    }
+    
+    if (hasMultipleCompanies) {
+      // Multi-company: show company selection first
+      setPaymentStep('company-select');
+      setSelectedCompanyId(null);
+      setSelectedInvoiceIds(new Set());
+    } else {
+      // Single company: go straight to invoice selection
+      setPaymentStep('invoice-select');
+      setSelectedInvoiceIds(new Set(unpaidInvoices.map(i => i.id)));
+    }
+    setShowPaymentSelection(true);
+  };
+
   // Feedback form states
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackJob, setFeedbackJob] = useState<Job | null>(null);
@@ -2072,59 +2127,6 @@ const CustomerPortal = () => {
   }
 
   // Portal dashboard
-  const unpaidInvoices = invoices.filter(i => i.status !== 'paid');
-  const pendingQuotes = quotes.filter(q => q.status === 'sent' || q.status === 'pending' || q.status === 'draft');
-
-  // Group unpaid invoices by company for multi-company payment flow
-  const unpaidInvoicesByCompany = useMemo(() => {
-    const grouped: Record<string, { 
-      companyId: string; 
-      companyName: string; 
-      invoices: Invoice[]; 
-      total: number;
-      stripeEnabled: boolean;
-    }> = {};
-    
-    unpaidInvoices.forEach(invoice => {
-      const companyId = invoice.company_id || customerData?.company?.id || 'default';
-      const companyName = invoice.company_name || customerData?.company?.name || 'Unknown Company';
-      if (!grouped[companyId]) {
-        grouped[companyId] = { 
-          companyId, 
-          companyName, 
-          invoices: [], 
-          total: 0,
-          stripeEnabled: customerData?.company?.stripe_payments_enabled !== false,
-        };
-      }
-      grouped[companyId].invoices.push(invoice);
-      grouped[companyId].total += Number(invoice.total);
-    });
-    
-    return Object.values(grouped);
-  }, [unpaidInvoices, customerData?.company]);
-
-  const hasMultipleCompanies = unpaidInvoicesByCompany.length > 1;
-
-  // Handle opening payment selection - checks for multi-company
-  const handleOpenPaymentSelection = () => {
-    if (unpaidInvoices.length === 0) {
-      setActiveTab('invoices');
-      return;
-    }
-    
-    if (hasMultipleCompanies) {
-      // Multi-company: show company selection first
-      setPaymentStep('company-select');
-      setSelectedCompanyId(null);
-      setSelectedInvoiceIds(new Set());
-    } else {
-      // Single company: go straight to invoice selection
-      setPaymentStep('invoice-select');
-      setSelectedInvoiceIds(new Set(unpaidInvoices.map(i => i.id)));
-    }
-    setShowPaymentSelection(true);
-  };
 
   return (
     <div className="min-h-screen bg-background">
