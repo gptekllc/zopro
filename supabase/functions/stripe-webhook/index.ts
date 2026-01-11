@@ -168,6 +168,7 @@ serve(async (req) => {
           .update({
             status: newStatus,
             paid_at: paidAt,
+            paid_online: true, // Mark as paid online via Stripe
           })
           .eq("id", invoiceId);
 

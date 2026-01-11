@@ -26,6 +26,7 @@ interface SignatureSectionProps {
   onClearSignature?: () => void;
   isClearing?: boolean;
   showClearButton?: boolean;
+  paidOnline?: boolean;
 }
 
 interface Signature {
@@ -48,6 +49,7 @@ export function SignatureSection({
   onClearSignature,
   isClearing = false,
   showClearButton = true,
+  paidOnline = false,
 }: SignatureSectionProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
 
@@ -92,7 +94,29 @@ export function SignatureSection({
   }
 
   if (!signatureId || !signature) {
-    // No signature yet
+    // No signature yet - but if paid online, show that instead
+    if (paidOnline) {
+      return (
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+            <PenTool className="w-3 h-3" />
+            {title}
+          </p>
+          <Card className="border-success/30 bg-success/5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
+                <Calendar className="w-4 h-4 text-success" />
+              </div>
+              <div>
+                <p className="font-medium text-success text-sm">Paid Online via Stripe</p>
+                <p className="text-xs text-muted-foreground">No signature required for online payments</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-2">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">

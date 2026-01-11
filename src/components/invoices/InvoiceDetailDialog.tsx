@@ -873,6 +873,7 @@ export function InvoiceDetailDialog({
                   showCollectButton={invoice.status !== 'paid' && !!onCollectSignature}
                   collectButtonText="Collect Signature"
                   isCollecting={isCollectingSignature}
+                  paidOnline={(invoice as any).paid_online}
                 />
               </ConstrainedPanel>
             </div>

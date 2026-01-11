@@ -969,6 +969,7 @@ export type Database = {
           late_fee_applied_at: string | null
           notes: string | null
           paid_at: string | null
+          paid_online: boolean | null
           quote_id: string | null
           signature_id: string | null
           signed_at: string | null
@@ -996,6 +997,7 @@ export type Database = {
           late_fee_applied_at?: string | null
           notes?: string | null
           paid_at?: string | null
+          paid_online?: boolean | null
           quote_id?: string | null
           signature_id?: string | null
           signed_at?: string | null
@@ -1023,6 +1025,7 @@ export type Database = {
           late_fee_applied_at?: string | null
           notes?: string | null
           paid_at?: string | null
+          paid_online?: boolean | null
           quote_id?: string | null
           signature_id?: string | null
           signed_at?: string | null

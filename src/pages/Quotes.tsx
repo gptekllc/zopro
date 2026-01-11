@@ -248,11 +248,8 @@ const Quotes = () => {
       openEditDialog(false);
       resetForm();
       
-      // Open the detail dialog for the created/updated quote
-      if (resultQuoteId) {
-        await refetchQuotes();
-        setPendingViewQuoteId(resultQuoteId);
-      }
+      // Refresh the page to ensure all list cards show updated data
+      window.location.reload();
     } catch (error) {
       toast.error(editingQuote ? 'Failed to update quote' : 'Failed to create quote');
     }
