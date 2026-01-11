@@ -2132,15 +2132,13 @@ const CustomerPortal = () => {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {customerData?.company?.logo_url && (
-              <img 
-                src={customerData?.company?.logo_url} 
-                alt={customerData?.company?.name || 'Company'}
-                className="h-10 w-auto object-contain"
-              />
-            )}
+            <img 
+              src={ZoProLogo} 
+              alt="ZoPro"
+              className="h-10 w-auto object-contain"
+            />
             <div>
-              <h1 className="font-semibold">{customerData?.company?.name || 'Customer Portal'}</h1>
+              <h1 className="font-semibold">ZoPro</h1>
               <p className="text-sm text-muted-foreground">Customer Portal</p>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { useCustomers, useCreateCustomer, useUpdateCustomer, useSoftDeleteCustom
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -262,9 +263,12 @@ const Customers = () => {
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="w-6 h-6 text-primary" />
-                      </div>
+                      <Avatar className="w-12 h-12">
+                        <AvatarImage src={customer.avatar_url || undefined} alt={customer.name} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                          {customer.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
                       <div>
                         <h3 className="font-semibold group-hover:text-primary transition-colors">{customer.name}</h3>
                       </div>

@@ -79,6 +79,7 @@ export function InlineCustomerForm({
         state: newCustomer.state.trim() || null,
         zip: newCustomer.zip.trim() || null,
         notes: null,
+        avatar_url: null,
       });
       
       // Select the newly created customer
