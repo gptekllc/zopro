@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Loader2, DollarSign, Users, Briefcase, HardDrive, Check, X, Percent, Calendar } from 'lucide-react';
+import { Plus, Edit, Loader2, DollarSign, Users, Briefcase, HardDrive, Check, X, Percent, Calendar, ExternalLink, CreditCard, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, addMonths, addDays } from 'date-fns';
 import { formatBytes } from '@/hooks/useStorageUsage';
@@ -31,6 +31,9 @@ interface SubscriptionPlan {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  stripe_product_id: string | null;
+  stripe_price_id_monthly: string | null;
+  stripe_price_id_yearly: string | null;
 }
 
 interface Company {
@@ -99,6 +102,9 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
     storage_addon_price_per_gb: null as number | null,
     features: {} as Record<string, boolean>,
     is_active: true,
+    stripe_product_id: '',
+    stripe_price_id_monthly: '',
+    stripe_price_id_yearly: '',
   });
 
   // Fetch subscriptions
@@ -150,6 +156,9 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
           storage_addon_price_per_gb: editForm.storage_addon_price_per_gb,
           features: editForm.features,
           is_active: editForm.is_active,
+          stripe_product_id: editForm.stripe_product_id || null,
+          stripe_price_id_monthly: editForm.stripe_price_id_monthly || null,
+          stripe_price_id_yearly: editForm.stripe_price_id_yearly || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', planId);
@@ -243,6 +252,9 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
       storage_addon_price_per_gb: plan.storage_addon_price_per_gb,
       features: plan.features || {},
       is_active: plan.is_active !== false,
+      stripe_product_id: plan.stripe_product_id || '',
+      stripe_price_id_monthly: plan.stripe_price_id_monthly || '',
+      stripe_price_id_yearly: plan.stripe_price_id_yearly || '',
     });
     setEditPlanDialogOpen(true);
   };
@@ -584,6 +596,75 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
                     Set 20% yearly discount
                   </Button>
                 )}
+              </div>
+
+              {/* Stripe Configuration */}
+              <div>
+                <h4 className="font-semibold mb-3 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4" />
+                  Stripe Configuration
+                  <a 
+                    href="https://dashboard.stripe.com/products" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-foreground ml-auto flex items-center gap-1"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Open Stripe
+                  </a>
+                </h4>
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label>Stripe Product ID</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="prod_..."
+                        value={editForm.stripe_product_id}
+                        onChange={(e) => setEditForm({ ...editForm, stripe_product_id: e.target.value })}
+                      />
+                      {editForm.stripe_product_id ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 text-yellow-500 shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Monthly Price ID</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          placeholder="price_..."
+                          value={editForm.stripe_price_id_monthly}
+                          onChange={(e) => setEditForm({ ...editForm, stripe_price_id_monthly: e.target.value })}
+                        />
+                        {editForm.stripe_price_id_monthly ? (
+                          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                        ) : (
+                          <AlertCircle className="w-5 h-5 text-yellow-500 shrink-0" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Yearly Price ID</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          placeholder="price_..."
+                          value={editForm.stripe_price_id_yearly}
+                          onChange={(e) => setEditForm({ ...editForm, stripe_price_id_yearly: e.target.value })}
+                        />
+                        {editForm.stripe_price_id_yearly ? (
+                          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+                        ) : (
+                          <AlertCircle className="w-5 h-5 text-yellow-500 shrink-0" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Configure Stripe price IDs to enable online checkout for this plan.
+                  </p>
+                </div>
               </div>
 
               {/* Limits */}

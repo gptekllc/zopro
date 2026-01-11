@@ -1,4 +1,4 @@
-import { Check, X, Infinity } from 'lucide-react';
+import { Check, X, Infinity, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +16,9 @@ interface Plan {
   max_storage_gb?: number | null;
   storage_limit_bytes?: number | null;
   features: Record<string, boolean> | null;
+  stripe_product_id?: string | null;
+  stripe_price_id_monthly?: string | null;
+  stripe_price_id_yearly?: string | null;
 }
 
 interface PlanComparisonTableProps {
@@ -23,7 +26,9 @@ interface PlanComparisonTableProps {
   currentPlanId?: string;
   onSelectPlan?: (planId: string) => void;
   loading?: boolean;
+  loadingPlanId?: string | null;
   compact?: boolean;
+  billingInterval?: 'monthly' | 'yearly';
 }
 
 const FEATURE_ORDER: FeatureFlag[] = [
@@ -48,7 +53,9 @@ export function PlanComparisonTable({
   currentPlanId, 
   onSelectPlan, 
   loading,
+  loadingPlanId,
   compact = false,
+  billingInterval = 'monthly',
 }: PlanComparisonTableProps) {
   const hasFeature = (plan: Plan, feature: FeatureFlag): boolean => {
     if (!plan.features) return false;
@@ -72,12 +79,47 @@ export function PlanComparisonTable({
     return `${Number.isInteger(rounded) ? Math.trunc(rounded) : rounded} GB`;
   };
 
+  const getDisplayPrice = (plan: Plan): { price: number; interval: string; originalPrice?: number } => {
+    if (plan.price_monthly === 0 || plan.price_monthly === null) {
+      return { price: 0, interval: '' };
+    }
+
+    if (billingInterval === 'yearly' && plan.price_yearly) {
+      const monthlyEquivalent = Math.round(plan.price_yearly / 12);
+      return { 
+        price: monthlyEquivalent, 
+        interval: '/mo', 
+        originalPrice: plan.price_monthly 
+      };
+    }
+
+    return { price: plan.price_monthly, interval: '/mo' };
+  };
+
+  const getSavingsPercent = (plan: Plan): number => {
+    if (!plan.price_monthly || !plan.price_yearly || plan.price_monthly === 0) return 0;
+    const fullYearlyPrice = plan.price_monthly * 12;
+    return Math.round(((fullYearlyPrice - plan.price_yearly) / fullYearlyPrice) * 100);
+  };
+
+  const canPurchase = (plan: Plan): boolean => {
+    if (plan.price_monthly === 0 || plan.price_monthly === null) return false;
+    const priceId = billingInterval === 'yearly' 
+      ? plan.stripe_price_id_yearly 
+      : plan.stripe_price_id_monthly;
+    return !!priceId;
+  };
+
   if (compact) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {plans.map((plan) => {
           const isCurrent = plan.id === currentPlanId;
           const isPopular = plan.name === 'professional';
+          const { price, interval, originalPrice } = getDisplayPrice(plan);
+          const savingsPercent = getSavingsPercent(plan);
+          const isLoadingThis = loadingPlanId === plan.id;
+          const canBuy = canPurchase(plan);
 
           return (
             <Card 
@@ -102,23 +144,26 @@ export function PlanComparisonTable({
               <CardHeader className="text-center pb-2">
                 <CardTitle className="text-lg">{plan.display_name}</CardTitle>
                 <CardDescription className="space-y-1">
-                  {plan.price_monthly === 0 ? (
+                  {price === 0 ? (
                     <span className="text-2xl font-bold text-foreground">Free</span>
                   ) : (
                     <>
-                      <div>
-                        <span className="text-2xl font-bold text-foreground">${plan.price_monthly}</span>
-                        <span className="text-muted-foreground">/mo</span>
+                      <div className="flex items-baseline justify-center gap-1">
+                        {originalPrice && billingInterval === 'yearly' && (
+                          <span className="text-lg text-muted-foreground line-through">${originalPrice}</span>
+                        )}
+                        <span className="text-2xl font-bold text-foreground">${price}</span>
+                        <span className="text-muted-foreground">{interval}</span>
                       </div>
-                      {plan.price_yearly && plan.price_yearly > 0 && (
-                        <div className="text-xs">
-                          <span className="text-muted-foreground">or </span>
-                          <span className="font-semibold text-foreground">${Math.round(plan.price_yearly / 12)}</span>
-                          <span className="text-muted-foreground">/mo yearly</span>
-                          <Badge variant="secondary" className="ml-1 text-[10px] px-1 py-0">
-                            Save {Math.round((1 - plan.price_yearly / (plan.price_monthly * 12)) * 100)}%
-                          </Badge>
-                        </div>
+                      {billingInterval === 'yearly' && savingsPercent > 0 && (
+                        <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">
+                          Save {savingsPercent}%
+                        </Badge>
+                      )}
+                      {billingInterval === 'yearly' && plan.price_yearly && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          ${plan.price_yearly}/year billed annually
+                        </p>
                       )}
                     </>
                   )}
@@ -153,10 +198,20 @@ export function PlanComparisonTable({
                   <Button
                     className="w-full"
                     variant={isCurrent ? "outline" : isPopular ? "default" : "secondary"}
-                    disabled={isCurrent || loading}
+                    disabled={isCurrent || loading || !canBuy}
                     onClick={() => onSelectPlan(plan.id)}
                   >
-                    {isCurrent ? 'Current Plan' : 'Select'}
+                    {isLoadingThis ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : isCurrent ? (
+                      'Current Plan'
+                    ) : price === 0 ? (
+                      'Contact Support'
+                    ) : !canBuy ? (
+                      'Contact Sales'
+                    ) : (
+                      'Select'
+                    )}
                   </Button>
                 </CardFooter>
               )}
@@ -176,6 +231,8 @@ export function PlanComparisonTable({
             {plans.map((plan) => {
               const isCurrent = plan.id === currentPlanId;
               const isPopular = plan.name === 'professional';
+              const { price, interval, originalPrice } = getDisplayPrice(plan);
+              const savingsPercent = getSavingsPercent(plan);
               
               return (
                 <th 
@@ -195,18 +252,21 @@ export function PlanComparisonTable({
                     )}
                     <div className="font-bold text-base">{plan.display_name}</div>
                     <div className="text-muted-foreground text-sm">
-                      {plan.price_monthly === 0 ? (
+                      {price === 0 ? (
                         'Free'
                       ) : (
                         <div className="space-y-0.5">
-                          <div>${plan.price_monthly}/mo</div>
-                          {plan.price_yearly && plan.price_yearly > 0 && (
-                            <div className="text-xs">
-                              <span>${Math.round(plan.price_yearly / 12)}/mo yearly </span>
-                              <Badge variant="secondary" className="text-[10px] px-1 py-0">
-                                -{Math.round((1 - plan.price_yearly / (plan.price_monthly * 12)) * 100)}%
-                              </Badge>
-                            </div>
+                          <div className="flex items-baseline justify-center gap-1">
+                            {originalPrice && billingInterval === 'yearly' && (
+                              <span className="text-xs line-through">${originalPrice}</span>
+                            )}
+                            <span className="font-semibold text-foreground">${price}</span>
+                            <span>{interval}</span>
+                          </div>
+                          {billingInterval === 'yearly' && savingsPercent > 0 && (
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-green-500/10 text-green-600 border-green-500/20">
+                              Save {savingsPercent}%
+                            </Badge>
                           )}
                         </div>
                       )}
@@ -281,16 +341,29 @@ export function PlanComparisonTable({
               {plans.map((plan) => {
                 const isCurrent = plan.id === currentPlanId;
                 const isPopular = plan.name === 'professional';
+                const { price } = getDisplayPrice(plan);
+                const isLoadingThis = loadingPlanId === plan.id;
+                const canBuy = canPurchase(plan);
                 
                 return (
                   <td key={plan.id} className="text-center p-4">
                     <Button
                       variant={isCurrent ? "outline" : isPopular ? "default" : "secondary"}
-                      disabled={isCurrent || loading}
+                      disabled={isCurrent || loading || !canBuy}
                       onClick={() => onSelectPlan(plan.id)}
                       className="w-full"
                     >
-                      {isCurrent ? 'Current Plan' : 'Select Plan'}
+                      {isLoadingThis ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : isCurrent ? (
+                        'Current Plan'
+                      ) : price === 0 ? (
+                        'Contact Support'
+                      ) : !canBuy ? (
+                        'Contact Sales'
+                      ) : (
+                        'Select Plan'
+                      )}
                     </Button>
                   </td>
                 );

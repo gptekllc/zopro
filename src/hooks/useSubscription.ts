@@ -13,6 +13,9 @@ interface SubscriptionPlan {
   max_storage_gb?: number | null;
   storage_limit_bytes?: number | null;
   features: Record<string, boolean> | null;
+  stripe_product_id?: string | null;
+  stripe_price_id_monthly?: string | null;
+  stripe_price_id_yearly?: string | null;
 }
 
 interface CompanySubscription {
@@ -70,7 +73,10 @@ export function useCurrentSubscription() {
             price_yearly,
             max_users,
             max_jobs_per_month,
-            features
+            features,
+            stripe_product_id,
+            stripe_price_id_monthly,
+            stripe_price_id_yearly
           )
         `)
         .eq('company_id', companyId)
