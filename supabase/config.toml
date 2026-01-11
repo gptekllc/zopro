@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.super-admin-impersonate]
 verify_jwt = false
+
+[functions.update-stripe-plan-price]
+verify_jwt = false

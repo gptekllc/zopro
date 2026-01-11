@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Loader2, DollarSign, Users, Briefcase, HardDrive, Check, X, Percent, Calendar, ExternalLink, CreditCard, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Plus, Edit, Loader2, DollarSign, Users, Briefcase, HardDrive, Check, X, Percent, Calendar, ExternalLink, CreditCard, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { format, addMonths, addDays } from 'date-fns';
 import { formatBytes } from '@/hooks/useStorageUsage';
@@ -89,6 +90,13 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
   const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [trialDays, setTrialDays] = useState('14');
   const [pricingView, setPricingView] = useState<'monthly' | 'yearly'>('monthly');
+  const [isSyncingStripe, setIsSyncingStripe] = useState(false);
+  
+  // Track original prices to detect changes
+  const [originalPrices, setOriginalPrices] = useState<{
+    monthly: number;
+    yearly: number;
+  } | null>(null);
 
   // Plan edit form state
   const [editForm, setEditForm] = useState({
@@ -137,11 +145,57 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
     },
   });
 
-  // Update plan mutation
+  // Update plan mutation with Stripe sync
   const updatePlanMutation = useMutation({
     mutationFn: async (planId: string) => {
       // Treat "GB" as decimal gigabytes (1 GB = 1000 MB) so 0.250 GB displays as 250 MB.
       const storageBytes = Math.round(editForm.storage_limit_gb * 1000 * 1000 * 1000);
+      
+      let finalMonthlyPriceId = editForm.stripe_price_id_monthly || null;
+      let finalYearlyPriceId = editForm.stripe_price_id_yearly || null;
+      
+      // Check if prices changed and we have a Stripe product ID
+      const pricesChanged = originalPrices && (
+        originalPrices.monthly !== editForm.price_monthly ||
+        originalPrices.yearly !== editForm.price_yearly
+      );
+      
+      if (pricesChanged && editForm.stripe_product_id) {
+        setIsSyncingStripe(true);
+        try {
+          // Determine which prices changed
+          const monthlyChanged = originalPrices.monthly !== editForm.price_monthly;
+          const yearlyChanged = originalPrices.yearly !== editForm.price_yearly;
+          
+          const { data, error } = await supabase.functions.invoke('update-stripe-plan-price', {
+            body: {
+              stripe_product_id: editForm.stripe_product_id,
+              new_price_monthly: monthlyChanged ? editForm.price_monthly : undefined,
+              new_price_yearly: yearlyChanged ? editForm.price_yearly : undefined,
+              old_price_id_monthly: monthlyChanged ? editForm.stripe_price_id_monthly : undefined,
+              old_price_id_yearly: yearlyChanged ? editForm.stripe_price_id_yearly : undefined,
+            },
+          });
+          
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+          
+          // Update price IDs with new ones from Stripe
+          if (data?.new_price_id_monthly) {
+            finalMonthlyPriceId = data.new_price_id_monthly;
+          }
+          if (data?.new_price_id_yearly) {
+            finalYearlyPriceId = data.new_price_id_yearly;
+          }
+          
+          toast.success('Stripe prices synced successfully');
+        } catch (stripeError: any) {
+          toast.error('Failed to sync with Stripe: ' + stripeError.message);
+          throw stripeError;
+        } finally {
+          setIsSyncingStripe(false);
+        }
+      }
       
       const { error } = await supabase
         .from('subscription_plans')
@@ -157,8 +211,8 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
           features: editForm.features,
           is_active: editForm.is_active,
           stripe_product_id: editForm.stripe_product_id || null,
-          stripe_price_id_monthly: editForm.stripe_price_id_monthly || null,
-          stripe_price_id_yearly: editForm.stripe_price_id_yearly || null,
+          stripe_price_id_monthly: finalMonthlyPriceId,
+          stripe_price_id_yearly: finalYearlyPriceId,
           updated_at: new Date().toISOString(),
         })
         .eq('id', planId);
@@ -169,6 +223,7 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
       queryClient.invalidateQueries({ queryKey: ['all-subscriptions'] });
       toast.success('Plan updated successfully');
       setEditPlanDialogOpen(false);
+      setOriginalPrices(null);
     },
     onError: (error: any) => {
       toast.error('Failed to update plan: ' + error.message);
@@ -256,8 +311,19 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
       stripe_price_id_monthly: plan.stripe_price_id_monthly || '',
       stripe_price_id_yearly: plan.stripe_price_id_yearly || '',
     });
+    // Track original prices for change detection
+    setOriginalPrices({
+      monthly: plan.price_monthly,
+      yearly: plan.price_yearly || 0,
+    });
     setEditPlanDialogOpen(true);
   };
+  
+  // Check if prices have changed from original
+  const pricesHaveChanged = originalPrices && editForm.stripe_product_id && (
+    originalPrices.monthly !== editForm.price_monthly ||
+    originalPrices.yearly !== editForm.price_yearly
+  );
 
   const handleManage = (sub: CompanySubscription) => {
     setSelectedSubscription(sub);
@@ -596,6 +662,16 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
                     Set 20% yearly discount
                   </Button>
                 )}
+                
+                {/* Stripe sync warning */}
+                {pricesHaveChanged && (
+                  <Alert className="mt-3 border-amber-500/50 bg-amber-500/10">
+                    <RefreshCw className="h-4 w-4 text-amber-500" />
+                    <AlertDescription className="text-sm text-amber-700 dark:text-amber-400">
+                      Price changes will automatically create new prices in Stripe and archive the old ones.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
 
               {/* Stripe Configuration */}
@@ -759,10 +835,10 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
                 </Button>
                 <Button 
                   onClick={() => updatePlanMutation.mutate(selectedPlan.id)}
-                  disabled={updatePlanMutation.isPending}
+                  disabled={updatePlanMutation.isPending || isSyncingStripe}
                 >
-                  {updatePlanMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Save Changes
+                  {(updatePlanMutation.isPending || isSyncingStripe) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {isSyncingStripe ? 'Syncing with Stripe...' : pricesHaveChanged ? 'Save & Sync to Stripe' : 'Save Changes'}
                 </Button>
               </DialogFooter>
             </div>
