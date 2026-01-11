@@ -54,7 +54,8 @@ const TechniciansContent = () => {
   const [editingUser, setEditingUser] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
-    full_name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
     role: 'technician' as AppRole,
@@ -71,22 +72,31 @@ const TechniciansContent = () => {
   
   // Add member form state
   const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberName, setNewMemberName] = useState('');
+  const [newMemberFirstName, setNewMemberFirstName] = useState('');
+  const [newMemberLastName, setNewMemberLastName] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<AppRole>('technician');
 
   // Filter to show only technicians, managers, and admins (not customers)
   const teamMembers = profiles.filter(p => p.role === 'admin' || p.role === 'technician' || p.role === 'manager');
   
-  const filteredUsers = teamMembers.filter(p =>
-    (p.full_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-    p.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Helper to get display name
+  const getDisplayName = (profile: Profile) => {
+    const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+    return fullName || profile.full_name || 'Unnamed';
+  };
+  
+  const filteredUsers = teamMembers.filter(p => {
+    const displayName = getDisplayName(p).toLowerCase();
+    return displayName.includes(searchQuery.toLowerCase()) ||
+      p.email.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   // Update team member mutation with full profile data
   const updateTeamMemberMutation = useMutation({
     mutationFn: async (data: {
       userId: string;
-      full_name: string;
+      first_name: string;
+      last_name: string;
       phone: string | null;
       role: AppRole;
       employment_status: EmploymentStatus;
@@ -115,7 +125,9 @@ const TechniciansContent = () => {
       if (insertError) throw insertError;
 
       const updates: Record<string, any> = {
-        full_name: data.full_name || null,
+        first_name: data.first_name || null,
+        last_name: data.last_name || null,
+        full_name: [data.first_name, data.last_name].filter(Boolean).join(' ') || null,
         role: data.role,
         employment_status: data.employment_status,
         hire_date: data.hire_date || null,
@@ -165,13 +177,15 @@ const TechniciansContent = () => {
 
   // Invite member mutation
   const inviteMemberMutation = useMutation({
-    mutationFn: async ({ email, full_name, role }: { email: string; full_name: string; role: AppRole }) => {
+    mutationFn: async ({ email, first_name, last_name, role }: { email: string; first_name: string; last_name: string; role: AppRole }) => {
       if (!currentProfile?.company_id) throw new Error('No company ID');
       
       const { data, error } = await supabase.functions.invoke('invite-team-member', {
         body: {
           email,
-          full_name,
+          first_name,
+          last_name,
+          full_name: [first_name, last_name].filter(Boolean).join(' '),
           role,
           company_id: currentProfile.company_id,
         },
@@ -187,7 +201,8 @@ const TechniciansContent = () => {
       toast.success(data?.message || 'Team member invited successfully');
       setIsAddDialogOpen(false);
       setNewMemberEmail('');
-      setNewMemberName('');
+      setNewMemberFirstName('');
+      setNewMemberLastName('');
       setNewMemberRole('technician');
     },
     onError: (error: any) => {
@@ -203,14 +218,16 @@ const TechniciansContent = () => {
     }
     inviteMemberMutation.mutate({
       email: newMemberEmail.trim(),
-      full_name: newMemberName.trim(),
+      first_name: newMemberFirstName.trim(),
+      last_name: newMemberLastName.trim(),
       role: newMemberRole,
     });
   };
 
   const resetForm = () => {
     setFormData({ 
-      full_name: '', 
+      first_name: '', 
+      last_name: '',
       email: '', 
       phone: '', 
       role: 'technician',
@@ -240,7 +257,8 @@ const TechniciansContent = () => {
     
     updateTeamMemberMutation.mutate({
       userId: editingUser,
-      full_name: formData.full_name,
+      first_name: formData.first_name,
+      last_name: formData.last_name,
       phone: formData.phone || null,
       role: formData.role,
       employment_status: formData.employment_status,
@@ -279,7 +297,8 @@ const TechniciansContent = () => {
 
   const handleEdit = (profile: typeof profiles[0]) => {
     setFormData({
-      full_name: profile.full_name || '',
+      first_name: profile.first_name || '',
+      last_name: profile.last_name || '',
       email: profile.email,
       phone: profile.phone || '',
       role: (profile.role as AppRole) || 'technician',
@@ -403,8 +422,8 @@ const TechniciansContent = () => {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Team Member</DialogTitle>
-            <DialogDescription>
-              Update details for {formData.full_name || formData.email}
+            <DialogDescription className="sr-only">
+              Update details for {[formData.first_name, formData.last_name].filter(Boolean).join(' ') || formData.email}
             </DialogDescription>
           </DialogHeader>
           
@@ -424,7 +443,7 @@ const TechniciansContent = () => {
               <AvatarUpload
                 entityId={editingUser || ''}
                 currentAvatarUrl={formData.avatar_url || null}
-                name={formData.full_name || 'User'}
+                name={[formData.first_name, formData.last_name].filter(Boolean).join(' ') || 'User'}
                 onUploadSuccess={handleAvatarUploadSuccess}
                 size="lg"
                 canEdit={editingUser === user?.id || isAdmin}
@@ -436,15 +455,26 @@ const TechniciansContent = () => {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name *</Label>
-              <Input
-                id="name"
-                value={formData.full_name}
-                onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                placeholder="John Doe"
-                required
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName">First Name *</Label>
+                <Input
+                  id="firstName"
+                  value={formData.first_name}
+                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  placeholder="John"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  value={formData.last_name}
+                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                  placeholder="Doe"
+                />
+              </div>
             </div>
             
             <div className="space-y-2">
@@ -645,14 +675,25 @@ const TechniciansContent = () => {
           </DialogHeader>
           
           <div className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="newName">Full Name</Label>
-              <Input
-                id="newName"
-                value={newMemberName}
-                onChange={(e) => setNewMemberName(e.target.value)}
-                placeholder="John Doe"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="newFirstName">First Name</Label>
+                <Input
+                  id="newFirstName"
+                  value={newMemberFirstName}
+                  onChange={(e) => setNewMemberFirstName(e.target.value)}
+                  placeholder="John"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newLastName">Last Name</Label>
+                <Input
+                  id="newLastName"
+                  value={newMemberLastName}
+                  onChange={(e) => setNewMemberLastName(e.target.value)}
+                  placeholder="Doe"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="newEmail">Email *</Label>
@@ -721,17 +762,17 @@ const TechniciansContent = () => {
             onClick={() => handleViewMember(profile)}
           >
             <CardContent className="p-5">
-              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
-                    <AvatarImage src={profile.avatar_url || undefined} alt={profile.full_name || 'User'} />
+                    <AvatarImage src={profile.avatar_url || undefined} alt={getDisplayName(profile)} />
                     <AvatarFallback className="bg-primary/10 text-primary">
-                      {profile.full_name ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U'}
+                      {getDisplayName(profile).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{profile.full_name || 'Unnamed'}</h3>
+                      <h3 className="font-semibold">{getDisplayName(profile)}</h3>
                       {profile.employment_status === 'on_leave' && (
                         <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-xs">
                           <AlertTriangle className="w-3 h-3 mr-1" />
