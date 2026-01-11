@@ -1,9 +1,17 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Users, CreditCard, TrendingUp, AlertTriangle, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Building2, Users, CreditCard, TrendingUp, AlertTriangle, Clock, Plus, Pencil, Check, Tag, Bug, Loader2 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
+import { useSoftwareVersions, useCurrentVersion, useCreateVersion, useUpdateVersion, useSetCurrentVersion, SoftwareVersion } from '@/hooks/useSoftwareVersion';
 
 interface SubscriptionPlan {
   id: string;
@@ -42,6 +50,23 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ companies, profiles }: OverviewTabProps) {
+  const [versionDialogOpen, setVersionDialogOpen] = useState(false);
+  const [editingVersion, setEditingVersion] = useState<SoftwareVersion | null>(null);
+  const [versionForm, setVersionForm] = useState({
+    version: '',
+    title: '',
+    features: '',
+    bug_fixes: '',
+    notes: '',
+    is_current: false,
+  });
+
+  const { data: softwareVersions = [], isLoading: versionsLoading } = useSoftwareVersions();
+  const { data: currentVersion } = useCurrentVersion();
+  const createVersion = useCreateVersion();
+  const updateVersion = useUpdateVersion();
+  const setCurrentVersion = useSetCurrentVersion();
+
   // Fetch subscriptions with plan details
   const { data: subscriptions = [] } = useQuery({
     queryKey: ['all-subscriptions'],
@@ -102,6 +127,59 @@ export function OverviewTab({ companies, profiles }: OverviewTabProps) {
   const companiesWithoutSub = companies.filter(c => 
     !subscriptions.some(s => s.company_id === c.id)
   );
+
+  const resetVersionForm = () => {
+    setVersionForm({
+      version: '',
+      title: '',
+      features: '',
+      bug_fixes: '',
+      notes: '',
+      is_current: false,
+    });
+    setEditingVersion(null);
+  };
+
+  const handleEditVersion = (version: SoftwareVersion) => {
+    setEditingVersion(version);
+    setVersionForm({
+      version: version.version,
+      title: version.title || '',
+      features: version.features?.join('\n') || '',
+      bug_fixes: version.bug_fixes?.join('\n') || '',
+      notes: version.notes || '',
+      is_current: version.is_current,
+    });
+    setVersionDialogOpen(true);
+  };
+
+  const handleSaveVersion = async () => {
+    const features = versionForm.features.split('\n').filter(f => f.trim());
+    const bug_fixes = versionForm.bug_fixes.split('\n').filter(f => f.trim());
+
+    if (editingVersion) {
+      await updateVersion.mutateAsync({
+        id: editingVersion.id,
+        version: versionForm.version,
+        title: versionForm.title || null,
+        features,
+        bug_fixes,
+        notes: versionForm.notes || null,
+        is_current: versionForm.is_current,
+      });
+    } else {
+      await createVersion.mutateAsync({
+        version: versionForm.version,
+        title: versionForm.title || undefined,
+        features,
+        bug_fixes,
+        notes: versionForm.notes || undefined,
+        is_current: versionForm.is_current,
+      });
+    }
+    setVersionDialogOpen(false);
+    resetVersionForm();
+  };
 
   return (
     <div className="space-y-6">
@@ -200,7 +278,7 @@ export function OverviewTab({ companies, profiles }: OverviewTabProps) {
         </Card>
       </div>
 
-      {/* Recent Activity */}
+      {/* Recent Activity & Software Version */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -252,6 +330,196 @@ export function OverviewTab({ companies, profiles }: OverviewTabProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Software Version Management */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Tag className="w-4 h-4" />
+              Software Version Management
+            </CardTitle>
+            {currentVersion && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Current: <span className="font-mono font-semibold text-primary">{currentVersion.version}</span>
+                {currentVersion.title && <span className="ml-2">- {currentVersion.title}</span>}
+              </p>
+            )}
+          </div>
+          <Dialog open={versionDialogOpen} onOpenChange={(open) => {
+            setVersionDialogOpen(open);
+            if (!open) resetVersionForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button size="sm" className="gap-2">
+                <Plus className="w-4 h-4" />
+                New Version
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{editingVersion ? 'Edit Version' : 'Create New Version'}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Version Number *</Label>
+                    <Input
+                      value={versionForm.version}
+                      onChange={(e) => setVersionForm({ ...versionForm, version: e.target.value })}
+                      placeholder="1.0.1"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Title</Label>
+                    <Input
+                      value={versionForm.title}
+                      onChange={(e) => setVersionForm({ ...versionForm, title: e.target.value })}
+                      placeholder="Bug Fix Release"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Features (one per line)</Label>
+                  <Textarea
+                    value={versionForm.features}
+                    onChange={(e) => setVersionForm({ ...versionForm, features: e.target.value })}
+                    placeholder="New dashboard widget&#10;Improved performance&#10;Dark mode support"
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Bug Fixes (one per line)</Label>
+                  <Textarea
+                    value={versionForm.bug_fixes}
+                    onChange={(e) => setVersionForm({ ...versionForm, bug_fixes: e.target.value })}
+                    placeholder="Fixed login issue&#10;Resolved PDF export bug"
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea
+                    value={versionForm.notes}
+                    onChange={(e) => setVersionForm({ ...versionForm, notes: e.target.value })}
+                    placeholder="Additional release notes..."
+                    rows={2}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="is_current"
+                    checked={versionForm.is_current}
+                    onChange={(e) => setVersionForm({ ...versionForm, is_current: e.target.checked })}
+                    className="rounded border-gray-300"
+                  />
+                  <Label htmlFor="is_current" className="cursor-pointer">Set as current version</Label>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setVersionDialogOpen(false)}>Cancel</Button>
+                  <Button 
+                    onClick={handleSaveVersion} 
+                    disabled={!versionForm.version || createVersion.isPending || updateVersion.isPending}
+                  >
+                    {(createVersion.isPending || updateVersion.isPending) && (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    )}
+                    {editingVersion ? 'Save Changes' : 'Create Version'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          {versionsLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : softwareVersions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No versions found</p>
+          ) : (
+            <Accordion type="single" collapsible className="w-full">
+              {softwareVersions.map((version) => (
+                <AccordionItem key={version.id} value={version.id}>
+                  <AccordionTrigger className="hover:no-underline">
+                    <div className="flex items-center gap-3 text-left">
+                      <span className="font-mono font-semibold">{version.version}</span>
+                      {version.title && <span className="text-muted-foreground">- {version.title}</span>}
+                      {version.is_current && (
+                        <Badge variant="default" className="ml-2">Current</Badge>
+                      )}
+                      <span className="text-xs text-muted-foreground ml-auto mr-4">
+                        {format(new Date(version.release_date), 'MMM d, yyyy')}
+                      </span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-4 pt-2">
+                      {version.features && version.features.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                            <Tag className="w-3 h-3" />
+                            Features
+                          </h4>
+                          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                            {version.features.map((feature, i) => (
+                              <li key={i}>{feature}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {version.bug_fixes && version.bug_fixes.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                            <Bug className="w-3 h-3" />
+                            Bug Fixes
+                          </h4>
+                          <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                            {version.bug_fixes.map((fix, i) => (
+                              <li key={i}>{fix}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {version.notes && (
+                        <div>
+                          <h4 className="text-sm font-semibold mb-2">Notes</h4>
+                          <p className="text-sm text-muted-foreground">{version.notes}</p>
+                        </div>
+                      )}
+                      <div className="flex gap-2 pt-2 border-t">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleEditVersion(version)}
+                          className="gap-1"
+                        >
+                          <Pencil className="w-3 h-3" />
+                          Edit
+                        </Button>
+                        {!version.is_current && (
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => setCurrentVersion.mutate(version.id)}
+                            disabled={setCurrentVersion.isPending}
+                            className="gap-1"
+                          >
+                            <Check className="w-3 h-3" />
+                            Set as Current
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

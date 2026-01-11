@@ -32,6 +32,23 @@ import SecuritySettingsContent from '@/components/settings/SecuritySettingsConte
 import DataExportSection from '@/components/company/DataExportSection';
 import DataImportSection from '@/components/company/DataImportSection';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
+import { useCurrentVersion } from '@/hooks/useSoftwareVersion';
+
+// Software Version Display Component
+const SoftwareVersionDisplay = () => {
+  const { data: currentVersion, isLoading } = useCurrentVersion();
+
+  return (
+    <div className="mt-8 pt-6 border-t">
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <span>Software Version</span>
+        <span className="font-mono font-medium">
+          {isLoading ? '...' : currentVersion?.version || 'Unknown'}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 const Company = () => {
   const { isAdmin, profile } = useAuth();
@@ -667,6 +684,9 @@ const Company = () => {
                     Send Test Email
                   </Button>
                 </div>
+
+                {/* Software Version Display */}
+                <SoftwareVersionDisplay />
               </form>
             </CardContent>
           </Card>
