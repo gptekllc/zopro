@@ -99,8 +99,6 @@ export function JobTimeTracker({ jobId, jobNumber, laborHourlyRate }: JobTimeTra
   const handleClockIn = async () => {
     await clockIn.mutateAsync({
       notes: notes || undefined,
-      jobId,
-      recordWorkHours,
     });
     setNotes('');
   };
@@ -116,13 +114,9 @@ export function JobTimeTracker({ jobId, jobNumber, laborHourlyRate }: JobTimeTra
       });
     }
     
-    const effectiveRate = laborHourlyRate ?? profile?.hourly_rate ?? 0;
-    
     await clockOut.mutateAsync({ 
       id: activeEntry.id, 
       notes: notes || undefined,
-      jobId,
-      technicianHourlyRate: effectiveRate,
     });
     setNotes('');
   };

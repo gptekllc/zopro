@@ -73,7 +73,7 @@ function isWithinDateRange(dateStr: string | null | undefined, start: Date | nul
 }
 
 export default function DashboardPage() {
-  const [dateFilter, setDateFilter] = useState<DateFilter>("all-time");
+  const [dateFilter, setDateFilter] = useState<DateFilter>("this-week");
   const {
     profile,
     user,

@@ -642,7 +642,9 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           email: string | null
+          first_name: string | null
           id: string
+          last_name: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -658,7 +660,9 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           email?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -674,7 +678,9 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           email?: string | null
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           name?: string
           notes?: string | null
           phone?: string | null
@@ -1934,10 +1940,12 @@ export type Database = {
           deleted_at: string | null
           email: string
           employment_status: string | null
+          first_name: string | null
           full_name: string | null
           hire_date: string | null
           hourly_rate: number | null
           id: string
+          last_name: string | null
           phone: string | null
           role: string
           state: string | null
@@ -1954,10 +1962,12 @@ export type Database = {
           deleted_at?: string | null
           email: string
           employment_status?: string | null
+          first_name?: string | null
           full_name?: string | null
           hire_date?: string | null
           hourly_rate?: number | null
           id: string
+          last_name?: string | null
           phone?: string | null
           role?: string
           state?: string | null
@@ -1974,10 +1984,12 @@ export type Database = {
           deleted_at?: string | null
           email?: string
           employment_status?: string | null
+          first_name?: string | null
           full_name?: string | null
           hire_date?: string | null
           hourly_rate?: number | null
           id?: string
+          last_name?: string | null
           phone?: string | null
           role?: string
           state?: string | null

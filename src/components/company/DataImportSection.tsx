@@ -28,8 +28,8 @@ const importConfigs: ImportConfig[] = [
     type: 'customers',
     label: 'Customers',
     icon: <Users className="w-5 h-5" />,
-    requiredFields: ['name'],
-    optionalFields: ['email', 'phone', 'address', 'city', 'state', 'zip', 'notes'],
+    requiredFields: ['first_name'],
+    optionalFields: ['last_name', 'email', 'phone', 'address', 'city', 'state', 'zip', 'notes'],
   },
   {
     type: 'jobs',
@@ -82,6 +82,8 @@ const DataImportSection = () => {
     const headers = [...config.requiredFields, ...config.optionalFields];
     const exampleRow = headers.map(h => {
       switch (h) {
+        case 'first_name': return 'John';
+        case 'last_name': return 'Doe';
         case 'name': return 'John Doe';
         case 'email':
         case 'customer_email': return 'john@example.com';
@@ -257,11 +259,16 @@ const DataImportSection = () => {
 
           switch (selectedEntity) {
             case 'customers': {
+              const firstName = mappedData.first_name || '';
+              const lastName = mappedData.last_name || '';
+              const fullName = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown';
               const { error } = await supabase
                 .from('customers')
                 .insert({
                   company_id: profile.company_id,
-                  name: mappedData.name,
+                  first_name: firstName || null,
+                  last_name: lastName || null,
+                  name: fullName,
                   email: mappedData.email || null,
                   phone: mappedData.phone || null,
                   address: mappedData.address || null,

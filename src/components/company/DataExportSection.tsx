@@ -46,11 +46,15 @@ const DataExportSection = () => {
       case 'customers': {
         const { data, error } = await supabase
           .from('customers')
-          .select('id, name, email, phone, address, city, state, zip, notes, created_at')
+          .select('id, first_name, last_name, name, email, phone, address, city, state, zip, notes, created_at')
           .eq('company_id', companyId)
           .is('deleted_at', null);
         if (error) throw error;
-        return data || [];
+        return (data || []).map((c: any) => ({
+          ...c,
+          first_name: c.first_name || '',
+          last_name: c.last_name || '',
+        }));
       }
       case 'jobs': {
         const { data, error } = await supabase
@@ -121,11 +125,15 @@ const DataExportSection = () => {
       case 'technicians': {
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, full_name, email, phone, role, hourly_rate, employment_status, hire_date, created_at')
+          .select('id, first_name, last_name, full_name, email, phone, role, hourly_rate, employment_status, hire_date, created_at')
           .eq('company_id', companyId)
           .is('deleted_at', null);
         if (error) throw error;
-        return data || [];
+        return (data || []).map((t: any) => ({
+          ...t,
+          first_name: t.first_name || '',
+          last_name: t.last_name || '',
+        }));
       }
       case 'timesheets': {
         const { data, error } = await supabase
