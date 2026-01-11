@@ -1,13 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertTriangle, Archive, ArchiveRestore, Bell, Briefcase, Calendar, CheckCircle2, ChevronRight, Clock, Copy, Download, Edit, Eye, FileText, Image, Mail, MoreVertical, Navigation, PenTool, Receipt, Save, Send, Trash2, UserCog } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AlertTriangle, Archive, ArchiveRestore, Bell, Briefcase, Calendar, CheckCircle2, ChevronRight, Clock, Copy, Download, Edit, Eye, FileText, Image, Mail, MoreVertical, Navigation, PenTool, Receipt, Save, Send, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import type { Job } from "@/hooks/useJobs";
 import { DocumentListCard } from "@/components/documents/DocumentListCard";
 import type { SwipeAction } from "@/components/ui/swipeable-card";
+
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 type JobPriority = typeof JOB_PRIORITIES[number];
+
+const getInitials = (name: string | null | undefined): string => {
+  if (!name) return '?';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+};
+
 interface JobListCardProps {
   job: Job;
   notificationCount: number;
@@ -36,6 +44,7 @@ interface JobListCardProps {
   showSwipeHint?: boolean;
   onSwipeHintDismiss?: () => void;
 }
+
 export function JobListCard({
   job,
   notificationCount,
@@ -66,9 +75,12 @@ export function JobListCard({
 }: JobListCardProps) {
   const signatureId = (job as any).completion_signature_id as string | undefined;
 
-  // Get assignee names - prefer new assignees array, fallback to single assignee
-  const assigneeNames = job.assignees && job.assignees.length > 0 ? job.assignees.map(a => a.profile?.full_name || a.profile?.email || 'Unknown').join(', ') : job.assignee?.full_name || null;
+  // Get first assignee for avatar display
+  const firstAssignee = job.assignees && job.assignees.length > 0 
+    ? job.assignees[0].profile 
+    : job.assignee;
   const hasOnLeaveAssignee = job.assignees?.some(a => a.profile?.employment_status === 'on_leave') || job.assignee?.employment_status === 'on_leave';
+  const additionalAssignees = job.assignees && job.assignees.length > 1 ? job.assignees.length - 1 : 0;
 
   // Determine which date to show (only one)
   const now = new Date();
@@ -77,7 +89,6 @@ export function JobListCard({
   let displayDate: string | null = null;
   let dateLabel: 'completed' | 'scheduled' | 'created' = 'created';
   if (isCompleted || scheduledPast) {
-    // Show completed/actual end time if available, otherwise fall back to scheduled or created
     displayDate = (job as any).actual_end || job.scheduled_start || job.created_at;
     dateLabel = 'completed';
   } else if (job.scheduled_start) {
@@ -87,23 +98,36 @@ export function JobListCard({
     displayDate = job.created_at;
     dateLabel = 'created';
   }
+
   const metadataRow = <>
-      {assigneeNames && <span className="flex items-center gap-1 mx-0 px-[5px] bg-inherit text-muted-foreground">
-          <UserCog className="w-3 h-3" />
-          {assigneeNames}
-          {hasOnLeaveAssignee && <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-[10px] px-1 py-0 ml-1">
+      {firstAssignee && (
+        <span className="flex items-center gap-1">
+          <Avatar className="w-5 h-5">
+            <AvatarImage src={(firstAssignee as any).avatar_url} />
+            <AvatarFallback className="text-[10px] bg-muted">
+              {getInitials(firstAssignee.full_name)}
+            </AvatarFallback>
+          </Avatar>
+          {additionalAssignees > 0 && (
+            <span className="text-xs text-muted-foreground">+{additionalAssignees}</span>
+          )}
+          {hasOnLeaveAssignee && (
+            <Badge variant="outline" className="text-amber-600 border-amber-300 bg-amber-50 text-[10px] px-1 py-0 ml-1">
               <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
               On Leave
-            </Badge>}
-        </span>}
+            </Badge>
+          )}
+        </span>
+      )}
       {displayDate && <>
-          {assigneeNames && <span>•</span>}
+          {firstAssignee && <span>•</span>}
           <span className="flex items-center gap-1 shrink-0">
             {dateLabel === 'completed' ? <CheckCircle2 className="w-3 h-3" /> : dateLabel === 'scheduled' ? <Calendar className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
             {format(new Date(displayDate), 'MMM d, h:mm a')}
           </span>
         </>}
     </>;
+
   const tagsRow = <>
       {job.archived_at && <Badge variant="outline" className="text-muted-foreground text-xs sm:text-sm">Archived</Badge>}
       <DropdownMenu>
@@ -134,6 +158,7 @@ export function JobListCard({
           Notified
         </Badge>}
     </>;
+
   const actionsMenu = <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-9 sm:w-9">
@@ -141,7 +166,6 @@ export function JobListCard({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="bg-popover">
-        {/* Quick Actions */}
         {['scheduled', 'in_progress'].includes(job.status) && <>
             <DropdownMenuItem onClick={() => onSendNotification(job)}>
               <Send className="w-4 h-4 mr-2" />
@@ -173,7 +197,6 @@ export function JobListCard({
           <Save className="w-4 h-4 mr-2" />
           Save as Template
         </DropdownMenuItem>
-        {/* Signature Actions */}
         {signatureId ? <DropdownMenuItem onClick={() => onViewSignature(signatureId)}>
             <Eye className="w-4 h-4 mr-2" />
             View Signature
@@ -211,6 +234,7 @@ export function JobListCard({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>;
+
   const swipeRightActions: SwipeAction[] = [{
     icon: <Edit className="w-4 h-4" />,
     label: "Edit",
@@ -232,5 +256,6 @@ export function JobListCard({
     onClick: () => onDelete(job),
     variant: "destructive"
   }];
+
   return <DocumentListCard onClick={() => onView(job)} isArchived={!!job.archived_at} documentNumber={job.job_number} title={job.title} customerName={job.customer?.name || "Unknown"} customerEmail={job.customer?.email} total={(job.total ?? 0) > 0 ? Number(job.total) : undefined} metadataRow={metadataRow} notes={job.notes} tagsRow={tagsRow} actionsMenu={actionsMenu} swipeRightActions={swipeRightActions} showSwipeHint={showSwipeHint} onSwipeHintDismiss={onSwipeHintDismiss} />;
 }

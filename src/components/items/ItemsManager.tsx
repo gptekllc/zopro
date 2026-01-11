@@ -292,28 +292,26 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
   const renderItemCard = (item: Item) => (
     <div
       key={item.id}
-      className={`flex items-center justify-between p-3 rounded-lg border ${
+      className={`flex items-center justify-between py-2 px-3 rounded-md border ${
         item.is_active ? 'bg-background' : 'bg-muted/50 opacity-60'
       }`}
     >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium truncate">{item.name}</span>
-          {!item.is_active && (
-            <Badge variant="secondary" className="text-xs">Inactive</Badge>
-          )}
-        </div>
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <span className="font-medium text-sm truncate">{item.name}</span>
         {item.description && (
-          <p className="text-sm text-muted-foreground truncate">{item.description}</p>
+          <span className="text-xs text-muted-foreground truncate hidden sm:inline">• {item.description}</span>
+        )}
+        {!item.is_active && (
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Inactive</Badge>
         )}
       </div>
-      <div className="flex items-center gap-3">
-        <span className="font-semibold text-primary">
+      <div className="flex items-center gap-2">
+        <span className="font-semibold text-sm text-primary whitespace-nowrap">
           ${formatAmount(item.unit_price)}
         </span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="h-7 w-7">
               <MoreVertical className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>

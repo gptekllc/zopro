@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,7 +27,6 @@ import {
   Plus,
   Receipt,
   Trash2,
-  UserCog,
 } from "lucide-react";
 import { format } from "date-fns";
 import type { Quote } from "@/hooks/useQuotes";
@@ -39,6 +39,11 @@ const quoteStatusColors: Record<string, string> = {
   accepted: "bg-success/10 text-success",
   rejected: "bg-destructive/10 text-destructive",
   expired: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+};
+
+const getInitials = (name: string | null | undefined): string => {
+  if (!name) return '?';
+  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 };
 
 interface QuoteListCardProps {
@@ -102,19 +107,23 @@ export function QuoteListCard({
   const archivedAt = (quote as any).archived_at as string | undefined;
   const customerName = quote.customer?.name || "Unknown";
   const customerEmail = quote.customer?.email || null;
-  const creatorName = (quote as any).creator?.full_name || null;
+  const creator = (quote as any).creator as { full_name: string | null; avatar_url?: string | null } | null;
 
   const metadataRow = (
     <>
-      {creatorName && (
+      {creator && (
         <span className="flex items-center gap-1">
-          <UserCog className="w-3 h-3" />
-          {creatorName}
+          <Avatar className="w-5 h-5">
+            <AvatarImage src={creator.avatar_url || undefined} />
+            <AvatarFallback className="text-[10px] bg-muted">
+              {getInitials(creator.full_name)}
+            </AvatarFallback>
+          </Avatar>
         </span>
       )}
       {quote.valid_until && (
         <>
-          {creatorName && <span>•</span>}
+          {creator && <span>•</span>}
           <span className="shrink-0">
             <span className="sm:hidden">Valid: {format(new Date(quote.valid_until), 'MMM d')}</span>
             <span className="hidden sm:inline">Valid until {format(new Date(quote.valid_until), 'MMM d, yyyy')}</span>

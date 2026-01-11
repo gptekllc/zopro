@@ -138,10 +138,17 @@ export function useInvoices(includeArchived: boolean = false) {
         .select(`
           *,
           customer:customers(name, email),
-          creator:profiles!invoices_created_by_fkey(full_name),
-          assigned_technician:profiles!invoices_assigned_to_fkey(full_name),
+          creator:profiles!invoices_created_by_fkey(full_name, avatar_url),
+          assigned_technician:profiles!invoices_assigned_to_fkey(full_name, avatar_url),
           items:invoice_items(*),
-          job:jobs!invoices_job_id_fkey(id, job_number, title, status),
+          job:jobs!invoices_job_id_fkey(
+            id, 
+            job_number, 
+            title, 
+            status,
+            assigned_to,
+            assignee:profiles!jobs_assigned_to_fkey(full_name, avatar_url)
+          ),
           quote:quotes(
             quote_number,
             status,
@@ -150,7 +157,7 @@ export function useInvoices(includeArchived: boolean = false) {
               job_number,
               title,
               status,
-              assigned_technician:profiles!jobs_assigned_to_fkey(full_name)
+              assigned_technician:profiles!jobs_assigned_to_fkey(full_name, avatar_url)
             )
           )
         `)
