@@ -82,10 +82,23 @@ serve(async (req) => {
       const session = event.data.object as Stripe.Checkout.Session;
       logStep("Processing checkout.session.completed", { sessionId: session.id });
 
-      const invoiceId = session.metadata?.invoice_id;
+      // Support both single invoice_id (legacy) and multiple invoice_ids (new format)
+      const singleInvoiceId = session.metadata?.invoice_id;
+      const multipleInvoiceIds = session.metadata?.invoice_ids;
       
-      if (invoiceId) {
-        logStep("Found invoice ID in metadata", { invoiceId });
+      let invoiceIds: string[] = [];
+      if (multipleInvoiceIds) {
+        invoiceIds = multipleInvoiceIds.split(',').map((id: string) => id.trim()).filter((id: string) => id);
+        logStep("Found multiple invoice IDs in metadata", { invoiceIds });
+      } else if (singleInvoiceId) {
+        invoiceIds = [singleInvoiceId];
+        logStep("Found single invoice ID in metadata", { invoiceId: singleInvoiceId });
+      }
+      
+      if (invoiceIds.length > 0) {
+        // Process each invoice
+        for (const invoiceId of invoiceIds) {
+          logStep("Processing invoice", { invoiceId });
         
         // Get invoice details first
         const { data: invoice, error: invoiceError } = await supabase
@@ -254,8 +267,9 @@ serve(async (req) => {
             logStep("WARNING: Failed to send notification email", { error: errorMessage });
           }
         }
+        } // End of for loop processing each invoice
       } else {
-        logStep("No invoice_id in session metadata - may be a different payment type");
+        logStep("No invoice_id/invoice_ids in session metadata - may be a different payment type");
       }
     }
 

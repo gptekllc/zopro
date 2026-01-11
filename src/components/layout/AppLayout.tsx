@@ -6,7 +6,7 @@ import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { useLastVisitedPage } from '@/hooks/useLastVisitedPage';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
@@ -250,6 +250,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
                 <Avatar className="w-8 h-8">
+                  <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'User'} />
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                     {getInitials(profile?.full_name)}
                   </AvatarFallback>
@@ -397,6 +398,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
                   sidebarCollapsed && "justify-center p-2"
                 )}>
                   <Avatar className={cn("shrink-0", sidebarCollapsed ? "w-8 h-8" : "w-10 h-10")}>
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'User'} />
                     <AvatarFallback className="bg-sidebar-primary text-sidebar-primary-foreground text-sm">
                       {getInitials(profile?.full_name)}
                     </AvatarFallback>
