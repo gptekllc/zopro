@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link as LinkIcon, Clock, BookTemplate, CalendarClock, Shield, ShieldCheck, Hash, ExternalLink, AlertCircle, Lock } from 'lucide-react';
+import { Building2, Save, Loader2, Globe, Receipt, CreditCard, Settings, FileText, Briefcase, FileCheck, Mail, Palette, Play, Zap, Send, Link as LinkIcon, Clock, BookTemplate, CalendarClock, Shield, ShieldCheck, Hash, ExternalLink, AlertCircle, Lock, Database } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import LogoUpload from '@/components/company/LogoUpload';
 import StripeConnectSection from '@/components/company/StripeConnectSection';
@@ -29,6 +29,8 @@ import PageContainer from '@/components/layout/PageContainer';
 import { JobTemplatesTab, QuoteTemplatesTab } from '@/pages/Templates';
 import { EmailTemplatesTab } from '@/components/templates/EmailTemplatesTab';
 import SecuritySettingsContent from '@/components/settings/SecuritySettingsContent';
+import DataExportSection from '@/components/company/DataExportSection';
+import DataImportSection from '@/components/company/DataImportSection';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 
 const Company = () => {
@@ -133,7 +135,7 @@ const Company = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get('tab');
-    const validTabs = ['details', 'security', 'billing', 'preferences', 'templates', 'payments'];
+    const validTabs = ['details', 'security', 'billing', 'preferences', 'templates', 'payments', 'data'];
     return tabParam && validTabs.includes(tabParam) ? tabParam : 'details';
   });
   const socialLinksRef = useRef<SocialLinksManagerRef>(null);
@@ -397,6 +399,12 @@ const Company = () => {
                   <span className="text-xs sm:text-sm whitespace-nowrap">Payments</span>
                 </TabsTrigger>
               )}
+              {isAdmin && (
+                <TabsTrigger value="data" className="flex items-center gap-1.5 px-3 py-2">
+                  <Database className="w-4 h-4 shrink-0" />
+                  <span className="text-xs sm:text-sm whitespace-nowrap">Data</span>
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
           
@@ -426,6 +434,12 @@ const Company = () => {
               <TabsTrigger value="payments" className="gap-2">
                 <CreditCard className="w-4 h-4" />
                 Payments
+              </TabsTrigger>
+            )}
+            {isAdmin && (
+              <TabsTrigger value="data" className="gap-2">
+                <Database className="w-4 h-4" />
+                Data
               </TabsTrigger>
             )}
           </TabsList>
@@ -1988,6 +2002,16 @@ const Company = () => {
                   </CardContent>
                 </Card>
               )}
+            </div>
+          </TabsContent>
+        )}
+
+        {/* Data Tab */}
+        {isAdmin && (
+          <TabsContent value="data">
+            <div className="max-w-4xl mx-auto space-y-6">
+              <DataExportSection />
+              <DataImportSection />
             </div>
           </TabsContent>
         )}
