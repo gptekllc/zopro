@@ -72,6 +72,8 @@ export function InlineCustomerForm({
     try {
       const result = await createCustomer.mutateAsync({
         name: newCustomer.name.trim(),
+        first_name: newCustomer.name.trim().split(' ')[0] || null,
+        last_name: newCustomer.name.trim().split(' ').slice(1).join(' ') || null,
         phone: getPhoneDigits(newCustomer.phone) || null,
         email: newCustomer.email.trim() || null,
         address: newCustomer.address.trim() || null,
