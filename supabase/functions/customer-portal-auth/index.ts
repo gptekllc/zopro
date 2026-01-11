@@ -342,12 +342,24 @@ Deno.serve(async (req) => {
         isUnassigned 
       });
 
-      // Fetch invoices for this customer
-      const { data: invoices } = await adminClient
+      // Fetch invoices for this customer with company info
+      const { data: invoicesRaw } = await adminClient
         .from('invoices')
-        .select('id, invoice_number, status, total, created_at, due_date')
+        .select('id, invoice_number, status, total, created_at, due_date, company_id, companies(name)')
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
+      
+      // Map company name to invoice
+      const invoices = (invoicesRaw || []).map((inv: any) => ({
+        id: inv.id,
+        invoice_number: inv.invoice_number,
+        status: inv.status,
+        total: inv.total,
+        created_at: inv.created_at,
+        due_date: inv.due_date,
+        company_id: inv.company_id,
+        company_name: inv.companies?.name || null,
+      }));
 
       // Fetch jobs for this customer with more details
       const { data: jobs } = await adminClient

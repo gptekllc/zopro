@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import ZoProLogo from '@/assets/ZoPro_Logo.png';
@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer, Star, MessageSquare, Edit2, CheckCheck, Receipt, User, Building2 } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, ChevronRight, X, ArrowLeft, Camera, ExternalLink, Bell, Printer, Star, MessageSquare, Edit2, CheckCheck, Receipt, User, Building2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
@@ -71,6 +71,8 @@ interface Invoice {
   items?: InvoiceItem[];
   signed_at?: string | null;
   signature?: SignatureData;
+  company_id?: string;
+  company_name?: string;
 }
 
 interface JobPhoto {
@@ -495,6 +497,10 @@ const CustomerPortal = () => {
   const [showPaymentSelection, setShowPaymentSelection] = useState(false);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
   const [isPayingMultiple, setIsPayingMultiple] = useState(false);
+  
+  // Multi-company payment states
+  const [paymentStep, setPaymentStep] = useState<'company-select' | 'invoice-select'>('company-select');
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   
   // Payment methods state
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -2069,6 +2075,57 @@ const CustomerPortal = () => {
   const unpaidInvoices = invoices.filter(i => i.status !== 'paid');
   const pendingQuotes = quotes.filter(q => q.status === 'sent' || q.status === 'pending' || q.status === 'draft');
 
+  // Group unpaid invoices by company for multi-company payment flow
+  const unpaidInvoicesByCompany = useMemo(() => {
+    const grouped: Record<string, { 
+      companyId: string; 
+      companyName: string; 
+      invoices: Invoice[]; 
+      total: number;
+      stripeEnabled: boolean;
+    }> = {};
+    
+    unpaidInvoices.forEach(invoice => {
+      const companyId = invoice.company_id || customerData?.company?.id || 'default';
+      const companyName = invoice.company_name || customerData?.company?.name || 'Unknown Company';
+      if (!grouped[companyId]) {
+        grouped[companyId] = { 
+          companyId, 
+          companyName, 
+          invoices: [], 
+          total: 0,
+          stripeEnabled: customerData?.company?.stripe_payments_enabled !== false,
+        };
+      }
+      grouped[companyId].invoices.push(invoice);
+      grouped[companyId].total += Number(invoice.total);
+    });
+    
+    return Object.values(grouped);
+  }, [unpaidInvoices, customerData?.company]);
+
+  const hasMultipleCompanies = unpaidInvoicesByCompany.length > 1;
+
+  // Handle opening payment selection - checks for multi-company
+  const handleOpenPaymentSelection = () => {
+    if (unpaidInvoices.length === 0) {
+      setActiveTab('invoices');
+      return;
+    }
+    
+    if (hasMultipleCompanies) {
+      // Multi-company: show company selection first
+      setPaymentStep('company-select');
+      setSelectedCompanyId(null);
+      setSelectedInvoiceIds(new Set());
+    } else {
+      // Single company: go straight to invoice selection
+      setPaymentStep('invoice-select');
+      setSelectedInvoiceIds(new Set(unpaidInvoices.map(i => i.id)));
+    }
+    setShowPaymentSelection(true);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -2273,15 +2330,7 @@ const CustomerPortal = () => {
           {/* Outstanding Card - Opens payment selection */}
           <Card 
             className="cursor-pointer hover:bg-muted/50 transition-colors group"
-            onClick={() => {
-              if (unpaidInvoices.length > 0 && customerData?.company?.stripe_payments_enabled !== false) {
-                // Pre-select all unpaid invoices and show payment selection
-                setSelectedInvoiceIds(new Set(unpaidInvoices.map(i => i.id)));
-                setShowPaymentSelection(true);
-              } else {
-                setActiveTab('invoices');
-              }
-            }}
+            onClick={handleOpenPaymentSelection}
           >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -2293,7 +2342,12 @@ const CustomerPortal = () => {
                     <p className="text-2xl font-bold">
                       ${unpaidInvoices.reduce((sum, i) => sum + Number(i.total), 0).toFixed(2)}
                     </p>
-                    <p className="text-sm text-muted-foreground">Outstanding</p>
+                    <p className="text-sm text-muted-foreground">
+                      Outstanding
+                      {hasMultipleCompanies && (
+                        <span className="text-xs ml-1">({unpaidInvoicesByCompany.length} companies)</span>
+                      )}
+                    </p>
                   </div>
                 </div>
                 <span className="text-xs text-amber-600 group-hover:underline font-medium">Pay Now →</span>
@@ -2658,85 +2712,169 @@ const CustomerPortal = () => {
         </Tabs>
 
         {/* Multi-Invoice Payment Selection Dialog */}
-        <Dialog open={showPaymentSelection} onOpenChange={setShowPaymentSelection}>
+        <Dialog open={showPaymentSelection} onOpenChange={(open) => {
+          if (!open) {
+            setPaymentStep('company-select');
+            setSelectedCompanyId(null);
+            setSelectedInvoiceIds(new Set());
+          }
+          setShowPaymentSelection(open);
+        }}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <CreditCard className="w-5 h-5" />
-                Pay Selected Invoices
+                {paymentStep === 'company-select' && hasMultipleCompanies
+                  ? 'Select Company to Pay'
+                  : 'Pay Selected Invoices'
+                }
               </DialogTitle>
               <DialogDescription>
-                Select which invoices you want to pay. You can deselect any invoices you don't want to pay now.
+                {paymentStep === 'company-select' && hasMultipleCompanies
+                  ? `You have outstanding invoices from ${unpaidInvoicesByCompany.length} companies. Select which company's invoices you'd like to pay first.`
+                  : 'Select which invoices you want to pay. You can deselect any invoices you don\'t want to pay now.'
+                }
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 py-4">
-              <ScrollArea className="h-[300px]">
-                <div className="space-y-2">
-                  {unpaidInvoices.map((invoice) => (
-                    <div
-                      key={invoice.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                        selectedInvoiceIds.has(invoice.id) ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'
-                      }`}
-                    >
-                      <Checkbox
-                        checked={selectedInvoiceIds.has(invoice.id)}
-                        onCheckedChange={(checked) => {
-                          const newSelected = new Set(selectedInvoiceIds);
-                          if (checked) {
-                            newSelected.add(invoice.id);
-                          } else {
-                            newSelected.delete(invoice.id);
-                          }
-                          setSelectedInvoiceIds(newSelected);
+              {/* Step 1: Company Selection (for multi-company) */}
+              {paymentStep === 'company-select' && hasMultipleCompanies && (
+                <ScrollArea className="h-[300px]">
+                  <div className="space-y-2">
+                    {unpaidInvoicesByCompany.map((group) => (
+                      <div
+                        key={group.companyId}
+                        onClick={() => {
+                          setSelectedCompanyId(group.companyId);
+                          setPaymentStep('invoice-select');
+                          // Pre-select all invoices for this company
+                          setSelectedInvoiceIds(new Set(group.invoices.map(i => i.id)));
                         }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium">{invoice.invoice_number}</span>
-                          <span className="font-semibold">${Number(invoice.total).toFixed(2)}</span>
+                        className="flex items-center justify-between p-4 rounded-lg border cursor-pointer hover:bg-primary/5 hover:border-primary/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-primary/10 rounded-lg">
+                            <Building2 className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{group.companyName}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {group.invoices.length} invoice{group.invoices.length > 1 ? 's' : ''}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {invoice.due_date ? `Due ${format(new Date(invoice.due_date), 'MMM d, yyyy')}` : 'No due date'}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <p className="font-bold">${group.total.toFixed(2)}</p>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+
+              {/* Step 2: Invoice Selection */}
+              {paymentStep === 'invoice-select' && (
+                <>
+                  {/* Back button for multi-company */}
+                  {hasMultipleCompanies && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => {
+                        setPaymentStep('company-select');
+                        setSelectedCompanyId(null);
+                        setSelectedInvoiceIds(new Set());
+                      }}
+                      className="mb-2 -mt-2"
+                    >
+                      <ArrowLeft className="w-4 h-4 mr-1" />
+                      Back to companies
+                    </Button>
+                  )}
+                  
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-2">
+                      {unpaidInvoices
+                        .filter(inv => !selectedCompanyId || (inv.company_id || customerData?.company?.id) === selectedCompanyId)
+                        .map((invoice) => (
+                          <div
+                            key={invoice.id}
+                            className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                              selectedInvoiceIds.has(invoice.id) ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'
+                            }`}
+                          >
+                            <Checkbox
+                              checked={selectedInvoiceIds.has(invoice.id)}
+                              onCheckedChange={(checked) => {
+                                const newSelected = new Set(selectedInvoiceIds);
+                                if (checked) {
+                                  newSelected.add(invoice.id);
+                                } else {
+                                  newSelected.delete(invoice.id);
+                                }
+                                setSelectedInvoiceIds(newSelected);
+                              }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{invoice.invoice_number}</span>
+                                  {hasMultipleCompanies && invoice.company_name && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {invoice.company_name}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <span className="font-semibold">${Number(invoice.total).toFixed(2)}</span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                {invoice.due_date ? `Due ${format(new Date(invoice.due_date), 'MMM d, yyyy')}` : 'No due date'}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
                     </div>
-                  ))}
-                </div>
-              </ScrollArea>
-              
-              <div className="flex items-center justify-between pt-4 border-t">
-                <div>
-                  <p className="text-sm text-muted-foreground">Selected Total</p>
-                  <p className="text-2xl font-bold">
-                    ${unpaidInvoices
-                      .filter(i => selectedInvoiceIds.has(i.id))
-                      .reduce((sum, i) => sum + Number(i.total), 0)
-                      .toFixed(2)}
-                  </p>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {selectedInvoiceIds.size} of {unpaidInvoices.length} invoices
-                </div>
-              </div>
+                  </ScrollArea>
+                  
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Selected Total</p>
+                      <p className="text-2xl font-bold">
+                        ${unpaidInvoices
+                          .filter(i => selectedInvoiceIds.has(i.id))
+                          .reduce((sum, i) => sum + Number(i.total), 0)
+                          .toFixed(2)}
+                      </p>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {selectedInvoiceIds.size} invoice{selectedInvoiceIds.size !== 1 ? 's' : ''} selected
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             
             <DialogFooter>
               <Button variant="outline" onClick={() => setShowPaymentSelection(false)}>
                 Cancel
               </Button>
-              <Button
-                onClick={handlePayMultipleInvoices}
-                disabled={selectedInvoiceIds.size === 0 || isPayingMultiple}
-              >
-                {isPayingMultiple ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <CreditCard className="w-4 h-4 mr-2" />
-                )}
-                Proceed to Payment
-              </Button>
+              {paymentStep === 'invoice-select' && (
+                <Button
+                  onClick={handlePayMultipleInvoices}
+                  disabled={selectedInvoiceIds.size === 0 || isPayingMultiple}
+                >
+                  {isPayingMultiple ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <CreditCard className="w-4 h-4 mr-2" />
+                  )}
+                  Proceed to Payment
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
