@@ -59,13 +59,13 @@ serve(async (req) => {
     const { userId, allMembers } = await req.json();
 
     // Get target user(s)
-    let targetUsers: { id: string; email: string; full_name: string | null }[] = [];
+    let targetUsers: { id: string; email: string; first_name: string | null; last_name: string | null; full_name: string | null }[] = [];
 
     if (allMembers) {
       // Get all team members except the requester
       const { data: members } = await supabaseAdmin
         .from("profiles")
-        .select("id, email, full_name")
+        .select("id, email, first_name, last_name, full_name")
         .eq("company_id", requesterProfile.company_id)
         .neq("id", user.id)
         .is("deleted_at", null);
@@ -75,7 +75,7 @@ serve(async (req) => {
       // Get specific user
       const { data: targetProfile } = await supabaseAdmin
         .from("profiles")
-        .select("id, email, full_name, company_id")
+        .select("id, email, first_name, last_name, full_name, company_id")
         .eq("id", userId)
         .single();
 

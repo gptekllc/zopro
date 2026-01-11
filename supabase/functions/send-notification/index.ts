@@ -143,7 +143,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Get all admins for this company
       const { data: companyAdmins } = await adminClient
         .from('profiles')
-        .select('id, first_name, last_name, email')
+        .select('id, first_name, last_name, full_name, email')
         .eq('company_id', companyId);
 
       if (companyAdmins && companyAdmins.length > 0) {

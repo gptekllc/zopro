@@ -36,7 +36,7 @@ interface AuthContextType {
   needsMFAChallenge: boolean;
   // Auth functions
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, firstName: string, lastName?: string) => Promise<{ error: Error | null }>;
   signInWithGoogle: () => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -285,9 +285,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null };
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (email: string, password: string, firstName: string, lastName?: string) => {
     const { PRODUCTION_DOMAIN } = await import('@/lib/authConfig');
     const redirectUrl = `${PRODUCTION_DOMAIN}/dashboard`;
+    const fullName = [firstName, lastName].filter(Boolean).join(' ');
     
     const { error } = await supabase.auth.signUp({
       email,
@@ -296,6 +297,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
+          first_name: firstName,
+          last_name: lastName || null,
         },
       },
     });

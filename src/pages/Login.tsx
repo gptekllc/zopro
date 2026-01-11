@@ -26,7 +26,8 @@ interface LockoutStatus {
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [view, setView] = useState<AuthView>('auth');
@@ -180,14 +181,14 @@ const Login = () => {
       return;
     }
 
-    // Validate full name
-    if (fullName.trim().length < 2) {
-      setError('Please enter your full name');
+    // Validate first name
+    if (firstName.trim().length < 1) {
+      setError('Please enter your first name');
       setIsLoading(false);
       return;
     }
 
-    const { error } = await signUp(email, password, fullName.trim());
+    const { error } = await signUp(email, password, firstName.trim(), lastName.trim());
     
     if (error) {
       if (error.message.includes('already registered')) {
@@ -521,17 +522,30 @@ const Login = () => {
                   Create a new account to get started
                 </CardDescription>
                 <form onSubmit={handleSignUp} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Full Name</Label>
-                    <Input
-                      id="signup-name"
-                      type="text"
-                      placeholder="John Smith"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      required
-                      className="h-11"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-first-name">First Name</Label>
+                      <Input
+                        id="signup-first-name"
+                        type="text"
+                        placeholder="John"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        required
+                        className="h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-last-name">Last Name</Label>
+                      <Input
+                        id="signup-last-name"
+                        type="text"
+                        placeholder="Smith"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        className="h-11"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-2">

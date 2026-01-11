@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
       .from('jobs')
       .select(`
         *,
-        customer:customers(id, name, email, phone, address, city, state, zip),
+        customer:customers(id, first_name, last_name, name, email, phone, address, city, state, zip),
         company:companies(id, name, email, phone, address, city, state, zip, logo_url, brand_primary_color, timezone)
       `)
       .eq('id', jobId)
@@ -266,7 +266,7 @@ Deno.serve(async (req) => {
           <!-- Content -->
           <tr>
             <td style="padding: 30px;">
-              <p style="color: #374151; font-size: 16px; margin: 0 0 20px 0;">Hello ${customer.name},</p>
+              <p style="color: #374151; font-size: 16px; margin: 0 0 20px 0;">Hello ${customer.first_name || customer.name || 'Valued Customer'},</p>
               
               <!-- Job Details Card -->
               <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 8px; margin-bottom: 25px;">
