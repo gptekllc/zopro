@@ -334,6 +334,14 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Check if customer is unassigned (no company yet)
+      const isUnassigned = !customer.company_id;
+      console.log('Customer company status:', { 
+        customerId: customer.id, 
+        companyId: customer.company_id, 
+        isUnassigned 
+      });
+
       // Fetch invoices for this customer
       const { data: invoices } = await adminClient
         .from('invoices')
@@ -373,17 +381,18 @@ Deno.serve(async (req) => {
         .eq('customer_id', customerId)
         .order('created_at', { ascending: false });
 
-      console.log('Token verified successfully for customer:', customer.name);
+      console.log('Token verified successfully for customer:', customer.name, 'isUnassigned:', isUnassigned);
 
       return new Response(
         JSON.stringify({
           valid: true,
+          isUnassigned, // Flag to indicate customer is not yet linked to a company
           customer: {
             id: customer.id,
             name: customer.name,
             email: customer.email,
             phone: customer.phone,
-            company: customer.companies,
+            company: customer.companies || null, // Will be null for unassigned customers
           },
           invoices: invoices || [],
           jobs: jobsWithFeedback,

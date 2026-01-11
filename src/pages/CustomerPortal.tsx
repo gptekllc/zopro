@@ -45,7 +45,7 @@ interface CustomerData {
     email: string | null;
     stripe_payments_enabled: boolean | null;
     default_payment_method: string | null;
-  };
+  } | null;
 }
 
 interface InvoiceItem {
@@ -486,6 +486,7 @@ const CustomerPortal = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isUnassignedCustomer, setIsUnassignedCustomer] = useState(false);
   
   // Payment methods state
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -707,6 +708,7 @@ const CustomerPortal = () => {
       setInvoices(data.invoices || []);
       setJobs(data.jobs || []);
       setQuotes(data.quotes || []);
+      setIsUnassignedCustomer(data.isUnassigned === true);
       setIsAuthenticated(true);
       
       // If in signing mode, fetch the specific document details
@@ -1928,6 +1930,77 @@ const CustomerPortal = () => {
     );
   }
 
+  // Show welcome view for unassigned customers (not yet linked to a company)
+  if (isUnassignedCustomer) {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b bg-card">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <img 
+                src={ZoProLogo} 
+                alt="ZoPro"
+                className="h-10 w-auto object-contain"
+              />
+              <div>
+                <h1 className="font-semibold">Customer Portal</h1>
+                <p className="text-sm text-muted-foreground">Welcome, {customerData?.name}</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
+        </header>
+
+        {/* Welcome Content */}
+        <main className="container mx-auto px-4 py-8 max-w-2xl">
+          <Card className="text-center">
+            <CardHeader>
+              <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <CheckCircle className="w-8 h-8 text-primary" />
+              </div>
+              <CardTitle className="text-2xl">You're All Set!</CardTitle>
+              <CardDescription className="text-base mt-2">
+                Your customer account has been created successfully.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="bg-muted/50 rounded-lg p-6 text-left space-y-4">
+                <h3 className="font-semibold">What's Next?</h3>
+                <ul className="space-y-3 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                    <span>When a service provider adds you as a customer, you'll see their quotes, invoices, and job history here.</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                    <span>You'll receive email notifications when new documents are available for your review.</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                    <span>You can approve quotes, pay invoices, and sign job completions directly from this portal.</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-4 border-t">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Your registered email: <span className="font-medium text-foreground">{customerData?.email}</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Service providers will find you by this email address when they create quotes or invoices for you.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
   // Portal dashboard
   const unpaidInvoices = invoices.filter(i => i.status !== 'paid');
   const pendingQuotes = quotes.filter(q => q.status === 'sent' || q.status === 'pending' || q.status === 'draft');
@@ -1938,15 +2011,15 @@ const CustomerPortal = () => {
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            {customerData?.company.logo_url && (
+            {customerData?.company?.logo_url && (
               <img 
-                src={customerData.company.logo_url} 
-                alt={customerData.company.name}
+                src={customerData?.company?.logo_url} 
+                alt={customerData?.company?.name || 'Company'}
                 className="h-10 w-auto object-contain"
               />
             )}
             <div>
-              <h1 className="font-semibold">{customerData?.company.name}</h1>
+              <h1 className="font-semibold">{customerData?.company?.name || 'Customer Portal'}</h1>
               <p className="text-sm text-muted-foreground">Customer Portal</p>
             </div>
           </div>
@@ -2313,31 +2386,31 @@ const CustomerPortal = () => {
                       <div className="space-y-2">
                         <h4 className="font-medium">Payment Instructions</h4>
                         <p className="text-sm text-muted-foreground">
-                          {customerData.company.default_payment_method === 'cash' && 
+                          {customerData?.company?.default_payment_method === 'cash' && 
                             'Please pay in cash upon service completion or at our office.'}
-                          {customerData.company.default_payment_method === 'check' && 
+                          {customerData?.company?.default_payment_method === 'check' && 
                             'Please mail a check to the address below.'}
-                          {customerData.company.default_payment_method === 'bank_transfer' && 
+                          {customerData?.company?.default_payment_method === 'bank_transfer' && 
                             'Please arrange a bank transfer. Contact us for account details.'}
-                          {(!customerData.company.default_payment_method || customerData.company.default_payment_method === 'any') && 
+                          {(!customerData?.company?.default_payment_method || customerData?.company?.default_payment_method === 'any') && 
                             'Please contact us for payment arrangements. We accept cash, check, or bank transfer.'}
                         </p>
-                        {customerData.company.address && (
+                        {customerData?.company?.address && (
                           <div className="flex items-start gap-2 text-sm text-muted-foreground mt-2">
                             <MapPin className="w-4 h-4 mt-0.5" />
                             <span>
-                              {customerData.company.name}<br />
-                              {customerData.company.address}
-                              {customerData.company.city && `, ${customerData.company.city}`}
-                              {customerData.company.state && `, ${customerData.company.state}`}
-                              {customerData.company.zip && ` ${customerData.company.zip}`}
+                              {customerData?.company?.name}<br />
+                              {customerData?.company?.address}
+                              {customerData?.company?.city && `, ${customerData?.company?.city}`}
+                              {customerData?.company?.state && `, ${customerData?.company?.state}`}
+                              {customerData?.company?.zip && ` ${customerData?.company?.zip}`}
                             </span>
                           </div>
                         )}
-                        {customerData.company.phone && (
+                        {customerData?.company?.phone && (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Phone className="w-4 h-4" />
-                            <span>{customerData.company.phone}</span>
+                            <span>{customerData?.company?.phone}</span>
                           </div>
                         )}
                       </div>
