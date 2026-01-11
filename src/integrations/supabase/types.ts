@@ -2481,6 +2481,9 @@ export type Database = {
           price_yearly: number | null
           storage_addon_price_per_gb: number | null
           storage_limit_bytes: number | null
+          stripe_price_id_monthly: string | null
+          stripe_price_id_yearly: string | null
+          stripe_product_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2498,6 +2501,9 @@ export type Database = {
           price_yearly?: number | null
           storage_addon_price_per_gb?: number | null
           storage_limit_bytes?: number | null
+          stripe_price_id_monthly?: string | null
+          stripe_price_id_yearly?: string | null
+          stripe_product_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -2515,6 +2521,9 @@ export type Database = {
           price_yearly?: number | null
           storage_addon_price_per_gb?: number | null
           storage_limit_bytes?: number | null
+          stripe_price_id_monthly?: string | null
+          stripe_price_id_yearly?: string | null
+          stripe_product_id?: string | null
           updated_at?: string | null
         }
         Relationships: []

@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   CreditCard, 
   Loader2, 
-  CheckCircle2, 
-  XCircle, 
   ArrowLeft,
   Calendar, 
   Users, 
@@ -33,6 +33,7 @@ export default function Subscription() {
   const queryClient = useQueryClient();
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
 
   const { data: plans, isLoading: plansLoading } = useSubscriptionPlans();
   const { data: subscription, isLoading: subscriptionLoading } = useCurrentSubscription();
@@ -53,20 +54,44 @@ export default function Subscription() {
 
   const handleSelectPlan = async (planId: string) => {
     const plan = plans?.find(p => p.id === planId);
-    if (!plan || plan.price_monthly === 0) {
+    if (!plan) {
+      toast.error('Plan not found');
+      return;
+    }
+
+    // Free plan - contact support
+    if (plan.price_monthly === 0 || plan.price_monthly === null) {
       toast.info('Please contact support to downgrade to the free plan');
       return;
     }
 
-    // For now, we need to create Stripe prices first
-    // This is a placeholder - in production, you'd map plan IDs to Stripe price IDs
-    toast.info('Please contact sales to upgrade your plan. Stripe integration coming soon!');
+    // Get the correct Stripe price ID based on billing interval
+    const priceId = billingInterval === 'yearly' 
+      ? plan.stripe_price_id_yearly 
+      : plan.stripe_price_id_monthly;
+
+    if (!priceId) {
+      toast.error('This plan is not configured for online purchase. Please contact support.');
+      return;
+    }
+
+    setCheckoutLoading(planId);
+    try {
+      await startCheckout(priceId);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to start checkout');
+    } finally {
+      setCheckoutLoading(null);
+    }
   };
 
   const handleManageSubscription = async () => {
     setPortalLoading(true);
     try {
-      await openCustomerPortal();
+      const result = await openCustomerPortal();
+      if (result?.error === 'no_subscription') {
+        toast.info(result.message || 'You don\'t have an active subscription yet.');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to open customer portal');
     } finally {
@@ -76,6 +101,9 @@ export default function Subscription() {
 
   const isLoading = plansLoading || subscriptionLoading;
   const currentPlan = subscription?.subscription_plans;
+
+  // Calculate yearly savings percentage
+  const yearlySavingsPercent = 20; // Our plans offer ~20% discount for yearly
 
   return (
     <PageContainer className="space-y-6 max-w-6xl mx-auto">
@@ -269,13 +297,34 @@ export default function Subscription() {
       {/* Plan Comparison */}
       <Card id="plans">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5" />
-            Compare Plans
-          </CardTitle>
-          <CardDescription>
-            Choose the plan that best fits your business needs
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5" />
+                Compare Plans
+              </CardTitle>
+              <CardDescription>
+                Choose the plan that best fits your business needs
+              </CardDescription>
+            </div>
+            
+            {/* Billing Toggle */}
+            <div className="flex items-center gap-3 p-1 bg-muted rounded-lg">
+              <span className={`text-sm font-medium px-3 py-1.5 rounded-md transition-colors ${billingInterval === 'monthly' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
+                Monthly
+              </span>
+              <Switch
+                checked={billingInterval === 'yearly'}
+                onCheckedChange={(checked) => setBillingInterval(checked ? 'yearly' : 'monthly')}
+              />
+              <span className={`text-sm font-medium px-3 py-1.5 rounded-md transition-colors flex items-center gap-2 ${billingInterval === 'yearly' ? 'bg-background shadow-sm' : 'text-muted-foreground'}`}>
+                Yearly
+                <Badge variant="secondary" className="text-xs bg-green-500/10 text-green-600 border-green-500/20">
+                  Save {yearlySavingsPercent}%
+                </Badge>
+              </span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {plansLoading ? (
@@ -288,6 +337,8 @@ export default function Subscription() {
               currentPlanId={currentPlan?.id}
               onSelectPlan={handleSelectPlan}
               loading={!!checkoutLoading}
+              loadingPlanId={checkoutLoading}
+              billingInterval={billingInterval}
             />
           ) : (
             <p className="text-muted-foreground text-center py-8">
