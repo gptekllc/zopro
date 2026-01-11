@@ -28,24 +28,41 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { invoiceId, customerId, token, signatureData, signerName } = await req.json();
+    const body = await req.json();
+    // Support both single invoiceId and multiple invoiceIds
+    const { invoiceId, invoiceIds, customerId, token, signatureData, signerName } = body;
     
-    if (!invoiceId || !customerId || !token) {
-      throw new Error("Missing required parameters: invoiceId, customerId, or token");
+    // Handle multiple invoices or single invoice
+    const idsToProcess: string[] = invoiceIds || (invoiceId ? [invoiceId] : []);
+    
+    if (idsToProcess.length === 0 || !customerId || !token) {
+      throw new Error("Missing required parameters: invoiceId(s), customerId, or token");
     }
-    logStep("Parameters received", { invoiceId, customerId, hasSignature: !!signatureData });
+    logStep("Parameters received", { invoiceIds: idsToProcess, customerId, hasSignature: !!signatureData });
 
-    // Verify token
+    // Verify token - parse the signed token format (payload.signature)
     try {
-      const tokenData = JSON.parse(atob(token));
-      
-      if (tokenData.customerId !== customerId) {
-        throw new Error("Invalid token - customer mismatch");
-      }
-
-      const expiresAt = new Date(tokenData.expiresAt);
-      if (expiresAt < new Date()) {
-        throw new Error("Token expired");
+      const parts = token.split('.');
+      if (parts.length === 2) {
+        // Signed token format
+        const tokenData = JSON.parse(atob(parts[0]));
+        if (tokenData.customerId !== customerId) {
+          throw new Error("Invalid token - customer mismatch");
+        }
+        const expiresAt = new Date(tokenData.expiresAt);
+        if (expiresAt < new Date()) {
+          throw new Error("Token expired");
+        }
+      } else {
+        // Legacy format - try parsing directly
+        const tokenData = JSON.parse(atob(token));
+        if (tokenData.customerId !== customerId) {
+          throw new Error("Invalid token - customer mismatch");
+        }
+        const expiresAt = new Date(tokenData.expiresAt);
+        if (expiresAt < new Date()) {
+          throw new Error("Token expired");
+        }
       }
     } catch (e) {
       if (e instanceof Error && e.message.includes("Token")) {
@@ -55,70 +72,84 @@ serve(async (req) => {
     }
     logStep("Token verified");
 
-    // Fetch invoice details with company Stripe Connect info
-    const { data: invoice, error: invoiceError } = await adminClient
+    // Fetch all invoice details with company Stripe Connect info
+    const { data: invoicesData, error: invoicesError } = await adminClient
       .from('invoices')
       .select('*, customers(id, name, email), companies(name, stripe_account_id, stripe_charges_enabled, stripe_payments_enabled, platform_fee_percentage)')
-      .eq('id', invoiceId)
-      .eq('customer_id', customerId)
-      .single();
+      .in('id', idsToProcess)
+      .eq('customer_id', customerId);
 
-    if (invoiceError || !invoice) {
-      throw new Error("Invoice not found or access denied");
+    if (invoicesError || !invoicesData || invoicesData.length === 0) {
+      throw new Error("Invoices not found or access denied");
     }
-    logStep("Invoice found", { invoiceNumber: invoice.invoice_number, total: invoice.total });
 
-    if (invoice.status === 'paid') {
-      throw new Error("Invoice is already paid");
+    // Validate all invoices belong to the same company and are not paid
+    const companyIds = [...new Set(invoicesData.map(inv => inv.company_id))];
+    if (companyIds.length > 1) {
+      throw new Error("All invoices must belong to the same company");
     }
+
+    const paidInvoices = invoicesData.filter(inv => inv.status === 'paid');
+    if (paidInvoices.length > 0) {
+      throw new Error(`Invoice(s) already paid: ${paidInvoices.map(i => i.invoice_number).join(', ')}`);
+    }
+
+    const firstInvoice = invoicesData[0];
+    logStep("Invoices found", { 
+      count: invoicesData.length, 
+      invoiceNumbers: invoicesData.map(i => i.invoice_number),
+      totalAmount: invoicesData.reduce((sum, i) => sum + Number(i.total), 0)
+    });
 
     // Check if online payments are enabled for this company
-    const stripePaymentsEnabled = invoice.companies?.stripe_payments_enabled ?? true;
+    const stripePaymentsEnabled = firstInvoice.companies?.stripe_payments_enabled ?? true;
     if (!stripePaymentsEnabled) {
       throw new Error("Online payments are not available. Please contact the company for alternative payment methods.");
     }
     logStep("Online payments enabled check passed");
 
-    // Save signature if provided (required for payment)
+    // Save signature for each invoice if provided (required for payment)
     if (signatureData && signerName) {
       const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
                        req.headers.get('x-real-ip') || 
                        'unknown';
 
-      const { data: signature, error: signatureError } = await adminClient
-        .from('signatures')
-        .insert({
-          company_id: invoice.company_id,
-          customer_id: customerId,
-          document_type: 'invoice',
-          document_id: invoiceId,
-          signature_data: signatureData,
-          signer_name: signerName,
-          signer_ip: clientIp,
-        })
-        .select()
-        .single();
-
-      if (signatureError) {
-        logStep("Signature save error", { error: signatureError.message });
-      } else {
-        // Update invoice with signature reference
-        await adminClient
-          .from('invoices')
-          .update({
-            signature_id: signature.id,
-            signed_at: new Date().toISOString(),
+      for (const invoice of invoicesData) {
+        const { data: signature, error: signatureError } = await adminClient
+          .from('signatures')
+          .insert({
+            company_id: invoice.company_id,
+            customer_id: customerId,
+            document_type: 'invoice',
+            document_id: invoice.id,
+            signature_data: signatureData,
+            signer_name: signerName,
+            signer_ip: clientIp,
           })
-          .eq('id', invoiceId);
-        
-        logStep("Signature saved", { signatureId: signature.id });
+          .select()
+          .single();
+
+        if (signatureError) {
+          logStep("Signature save error for invoice", { invoiceId: invoice.id, error: signatureError.message });
+        } else {
+          // Update invoice with signature reference
+          await adminClient
+            .from('invoices')
+            .update({
+              signature_id: signature.id,
+              signed_at: new Date().toISOString(),
+            })
+            .eq('id', invoice.id);
+          
+          logStep("Signature saved for invoice", { invoiceId: invoice.id, signatureId: signature.id });
+        }
       }
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
     // Check if customer exists in Stripe
-    const customerEmail = invoice.customers?.email;
+    const customerEmail = firstInvoice.customers?.email;
     let stripeCustomerId: string | undefined;
     
     if (customerEmail) {
@@ -133,9 +164,9 @@ serve(async (req) => {
     const origin = productionUrl;
 
     // Check if company has Stripe Connect set up
-    const companyStripeAccountId = invoice.companies?.stripe_account_id;
-    const chargesEnabled = invoice.companies?.stripe_charges_enabled;
-    const platformFee = invoice.companies?.platform_fee_percentage || 0;
+    const companyStripeAccountId = firstInvoice.companies?.stripe_account_id;
+    const chargesEnabled = firstInvoice.companies?.stripe_charges_enabled;
+    const platformFee = firstInvoice.companies?.platform_fee_percentage || 0;
 
     if (companyStripeAccountId && !chargesEnabled) {
       throw new Error("Company's Stripe account is not fully set up for payments");
@@ -147,34 +178,36 @@ serve(async (req) => {
       platformFee 
     });
 
-    // Calculate amounts
-    const totalCents = Math.round(Number(invoice.total) * 100);
+    // Calculate total amount across all invoices
+    const totalAmount = invoicesData.reduce((sum, inv) => sum + Number(inv.total), 0);
+    const totalCents = Math.round(totalAmount * 100);
     const applicationFeeCents = platformFee > 0 ? Math.round(totalCents * (platformFee / 100)) : 0;
+
+    // Create line items for each invoice
+    const lineItems = invoicesData.map(invoice => ({
+      price_data: {
+        currency: 'usd',
+        product_data: {
+          name: `Invoice ${invoice.invoice_number}`,
+          description: `Payment for invoice from ${invoice.companies?.name || 'Company'}`,
+        },
+        unit_amount: Math.round(Number(invoice.total) * 100),
+      },
+      quantity: 1,
+    }));
 
     // Build checkout session options
     const sessionOptions: any = {
       customer: stripeCustomerId,
       customer_email: stripeCustomerId ? undefined : customerEmail,
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: `Invoice ${invoice.invoice_number}`,
-              description: `Payment for invoice from ${invoice.companies?.name || 'Company'}`,
-            },
-            unit_amount: totalCents,
-          },
-          quantity: 1,
-        },
-      ],
+      line_items: lineItems,
       mode: "payment",
-      success_url: `${origin}/customer-portal?payment=success&invoice=${invoiceId}`,
+      success_url: `${origin}/customer-portal?payment=success&invoices=${idsToProcess.join(',')}`,
       cancel_url: `${origin}/customer-portal?payment=cancelled`,
       metadata: {
-        invoice_id: invoiceId,
+        invoice_ids: idsToProcess.join(','),
         customer_id: customerId,
-        invoice_number: invoice.invoice_number,
+        invoice_numbers: invoicesData.map(i => i.invoice_number).join(','),
       },
     };
 
