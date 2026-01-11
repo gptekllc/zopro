@@ -3186,6 +3186,33 @@ const CustomerPortal = () => {
                 </div>
               )}
 
+              {/* Signature Status with Signature Image */}
+              {viewingJob.completion_signed_at && (
+                <div className="pt-4 border-t space-y-3">
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle className="w-5 h-5" />
+                      <div>
+                        <p className="font-medium">Job Completion Confirmed</p>
+                        <p className="text-sm opacity-80">
+                          Signed by {viewingJob.completion_signed_by} on {format(new Date(viewingJob.completion_signed_at), 'MMMM d, yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  {viewingJob.signature?.signature_data && (
+                    <div className="bg-muted/50 rounded-lg p-3">
+                      <p className="text-sm text-muted-foreground mb-2">Customer Signature</p>
+                      <img 
+                        src={viewingJob.signature.signature_data} 
+                        alt="Customer Signature" 
+                        className="max-h-24 object-contain bg-white rounded border p-2"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Photos Section - Collapsible with categories */}
               {viewingJob.photos && viewingJob.photos.length > 0 && (() => {
                 const beforePhotos = viewingJob.photos.filter(p => p.photo_type === 'before');
@@ -3288,33 +3315,6 @@ const CustomerPortal = () => {
                   </div>
                 );
               })()}
-
-              {/* Signature Status with Signature Image */}
-              {viewingJob.completion_signed_at && (
-                <div className="pt-4 border-t space-y-3">
-                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                      <CheckCircle className="w-5 h-5" />
-                      <div>
-                        <p className="font-medium">Job Completion Confirmed</p>
-                        <p className="text-sm opacity-80">
-                          Signed by {viewingJob.completion_signed_by} on {format(new Date(viewingJob.completion_signed_at), 'MMMM d, yyyy')}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  {viewingJob.signature?.signature_data && (
-                    <div className="bg-muted/50 rounded-lg p-3">
-                      <p className="text-sm text-muted-foreground mb-2">Customer Signature</p>
-                      <img 
-                        src={viewingJob.signature.signature_data} 
-                        alt="Customer Signature" 
-                        className="max-h-24 object-contain bg-white rounded border p-2"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Leave Feedback Section - Only show for completed/invoiced jobs */}
               {(viewingJob.status === 'completed' || viewingJob.status === 'invoiced') && !viewingJob.has_feedback && (
