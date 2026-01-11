@@ -2305,7 +2305,12 @@ const CustomerPortal = () => {
         {/* Tabs - Reordered: Jobs, Quotes, Invoices, Payment History (removed Payment Methods) */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="jobs">Jobs</TabsTrigger>
+            <TabsTrigger value="jobs" className="flex items-center gap-2">
+              Jobs
+              {jobs.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{jobs.length}</Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="quotes" className="flex items-center gap-2">
               Quotes
               {pendingQuotes.length > 0 && (
@@ -2666,7 +2671,7 @@ const CustomerPortal = () => {
             </DialogHeader>
             
             <div className="space-y-4 py-4">
-              <ScrollArea className="max-h-60">
+              <ScrollArea className="h-[300px]">
                 <div className="space-y-2">
                   {unpaidInvoices.map((invoice) => (
                     <div
