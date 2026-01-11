@@ -355,7 +355,7 @@ serve(async (req) => {
 
     // Payment status
     if (remainingBalance <= 0) {
-      page.drawText('✓ PAID IN FULL', {
+      page.drawText('PAID IN FULL', {
         x: leftMargin,
         y: yPosition,
         size: 14,
