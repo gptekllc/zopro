@@ -383,10 +383,28 @@ Deno.serve(async (req) => {
 
       console.log('Token verified successfully for customer:', customer.name, 'isUnassigned:', isUnassigned);
 
+      // Check if customer has company access (is also a profile with company_id)
+      let hasCompanyAccess = false;
+      if (customer.email) {
+        const { data: profile } = await adminClient
+          .from('profiles')
+          .select('company_id, role')
+          .eq('email', customer.email.toLowerCase())
+          .not('company_id', 'is', null)
+          .maybeSingle();
+        
+        if (profile?.company_id) {
+          // Check if user has admin, manager, or technician role
+          hasCompanyAccess = ['admin', 'manager', 'technician'].includes(profile.role);
+        }
+      }
+      console.log('Customer company access check:', { email: customer.email, hasCompanyAccess });
+
       return new Response(
         JSON.stringify({
           valid: true,
           isUnassigned, // Flag to indicate customer is not yet linked to a company
+          hasCompanyAccess, // Flag to indicate customer can switch to company portal
           customer: {
             id: customer.id,
             name: customer.name,

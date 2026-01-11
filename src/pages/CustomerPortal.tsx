@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table,
   TableBody,
@@ -17,12 +18,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer, Star, MessageSquare, Edit2, CheckCheck, Receipt } from 'lucide-react';
+import { Loader2, Mail, FileText, Briefcase, DollarSign, LogOut, Download, CreditCard, CheckCircle, ClipboardList, PenLine, Plus, Trash2, Wallet, Banknote, Phone, MapPin, Calendar, Clock, ChevronDown, ChevronUp, X, ArrowLeft, Camera, ExternalLink, Bell, Printer, Star, MessageSquare, Edit2, CheckCheck, Receipt, User, Building2 } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format, formatDistanceToNow } from 'date-fns';
 import { SignatureDialog } from '@/components/signatures/SignatureDialog';
 import { loadStripe } from '@stripe/stripe-js';
@@ -487,6 +489,12 @@ const CustomerPortal = () => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isUnassignedCustomer, setIsUnassignedCustomer] = useState(false);
+  const [hasCompanyAccess, setHasCompanyAccess] = useState(false);
+  
+  // Multi-invoice payment selection states
+  const [showPaymentSelection, setShowPaymentSelection] = useState(false);
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
+  const [isPayingMultiple, setIsPayingMultiple] = useState(false);
   
   // Payment methods state
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
@@ -709,6 +717,7 @@ const CustomerPortal = () => {
       setJobs(data.jobs || []);
       setQuotes(data.quotes || []);
       setIsUnassignedCustomer(data.isUnassigned === true);
+      setHasCompanyAccess(data.hasCompanyAccess === true);
       setIsAuthenticated(true);
       
       // If in signing mode, fetch the specific document details
@@ -803,6 +812,61 @@ const CustomerPortal = () => {
     setJobs([]);
     setQuotes([]);
     setPaymentMethods([]);
+    setHasCompanyAccess(false);
+  };
+
+  // Handle pay multiple invoices
+  const handlePayMultipleInvoices = async () => {
+    if (selectedInvoiceIds.size === 0) {
+      toast.error('Please select at least one invoice to pay');
+      return;
+    }
+    
+    setSignatureAction({ 
+      type: 'invoice', 
+      id: 'multiple',
+      data: { 
+        invoiceIds: Array.from(selectedInvoiceIds),
+        total: unpaidInvoices
+          .filter(i => selectedInvoiceIds.has(i.id))
+          .reduce((sum, i) => sum + Number(i.total), 0)
+      }
+    });
+    setSignatureDialogOpen(true);
+  };
+
+  // Modified signature complete handler to support multiple invoices
+  const handleMultiInvoiceSignatureComplete = async (signatureData: string, signerName: string) => {
+    if (!signatureAction?.data?.invoiceIds) return;
+    
+    setIsPayingMultiple(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-invoice-payment', {
+        body: { 
+          invoiceIds: signatureAction.data.invoiceIds,
+          customerId: customerData?.id,
+          token: sessionStorage.getItem('customer_portal_token'),
+          signatureData,
+          signerName,
+        },
+      });
+
+      if (error || !data?.url) {
+        throw new Error(data?.error || 'Failed to create payment session');
+      }
+
+      // Redirect to Stripe checkout
+      window.open(data.url, '_blank');
+      setShowPaymentSelection(false);
+      setSelectedInvoiceIds(new Set());
+    } catch (err: any) {
+      console.error('Multi-invoice payment error:', err);
+      toast.error(err.message || 'Failed to create payment session');
+    } finally {
+      setIsPayingMultiple(false);
+      setSignatureDialogOpen(false);
+      setSignatureAction(null);
+    }
   };
 
   // Fetch quote details
@@ -2098,13 +2162,38 @@ const CustomerPortal = () => {
                 </ScrollArea>
               </PopoverContent>
             </Popover>
-            <span className="text-sm text-muted-foreground hidden sm:inline">
-              {customerData?.name}
-            </span>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </Button>
+            {/* Profile Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <User className="w-4 h-4" />
+                  <span className="hidden sm:inline">{customerData?.name}</span>
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{customerData?.name}</span>
+                    <span className="text-xs text-muted-foreground">{customerData?.email}</span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {hasCompanyAccess && (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                      <Building2 className="w-4 h-4 mr-2" />
+                      Switch to Company Portal
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -2116,8 +2205,9 @@ const CustomerPortal = () => {
           <p className="text-muted-foreground">View your quotes, invoices, and service history below.</p>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - Reordered: Pending Quotes, Service Jobs, Total Invoices, Outstanding */}
         <div className="grid gap-4 md:grid-cols-4 mb-8">
+          {/* Pending Quotes Card */}
           <Card 
             className="cursor-pointer hover:bg-muted/50 transition-colors group"
             onClick={() => setActiveTab('quotes')}
@@ -2137,46 +2227,8 @@ const CustomerPortal = () => {
               </div>
             </CardContent>
           </Card>
-          <Card 
-            className="cursor-pointer hover:bg-muted/50 transition-colors group"
-            onClick={() => setActiveTab('invoices')}
-          >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-primary/10 rounded-lg">
-                    <FileText className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{invoices.length}</p>
-                    <p className="text-sm text-muted-foreground">Total Invoices</p>
-                  </div>
-                </div>
-                <span className="text-xs text-primary group-hover:underline font-medium">View All →</span>
-              </div>
-            </CardContent>
-          </Card>
-          <Card 
-            className="cursor-pointer hover:bg-muted/50 transition-colors group"
-            onClick={() => setActiveTab('invoices')}
-          >
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-amber-500/10 rounded-lg">
-                    <CreditCard className="w-6 h-6 text-amber-500" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">
-                      ${unpaidInvoices.reduce((sum, i) => sum + Number(i.total), 0).toFixed(2)}
-                    </p>
-                    <p className="text-sm text-muted-foreground">Outstanding</p>
-                  </div>
-                </div>
-                <span className="text-xs text-amber-600 group-hover:underline font-medium">Pay Now →</span>
-              </div>
-            </CardContent>
-          </Card>
+          
+          {/* Service Jobs Card - Moved next to Pending Quotes */}
           <Card 
             className="cursor-pointer hover:bg-muted/50 transition-colors group"
             onClick={() => setActiveTab('jobs')}
@@ -2196,9 +2248,61 @@ const CustomerPortal = () => {
               </div>
             </CardContent>
           </Card>
+          
+          {/* Total Invoices Card */}
+          <Card 
+            className="cursor-pointer hover:bg-muted/50 transition-colors group"
+            onClick={() => setActiveTab('invoices')}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <FileText className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{invoices.length}</p>
+                    <p className="text-sm text-muted-foreground">Total Invoices</p>
+                  </div>
+                </div>
+                <span className="text-xs text-primary group-hover:underline font-medium">View All →</span>
+              </div>
+            </CardContent>
+          </Card>
+          
+          {/* Outstanding Card - Opens payment selection */}
+          <Card 
+            className="cursor-pointer hover:bg-muted/50 transition-colors group"
+            onClick={() => {
+              if (unpaidInvoices.length > 0 && customerData?.company?.stripe_payments_enabled !== false) {
+                // Pre-select all unpaid invoices and show payment selection
+                setSelectedInvoiceIds(new Set(unpaidInvoices.map(i => i.id)));
+                setShowPaymentSelection(true);
+              } else {
+                setActiveTab('invoices');
+              }
+            }}
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-amber-500/10 rounded-lg">
+                    <CreditCard className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">
+                      ${unpaidInvoices.reduce((sum, i) => sum + Number(i.total), 0).toFixed(2)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Outstanding</p>
+                  </div>
+                </div>
+                <span className="text-xs text-amber-600 group-hover:underline font-medium">Pay Now →</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Tabs - Reordered: Jobs, Quotes, Invoices, Payment History, Payment Methods */}
+        {/* Tabs - Reordered: Jobs, Quotes, Invoices, Payment History (removed Payment Methods) */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
@@ -2218,12 +2322,6 @@ const CustomerPortal = () => {
               <Receipt className="w-4 h-4" />
               Payment History
             </TabsTrigger>
-            {customerData?.company?.stripe_payments_enabled !== false && (
-              <TabsTrigger value="payment-methods" className="flex items-center gap-2">
-                <Wallet className="w-4 h-4" />
-                Payment Methods
-              </TabsTrigger>
-            )}
           </TabsList>
 
           {/* Jobs Tab - Now First */}
@@ -2552,104 +2650,91 @@ const CustomerPortal = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="payment-methods">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <CreditCard className="w-5 h-5" />
-                      Payment Methods
-                    </CardTitle>
-                    <CardDescription>
-                      Manage your saved payment methods for faster checkout
-                    </CardDescription>
-                  </div>
-                  {!showAddPaymentMethod && (
-                    <Button onClick={() => setShowAddPaymentMethod(true)} size="sm">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Card
-                    </Button>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                {showAddPaymentMethod ? (
-                  <Elements stripe={stripePromise}>
-                    <AddPaymentMethodForm
-                      customerId={customerData?.id || ''}
-                      token={sessionStorage.getItem('customer_portal_token') || ''}
-                      onSuccess={() => {
-                        setShowAddPaymentMethod(false);
-                        fetchPaymentMethods();
-                      }}
-                      onCancel={() => setShowAddPaymentMethod(false)}
-                    />
-                  </Elements>
-                ) : isLoadingPaymentMethods ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : paymentMethods.length > 0 ? (
-                  <div className="space-y-3">
-                    {paymentMethods.map((pm) => (
-                      <div
-                        key={pm.id}
-                        className="flex items-center justify-between p-4 border rounded-lg"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-muted rounded-lg">
-                            <CreditCard className="w-5 h-5" />
-                          </div>
-                          <div>
-                            {pm.type === 'card' ? (
-                              <>
-                                <p className="font-medium capitalize">
-                                  {pm.brand} •••• {pm.last4}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  Expires {pm.exp_month}/{pm.exp_year}
-                                </p>
-                              </>
-                            ) : (
-                              <>
-                                <p className="font-medium">
-                                  {pm.bank_name} •••• {pm.last4}
-                                </p>
-                                <p className="text-sm text-muted-foreground capitalize">
-                                  {pm.account_type} Account
-                                </p>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeletePaymentMethod(pm.id)}
-                          disabled={deletingPaymentMethod === pm.id}
-                          className="text-destructive hover:text-destructive"
-                        >
-                          {deletingPaymentMethod === pm.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <CreditCard className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No saved payment methods</p>
-                    <p className="text-sm mt-1">Add a card for faster checkout</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
+
+        {/* Multi-Invoice Payment Selection Dialog */}
+        <Dialog open={showPaymentSelection} onOpenChange={setShowPaymentSelection}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5" />
+                Pay Selected Invoices
+              </DialogTitle>
+              <DialogDescription>
+                Select which invoices you want to pay. You can deselect any invoices you don't want to pay now.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <ScrollArea className="max-h-60">
+                <div className="space-y-2">
+                  {unpaidInvoices.map((invoice) => (
+                    <div
+                      key={invoice.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                        selectedInvoiceIds.has(invoice.id) ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'
+                      }`}
+                    >
+                      <Checkbox
+                        checked={selectedInvoiceIds.has(invoice.id)}
+                        onCheckedChange={(checked) => {
+                          const newSelected = new Set(selectedInvoiceIds);
+                          if (checked) {
+                            newSelected.add(invoice.id);
+                          } else {
+                            newSelected.delete(invoice.id);
+                          }
+                          setSelectedInvoiceIds(newSelected);
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{invoice.invoice_number}</span>
+                          <span className="font-semibold">${Number(invoice.total).toFixed(2)}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {invoice.due_date ? `Due ${format(new Date(invoice.due_date), 'MMM d, yyyy')}` : 'No due date'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+              
+              <div className="flex items-center justify-between pt-4 border-t">
+                <div>
+                  <p className="text-sm text-muted-foreground">Selected Total</p>
+                  <p className="text-2xl font-bold">
+                    ${unpaidInvoices
+                      .filter(i => selectedInvoiceIds.has(i.id))
+                      .reduce((sum, i) => sum + Number(i.total), 0)
+                      .toFixed(2)}
+                  </p>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {selectedInvoiceIds.size} of {unpaidInvoices.length} invoices
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowPaymentSelection(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handlePayMultipleInvoices}
+                disabled={selectedInvoiceIds.size === 0 || isPayingMultiple}
+              >
+                {isPayingMultiple ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <CreditCard className="w-4 h-4 mr-2" />
+                )}
+                Proceed to Payment
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
 
       {/* Quote Detail Sheet */}
