@@ -51,7 +51,7 @@ serve(async (req) => {
       // Get admin users for this company
       const { data: admins } = await supabase
         .from("profiles")
-        .select("id, email, full_name")
+        .select("id, email, first_name, last_name, full_name")
         .eq("company_id", company.id)
         .in("role", ["admin", "manager"]);
       
@@ -172,7 +172,7 @@ serve(async (req) => {
               <p style="margin: 10px 0 0; opacity: 0.9;">${weekStart} - ${weekEnd}</p>
             </div>
             <div class="content">
-              <p>Hi ${admin.full_name || "there"},</p>
+              <p>Hi ${admin.first_name || admin.full_name || "there"},</p>
               <p>Here's your weekly summary for <strong>${company.name}</strong>:</p>
               
               <div class="stats-grid">

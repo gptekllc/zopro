@@ -124,10 +124,10 @@ serve(async (req) => {
           invoice_number,
           total,
           late_fee_amount,
-          customer:customers(name, email, address, city, state, zip, phone),
+          customer:customers(first_name, last_name, name, email, address, city, state, zip, phone),
           company:companies(name, email, phone, address, city, state, zip, logo_url, brand_primary_color)
         ),
-        recorded_by_profile:profiles!payments_recorded_by_fkey(full_name)
+        recorded_by_profile:profiles!payments_recorded_by_fkey(first_name, last_name, full_name)
       `)
       .eq('id', payload.paymentId)
       .single();
@@ -299,7 +299,8 @@ serve(async (req) => {
     page.drawText('RECEIVED FROM:', { x: leftMargin, y: yPosition, size: 10, font: helveticaBold, color: rgb(0.5, 0.5, 0.5) });
     yPosition -= 18;
 
-    page.drawText(customer.name || 'Customer', { x: leftMargin, y: yPosition, size: 12, font: helveticaBold, color: rgb(0.2, 0.2, 0.2) });
+    const customerDisplayName = [customer.first_name, customer.last_name].filter(Boolean).join(' ') || customer.name || 'Customer';
+    page.drawText(customerDisplayName, { x: leftMargin, y: yPosition, size: 12, font: helveticaBold, color: rgb(0.2, 0.2, 0.2) });
     yPosition -= 14;
 
     if (customer.address) {
@@ -460,7 +461,7 @@ serve(async (req) => {
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #16a34a;">Payment Receipt</h1>
-          <p>Dear ${customer.name},</p>
+          <p>Dear ${[customer.first_name, customer.last_name].filter(Boolean).join(' ') || customer.name || 'Customer'},</p>
           <p>Thank you for your payment to <strong>${company.name}</strong>.</p>
           <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <p style="margin: 0;"><strong>Invoice:</strong> ${invoice.invoice_number}</p>

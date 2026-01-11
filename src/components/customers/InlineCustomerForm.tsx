@@ -18,7 +18,8 @@ interface InlineCustomerFormProps {
 }
 
 interface NewCustomerData {
-  name: string;
+  first_name: string;
+  last_name: string;
   phone: string;
   email: string;
   address: string;
@@ -36,7 +37,8 @@ export function InlineCustomerForm({
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [open, setOpen] = useState(false);
   const [newCustomer, setNewCustomer] = useState<NewCustomerData>({
-    name: '',
+    first_name: '',
+    last_name: '',
     phone: '',
     email: '',
     address: '',
@@ -54,7 +56,8 @@ export function InlineCustomerForm({
 
   const resetNewCustomerForm = () => {
     setNewCustomer({
-      name: '',
+      first_name: '',
+      last_name: '',
       phone: '',
       email: '',
       address: '',
@@ -65,15 +68,15 @@ export function InlineCustomerForm({
   };
 
   const handleAddNewCustomer = async () => {
-    if (!newCustomer.name.trim()) {
+    if (!newCustomer.first_name.trim()) {
       return;
     }
 
     try {
       const result = await createCustomer.mutateAsync({
-        name: newCustomer.name.trim(),
-        first_name: newCustomer.name.trim().split(' ')[0] || null,
-        last_name: newCustomer.name.trim().split(' ').slice(1).join(' ') || null,
+        name: [newCustomer.first_name.trim(), newCustomer.last_name.trim()].filter(Boolean).join(' '),
+        first_name: newCustomer.first_name.trim(),
+        last_name: newCustomer.last_name.trim() || null,
         phone: getPhoneDigits(newCustomer.phone) || null,
         email: newCustomer.email.trim() || null,
         address: newCustomer.address.trim() || null,
@@ -112,13 +115,23 @@ export function InlineCustomerForm({
           </Button>
         </div>
         
-        <div className="space-y-2">
-          <Label>Name *</Label>
-          <Input
-            value={newCustomer.name}
-            onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })}
-            placeholder="Customer name"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>First Name *</Label>
+            <Input
+              value={newCustomer.first_name}
+              onChange={(e) => setNewCustomer({ ...newCustomer, first_name: e.target.value })}
+              placeholder="First name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Last Name</Label>
+            <Input
+              value={newCustomer.last_name}
+              onChange={(e) => setNewCustomer({ ...newCustomer, last_name: e.target.value })}
+              placeholder="Last name"
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -189,7 +202,7 @@ export function InlineCustomerForm({
             size="sm"
             className="flex-1"
             onClick={handleAddNewCustomer}
-            disabled={!newCustomer.name.trim() || createCustomer.isPending}
+            disabled={!newCustomer.first_name.trim() || createCustomer.isPending}
           >
             {createCustomer.isPending ? 'Adding...' : 'Add Customer'}
           </Button>
