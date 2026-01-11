@@ -2964,7 +2964,8 @@ const CustomerPortal = () => {
                       <span className="font-medium">Paid</span>
                     </div>
                   </div>
-                  {viewingInvoice.signature?.signature_data && (
+                  {/* Show signature if available, otherwise show "Paid Online" message */}
+                  {viewingInvoice.signature?.signature_data ? (
                     <div className="bg-muted/50 rounded-lg p-3">
                       <p className="text-sm text-muted-foreground mb-2">Signature</p>
                       <img 
@@ -2975,6 +2976,18 @@ const CustomerPortal = () => {
                       <p className="text-xs text-muted-foreground mt-2">
                         Signed by {viewingInvoice.signature.signer_name} on {format(new Date(viewingInvoice.signature.signed_at), 'MMMM d, yyyy')}
                       </p>
+                    </div>
+                  ) : (
+                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-800 flex items-center justify-center">
+                          <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Paid Online via Stripe</p>
+                          <p className="text-xs text-muted-foreground">No signature required for online payments</p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -3173,46 +3186,108 @@ const CustomerPortal = () => {
                 </div>
               )}
 
-              {/* Photos Section */}
-              {viewingJob.photos && viewingJob.photos.length > 0 && (
-                <div className="pt-4 border-t">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Camera className="w-4 h-4 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Job Photos ({viewingJob.photos.length})</p>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {viewingJob.photos.map((photo) => (
-                      <a 
-                        key={photo.id} 
-                        href={photo.photo_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="group relative aspect-square rounded-lg overflow-hidden border hover:border-primary transition-colors"
-                      >
-                        <img 
-                          src={photo.photo_url} 
-                          alt={photo.caption || 'Job photo'} 
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <ExternalLink className="w-5 h-5 text-white" />
+              {/* Photos Section - Collapsible with categories */}
+              {viewingJob.photos && viewingJob.photos.length > 0 && (() => {
+                const beforePhotos = viewingJob.photos.filter(p => p.photo_type === 'before');
+                const afterPhotos = viewingJob.photos.filter(p => p.photo_type === 'after');
+                const otherPhotos = viewingJob.photos.filter(p => !['before', 'after'].includes(p.photo_type));
+                
+                return (
+                  <div className="pt-4 border-t">
+                    <details className="group" open>
+                      <summary className="flex items-center justify-between cursor-pointer list-none">
+                        <div className="flex items-center gap-2">
+                          <Camera className="w-4 h-4 text-muted-foreground" />
+                          <p className="text-sm font-medium">Job Photos ({viewingJob.photos.length})</p>
                         </div>
-                        {photo.caption && (
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-1">
-                            <p className="text-xs text-white truncate">{photo.caption}</p>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                      </summary>
+                      <div className="mt-3 space-y-4">
+                        {/* Before Photos */}
+                        {beforePhotos.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Before</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {beforePhotos.map((photo) => (
+                                <a 
+                                  key={photo.id} 
+                                  href={photo.photo_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="group/photo relative aspect-square rounded-lg overflow-hidden border hover:border-primary transition-colors"
+                                >
+                                  <img 
+                                    src={photo.photo_url} 
+                                    alt={photo.caption || 'Before photo'} 
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center">
+                                    <ExternalLink className="w-4 h-4 text-white" />
+                                  </div>
+                                </a>
+                              ))}
+                            </div>
                           </div>
                         )}
-                        <Badge 
-                          variant="secondary" 
-                          className="absolute top-1 right-1 text-xs capitalize"
-                        >
-                          {photo.photo_type.replace('_', ' ')}
-                        </Badge>
-                      </a>
-                    ))}
+                        
+                        {/* After Photos */}
+                        {afterPhotos.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">After</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {afterPhotos.map((photo) => (
+                                <a 
+                                  key={photo.id} 
+                                  href={photo.photo_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="group/photo relative aspect-square rounded-lg overflow-hidden border hover:border-primary transition-colors"
+                                >
+                                  <img 
+                                    src={photo.photo_url} 
+                                    alt={photo.caption || 'After photo'} 
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center">
+                                    <ExternalLink className="w-4 h-4 text-white" />
+                                  </div>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Other Photos */}
+                        {otherPhotos.length > 0 && (
+                          <div>
+                            <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Other</p>
+                            <div className="grid grid-cols-3 gap-2">
+                              {otherPhotos.map((photo) => (
+                                <a 
+                                  key={photo.id} 
+                                  href={photo.photo_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="group/photo relative aspect-square rounded-lg overflow-hidden border hover:border-primary transition-colors"
+                                >
+                                  <img 
+                                    src={photo.photo_url} 
+                                    alt={photo.caption || 'Job photo'} 
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center">
+                                    <ExternalLink className="w-4 h-4 text-white" />
+                                  </div>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </details>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Signature Status with Signature Image */}
               {viewingJob.completion_signed_at && (

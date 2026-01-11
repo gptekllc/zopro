@@ -285,11 +285,8 @@ const Invoices = () => {
       openEditDialog(false);
       resetForm();
       
-      // Open the detail dialog for the created/updated invoice
-      if (resultInvoiceId) {
-        await refetchInvoices();
-        setPendingViewInvoiceId(resultInvoiceId);
-      }
+      // Refresh the page to ensure all list cards show updated data
+      window.location.reload();
     } catch (error) {
       toast.error(editingInvoice ? "Failed to update invoice" : "Failed to create invoice");
     }

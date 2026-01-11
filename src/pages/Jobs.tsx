@@ -399,11 +399,8 @@ const Jobs = () => {
       openEditDialog(false);
       resetForm();
 
-      // Open the detail dialog for the created/updated job
-      if (resultJobId) {
-        await refetchJobs();
-        setPendingViewJobId(resultJobId);
-      }
+      // Refresh the page to ensure all list cards show updated data
+      window.location.reload();
     } catch (error) {
       // Error handled by hook
     }
