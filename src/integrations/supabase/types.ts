@@ -2883,6 +2883,10 @@ export type Database = {
           company_id: string
         }[]
       }
+      create_customer_from_auth_user: {
+        Args: { _email: string; _name: string }
+        Returns: string
+      }
       create_default_email_templates: {
         Args: { _company_id: string; _created_by?: string }
         Returns: undefined

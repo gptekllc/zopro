@@ -16,13 +16,48 @@ const CustomerOnboardingFlow = ({ onBack, onComplete }: CustomerOnboardingFlowPr
   const [isLoading, setIsLoading] = useState(false);
 
   const handleContinue = async () => {
-    if (!user) return;
+    if (!user) {
+      toast.error('Please log in to continue');
+      return;
+    }
 
     setIsLoading(true);
+    console.log('[CustomerOnboardingFlow] Starting customer setup for user:', user.id);
 
     try {
+      // Get user's profile for name/email
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', user.id)
+        .single();
+
+      const customerName = profile?.full_name || user.email?.split('@')[0] || 'Customer';
+      const customerEmail = profile?.email || user.email;
+
+      console.log('[CustomerOnboardingFlow] Creating customer record:', { customerName, customerEmail });
+
+      // Create a customer record using the RPC function
+      const { data: customerId, error: customerError } = await supabase.rpc(
+        'create_customer_from_auth_user',
+        {
+          _name: customerName,
+          _email: customerEmail || '',
+        }
+      );
+
+      if (customerError) {
+        console.error('[CustomerOnboardingFlow] Customer creation error:', customerError);
+        // If customer already exists, that's okay - continue
+        if (!customerError.message.includes('already exists')) {
+          throw customerError;
+        }
+      } else {
+        console.log('[CustomerOnboardingFlow] Customer record created:', customerId);
+      }
+
       // Add customer role to user_roles table
-      const { error: roleError } = await (supabase as any)
+      const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
           user_id: user.id,
@@ -30,22 +65,27 @@ const CustomerOnboardingFlow = ({ onBack, onComplete }: CustomerOnboardingFlowPr
         });
 
       if (roleError && !roleError.message.includes('duplicate')) {
-        throw roleError;
+        console.error('[CustomerOnboardingFlow] Role insert error:', roleError);
+        // Continue anyway - not critical
       }
 
       // Update profile role
-      const { error: profileError } = await (supabase as any)
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({ role: 'customer' })
         .eq('id', user.id);
 
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('[CustomerOnboardingFlow] Profile update error:', profileError);
+        throw profileError;
+      }
 
+      console.log('[CustomerOnboardingFlow] Customer setup complete');
       toast.success('Welcome! You can now access the customer portal.');
       onComplete();
     } catch (error: any) {
-      console.error('Customer setup error:', error);
-      toast.error('Failed to set up customer account: ' + error.message);
+      console.error('[CustomerOnboardingFlow] Error:', error);
+      toast.error('Failed to set up customer account: ' + (error.message || 'Unknown error'));
     } finally {
       setIsLoading(false);
     }

@@ -28,7 +28,11 @@ const CreateCompanyFlow = ({ onBack, onComplete }: CreateCompanyFlowProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    
+    if (!user) {
+      toast.error('Please log in to create a company');
+      return;
+    }
 
     if (!formData.name.trim()) {
       toast.error('Company name is required');
@@ -36,26 +40,43 @@ const CreateCompanyFlow = ({ onBack, onComplete }: CreateCompanyFlowProps) => {
     }
 
     setIsLoading(true);
+    console.log('[CreateCompanyFlow] Starting company creation for user:', user.id);
 
     try {
       // Create company + set current user as admin via secure RPC (bypasses RLS pitfalls)
-      const { error } = await (supabase as any).rpc('create_company_and_set_admin', {
-        _name: formData.name,
-        _email: formData.email,
-        _phone: formData.phone,
-        _address: formData.address,
-        _city: formData.city,
-        _state: formData.state,
-        _zip: formData.zip,
+      const { data, error } = await supabase.rpc('create_company_and_set_admin', {
+        _name: formData.name.trim(),
+        _email: formData.email.trim() || null,
+        _phone: formData.phone.trim() || null,
+        _address: formData.address.trim() || null,
+        _city: formData.city.trim() || null,
+        _state: formData.state.trim() || null,
+        _zip: formData.zip.trim() || null,
       });
 
-      if (error) throw error;
+      console.log('[CreateCompanyFlow] RPC response:', { data, error });
 
+      if (error) {
+        console.error('[CreateCompanyFlow] RPC error:', error);
+        if (error.code === 'PGRST301') {
+          throw new Error('Permission denied. Please try logging out and back in.');
+        } else if (error.code === '23505') {
+          throw new Error('A company with this information already exists.');
+        } else {
+          throw new Error(error.message || 'Failed to create company');
+        }
+      }
+
+      console.log('[CreateCompanyFlow] Company created successfully, new company ID:', data);
       toast.success('Company created successfully!');
+      
+      // Force a session refresh to pick up the new company_id
+      await supabase.auth.refreshSession();
+      
       onComplete();
     } catch (error: any) {
-      console.error('Company creation error:', error);
-      toast.error('Failed to create company: ' + error.message);
+      console.error('[CreateCompanyFlow] Error:', error);
+      toast.error(error.message || 'Failed to create company. Please try again.');
     } finally {
       setIsLoading(false);
     }
