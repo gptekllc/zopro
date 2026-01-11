@@ -2115,7 +2115,26 @@ Deno.serve(async (req) => {
           .from('job_photos')
           .select('id, photo_url, photo_type, caption, created_at')
           .eq('job_id', documentId)
+          .is('deleted_at', null)
           .order('display_order', { ascending: true });
+        
+        // Generate signed URLs for each photo (storage is private)
+        const photosWithSignedUrls = await Promise.all(
+          (photos || []).map(async (photo) => {
+            // If already a full signed URL, return as-is
+            if (photo.photo_url.startsWith('http')) {
+              return photo;
+            }
+            // Create signed URL valid for 1 hour
+            const { data } = await adminClient.storage
+              .from('job-photos')
+              .createSignedUrl(photo.photo_url, 3600);
+            return {
+              ...photo,
+              photo_url: data?.signedUrl || photo.photo_url,
+            };
+          })
+        );
         
         // Fetch completion signature if exists
         let signature = null;
@@ -2128,7 +2147,7 @@ Deno.serve(async (req) => {
           signature = sig;
         }
         
-        document = { ...job, signature, photos: photos || [] };
+        document = { ...job, signature, photos: photosWithSignedUrls };
         items = jobItems || [];
       } else {
         return new Response(

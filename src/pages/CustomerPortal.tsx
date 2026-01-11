@@ -2744,7 +2744,7 @@ const CustomerPortal = () => {
 
       {/* Quote Detail Sheet */}
       <Sheet open={!!viewingQuote} onOpenChange={(open) => !open && setViewingQuote(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto" side="right">
+        <SheetContent className="w-[95vw] sm:max-w-lg overflow-y-auto rounded-l-lg" side="right">
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
@@ -2882,7 +2882,7 @@ const CustomerPortal = () => {
 
       {/* Invoice Detail Sheet */}
       <Sheet open={!!viewingInvoice} onOpenChange={(open) => !open && setViewingInvoice(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto" side="right">
+        <SheetContent className="w-[95vw] sm:max-w-lg overflow-y-auto rounded-l-lg" side="right">
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
@@ -3064,7 +3064,7 @@ const CustomerPortal = () => {
 
       {/* Job Detail Sheet */}
       <Sheet open={!!viewingJob} onOpenChange={(open) => !open && setViewingJob(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto" side="right">
+        <SheetContent className="w-[95vw] sm:max-w-lg overflow-y-auto rounded-l-lg" side="right">
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
