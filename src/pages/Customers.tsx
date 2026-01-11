@@ -43,7 +43,8 @@ const Customers = () => {
   }, [saveScrollPosition, restoreScrollPosition]);
   const [sendingPortalLink, setSendingPortalLink] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
     address: '',
@@ -54,14 +55,22 @@ const Customers = () => {
   });
 
   const currentCustomers = showDeleted ? deletedCustomers : customers;
-  const filteredCustomers = currentCustomers.filter(c =>
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (c.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-    (c.phone || '').includes(searchQuery)
-  );
+  const filteredCustomers = currentCustomers.filter(c => {
+    const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ').toLowerCase();
+    return fullName.includes(searchQuery.toLowerCase()) ||
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (c.phone || '').includes(searchQuery);
+  });
+
+  // Helper to get display name
+  const getDisplayName = (customer: Customer) => {
+    const fullName = [customer.first_name, customer.last_name].filter(Boolean).join(' ');
+    return fullName || customer.name;
+  };
 
   const resetForm = () => {
-    setFormData({ name: '', email: '', phone: '', address: '', city: '', state: '', zip: '', notes: '' });
+    setFormData({ first_name: '', last_name: '', email: '', phone: '', address: '', city: '', state: '', zip: '', notes: '' });
     setEditingCustomer(null);
   };
 
@@ -70,6 +79,8 @@ const Customers = () => {
     
     const submitData = {
       ...formData,
+      // Derive name from first_name + last_name for backward compatibility
+      name: [formData.first_name, formData.last_name].filter(Boolean).join(' '),
       phone: getPhoneDigits(formData.phone) || null,
     };
     
@@ -85,7 +96,8 @@ const Customers = () => {
 
   const handleEdit = (customer: Customer) => {
     setFormData({
-      name: customer.name,
+      first_name: customer.first_name || '',
+      last_name: customer.last_name || '',
       email: customer.email || '',
       phone: formatPhoneNumber(customer.phone || ''),
       address: customer.address || '',
@@ -198,9 +210,15 @@ const Customers = () => {
                 <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name *</Label>
-                  <Input id="name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name">First Name *</Label>
+                    <Input id="first_name" value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="last_name">Last Name</Label>
+                    <Input id="last_name" value={formData.last_name} onChange={(e) => setFormData({ ...formData, last_name: e.target.value })} />
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -264,13 +282,13 @@ const Customers = () => {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <Avatar className="w-12 h-12">
-                        <AvatarImage src={customer.avatar_url || undefined} alt={customer.name} />
+                        <AvatarImage src={customer.avatar_url || undefined} alt={getDisplayName(customer)} />
                         <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                          {customer.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                          {getDisplayName(customer).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <h3 className="font-semibold group-hover:text-primary transition-colors">{customer.name}</h3>
+                        <h3 className="font-semibold group-hover:text-primary transition-colors">{getDisplayName(customer)}</h3>
                       </div>
                     </div>
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
@@ -319,9 +337,9 @@ const Customers = () => {
                         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
                           <User className="w-6 h-6 text-muted-foreground" />
                         </div>
-                        <h3 className="font-semibold">{customer.name}</h3>
+                        <h3 className="font-semibold">{getDisplayName(customer)}</h3>
                       </div>
-                      <Button 
+                      <Button
                         variant="outline" 
                         size="sm"
                         onClick={() => restoreCustomer.mutate(customer.id)}

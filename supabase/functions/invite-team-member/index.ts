@@ -8,7 +8,9 @@ const corsHeaders = {
 
 interface InviteRequest {
   email: string;
-  full_name: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
   role: 'admin' | 'manager' | 'technician' | 'customer';
   company_id: string;
   resend?: boolean;
@@ -93,9 +95,12 @@ Deno.serve(async (req) => {
       .single();
 
     const body: InviteRequest = await req.json();
-    const { email, full_name, role, company_id, resend: isResend } = body;
+    const { email, first_name, last_name, full_name: providedFullName, role, company_id, resend: isResend } = body;
+    
+    // Derive full_name from first_name + last_name, or use provided full_name
+    const full_name = providedFullName || [first_name, last_name].filter(Boolean).join(' ') || '';
 
-    console.log('Invite request:', { email, full_name, role, company_id, isResend });
+    console.log('Invite request:', { email, first_name, last_name, full_name, role, company_id, isResend });
 
     // Validate that the admin is inviting to their own company
     if (callerProfile.company_id !== company_id) {
@@ -130,6 +135,8 @@ Deno.serve(async (req) => {
         .update({ 
           company_id, 
           role,
+          first_name: first_name || null,
+          last_name: last_name || null,
           full_name: full_name || existingProfile?.full_name 
         })
         .eq('id', existingUser.id);
@@ -184,7 +191,7 @@ Deno.serve(async (req) => {
     const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
       email,
       email_confirm: false, // They'll need to confirm their email
-      user_metadata: { full_name },
+      user_metadata: { full_name, first_name, last_name },
     });
 
     if (createError) {
@@ -207,7 +214,7 @@ Deno.serve(async (req) => {
     // Update their profile with company and role
     const { error: profileError } = await adminClient
       .from('profiles')
-      .update({ company_id, role, full_name })
+      .update({ company_id, role, first_name: first_name || null, last_name: last_name || null, full_name })
       .eq('id', newUser.user.id);
 
     if (profileError) {
