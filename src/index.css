@@ -6,9 +6,9 @@
 
 @layer base {
   :root {
-    /* Safe area fallbacks - Despia Native runtime injects real values */
-    --safe-area-top: 0px;
-    --safe-area-bottom: 0px;
+    /* Safe area variables - Despia Native runtime injects values, with env() fallback for PWA */
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 
     --background: 210 20% 98%;
     --foreground: 222 47% 11%;
