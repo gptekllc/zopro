@@ -64,8 +64,8 @@ const MobileBottomNav = () => {
 
   return (
     <nav 
-      className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t z-40"
-      style={{ paddingBottom: 'var(--safe-area-bottom)' }}
+      className="lg:hidden fixed left-0 right-0 bg-card border-t z-40"
+      style={{ bottom: 0 }}
     >
       <div className="flex items-center justify-around h-16">
         {mainNavItems.map((item) => (
