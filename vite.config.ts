@@ -51,8 +51,11 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MiB limit for large bundles
+        // Offline fallback - serve index.html for navigation requests
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api/, /^\/supabase/, /\/customer-portal/],
         runtimeCaching: [
           {
             // Cache Supabase REST API GET requests (stale-while-revalidate)
@@ -67,6 +70,19 @@ export default defineConfig(({ mode }) => ({
               cacheableResponse: {
                 statuses: [0, 200],
               },
+            },
+          },
+          {
+            // Cache Supabase auth endpoint (network-first for security)
+            urlPattern: /^https:\/\/.*\.supabase\.co\/auth\/v1\/.*/i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "supabase-auth-cache",
+              expiration: {
+                maxEntries: 10,
+                maxAgeSeconds: 60, // 1 minute
+              },
+              networkTimeoutSeconds: 5,
             },
           },
           {
@@ -117,6 +133,19 @@ export default defineConfig(({ mode }) => ({
                 maxEntries: 100,
                 maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
               },
+            },
+          },
+          {
+            // Cache app pages for offline access (network-first)
+            urlPattern: /^\/(dashboard|jobs|quotes|invoices|customers|reports|items|timeclock|technicians|profile|settings|company|notifications).*/i,
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "app-pages-cache",
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 24 * 60 * 60, // 1 day
+              },
+              networkTimeoutSeconds: 3, // Fall back to cache after 3s
             },
           },
         ],

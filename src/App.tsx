@@ -1,6 +1,7 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -53,52 +54,54 @@ const AuthedLayout = () => (
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <ScrollToTop />
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/customer-portal" element={<CustomerPortal />} />
-            <Route path="/portal" element={<Navigate to="/customer-portal" replace />} />
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <ScrollToTop />
+            <Routes>
+              <Route path="/" element={<Login />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/customer-portal" element={<CustomerPortal />} />
+              <Route path="/portal" element={<Navigate to="/customer-portal" replace />} />
 
-            <Route element={<ProtectedRoute />}>
-              <Route element={<AuthedLayout />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/customers" element={<Customers />} />
-                <Route path="/customers/:customerId" element={<CustomerDetail />} />
-                <Route path="/jobs" element={<Jobs />} />
-                <Route path="/jobs/templates" element={<JobTemplates />} />
-                <Route path="/templates" element={<Templates />} />
-                <Route path="/items" element={<Items />} />
-                <Route path="/quotes" element={<Quotes />} />
-                <Route path="/invoices" element={<Invoices />} />
-                <Route path="/timeclock" element={<TimeClock />} />
-                <Route path="/timesheet" element={<TimesheetReport />} />
-                <Route path="/reports" element={<Reports />} />
-                <Route path="/technicians" element={<Technicians />} />
-                <Route path="/company" element={<Company />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/settings/security" element={<SecuritySettings />} />
-                <Route path="/security-settings" element={<SecuritySettings />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/notifications" element={<Notifications />} />
-                <Route path="/subscription" element={<Subscription />} />
-                <Route path="/super-admin" element={<SuperAdmin />} />
-                <Route path="/stripe-connect/return" element={<StripeConnectReturn />} />
-                <Route path="/stripe-connect/refresh" element={<StripeConnectRefresh />} />
+              <Route element={<ProtectedRoute />}>
+                <Route element={<AuthedLayout />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/customers" element={<Customers />} />
+                  <Route path="/customers/:customerId" element={<CustomerDetail />} />
+                  <Route path="/jobs" element={<Jobs />} />
+                  <Route path="/jobs/templates" element={<JobTemplates />} />
+                  <Route path="/templates" element={<Templates />} />
+                  <Route path="/items" element={<Items />} />
+                  <Route path="/quotes" element={<Quotes />} />
+                  <Route path="/invoices" element={<Invoices />} />
+                  <Route path="/timeclock" element={<TimeClock />} />
+                  <Route path="/timesheet" element={<TimesheetReport />} />
+                  <Route path="/reports" element={<Reports />} />
+                  <Route path="/technicians" element={<Technicians />} />
+                  <Route path="/company" element={<Company />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/settings/security" element={<SecuritySettings />} />
+                  <Route path="/security-settings" element={<SecuritySettings />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/notifications" element={<Notifications />} />
+                  <Route path="/subscription" element={<Subscription />} />
+                  <Route path="/super-admin" element={<SuperAdmin />} />
+                  <Route path="/stripe-connect/return" element={<StripeConnectReturn />} />
+                  <Route path="/stripe-connect/refresh" element={<StripeConnectRefresh />} />
+                </Route>
               </Route>
-            </Route>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

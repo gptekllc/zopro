@@ -41,6 +41,8 @@ import NotificationsBell from '@/components/notifications/NotificationsBell';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import MobileFAB from '@/components/layout/MobileFAB';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { OfflineIndicator } from '@/components/common/OfflineIndicator';
+import { ThemeToggle } from '@/components/common/ThemeToggle';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -230,7 +232,8 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile header with safe area */}
+      {/* Offline Indicator */}
+      <OfflineIndicator />
       <header 
         className="lg:hidden fixed left-0 right-0 bg-card border-b z-50 px-4"
         style={{ 
@@ -254,6 +257,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
           </button>
 
           <div className="flex items-center gap-1">
+            <ThemeToggle />
             <NotificationsBell />
 
             <DropdownMenu>
