@@ -231,7 +231,7 @@ const Login = () => {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center gradient-primary">
+      <div className="min-h-screen flex items-center justify-center gradient-primary" style={{ paddingTop: 'var(--safe-area-top)', paddingBottom: 'var(--safe-area-bottom)' }}>
         <div className="text-primary-foreground">Loading...</div>
       </div>
     );
@@ -240,7 +240,7 @@ const Login = () => {
   // Email verification required view
   if (view === 'verify-email') {
     return (
-      <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+      <div className="min-h-screen flex items-center justify-center gradient-primary p-4" style={{ paddingTop: 'calc(var(--safe-area-top) + 1rem)', paddingBottom: 'calc(var(--safe-area-bottom) + 1rem)' }}>
         <div className="w-full max-w-md animate-scale-in">
           <Card className="shadow-lg border-0">
             <CardHeader className="text-center">
@@ -302,7 +302,7 @@ const Login = () => {
   // Password reset success view
   if (view === 'reset-success') {
     return (
-      <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+      <div className="min-h-screen flex items-center justify-center gradient-primary p-4" style={{ paddingTop: 'calc(var(--safe-area-top) + 1rem)', paddingBottom: 'calc(var(--safe-area-bottom) + 1rem)' }}>
         <div className="w-full max-w-md animate-scale-in">
           <Card className="shadow-lg border-0">
             <CardHeader className="text-center">
@@ -339,7 +339,7 @@ const Login = () => {
   // Forgot password view
   if (view === 'forgot-password') {
     return (
-      <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+      <div className="min-h-screen flex items-center justify-center gradient-primary p-4" style={{ paddingTop: 'calc(var(--safe-area-top) + 1rem)', paddingBottom: 'calc(var(--safe-area-bottom) + 1rem)' }}>
         <div className="w-full max-w-md animate-scale-in">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-card mb-4 shadow-lg overflow-hidden">
@@ -403,7 +403,7 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+    <div className="min-h-screen flex items-center justify-center gradient-primary p-4" style={{ paddingTop: 'calc(var(--safe-area-top) + 1rem)', paddingBottom: 'calc(var(--safe-area-bottom) + 1rem)' }}>
       <div className="w-full max-w-md animate-scale-in">
         {/* Back to main site link */}
         <div className="mb-4">

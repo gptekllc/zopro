@@ -1688,7 +1688,7 @@ const CustomerPortal = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-background" style={{ paddingTop: 'var(--safe-area-top)', paddingBottom: 'var(--safe-area-bottom)' }}>
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -1697,7 +1697,7 @@ const CustomerPortal = () => {
   // Login screen
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4" style={{ paddingTop: 'calc(var(--safe-area-top) + 1rem)', paddingBottom: 'calc(var(--safe-area-bottom) + 1rem)' }}>
         <div className="text-center mb-6">
           <img 
             src={ZoProLogo} 
@@ -1868,7 +1868,7 @@ const CustomerPortal = () => {
     };
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10">
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-primary/10" style={{ paddingTop: 'var(--safe-area-top)', paddingBottom: 'var(--safe-area-bottom)' }}>
         {/* Header */}
         <header className="border-b bg-card">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -2081,7 +2081,7 @@ const CustomerPortal = () => {
   // Show welcome view for unassigned customers (not yet linked to a company)
   if (isUnassignedCustomer) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background" style={{ paddingTop: 'var(--safe-area-top)', paddingBottom: 'var(--safe-area-bottom)' }}>
         {/* Header */}
         <header className="border-b bg-card">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -2152,7 +2152,7 @@ const CustomerPortal = () => {
   // Portal dashboard
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" style={{ paddingTop: 'var(--safe-area-top)', paddingBottom: 'var(--safe-area-bottom)' }}>
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -2905,7 +2905,7 @@ const CustomerPortal = () => {
 
       {/* Quote Detail Sheet */}
       <Sheet open={!!viewingQuote} onOpenChange={(open) => !open && setViewingQuote(null)}>
-        <SheetContent className="w-[95vw] sm:max-w-lg overflow-y-auto rounded-l-lg" side="right">
+        <SheetContent className="w-[calc(100vw-2rem)] sm:max-w-lg overflow-y-auto rounded-l-lg mx-2 sm:mx-0" side="right">
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
@@ -3043,7 +3043,7 @@ const CustomerPortal = () => {
 
       {/* Invoice Detail Sheet */}
       <Sheet open={!!viewingInvoice} onOpenChange={(open) => !open && setViewingInvoice(null)}>
-        <SheetContent className="w-[95vw] sm:max-w-lg overflow-y-auto rounded-l-lg" side="right">
+        <SheetContent className="w-[calc(100vw-2rem)] sm:max-w-lg overflow-y-auto rounded-l-lg mx-2 sm:mx-0" side="right">
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
@@ -3225,7 +3225,7 @@ const CustomerPortal = () => {
 
       {/* Job Detail Sheet */}
       <Sheet open={!!viewingJob} onOpenChange={(open) => !open && setViewingJob(null)}>
-        <SheetContent className="w-[95vw] sm:max-w-lg overflow-y-auto rounded-l-lg" side="right">
+        <SheetContent className="w-[calc(100vw-2rem)] sm:max-w-lg overflow-y-auto rounded-l-lg mx-2 sm:mx-0" side="right">
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
