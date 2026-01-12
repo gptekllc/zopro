@@ -1,23 +1,42 @@
-import { useState, useRef, useCallback, ReactNode } from 'react';
+import { useState, useRef, useCallback, ReactNode, useEffect } from 'react';
 import { Loader2, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface PullToRefreshProps {
   onRefresh: () => Promise<void>;
   children: ReactNode;
   className?: string;
+  renderSkeleton?: () => ReactNode;
 }
 
-export function PullToRefresh({ onRefresh, children, className }: PullToRefreshProps) {
+export function PullToRefresh({ onRefresh, children, className, renderSkeleton }: PullToRefreshProps) {
+  const isMobile = useIsMobile();
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPulling, setIsPulling] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
   const currentY = useRef(0);
+  const hasVibrated = useRef(false);
 
   const PULL_THRESHOLD = 80;
   const MAX_PULL = 120;
+
+  // Haptic feedback when threshold is reached
+  useEffect(() => {
+    if (pullDistance >= PULL_THRESHOLD && !hasVibrated.current && !isRefreshing) {
+      hasVibrated.current = true;
+      // Trigger haptic feedback if supported
+      if ('vibrate' in navigator) {
+        navigator.vibrate(10); // Short 10ms vibration
+      }
+    }
+    if (pullDistance < PULL_THRESHOLD) {
+      hasVibrated.current = false;
+    }
+  }, [pullDistance, isRefreshing]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (isRefreshing) return;
@@ -75,6 +94,11 @@ export function PullToRefresh({ onRefresh, children, className }: PullToRefreshP
   const progress = Math.min(pullDistance / PULL_THRESHOLD, 1);
   const showIndicator = pullDistance > 10 || isRefreshing;
 
+  // If not mobile/tablet, just render children without pull-to-refresh
+  if (!isMobile) {
+    return <div className={className}>{children}</div>;
+  }
+
   return (
     <div
       ref={containerRef}
@@ -113,14 +137,66 @@ export function PullToRefresh({ onRefresh, children, className }: PullToRefreshP
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content - show skeleton during refresh if provided */}
       <div
         style={{
           transform: `translateY(${pullDistance}px)`,
           transition: isPulling ? 'none' : 'transform 0.2s ease-out',
         }}
       >
-        {children}
+        {isRefreshing && renderSkeleton ? renderSkeleton() : children}
+      </div>
+    </div>
+  );
+}
+
+// Reusable skeleton components for common views
+export function ListSkeleton({ count = 5 }: { count?: number }) {
+  return (
+    <div className="space-y-3 p-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3 p-4 border rounded-lg">
+          <Skeleton className="w-10 h-10 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function CardSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 p-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="p-4 border rounded-lg space-y-3">
+          <Skeleton className="h-5 w-1/2" />
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-4 w-1/3" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 p-4">
+      {/* Stats cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="p-4 border rounded-lg space-y-2">
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-8 w-2/3" />
+          </div>
+        ))}
+      </div>
+      {/* Charts */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Skeleton className="h-64 rounded-lg" />
+        <Skeleton className="h-64 rounded-lg" />
       </div>
     </div>
   );

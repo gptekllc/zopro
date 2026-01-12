@@ -40,7 +40,7 @@ const Reports = () => {
 };
 
 const ReportsContent = () => {
-  const [activeTab, setActiveTab] = useState('transactions');
+  const [activeTab, setActiveTab] = useState('summary');
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -69,6 +69,10 @@ const ReportsContent = () => {
           </header>
 
           <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
+            <TabsTrigger value="summary" className="gap-2">
+              <BarChart3 className="w-4 h-4 hidden sm:inline" />
+              Summary
+            </TabsTrigger>
             <TabsTrigger value="transactions" className="gap-2">
               <DollarSign className="w-4 h-4 hidden sm:inline" />
               <span className="hidden sm:inline">Transactions</span>
@@ -78,10 +82,6 @@ const ReportsContent = () => {
               <Clock className="w-4 h-4 hidden sm:inline" />
               <span className="hidden sm:inline">Timesheets</span>
               <span className="sm:hidden">Time</span>
-            </TabsTrigger>
-            <TabsTrigger value="summary" className="gap-2">
-              <BarChart3 className="w-4 h-4 hidden sm:inline" />
-              Summary
             </TabsTrigger>
             <TabsTrigger value="customers" className="gap-2">
               <Users className="w-4 h-4 hidden sm:inline" />
@@ -95,16 +95,16 @@ const ReportsContent = () => {
           </TabsList>
         </div>
 
+        <TabsContent value="summary" className="mt-6">
+          <MonthlySummaryReport />
+        </TabsContent>
+
         <TabsContent value="transactions" className="mt-6">
           <TransactionsReport />
         </TabsContent>
 
         <TabsContent value="timesheets" className="mt-6">
           <TimesheetReportTab />
-        </TabsContent>
-
-        <TabsContent value="summary" className="mt-6">
-          <MonthlySummaryReport />
         </TabsContent>
 
         <TabsContent value="customers" className="mt-6">
