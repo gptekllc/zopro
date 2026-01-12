@@ -83,7 +83,13 @@ const CreateCompanyFlow = ({ onBack, onComplete }: CreateCompanyFlowProps) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+    <div 
+      className="min-h-screen flex items-center justify-center gradient-primary p-4"
+      style={{
+        paddingTop: 'calc(var(--safe-area-top) + 1rem)',
+        paddingBottom: 'calc(var(--safe-area-bottom) + 1rem)',
+      }}
+    >
       <div className="w-full max-w-lg animate-scale-in">
         <Button 
           variant="ghost" 
