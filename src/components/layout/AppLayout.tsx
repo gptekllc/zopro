@@ -230,86 +230,84 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Top safe area spacer for mobile */}
-      <div 
-        className="lg:hidden fixed top-0 left-0 right-0 bg-card z-50"
-        style={{ height: 'var(--safe-area-top)' }}
-      />
-
-      {/* Mobile header */}
+      {/* Mobile header with safe area */}
       <header 
-        className="lg:hidden fixed left-0 right-0 h-16 bg-card border-b z-40 px-4 flex items-center justify-between"
-        style={{ top: 'var(--safe-area-top)' }}
+        className="lg:hidden fixed left-0 right-0 bg-card border-b z-50 px-4"
+        style={{ 
+          paddingTop: 'var(--safe-area-top)',
+        }}
       >
-        <div className="flex items-center gap-2">
-          <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
-          <div className="flex flex-col">
-            <span className="font-semibold leading-tight">ZoPro</span>
-            {company?.name && (
-              <span className="text-xs text-muted-foreground leading-tight line-clamp-2 max-w-[160px]">
-                {company.name}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1">
-          <NotificationsBell />
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'User'} />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                    {getInitials(profile?.full_name)}
-                  </AvatarFallback>
-                </Avatar>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-popover">
-              <div className="flex items-center justify-between px-2 py-1.5">
-                <span className="text-sm">On Leave</span>
-                <div className="flex items-center gap-1">
-                  {isUpdatingStatus && <Loader2 className="w-3 h-3 animate-spin" />}
-                  <Switch
-                    checked={isOnLeave}
-                    onCheckedChange={handleOnLeaveToggle}
-                    disabled={isUpdatingStatus}
-                  />
-                </div>
-              </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/profile')}>
-                <User className="w-4 h-4 mr-2" /> Edit Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/security-settings')}>
-                <Shield className="w-4 h-4 mr-2" /> Security
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <a href="https://zopro.app/contact" target="_blank" rel="noopener noreferrer">
-                  <HelpCircle className="w-4 h-4 mr-2" />
-                  Software Support
-                </a>
-              </DropdownMenuItem>
-              {canSwitchPortals && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    disabled={isCheckingCustomerPortalAccess}
-                    onClick={isInCustomerPortal ? handleSwitchToCompanyPortal : handleSwitchToCustomerPortal}
-                  >
-                    <ArrowRightLeft className="w-4 h-4 mr-2" />
-                    {isInCustomerPortal ? 'Switch to Company Portal' : 'Switch to Customer Portal'}
-                  </DropdownMenuItem>
-                </>
+        <div className="h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
+            <div className="flex flex-col">
+              <span className="font-semibold leading-tight">ZoPro</span>
+              {company?.name && (
+                <span className="text-xs text-muted-foreground leading-tight line-clamp-2 max-w-[160px]">
+                  {company.name}
+                </span>
               )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" /> Logout
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <NotificationsBell />
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'User'} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {getInitials(profile?.full_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-sm">On Leave</span>
+                  <div className="flex items-center gap-1">
+                    {isUpdatingStatus && <Loader2 className="w-3 h-3 animate-spin" />}
+                    <Switch
+                      checked={isOnLeave}
+                      onCheckedChange={handleOnLeaveToggle}
+                      disabled={isUpdatingStatus}
+                    />
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
+                  <User className="w-4 h-4 mr-2" /> Edit Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/security-settings')}>
+                  <Shield className="w-4 h-4 mr-2" /> Security
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="https://zopro.app/contact" target="_blank" rel="noopener noreferrer">
+                    <HelpCircle className="w-4 h-4 mr-2" />
+                    Software Support
+                  </a>
+                </DropdownMenuItem>
+                {canSwitchPortals && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      disabled={isCheckingCustomerPortalAccess}
+                      onClick={isInCustomerPortal ? handleSwitchToCompanyPortal : handleSwitchToCustomerPortal}
+                    >
+                      <ArrowRightLeft className="w-4 h-4 mr-2" />
+                      {isInCustomerPortal ? 'Switch to Company Portal' : 'Switch to Customer Portal'}
+                    </DropdownMenuItem>
+                  </>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" /> Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 
