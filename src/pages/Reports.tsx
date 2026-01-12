@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { DollarSign, Clock, BarChart3, Users, UserCheck } from 'lucide-react';
+import { DollarSign, Clock, BarChart3, Users, UserCheck, Lock } from 'lucide-react';
 import TransactionsReport from '@/components/reports/TransactionsReport';
 import TimesheetReportTab from '@/components/reports/TimesheetReportTab';
 import MonthlySummaryReport from '@/components/reports/MonthlySummaryReport';
@@ -9,8 +9,29 @@ import TechnicianPerformanceReport from '@/components/reports/TechnicianPerforma
 import { cn } from '@/lib/utils';
 import PageContainer from '@/components/layout/PageContainer';
 import { FeatureGate } from '@/components/FeatureGate';
+import { usePermissions, PERMISSION_KEYS } from '@/hooks/usePermissions';
+import { Card, CardContent } from '@/components/ui/card';
 
 const Reports = () => {
+  const { hasPermission, isLoading } = usePermissions();
+  
+  // Show permission denied for technicians
+  if (!isLoading && !hasPermission(PERMISSION_KEYS.VIEW_REPORTS)) {
+    return (
+      <PageContainer className="flex items-center justify-center min-h-[60vh]">
+        <Card className="max-w-md text-center">
+          <CardContent className="pt-6 space-y-4">
+            <Lock className="w-12 h-12 mx-auto text-muted-foreground" />
+            <h2 className="text-xl font-semibold">Access Restricted</h2>
+            <p className="text-muted-foreground">
+              You don't have permission to view reports. Please contact your administrator for access.
+            </p>
+          </CardContent>
+        </Card>
+      </PageContainer>
+    );
+  }
+  
   return (
     <FeatureGate feature="reports">
       <ReportsContent />

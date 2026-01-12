@@ -698,6 +698,47 @@ export type Database = {
           },
         ]
       }
+      document_media: {
+        Row: {
+          caption: string | null
+          created_at: string | null
+          display_order: number | null
+          entity_id: string
+          entity_type: string
+          id: string
+          media_asset_id: string
+          photo_type: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          media_asset_id: string
+          photo_type?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string | null
+          display_order?: number | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          media_asset_id?: string
+          photo_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_media_media_asset_id_fkey"
+            columns: ["media_asset_id"]
+            isOneToOne: false
+            referencedRelation: "media_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_logs: {
         Row: {
           company_id: string | null
@@ -1741,6 +1782,60 @@ export type Database = {
           success?: boolean
         }
         Relationships: []
+      }
+      media_assets: {
+        Row: {
+          company_id: string
+          content_type: string | null
+          created_at: string | null
+          deleted_at: string | null
+          file_size_bytes: number | null
+          id: string
+          original_filename: string | null
+          storage_bucket: string
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          company_id: string
+          content_type?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          original_filename?: string | null
+          storage_bucket: string
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          content_type?: string | null
+          created_at?: string | null
+          deleted_at?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          original_filename?: string | null
+          storage_bucket?: string
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_assets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "media_assets_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -2929,6 +3024,15 @@ export type Database = {
       }
       cleanup_expired_trusted_devices: { Args: never; Returns: number }
       cleanup_old_login_attempts: { Args: never; Returns: undefined }
+      copy_document_media_links: {
+        Args: {
+          p_source_entity_id: string
+          p_source_entity_type: string
+          p_target_entity_id: string
+          p_target_entity_type: string
+        }
+        Returns: number
+      }
       create_company_and_set_admin: {
         Args: {
           _address?: string

@@ -205,11 +205,11 @@ const Customers = () => {
                 <span className="hidden sm:inline">Add</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+              <DialogHeader className="flex-shrink-0">
                 <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4 pr-1">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="first_name">First Name *</Label>
@@ -255,13 +255,13 @@ const Customers = () => {
                   <Label htmlFor="notes">Notes</Label>
                   <Textarea id="notes" value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} />
                 </div>
-                <div className="flex gap-3 pt-4">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>Cancel</Button>
-                  <Button type="submit" className="flex-1" disabled={createCustomer.isPending || updateCustomer.isPending}>
-                    {editingCustomer ? 'Update' : 'Add'} Customer
-                  </Button>
-                </div>
               </form>
+              <div className="flex gap-3 pt-4 border-t flex-shrink-0 bg-background">
+                <Button type="button" variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>Cancel</Button>
+                <Button type="submit" className="flex-1" disabled={createCustomer.isPending || updateCustomer.isPending} onClick={handleSubmit}>
+                  {editingCustomer ? 'Update' : 'Add'} Customer
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </div>
