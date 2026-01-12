@@ -205,12 +205,18 @@ const Customers = () => {
                 <span className="hidden sm:inline">Add</span>
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent 
+              className="max-w-md max-h-[90vh] overflow-hidden flex flex-col"
+              style={{
+                marginTop: 'var(--safe-area-top)',
+                marginBottom: 'var(--safe-area-bottom)',
+              }}
+            >
               <DialogHeader className="flex-shrink-0">
                 <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4 pr-1">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="first_name">First Name *</Label>
                     <Input id="first_name" value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} required />

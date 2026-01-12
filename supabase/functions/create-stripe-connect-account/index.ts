@@ -132,7 +132,13 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    let errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Check for restricted key permission error and provide helpful guidance
+    if (errorMessage.includes('does not have the required permissions')) {
+      errorMessage = 'Your Stripe API key does not have Connect permissions. Please use a standard secret key (sk_live_* or sk_test_*) instead of a restricted key (rk_live_*). You can find your standard secret key in the Stripe Dashboard under Developers > API Keys.';
+    }
+    
     logStep("ERROR", { message: errorMessage });
     return new Response(
       JSON.stringify({ error: errorMessage }),

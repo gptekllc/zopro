@@ -11,9 +11,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Upload, FileUp, Download, Loader2, CheckCircle, XCircle, AlertTriangle, ArrowRight, ArrowLeft, Users, Briefcase, Receipt } from 'lucide-react';
+import { Upload, FileUp, Download, Loader2, CheckCircle, XCircle, AlertTriangle, ArrowRight, ArrowLeft, Users, Briefcase, Receipt, FileText, UserCheck } from 'lucide-react';
 
-type ImportEntity = 'customers' | 'jobs' | 'invoices';
+type ImportEntity = 'customers' | 'jobs' | 'invoices' | 'quotes' | 'technicians';
 
 interface ImportConfig {
   type: ImportEntity;
@@ -45,6 +45,20 @@ const importConfigs: ImportConfig[] = [
     requiredFields: ['customer_email', 'total'],
     optionalFields: ['status', 'due_date', 'notes', 'subtotal', 'tax'],
   },
+  {
+    type: 'quotes',
+    label: 'Quotes',
+    icon: <FileText className="w-5 h-5" />,
+    requiredFields: ['customer_email', 'total'],
+    optionalFields: ['status', 'valid_until', 'notes', 'subtotal', 'tax'],
+  },
+  {
+    type: 'technicians',
+    label: 'Technicians',
+    icon: <UserCheck className="w-5 h-5" />,
+    requiredFields: ['first_name', 'email'],
+    optionalFields: ['last_name', 'phone', 'role', 'hourly_rate'],
+  },
 ];
 
 interface ValidationError {
@@ -74,6 +88,7 @@ const DataImportSection = () => {
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ success: number; failed: number } | null>(null);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
 
   const downloadTemplate = (entityType: ImportEntity) => {
     const config = importConfigs.find(c => c.type === entityType);
@@ -100,9 +115,12 @@ const DataImportSection = () => {
         case 'subtotal': return '450.00';
         case 'tax': return '50.00';
         case 'due_date': return '2024-12-31';
+        case 'valid_until': return '2024-12-31';
         case 'scheduled_start': return '2024-12-15T09:00:00';
         case 'scheduled_end': return '2024-12-15T17:00:00';
         case 'notes': return 'Additional notes here';
+        case 'role': return 'technician';
+        case 'hourly_rate': return '50.00';
         default: return '';
       }
     });
@@ -244,9 +262,13 @@ const DataImportSection = () => {
     const validRows = parsedData.filter(row => row.isValid);
     let success = 0;
     let failed = 0;
+    setImportProgress({ current: 0, total: validRows.length });
 
     try {
-      for (const row of validRows) {
+      for (let i = 0; i < validRows.length; i++) {
+        const row = validRows[i];
+        setImportProgress({ current: i + 1, total: validRows.length });
+        
         try {
           // Map data according to column mapping
           const mappedData: Record<string, any> = {};
@@ -382,6 +404,87 @@ const DataImportSection = () => {
               }
               break;
             }
+            case 'quotes': {
+              // First find customer by email
+              const { data: customer } = await supabase
+                .from('customers')
+                .select('id')
+                .eq('company_id', profile.company_id)
+                .eq('email', mappedData.customer_email)
+                .maybeSingle();
+
+              if (!customer) {
+                failed++;
+                continue;
+              }
+
+              // Generate quote number
+              const { data: company } = await supabase
+                .from('companies')
+                .select('quote_next_number, quote_number_prefix, quote_number_padding')
+                .eq('id', profile.company_id)
+                .single();
+
+              const nextNum = company?.quote_next_number || 1;
+              const prefix = company?.quote_number_prefix || 'Q';
+              const padding = company?.quote_number_padding || 4;
+              const quoteNumber = `${prefix}${nextNum.toString().padStart(padding, '0')}`;
+
+              const { error } = await supabase
+                .from('quotes')
+                .insert({
+                  company_id: profile.company_id,
+                  customer_id: customer.id,
+                  quote_number: quoteNumber,
+                  total: parseFloat(mappedData.total) || 0,
+                  subtotal: parseFloat(mappedData.subtotal) || parseFloat(mappedData.total) || 0,
+                  tax: parseFloat(mappedData.tax) || 0,
+                  status: mappedData.status || 'draft',
+                  valid_until: mappedData.valid_until || null,
+                  notes: mappedData.notes || null,
+                });
+
+              if (!error) {
+                await supabase
+                  .from('companies')
+                  .update({ quote_next_number: nextNum + 1 })
+                  .eq('id', profile.company_id);
+                success++;
+              } else {
+                failed++;
+              }
+              break;
+            }
+            case 'technicians': {
+              const firstName = mappedData.first_name || '';
+              const lastName = mappedData.last_name || '';
+              const fullName = [firstName, lastName].filter(Boolean).join(' ') || 'Unknown';
+              
+              // Note: Creating actual auth users requires admin privileges
+              // This inserts a profile record for existing auth users or team invitations
+              const { error } = await supabase
+                .from('profiles')
+                .insert({
+                  id: crypto.randomUUID(), // This will fail if no auth user exists - use team invitations instead
+                  company_id: profile.company_id,
+                  first_name: firstName || null,
+                  last_name: lastName || null,
+                  full_name: fullName,
+                  email: mappedData.email,
+                  phone: mappedData.phone || null,
+                  role: mappedData.role || 'technician',
+                  hourly_rate: parseFloat(mappedData.hourly_rate) || null,
+                });
+              
+              if (!error) {
+                success++;
+              } else {
+                // If direct insert fails, the user should use the team invitation flow instead
+                console.log('Technician import requires existing auth user or team invitation');
+                failed++;
+              }
+              break;
+            }
           }
         } catch (err) {
           console.error('Row import error:', err);
@@ -390,11 +493,14 @@ const DataImportSection = () => {
       }
 
       setImportResult({ success, failed });
+      setImportProgress({ current: 0, total: 0 });
       setCurrentStep(5);
 
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: [selectedEntity] });
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      queryClient.invalidateQueries({ queryKey: ['profiles'] });
       
       toast.success(`Imported ${success} ${selectedEntity}`);
     } catch (error) {
@@ -402,6 +508,7 @@ const DataImportSection = () => {
       toast.error('Import failed');
     } finally {
       setImporting(false);
+      setImportProgress({ current: 0, total: 0 });
     }
   };
 

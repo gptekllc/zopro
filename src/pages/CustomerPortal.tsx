@@ -2905,7 +2905,14 @@ const CustomerPortal = () => {
 
       {/* Quote Detail Sheet */}
       <Sheet open={!!viewingQuote} onOpenChange={(open) => !open && setViewingQuote(null)}>
-        <SheetContent className="w-[calc(100vw-2rem)] sm:max-w-lg overflow-y-auto rounded-l-lg mx-2 sm:mx-0" side="right">
+        <SheetContent 
+          className="w-[calc(100vw-2rem)] sm:max-w-lg overflow-y-auto rounded-l-lg mx-2 sm:mx-0" 
+          side="right"
+          style={{
+            paddingTop: 'calc(var(--safe-area-top) + 1rem)',
+            paddingBottom: 'calc(var(--safe-area-bottom) + 1rem)',
+          }}
+        >
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
@@ -3043,7 +3050,14 @@ const CustomerPortal = () => {
 
       {/* Invoice Detail Sheet */}
       <Sheet open={!!viewingInvoice} onOpenChange={(open) => !open && setViewingInvoice(null)}>
-        <SheetContent className="w-[calc(100vw-2rem)] sm:max-w-lg overflow-y-auto rounded-l-lg mx-2 sm:mx-0" side="right">
+        <SheetContent 
+          className="w-[calc(100vw-2rem)] sm:max-w-lg overflow-y-auto rounded-l-lg mx-2 sm:mx-0" 
+          side="right"
+          style={{
+            paddingTop: 'calc(var(--safe-area-top) + 1rem)',
+            paddingBottom: 'calc(var(--safe-area-bottom) + 1rem)',
+          }}
+        >
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">
@@ -3225,7 +3239,14 @@ const CustomerPortal = () => {
 
       {/* Job Detail Sheet */}
       <Sheet open={!!viewingJob} onOpenChange={(open) => !open && setViewingJob(null)}>
-        <SheetContent className="w-[calc(100vw-2rem)] sm:max-w-lg overflow-y-auto rounded-l-lg mx-2 sm:mx-0" side="right">
+        <SheetContent 
+          className="w-[calc(100vw-2rem)] sm:max-w-lg overflow-y-auto rounded-l-lg mx-2 sm:mx-0" 
+          side="right"
+          style={{
+            paddingTop: 'calc(var(--safe-area-top) + 1rem)',
+            paddingBottom: 'calc(var(--safe-area-bottom) + 1rem)',
+          }}
+        >
           <SheetHeader className="mb-4">
             <div className="flex items-center justify-between">
               <SheetTitle className="flex items-center gap-2">

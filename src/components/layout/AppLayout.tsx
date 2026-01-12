@@ -238,7 +238,10 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
         }}
       >
         <div className="h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <button 
+            onClick={() => navigate('/dashboard')} 
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
             <div className="flex flex-col">
               <span className="font-semibold leading-tight">ZoPro</span>
@@ -248,7 +251,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
                 </span>
               )}
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-1">
             <NotificationsBell />
@@ -340,11 +343,14 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
             </TooltipContent>
           </Tooltip>
 
-          {/* Sidebar header */}
-          <div className={cn(
-            "flex items-center gap-3 shrink-0",
-            sidebarCollapsed ? "p-3 justify-center" : "p-6"
-          )}>
+          {/* Sidebar header - clickable logo */}
+          <button 
+            onClick={() => navigate('/dashboard')} 
+            className={cn(
+              "flex items-center gap-3 shrink-0 hover:opacity-80 transition-opacity text-left",
+              sidebarCollapsed ? "p-3 justify-center" : "p-6"
+            )}
+          >
             <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center overflow-hidden shrink-0">
               <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
             </div>
@@ -354,7 +360,7 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
                 <p className="text-xs text-sidebar-foreground/60 line-clamp-2">{company?.name || 'No Company'}</p>
               </div>
             )}
-          </div>
+          </button>
 
           {/* Navigation - scrollable */}
           <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto scrollbar-thin">

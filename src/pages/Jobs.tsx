@@ -571,7 +571,13 @@ const Jobs = () => {
                   Create Job
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto">
+              <DialogContent 
+                className="max-w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto"
+                style={{
+                  marginTop: 'var(--safe-area-top)',
+                  marginBottom: 'var(--safe-area-bottom)',
+                }}
+              >
                 <DialogHeader>
                   <DialogTitle>{editingJob ? 'Edit Job' : 'Create New Job'}</DialogTitle>
                 </DialogHeader>
