@@ -46,8 +46,11 @@ const MobileFAB = () => {
 
       {/* FAB Container */}
       <div 
-        className="fixed right-4 z-50 flex flex-col items-end gap-3 lg:hidden"
-        style={{ bottom: 'calc(var(--safe-area-bottom) + 5rem)' }}
+        className={cn(
+          "fixed right-4 z-50 flex flex-col items-end gap-3 lg:hidden",
+          !isOpen && "pointer-events-none"
+        )}
+        style={{ bottom: 'calc(5rem)' }}
       >
         {/* Action Items */}
         {fabItems.map((item, index) => (
@@ -75,7 +78,7 @@ const MobileFAB = () => {
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center transition-transform duration-200 active:scale-95",
+            "w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center transition-transform duration-200 active:scale-95 pointer-events-auto",
             isOpen && "rotate-45"
           )}
           aria-label={isOpen ? "Close menu" : "Create new"}
