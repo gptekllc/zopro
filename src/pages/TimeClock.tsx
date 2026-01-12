@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTimeEntries, useActiveTimeEntry, useClockIn, useClockOut, useUpdateTimeEntry, useStartBreak, useEndBreak, TimeEntry } from '@/hooks/useTimeEntries';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -12,6 +13,7 @@ import { TimeEntryDialog } from '@/components/timeclock/TimeEntryDialog';
 import { Link } from 'react-router-dom';
 import PageContainer from '@/components/layout/PageContainer';
 import { FeatureGate } from '@/components/FeatureGate';
+import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
 
 const TimeClock = () => {
   return (
@@ -24,8 +26,14 @@ const TimeClock = () => {
 const TimeClockContent = () => {
   const { user, profile, roles } = useAuth();
   const { data: company } = useCompany();
+  const queryClient = useQueryClient();
   const { data: timeEntries = [], isLoading } = useTimeEntries();
   const { data: activeEntry } = useActiveTimeEntry();
+
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['time-entries'] });
+    await queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
+  }, [queryClient]);
   const clockIn = useClockIn();
   const clockOut = useClockOut();
   const updateTimeEntry = useUpdateTimeEntry();
@@ -207,6 +215,7 @@ const TimeClockContent = () => {
   }
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={5} />} className="min-h-full">
     <PageContainer width="full" className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -514,6 +523,7 @@ const TimeClockContent = () => {
         timezone={company?.timezone} 
       />
     </PageContainer>
+    </PullToRefresh>
   );
 };
 

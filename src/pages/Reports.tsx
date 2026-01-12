@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DollarSign, Clock, BarChart3, Users, UserCheck, Lock } from 'lucide-react';
 import TransactionsReport from '@/components/reports/TransactionsReport';
@@ -11,6 +12,7 @@ import PageContainer from '@/components/layout/PageContainer';
 import { FeatureGate } from '@/components/FeatureGate';
 import { usePermissions, PERMISSION_KEYS } from '@/hooks/usePermissions';
 import { Card, CardContent } from '@/components/ui/card';
+import { PullToRefresh, CardSkeleton } from '@/components/ui/pull-to-refresh';
 
 const Reports = () => {
   const { hasPermission, isLoading } = usePermissions();
@@ -42,6 +44,11 @@ const Reports = () => {
 const ReportsContent = () => {
   const [activeTab, setActiveTab] = useState('summary');
   const [isScrolled, setIsScrolled] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries();
+  }, [queryClient]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -53,6 +60,7 @@ const ReportsContent = () => {
   }, []);
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <CardSkeleton count={4} />} className="min-h-full">
     <PageContainer className="space-y-6 lg:space-y-8">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div 
@@ -116,6 +124,7 @@ const ReportsContent = () => {
         </TabsContent>
       </Tabs>
     </PageContainer>
+    </PullToRefresh>
   );
 };
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCustomers } from "@/hooks/useCustomers";
 import { useInvoices } from "@/hooks/useInvoices";
@@ -7,6 +7,7 @@ import { useQuotes } from "@/hooks/useQuotes";
 import { useTimeEntries } from "@/hooks/useTimeEntries";
 import { useProfiles } from "@/hooks/useProfiles";
 import { useAllPayments } from "@/hooks/usePayments";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Briefcase, CheckCircle, Clock, DollarSign, FileText, Filter, Info, Loader2, Percent, Star, TrendingUp } from "lucide-react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subWeeks, subMonths, subYears, isWithinInterval } from "date-fns";
@@ -21,6 +22,7 @@ import PageContainer from "@/components/layout/PageContainer";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { PullToRefresh, DashboardSkeleton } from "@/components/ui/pull-to-refresh";
 
 type DateFilter = "this-week" | "last-week" | "this-month" | "last-month" | "last-3-months" | "this-year" | "last-year" | "all-time";
 
@@ -74,6 +76,7 @@ function isWithinDateRange(dateStr: string | null | undefined, start: Date | nul
 
 export default function DashboardPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>("this-week");
+  const queryClient = useQueryClient();
   const {
     profile,
     user,
@@ -112,6 +115,10 @@ export default function DashboardPage() {
   } = useAllPayments();
   const technicians = profiles.filter(p => p.role === 'technician' || p.role === 'admin' || p.role === 'manager');
   const isLoading = authLoading || loadingInvoices || loadingQuotes || loadingCustomers || loadingTime || loadingJobs || loadingPayments;
+
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries();
+  }, [queryClient]);
 
   // Dashboard scoping rules:
   // - Technicians: dashboard shows only "my" items.
@@ -308,6 +315,7 @@ export default function DashboardPage() {
   }
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <DashboardSkeleton />} className="min-h-full">
     <PageContainer>
       <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -574,5 +582,6 @@ export default function DashboardPage() {
         />
       </section>
     </PageContainer>
+    </PullToRefresh>
   );
 }

@@ -1,16 +1,24 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Package, Search, X } from 'lucide-react';
 import { ItemsManager } from '@/components/items/ItemsManager';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PageContainer from '@/components/layout/PageContainer';
+import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
 
 const Items = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const queryClient = useQueryClient();
+
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['catalog-items'] });
+  }, [queryClient]);
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={6} />} className="min-h-full">
     <PageContainer width="narrow" className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
@@ -56,6 +64,7 @@ const Items = () => {
 
       <ItemsManager searchQuery={searchQuery} statusFilter={statusFilter} />
     </PageContainer>
+    </PullToRefresh>
   );
 };
 
