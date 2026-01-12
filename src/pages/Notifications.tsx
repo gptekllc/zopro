@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import PageContainer from '@/components/layout/PageContainer';
+import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +49,17 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+
+  const handleRefresh = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    setNotifications(data || []);
+  }, [user]);
 
   // Fetch notifications
   useEffect(() => {
@@ -213,6 +225,7 @@ const Notifications = () => {
   }
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={5} />} className="min-h-full">
     <PageContainer className="space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -430,6 +443,7 @@ const Notifications = () => {
           </CardContent>
         </Card>
     </PageContainer>
+    </PullToRefresh>
   );
 };
 

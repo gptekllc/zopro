@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useSoftDeleteCustomer, useRestoreCustomer, useDeletedCustomers, Customer } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,9 +20,11 @@ import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, Externa
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import PageContainer from '@/components/layout/PageContainer';
+import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
 
 const Customers = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: customers = [], isLoading } = useCustomers();
   const { data: deletedCustomers = [] } = useDeletedCustomers();
   const { isAdmin } = useAuth();
@@ -30,6 +33,10 @@ const Customers = () => {
   const softDeleteCustomer = useSoftDeleteCustomer();
   const restoreCustomer = useRestoreCustomer();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
+
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['customers'] });
+  }, [queryClient]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [showDeleted, setShowDeleted] = useState(false);
@@ -151,6 +158,7 @@ const Customers = () => {
   }
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={6} />} className="min-h-full">
     <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
@@ -383,6 +391,7 @@ const Customers = () => {
         <Plus className="w-6 h-6" />
       </Button>
     </PageContainer>
+    </PullToRefresh>
   );
 };
 

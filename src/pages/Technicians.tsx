@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useProfiles, useUpdateProfile, Profile } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -14,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, UserCog, Mail, Phone, Edit, Shield, Loader2, UserPlus, AlertTriangle, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import ViewMemberDialog from '@/components/team/ViewMemberDialog';
 import PageContainer from '@/components/layout/PageContainer';
@@ -23,6 +24,7 @@ import { UsageLimitWarning, UsageLimitBadge } from '@/components/UsageLimitWarni
 import { useUsageLimits } from '@/hooks/useUsageLimits';
 import AvatarUpload from '@/components/common/AvatarUpload';
 import { UserPermissionsEditor } from '@/components/team/UserPermissionsEditor';
+import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
 
 const AVAILABLE_ROLES = ['admin', 'manager', 'technician'] as const;
 type AppRole = typeof AVAILABLE_ROLES[number];
@@ -45,6 +47,10 @@ const TechniciansContent = () => {
   const { data: company } = useCompany();
   const { isAtUserLimit, isNearUserLimit } = useUsageLimits();
   const queryClient = useQueryClient();
+
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['profiles'] });
+  }, [queryClient]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -376,6 +382,7 @@ const TechniciansContent = () => {
   }
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={5} />} className="min-h-full">
     <PageContainer className="space-y-6">
       {/* Usage Limit Warning */}
       <UsageLimitWarning type="users" showProgress />
@@ -836,6 +843,7 @@ const TechniciansContent = () => {
         </div>
       )}
     </PageContainer>
+    </PullToRefresh>
   );
 };
 
