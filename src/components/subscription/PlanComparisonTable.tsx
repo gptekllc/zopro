@@ -184,12 +184,6 @@ export function PlanComparisonTable({
                       {plan.max_jobs_per_month === null ? 'Unlimited' : plan.max_jobs_per_month}
                     </span>
                   </li>
-                  <li className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Storage:</span>
-                    <span className="font-medium">
-                      {formatStorage(plan)}
-                    </span>
-                  </li>
                 </ul>
               </CardContent>
 
@@ -299,18 +293,6 @@ export function PlanComparisonTable({
                   <Infinity className="w-4 h-4 mx-auto text-success" />
                 ) : (
                   <span className="font-medium">{plan.max_jobs_per_month}</span>
-                )}
-              </td>
-            ))}
-          </tr>
-          <tr className="border-b">
-            <td className="p-4 font-medium">Storage</td>
-            {plans.map((plan) => (
-              <td key={plan.id} className="text-center p-4">
-                {plan.storage_limit_bytes === null ? (
-                  <Infinity className="w-4 h-4 mx-auto text-success" />
-                ) : (
-                  <span className="font-medium">{formatStorage(plan)}</span>
                 )}
               </td>
             ))}
