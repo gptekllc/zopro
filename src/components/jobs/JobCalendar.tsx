@@ -69,14 +69,16 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
       const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
       return { 
         days: eachDayOfInterval({ start: weekStart, end: weekEnd }),
-        hours: eachHourOfInterval({ start: setHours(new Date(), 6), end: setHours(new Date(), 20) })
+        // Extended hours from 5 AM to 9 PM to catch more jobs
+        hours: eachHourOfInterval({ start: setHours(new Date(), 5), end: setHours(new Date(), 21) })
       };
     } else {
       // Day view
       const dayStart = startOfDay(currentDate);
       return { 
         days: [dayStart],
-        hours: eachHourOfInterval({ start: setHours(dayStart, 6), end: setHours(dayStart, 20) })
+        // Extended hours from 5 AM to 9 PM
+        hours: eachHourOfInterval({ start: setHours(dayStart, 5), end: setHours(dayStart, 21) })
       };
     }
   }, [currentDate, view]);
@@ -96,15 +98,28 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
     return map;
   }, [jobs]);
 
-  // Get jobs for a specific hour on a day
+  // Get unscheduled jobs (no scheduled_start)
+  const unscheduledJobs = useMemo(() => {
+    return jobs.filter(job => !job.scheduled_start);
+  }, [jobs]);
+
+  // Get jobs for a specific hour on a day (jobs that START at this hour)
   const getJobsForHour = (day: Date, hour: number) => {
     const dateKey = format(day, 'yyyy-MM-dd');
     const dayJobs = jobsByDate.get(dateKey) || [];
     return dayJobs.filter(job => {
       if (!job.scheduled_start) return false;
-      const jobHour = parseISO(job.scheduled_start).getHours();
+      const jobStart = parseISO(job.scheduled_start);
+      const jobHour = jobStart.getHours();
+      // Show job at its starting hour
       return jobHour === hour;
     });
+  };
+
+  // Get all jobs for a day (for week/day views unscheduled time section)
+  const getJobsForDay = (day: Date) => {
+    const dateKey = format(day, 'yyyy-MM-dd');
+    return jobsByDate.get(dateKey) || [];
   };
 
   // Calculate job height based on duration (for week/day views)
@@ -538,27 +553,74 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
         {view === 'week' && (
           <div className="overflow-auto -mx-2 sm:mx-0">
             <div className="min-w-[500px] sm:min-w-[700px] px-2 sm:px-0">
-              {/* Day headers */}
+        {/* Day headers */}
               <div className="grid grid-cols-[40px_repeat(7,1fr)] sm:grid-cols-[60px_repeat(7,1fr)] gap-0.5 sm:gap-1 mb-1 sticky top-0 bg-background z-10">
                 <div className="text-sm font-medium text-muted-foreground py-2"></div>
-                {days.map(day => (
-                  <div 
-                    key={format(day, 'yyyy-MM-dd')} 
-                    className={`text-center text-xs sm:text-sm font-medium py-1 sm:py-2 rounded ${
-                      isToday(day) ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
-                    }`}
-                  >
-                    <div className="hidden sm:block">{format(day, 'EEE')}</div>
-                    <div className="sm:hidden">{format(day, 'EEEEE')}</div>
-                    <div className={`text-sm sm:text-lg ${isToday(day) ? 'text-primary font-bold' : 'text-foreground'}`}>
-                      {format(day, 'd')}
+                {days.map(day => {
+                  const dayJobs = getJobsForDay(day);
+                  return (
+                    <div 
+                      key={format(day, 'yyyy-MM-dd')} 
+                      className={`text-center text-xs sm:text-sm font-medium py-1 sm:py-2 rounded ${
+                        isToday(day) ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                      }`}
+                    >
+                      <div className="hidden sm:block">{format(day, 'EEE')}</div>
+                      <div className="sm:hidden">{format(day, 'EEEEE')}</div>
+                      <div className={`text-sm sm:text-lg ${isToday(day) ? 'text-primary font-bold' : 'text-foreground'}`}>
+                        {format(day, 'd')}
+                      </div>
+                      {dayJobs.length > 0 && (
+                        <div className="text-[10px] text-muted-foreground">
+                          {dayJobs.length} job{dayJobs.length > 1 ? 's' : ''}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+
+              {/* All Day / Summary row showing all jobs for each day */}
+              <div className="grid grid-cols-[40px_repeat(7,1fr)] sm:grid-cols-[60px_repeat(7,1fr)] gap-0.5 sm:gap-1 mb-1 border-b border-border pb-1">
+                <div className="text-[10px] sm:text-xs text-muted-foreground py-1 text-right pr-1 sm:pr-2 font-medium">
+                  All
+                </div>
+                {days.map(day => {
+                  const dateKey = format(day, 'yyyy-MM-dd');
+                  const dayJobs = getJobsForDay(day);
+                  const isDropTarget = dropTargetDate === `${dateKey}-all`;
+
+                  return (
+                    <div
+                      key={`${dateKey}-all`}
+                      className={`min-h-[40px] max-h-[120px] overflow-y-auto p-0.5 sm:p-1 bg-muted/30 rounded transition-colors cursor-pointer hover:bg-accent/50 ${
+                        isDropTarget ? 'bg-primary/20' : ''
+                      }`}
+                      onDragOver={(e) => handleDragOver(e, `${dateKey}-all`)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, day)}
+                      onClick={() => handleSlotClick(day)}
+                    >
+                      <div className="space-y-0.5">
+                        {dayJobs.slice(0, 4).map(job => renderMonthJobItem(job))}
+                        {dayJobs.length > 4 && (
+                          <div className="text-[10px] text-muted-foreground text-center">
+                            +{dayJobs.length - 4} more
+                          </div>
+                        )}
+                        {dayJobs.length === 0 && (
+                          <div className="text-[10px] text-muted-foreground text-center opacity-50">
+                            No jobs
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Time grid */}
-              <div className="max-h-[400px] sm:max-h-[500px] overflow-y-auto">
+              <div className="max-h-[350px] sm:max-h-[450px] overflow-y-auto">
                 {hours.map(hourDate => {
                   const hour = hourDate.getHours();
                   return (
@@ -598,34 +660,96 @@ const JobCalendar = ({ jobs, onJobClick, onSlotClick }: JobCalendarProps) => {
 
         {/* Day View */}
         {view === 'day' && (
-          <div className="max-h-[400px] sm:max-h-[500px] overflow-y-auto">
-            {hours.map(hourDate => {
-              const hour = hourDate.getHours();
+          <div>
+            {/* All Jobs for the day summary */}
+            {(() => {
               const day = days[0];
-              const dateKey = `${format(day, 'yyyy-MM-dd')}-${hour}`;
-              const hourJobs = getJobsForHour(day, hour);
-              const isDropTarget = dropTargetDate === dateKey;
-
+              const dateKey = format(day, 'yyyy-MM-dd');
+              const dayJobs = getJobsForDay(day);
+              const isDropTarget = dropTargetDate === `${dateKey}-all`;
+              
               return (
-                <div 
-                  key={hour} 
-                  className={`grid grid-cols-[60px_1fr] sm:grid-cols-[80px_1fr] gap-1 sm:gap-2 border-t border-border transition-colors cursor-pointer hover:bg-accent/50 ${
-                    isDropTarget ? 'bg-primary/20' : ''
+                <div
+                  className={`mb-2 p-2 sm:p-3 bg-muted/30 rounded-lg border transition-colors cursor-pointer hover:bg-accent/50 ${
+                    isDropTarget ? 'bg-primary/20 border-primary' : 'border-border'
                   }`}
-                  onDragOver={(e) => handleDragOver(e, dateKey)}
+                  onDragOver={(e) => handleDragOver(e, `${dateKey}-all`)}
                   onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, day, hour)}
-                  onClick={() => handleSlotClick(day, hour)}
+                  onDrop={(e) => handleDrop(e, day)}
+                  onClick={() => handleSlotClick(day)}
                 >
-                  <div className="text-xs sm:text-sm text-muted-foreground py-2 sm:py-3 text-right pr-1 sm:pr-2 font-medium">
-                    {format(hourDate, 'h:mm a')}
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">All Jobs ({dayJobs.length})</span>
+                    {dayJobs.length === 0 && (
+                      <span className="text-xs text-muted-foreground">No jobs scheduled for this day</span>
+                    )}
                   </div>
-                  <div className="min-h-[50px] sm:min-h-[60px] p-1 sm:p-2 space-y-1">
-                    {hourJobs.map(job => renderWeekDayJobItem(job))}
-                  </div>
+                  {dayJobs.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {dayJobs.map(job => renderWeekDayJobItem(job, false))}
+                    </div>
+                  )}
                 </div>
               );
-            })}
+            })()}
+
+            {/* Time grid */}
+            <div className="max-h-[350px] sm:max-h-[400px] overflow-y-auto">
+              {hours.map(hourDate => {
+                const hour = hourDate.getHours();
+                const day = days[0];
+                const dateKey = `${format(day, 'yyyy-MM-dd')}-${hour}`;
+                const hourJobs = getJobsForHour(day, hour);
+                const isDropTarget = dropTargetDate === dateKey;
+
+                return (
+                  <div 
+                    key={hour} 
+                    className={`grid grid-cols-[60px_1fr] sm:grid-cols-[80px_1fr] gap-1 sm:gap-2 border-t border-border transition-colors cursor-pointer hover:bg-accent/50 ${
+                      isDropTarget ? 'bg-primary/20' : ''
+                    }`}
+                    onDragOver={(e) => handleDragOver(e, dateKey)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDrop(e, day, hour)}
+                    onClick={() => handleSlotClick(day, hour)}
+                  >
+                    <div className="text-xs sm:text-sm text-muted-foreground py-2 sm:py-3 text-right pr-1 sm:pr-2 font-medium">
+                      {format(hourDate, 'h:mm a')}
+                    </div>
+                    <div className="min-h-[50px] sm:min-h-[60px] p-1 sm:p-2 space-y-1">
+                      {hourJobs.map(job => renderWeekDayJobItem(job))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Unscheduled Jobs Section */}
+        {unscheduledJobs.length > 0 && (
+          <div className="mt-4 pt-4 border-t">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-muted-foreground">
+                Unscheduled Jobs ({unscheduledJobs.length})
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[150px] overflow-y-auto">
+              {unscheduledJobs.map(job => (
+                <div
+                  key={job.id}
+                  onClick={() => onJobClick(job)}
+                  className={`text-xs p-2 rounded cursor-pointer hover:opacity-80 transition-opacity ${getStatusColor(job.status)} ${getPriorityBorder(job.priority)}`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="font-bold">{job.job_number}</span>
+                    <Badge variant="outline" className="text-[9px] h-4">No schedule</Badge>
+                  </div>
+                  <div className="truncate">{job.title}</div>
+                  <div className="truncate text-[10px] opacity-80">{job.customer?.name || 'Unknown'}</div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
