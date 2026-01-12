@@ -50,9 +50,15 @@ const OnboardingChoice = ({
   ];
 
   return (
-    <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+    <div 
+      className="min-h-screen flex items-center justify-center gradient-primary p-4"
+      style={{
+        paddingTop: 'calc(var(--safe-area-top) + 1rem)',
+        paddingBottom: 'calc(var(--safe-area-bottom) + 1rem)',
+      }}
+    >
       {user && (
-        <div className="absolute top-4 right-4">
+        <div className="absolute right-4" style={{ top: 'calc(var(--safe-area-top) + 1rem)' }}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors">

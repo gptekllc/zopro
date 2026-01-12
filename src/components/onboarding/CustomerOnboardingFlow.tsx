@@ -92,7 +92,13 @@ const CustomerOnboardingFlow = ({ onBack, onComplete }: CustomerOnboardingFlowPr
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
+    <div 
+      className="min-h-screen flex items-center justify-center gradient-primary p-4"
+      style={{
+        paddingTop: 'calc(var(--safe-area-top) + 1rem)',
+        paddingBottom: 'calc(var(--safe-area-bottom) + 1rem)',
+      }}
+    >
       <div className="w-full max-w-md animate-scale-in">
         <Button 
           variant="ghost" 
