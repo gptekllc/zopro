@@ -230,8 +230,17 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Top safe area spacer for mobile */}
+      <div 
+        className="lg:hidden fixed top-0 left-0 right-0 bg-card z-50"
+        style={{ height: 'var(--safe-area-top)' }}
+      />
+
       {/* Mobile header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-card border-b z-40 px-4 flex items-center justify-between">
+      <header 
+        className="lg:hidden fixed left-0 right-0 h-16 bg-card border-b z-40 px-4 flex items-center justify-between"
+        style={{ top: 'var(--safe-area-top)' }}
+      >
         <div className="flex items-center gap-2">
           <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
           <div className="flex flex-col">
@@ -469,10 +478,15 @@ const AppLayout = ({ children, contentWidth = 'contained' }: AppLayoutProps) => 
       </aside>
 
       {/* Main content */}
-      <main className={cn(
-        "pt-16 lg:pt-0 pb-20 lg:pb-0 min-h-screen transition-all duration-300",
-        sidebarCollapsed ? "lg:ml-[72px]" : "lg:ml-64"
-      )}>
+      <main 
+        className={cn(
+          "lg:pt-0 pb-20 lg:pb-0 min-h-screen transition-all duration-300",
+          sidebarCollapsed ? "lg:ml-[72px]" : "lg:ml-64"
+        )}
+        style={{ 
+          paddingTop: 'calc(var(--safe-area-top) + 4rem)' // 4rem = h-16 header on mobile
+        }}
+      >
         <div
           className={cn(
             'w-full p-3 lg:py-6 lg:px-6',

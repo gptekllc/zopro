@@ -63,7 +63,10 @@ const MobileBottomNav = () => {
   const isMoreActive = filteredMoreItems.some(item => location.pathname === item.path);
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t z-40 safe-area-pb">
+    <nav 
+      className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t z-40"
+      style={{ paddingBottom: 'var(--safe-area-bottom)' }}
+    >
       <div className="flex items-center justify-around h-16">
         {mainNavItems.map((item) => (
           <Link
