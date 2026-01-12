@@ -271,45 +271,43 @@ const Customers = () => {
       {!showDeleted ? (
         <div className="space-y-4">
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex flex-col gap-3">
             {filteredCustomers.map((customer) => (
               <Card 
                 key={customer.id} 
                 className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
                 onClick={() => navigate(`/customers/${customer.id}`)}
               >
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="w-12 h-12">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    {/* Left: Avatar and info */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Avatar className="w-10 h-10 flex-shrink-0">
                         <AvatarImage src={customer.avatar_url || undefined} alt={getDisplayName(customer)} />
-                        <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                        <AvatarFallback className="bg-primary/10 text-primary font-medium text-sm">
                           {getDisplayName(customer).split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <h3 className="font-semibold group-hover:text-primary transition-colors">{getDisplayName(customer)}</h3>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-semibold group-hover:text-primary transition-colors truncate">
+                          {getDisplayName(customer)}
+                        </h3>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                          {customer.email && <span className="truncate max-w-[180px]">{customer.email}</span>}
+                          {customer.phone && <span className="hidden sm:inline">{customer.phone}</span>}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(customer)}><Edit className="w-4 h-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(customer.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                    
+                    {/* Right: Actions */}
+                    <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(customer)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleDelete(customer.id)}>
+                        <Trash2 className="w-4 h-4 text-destructive" />
+                      </Button>
                     </div>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    {customer.email && <div className="flex items-center gap-2 text-muted-foreground"><Mail className="w-4 h-4" /><span className="truncate">{customer.email}</span></div>}
-                    {customer.phone && <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-4 h-4" /><span>{customer.phone}</span></div>}
-                    {(customer.address || customer.city || customer.state || customer.zip) && (
-                      <div className="flex items-start gap-2 text-muted-foreground">
-                        <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                        <span>
-                          {customer.address && <span className="block">{customer.address}</span>}
-                          {(customer.city || customer.state || customer.zip) && (
-                            <span className="block">{[customer.city, customer.state].filter(Boolean).join(', ')}{customer.zip && ` ${customer.zip}`}</span>
-                          )}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -328,30 +326,33 @@ const Customers = () => {
 
         <div className="space-y-4">
           {filteredCustomers.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-3">
               {filteredCustomers.map((customer) => (
                 <Card key={customer.id} className="overflow-hidden opacity-60 hover:opacity-100 transition-opacity">
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                          <User className="w-6 h-6 text-muted-foreground" />
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                          <User className="w-5 h-5 text-muted-foreground" />
                         </div>
-                        <h3 className="font-semibold">{getDisplayName(customer)}</h3>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-semibold truncate">{getDisplayName(customer)}</h3>
+                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            {customer.email && <span className="truncate max-w-[180px]">{customer.email}</span>}
+                            {customer.phone && <span className="hidden sm:inline">{customer.phone}</span>}
+                          </div>
+                        </div>
                       </div>
                       <Button
                         variant="outline" 
                         size="sm"
+                        className="flex-shrink-0"
                         onClick={() => restoreCustomer.mutate(customer.id)}
                         disabled={restoreCustomer.isPending}
                       >
                         <RotateCcw className="w-4 h-4 mr-1" />
                         Restore
                       </Button>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      {customer.email && <div className="flex items-center gap-2 text-muted-foreground"><Mail className="w-4 h-4" /><span className="truncate">{customer.email}</span></div>}
-                      {customer.phone && <div className="flex items-center gap-2 text-muted-foreground"><Phone className="w-4 h-4" /><span>{customer.phone}</span></div>}
                     </div>
                   </CardContent>
                 </Card>
@@ -369,7 +370,8 @@ const Customers = () => {
 
       {/* Mobile Floating Action Button */}
       <Button
-        className="fixed bottom-20 right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50"
+        className="fixed right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50"
+        style={{ bottom: 'calc(var(--safe-area-bottom) + 5rem)' }}
         onClick={() => openEditDialog(true)}
       >
         <Plus className="w-6 h-6" />

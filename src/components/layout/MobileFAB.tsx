@@ -45,7 +45,10 @@ const MobileFAB = () => {
       )}
 
       {/* FAB Container */}
-      <div className="fixed right-4 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-50 flex flex-col items-end gap-3 lg:hidden">
+      <div 
+        className="fixed right-4 z-50 flex flex-col items-end gap-3 lg:hidden"
+        style={{ bottom: 'calc(var(--safe-area-bottom) + 5rem)' }}
+      >
         {/* Action Items */}
         {fabItems.map((item, index) => (
           <button

@@ -438,10 +438,6 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
                         <Briefcase className="w-4 h-4 text-muted-foreground" />
                         <span>{plan.max_jobs_per_month ?? 'Unlimited'} jobs/mo</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <HardDrive className="w-4 h-4 text-muted-foreground" />
-                        <span>{formatBytes(plan.storage_limit_bytes || 0)} storage</span>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
