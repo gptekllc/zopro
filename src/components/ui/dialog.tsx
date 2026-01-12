@@ -19,7 +19,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-[65] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -40,13 +40,17 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
-        // Mobile: modal style centered with max width calc for margins
-        "max-h-[85dvh] max-w-[calc(100vw-2rem)] p-4 rounded-lg",
-        // Desktop: constrained width, rounded, centered
-        "sm:max-w-lg sm:max-h-[90vh] sm:p-6 sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-[70] grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+        // Mobile: modal style with padding for bottom nav (pb-24 = 6rem for nav + safe area)
+        "max-h-[85dvh] max-w-[calc(100vw-2rem)] p-4 pb-24 rounded-lg",
+        // Desktop: standard padding, no extra bottom padding needed
+        "sm:max-w-lg sm:max-h-[90vh] sm:p-6 sm:pb-6 sm:rounded-lg lg:pb-6",
         className,
       )}
+      style={{
+        marginTop: 'var(--safe-area-top)',
+        marginBottom: 'max(var(--safe-area-bottom), 1rem)',
+      }}
       {...props}
     >
       {children}
