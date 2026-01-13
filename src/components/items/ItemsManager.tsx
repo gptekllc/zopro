@@ -451,7 +451,7 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
         <DialogContent>
-          <DialogHeader>
+          <DialogHeader className="pr-8">
             <DialogTitle>
               {editingItem ? 'Edit' : 'Add'} {formData.type === 'product' ? 'Product' : 'Service'}
             </DialogTitle>
@@ -688,14 +688,17 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
       </AlertDialog>
 
       {/* Mobile Floating Action Button */}
-      <div className="fixed bottom-20 right-4 z-50 sm:hidden">
+      <div 
+        className="fixed right-4 z-50 sm:hidden"
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
+      >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="lg" className="h-14 w-14 rounded-full shadow-lg">
               <Plus className="w-6 h-6" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="mb-2">
+          <DropdownMenuContent align="end" className="mb-2 bg-popover">
             <DropdownMenuItem onClick={() => openCreateDialog('product')}>
               <Package className="w-4 h-4 mr-2" />
               New Product

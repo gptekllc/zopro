@@ -40,23 +40,19 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-[70] grid w-full translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
-        // Mobile: modal style with padding for bottom nav (pb-24 = 6rem for nav + safe area)
-        "max-h-[85dvh] max-w-[calc(100vw-2rem)] p-4 pb-24 rounded-lg",
-        // Desktop: standard padding, no extra bottom padding needed
-        "sm:max-w-lg sm:max-h-[90vh] sm:p-6 sm:pb-6 sm:rounded-lg lg:pb-6",
+        "fixed left-[50%] z-[70] grid w-full translate-x-[-50%] gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        // Mobile: position from top with proper spacing, leave room for bottom nav
+        "top-[env(safe-area-inset-top,0.5rem)] translate-y-0 max-h-[calc(100dvh-5rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px))] max-w-[calc(100vw-1rem)] p-4 rounded-lg",
+        // Desktop: center vertically
+        "sm:top-[50%] sm:translate-y-[-50%] sm:max-w-lg sm:max-h-[90vh] sm:p-6 sm:rounded-lg sm:max-w-[calc(100vw-2rem)]",
         className,
       )}
-      style={{
-        marginTop: 'var(--safe-area-top)',
-        marginBottom: 'max(var(--safe-area-bottom), 1rem)',
-      }}
       {...props}
     >
       {children}
       {!hideCloseButton && (
-        <DialogPrimitive.Close className="absolute right-3 top-3 sm:right-4 sm:top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
-          <X className="h-4 w-4" />
+        <DialogPrimitive.Close className="absolute right-3 top-3 sm:right-4 sm:top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none z-10">
+          <X className="h-5 w-5" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
       )}

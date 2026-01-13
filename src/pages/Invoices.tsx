@@ -375,14 +375,8 @@ const Invoices = () => {
               Create Invoice
             </Button>
           </DialogTrigger>
-          <DialogContent 
-            className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[100dvh] sm:max-h-[90vh] overflow-y-auto"
-            style={{
-              marginTop: 'var(--safe-area-top)',
-              marginBottom: 'var(--safe-area-bottom)',
-            }}
-          >
-            <DialogHeader>
+          <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl overflow-y-auto">
+            <DialogHeader className="flex-shrink-0 pr-8">
               <DialogTitle>{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
