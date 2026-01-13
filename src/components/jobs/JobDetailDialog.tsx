@@ -127,11 +127,11 @@ export function JobDetailDialog({
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailAddress, setEmailAddress] = useState('');
   const [showInvoiceDialog, setShowInvoiceDialog] = useState(false);
-  
+
   // Local state for optimistic UI updates
   const [localPriority, setLocalPriority] = useState(job?.priority);
   const [localStatus, setLocalStatus] = useState(job?.status);
-  
+
   // Sync local state when job prop changes
   useEffect(() => {
     if (job) {
@@ -139,11 +139,11 @@ export function JobDetailDialog({
       setLocalStatus(job.status);
     }
   }, [job?.priority, job?.status]);
-  
+
   // Ref for auto-scrolling to feedback section
   const feedbackSectionRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // Auto-scroll to feedback section when initialTab is 'feedback'
   useEffect(() => {
     if (open && initialTab === 'feedback') {
@@ -153,7 +153,10 @@ export function JobDetailDialog({
           const container = scrollContainerRef.current;
           const feedbackEl = feedbackSectionRef.current;
           const offsetTop = feedbackEl.offsetTop - container.offsetTop;
-          container.scrollTo({ top: offsetTop, behavior: 'smooth' });
+          container.scrollTo({
+            top: offsetTop,
+            behavior: 'smooth'
+          });
         }
       }, 150);
       return () => clearTimeout(timer);
@@ -309,9 +312,7 @@ export function JobDetailDialog({
   };
   const etaOptions = [10, 20, 30, 45, 60] as const;
   return <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
-        className="max-w-2xl md:max-w-4xl lg:max-w-5xl overflow-hidden rounded-lg p-0 flex flex-col"
-      >
+      <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl overflow-hidden rounded-lg p-0 flex flex-col">
         <DialogHeader className="p-4 sm:p-6 pb-0 sm:pb-0">
           <div className="flex items-center justify-between gap-2 pr-8">
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -327,22 +328,19 @@ export function JobDetailDialog({
                   </Badge>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover min-w-[100px]">
-                  {(['low', 'medium', 'high', 'urgent'] as const).map((priority) => (
-                    <DropdownMenuItem
-                      key={priority}
-                      className={`${(localPriority || job.priority) === priority ? 'bg-accent' : ''} p-1`}
-                      onClick={() => {
-                        if ((localPriority || job.priority) !== priority) {
-                          setLocalPriority(priority);
-                          updateJob.mutate({ id: job.id, priority });
-                        }
-                      }}
-                    >
+                  {(['low', 'medium', 'high', 'urgent'] as const).map(priority => <DropdownMenuItem key={priority} className={`${(localPriority || job.priority) === priority ? 'bg-accent' : ''} p-1`} onClick={() => {
+                  if ((localPriority || job.priority) !== priority) {
+                    setLocalPriority(priority);
+                    updateJob.mutate({
+                      id: job.id,
+                      priority
+                    });
+                  }
+                }}>
                       <Badge className={`${priorityColors[priority]} text-xs capitalize w-full justify-center`}>
                         {priority}
                       </Badge>
-                    </DropdownMenuItem>
-                  ))}
+                    </DropdownMenuItem>)}
                 </DropdownMenuContent>
               </DropdownMenu>
               <DropdownMenu>
@@ -353,22 +351,19 @@ export function JobDetailDialog({
                   </Badge>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-popover min-w-[120px]">
-                  {(['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const).map((status) => (
-                    <DropdownMenuItem
-                      key={status}
-                      className={`${(localStatus || job.status) === status ? 'bg-accent' : ''} p-1`}
-                      onClick={() => {
-                        if ((localStatus || job.status) !== status) {
-                          setLocalStatus(status);
-                          updateJob.mutate({ id: job.id, status });
-                        }
-                      }}
-                    >
+                  {(['draft', 'scheduled', 'in_progress', 'completed', 'invoiced', 'paid'] as const).map(status => <DropdownMenuItem key={status} className={`${(localStatus || job.status) === status ? 'bg-accent' : ''} p-1`} onClick={() => {
+                  if ((localStatus || job.status) !== status) {
+                    setLocalStatus(status);
+                    updateJob.mutate({
+                      id: job.id,
+                      status
+                    });
+                  }
+                }}>
                       <Badge className={`${statusColors[status]} text-xs capitalize w-full justify-center`}>
                         {status.replace('_', ' ')}
                       </Badge>
-                    </DropdownMenuItem>
-                  ))}
+                    </DropdownMenuItem>)}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -508,11 +503,7 @@ export function JobDetailDialog({
                           Discount{job.discount_type === 'percentage' && job.discount_value ? ` (${job.discount_value}%)` : ''}
                         </span>
                         <span className="text-xs">
-                          -${job.discount_value ? formatAmount(
-                            job.discount_type === 'percentage' && job.subtotal
-                              ? (Number(job.subtotal) * Number(job.discount_value)) / 100
-                              : Number(job.discount_value)
-                          ) : '0.00'}
+                          -${job.discount_value ? formatAmount(job.discount_type === 'percentage' && job.subtotal ? Number(job.subtotal) * Number(job.discount_value) / 100 : Number(job.discount_value)) : '0.00'}
                         </span>
                       </div>
                       {job.tax !== null && job.tax > 0 && <div className="flex justify-between gap-4">
@@ -551,9 +542,7 @@ export function JobDetailDialog({
           {/* Completion Signature */}
           <Separator />
           <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2 text-sm sm:text-base">
-              <PenTool className="w-4 h-4" /> Customer Signature
-            </h4>
+            
             {job.completion_signed_at && job.completion_signature_id ? <div className="sm:max-w-md">
                 <SignatureSection signatureId={job.completion_signature_id} title="Job Completion Signature" showCollectButton={false} showClearButton={true} onClearSignature={() => clearSignature.mutate({
               jobId: job.id,
@@ -604,15 +593,13 @@ export function JobDetailDialog({
                 <History className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Activities</span>
                 {(() => {
-                  // Count time entries: each entry has clock_in, and optionally clock_out
-                  const timeEntryCount = jobTimeEntries.reduce((acc, te) => acc + 1 + (te.clock_out ? 1 : 0), 0);
-                  const totalCount = notifications.length + signatureHistory.length + jobActivities.length + timeEntryCount;
-                  return totalCount > 0 ? (
-                    <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                // Count time entries: each entry has clock_in, and optionally clock_out
+                const timeEntryCount = jobTimeEntries.reduce((acc, te) => acc + 1 + (te.clock_out ? 1 : 0), 0);
+                const totalCount = notifications.length + signatureHistory.length + jobActivities.length + timeEntryCount;
+                return totalCount > 0 ? <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
                       {totalCount}
-                    </Badge>
-                  ) : null;
-                })()}
+                    </Badge> : null;
+              })()}
               </TabsTrigger>
             </TabsList>
 
@@ -725,14 +712,11 @@ export function JobDetailDialog({
 
             {/* Customer Feedback Tab */}
             <TabsContent value="feedback" className="mt-4" ref={feedbackSectionRef}>
-              {loadingFeedbacks || loadingFeedbackHistory ? <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p> : (
-                <div className="space-y-4">
+              {loadingFeedbacks || loadingFeedbackHistory ? <p className="text-xs sm:text-sm text-muted-foreground">Loading...</p> : <div className="space-y-4">
                   {/* Current Feedback */}
-                  {feedbacks.length > 0 ? (
-                    <div className="space-y-3">
+                  {feedbacks.length > 0 ? <div className="space-y-3">
                       <h4 className="text-sm font-medium">Current Feedback</h4>
-                      {feedbacks.map((feedback: JobFeedback) => (
-                        <div key={feedback.id} className={`p-3 rounded-lg border ${feedback.is_negative ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-muted/50'}`}>
+                      {feedbacks.map((feedback: JobFeedback) => <div key={feedback.id} className={`p-3 rounded-lg border ${feedback.is_negative ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800' : 'bg-muted/50'}`}>
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
@@ -756,48 +740,48 @@ export function JobDetailDialog({
                               </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="p-4 bg-muted/50 rounded-lg text-center">
+                        </div>)}
+                    </div> : <div className="p-4 bg-muted/50 rounded-lg text-center">
                       <MessageSquare className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
                       <p className="text-xs sm:text-sm text-muted-foreground">No customer feedback yet</p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Feedback will appear here after the customer rates the job
                       </p>
-                    </div>
-                  )}
+                    </div>}
 
                   {/* Feedback History */}
-                  {feedbackHistory.length > 0 && (
-                    <div className="space-y-3 pt-4 border-t">
+                  {feedbackHistory.length > 0 && <div className="space-y-3 pt-4 border-t">
                       <h4 className="text-sm font-medium flex items-center gap-2">
                         <History className="w-4 h-4" />
                         Feedback History
                       </h4>
                       <div className="space-y-2">
                         {feedbackHistory.map((entry: FeedbackHistoryEntry) => {
-                          const getActionLabel = () => {
-                            switch (entry.action_type) {
-                              case 'created': return 'Submitted feedback';
-                              case 'edited': return 'Edited feedback';
-                              case 'deleted': return 'Deleted feedback';
-                              default: return entry.action_type;
-                            }
-                          };
-                          
-                          const getActionColor = () => {
-                            switch (entry.action_type) {
-                              case 'created': return 'bg-success/10 text-success border-success/20';
-                              case 'edited': return 'bg-primary/10 text-primary border-primary/20';
-                              case 'deleted': return 'bg-destructive/10 text-destructive border-destructive/20';
-                              default: return 'bg-muted';
-                            }
-                          };
-
-                          return (
-                            <div key={entry.id} className="p-3 rounded-lg border bg-muted/30 text-sm">
+                    const getActionLabel = () => {
+                      switch (entry.action_type) {
+                        case 'created':
+                          return 'Submitted feedback';
+                        case 'edited':
+                          return 'Edited feedback';
+                        case 'deleted':
+                          return 'Deleted feedback';
+                        default:
+                          return entry.action_type;
+                      }
+                    };
+                    const getActionColor = () => {
+                      switch (entry.action_type) {
+                        case 'created':
+                          return 'bg-success/10 text-success border-success/20';
+                        case 'edited':
+                          return 'bg-primary/10 text-primary border-primary/20';
+                        case 'deleted':
+                          return 'bg-destructive/10 text-destructive border-destructive/20';
+                        default:
+                          return 'bg-muted';
+                      }
+                    };
+                    return <div key={entry.id} className="p-3 rounded-lg border bg-muted/30 text-sm">
                               <div className="flex items-center justify-between gap-2 mb-2">
                                 <Badge variant="outline" className={`text-xs ${getActionColor()}`}>
                                   {getActionLabel()}
@@ -809,46 +793,29 @@ export function JobDetailDialog({
                               <p className="text-xs text-muted-foreground">
                                 {entry.customer?.name || 'Customer'}
                               </p>
-                              {entry.action_type === 'edited' && (
-                                <div className="mt-2 space-y-1 text-xs">
-                                  {entry.old_rating !== entry.new_rating && (
-                                    <p>
+                              {entry.action_type === 'edited' && <div className="mt-2 space-y-1 text-xs">
+                                  {entry.old_rating !== entry.new_rating && <p>
                                       <span className="text-muted-foreground">Rating: </span>
                                       <span className="line-through text-muted-foreground/60">{entry.old_rating}/5</span>
                                       <span className="mx-1">→</span>
                                       <span className="font-medium">{entry.new_rating}/5</span>
-                                    </p>
-                                  )}
-                                  {entry.old_feedback_text !== entry.new_feedback_text && (
-                                    <div className="space-y-1">
-                                      {entry.old_feedback_text && (
-                                        <p className="line-through text-muted-foreground/60">"{entry.old_feedback_text}"</p>
-                                      )}
-                                      {entry.new_feedback_text && (
-                                        <p className="font-medium">"{entry.new_feedback_text}"</p>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              {entry.action_type === 'deleted' && entry.old_rating && (
-                                <div className="mt-2 text-xs text-muted-foreground/60">
+                                    </p>}
+                                  {entry.old_feedback_text !== entry.new_feedback_text && <div className="space-y-1">
+                                      {entry.old_feedback_text && <p className="line-through text-muted-foreground/60">"{entry.old_feedback_text}"</p>}
+                                      {entry.new_feedback_text && <p className="font-medium">"{entry.new_feedback_text}"</p>}
+                                    </div>}
+                                </div>}
+                              {entry.action_type === 'deleted' && entry.old_rating && <div className="mt-2 text-xs text-muted-foreground/60">
                                   <p>Was: {entry.old_rating}/5 {entry.old_feedback_text ? `- "${entry.old_feedback_text}"` : ''}</p>
-                                </div>
-                              )}
-                              {entry.action_type === 'created' && (
-                                <div className="mt-2 text-xs">
+                                </div>}
+                              {entry.action_type === 'created' && <div className="mt-2 text-xs">
                                   <p>{entry.new_rating}/5 {entry.new_feedback_text ? `- "${entry.new_feedback_text}"` : ''}</p>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                                </div>}
+                            </div>;
+                  })}
                       </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    </div>}
+                </div>}
             </TabsContent>
 
             {/* Activities Tab (Combined Email + Signature + Job Activities) */}
@@ -889,12 +856,8 @@ export function JobDetailDialog({
                 id: `activity-${a.id}`,
                 type: a.activity_type as 'status_change' | 'priority_change' | 'quote_created' | 'invoice_created',
                 timestamp: a.created_at,
-                title: a.activity_type === 'status_change' ? 'Status Changed' : 
-                       a.activity_type === 'priority_change' ? 'Priority Changed' :
-                       a.activity_type === 'quote_created' ? 'Quote Created' : 'Invoice Created',
-                details: a.activity_type === 'status_change' ? `${(a.old_value || 'draft').replace('_', ' ')} → ${(a.new_value || '').replace('_', ' ')}` : 
-                         a.activity_type === 'priority_change' ? `${a.old_value || 'medium'} → ${a.new_value || ''}` :
-                         a.new_value || '',
+                title: a.activity_type === 'status_change' ? 'Status Changed' : a.activity_type === 'priority_change' ? 'Priority Changed' : a.activity_type === 'quote_created' ? 'Quote Created' : 'Invoice Created',
+                details: a.activity_type === 'status_change' ? `${(a.old_value || 'draft').replace('_', ' ')} → ${(a.new_value || '').replace('_', ' ')}` : a.activity_type === 'priority_change' ? `${a.old_value || 'medium'} → ${a.new_value || ''}` : a.new_value || '',
                 performer: a.performer?.full_name || null
               })),
               // Time clock entries
@@ -1030,24 +993,26 @@ export function JobDetailDialog({
               };
 
               // Group activities by date
-              const groupedActivities: { label: string; items: typeof activities }[] = [];
+              const groupedActivities: {
+                label: string;
+                items: typeof activities;
+              }[] = [];
               let currentLabel = '';
-              
               activities.forEach(activity => {
                 const activityDate = new Date(activity.timestamp);
                 const label = getDateLabel(activityDate);
-                
                 if (label !== currentLabel) {
-                  groupedActivities.push({ label, items: [activity] });
+                  groupedActivities.push({
+                    label,
+                    items: [activity]
+                  });
                   currentLabel = label;
                 } else {
                   groupedActivities[groupedActivities.length - 1].items.push(activity);
                 }
               });
-
               return <div className="relative">
-                    {groupedActivities.map((group, groupIndex) => (
-                      <div key={group.label} className={groupIndex > 0 ? 'mt-4' : ''}>
+                    {groupedActivities.map((group, groupIndex) => <div key={group.label} className={groupIndex > 0 ? 'mt-4' : ''}>
                         {/* Date header */}
                         <div className="flex items-center gap-2 mb-2">
                           <div className="h-px flex-1 bg-border" />
@@ -1060,16 +1025,12 @@ export function JobDetailDialog({
                         {/* Timeline for this group */}
                         <div className="relative">
                           {/* Timeline line */}
-                          {group.items.length > 1 && (
-                            <div className="absolute left-[19px] top-6 bottom-6 w-0.5 bg-border" />
-                          )}
+                          {group.items.length > 1 && <div className="absolute left-[19px] top-6 bottom-6 w-0.5 bg-border" />}
                           
                           <div className="space-y-0">
                             {group.items.map((activity, index) => {
-                              const styles = getActivityStyles(activity.type);
-                              
-                              return (
-                                <div key={activity.id} className="relative flex items-start gap-3 py-2">
+                        const styles = getActivityStyles(activity.type);
+                        return <div key={activity.id} className="relative flex items-start gap-3 py-2">
                                   {/* Timeline dot */}
                                   <div className={`relative z-10 p-2 rounded-full shrink-0 ${styles.iconBg} ring-4 ring-background`}>
                                     {getActivityIcon(activity.type, styles.iconColor)}
@@ -1079,34 +1040,26 @@ export function JobDetailDialog({
                                   <div className={`flex-1 min-w-0 p-3 rounded-lg border ${styles.bg} -mt-1`}>
                                     <div className="flex items-center gap-2 flex-wrap">
                                       <span className="font-medium text-sm">{activity.title}</span>
-                                      {activity.extra && (
-                                        <Badge variant="outline" className="text-xs capitalize">
+                                      {activity.extra && <Badge variant="outline" className="text-xs capitalize">
                                           {activity.extra}
-                                        </Badge>
-                                      )}
+                                        </Badge>}
                                     </div>
-                                    {activity.details && (
-                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                    {activity.details && <p className="text-xs text-muted-foreground mt-0.5">
                                         {activity.details}
-                                      </p>
-                                    )}
+                                      </p>}
                                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                      {activity.performer && (
-                                        <>
+                                      {activity.performer && <>
                                           <span>By: {activity.performer}</span>
                                           <span>•</span>
-                                        </>
-                                      )}
+                                        </>}
                                       <span>{format(new Date(activity.timestamp), 'h:mm a')}</span>
                                     </div>
                                   </div>
-                                </div>
-                              );
-                            })}
+                                </div>;
+                      })}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      </div>)}
                   </div>;
             })()}
             </TabsContent>
