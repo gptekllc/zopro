@@ -50,7 +50,7 @@ const MobileFAB = () => {
           "fixed right-4 z-50 flex flex-col items-end gap-3 lg:hidden",
           !isOpen && "pointer-events-none"
         )}
-        style={{ bottom: 'calc(5rem + max(0.25rem, calc(var(--safe-area-bottom) * 0.5)))' }}
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
       >
         {/* Action Items */}
         {fabItems.map((item, index) => (

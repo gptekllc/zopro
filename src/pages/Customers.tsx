@@ -213,14 +213,8 @@ const Customers = () => {
                 <span className="hidden sm:inline">Add</span>
               </Button>
             </DialogTrigger>
-            <DialogContent 
-              className="max-w-md max-h-[90vh] overflow-hidden flex flex-col"
-              style={{
-                marginTop: 'var(--safe-area-top)',
-                marginBottom: 'var(--safe-area-bottom)',
-              }}
-            >
-              <DialogHeader className="flex-shrink-0">
+            <DialogContent className="max-w-md overflow-hidden flex flex-col">
+              <DialogHeader className="flex-shrink-0 pr-8">
                 <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4 pr-1">
@@ -385,7 +379,7 @@ const Customers = () => {
       {/* Mobile Floating Action Button */}
       <Button
         className="fixed right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50"
-        style={{ bottom: 'calc(var(--safe-area-bottom) + 5rem)' }}
+        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
         onClick={() => openEditDialog(true)}
       >
         <Plus className="w-6 h-6" />
