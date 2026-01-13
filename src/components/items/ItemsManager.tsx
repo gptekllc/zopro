@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useItems, useCreateItem, useUpdateItem, useDeleteItem, Item } from '@/hooks/useItems';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -687,29 +688,33 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Mobile Floating Action Button */}
-      <div 
-        className="fixed right-4 z-50 sm:hidden"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
-      >
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="lg" className="h-14 w-14 rounded-full shadow-lg">
-              <Plus className="w-6 h-6" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="mb-2 bg-popover">
-            <DropdownMenuItem onClick={() => openCreateDialog('product')}>
-              <Package className="w-4 h-4 mr-2" />
-              New Product
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openCreateDialog('service')}>
-              <Wrench className="w-4 h-4 mr-2" />
-              New Service
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      {/* Mobile Floating Action Button (portal so it stays fixed even inside PullToRefresh transforms) */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed right-4 z-[80] sm:hidden"
+            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
+          >
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="lg" className="h-14 w-14 rounded-full shadow-lg">
+                  <Plus className="w-6 h-6" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="mb-2 bg-popover">
+                <DropdownMenuItem onClick={() => openCreateDialog('product')}>
+                  <Package className="w-4 h-4 mr-2" />
+                  New Product
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openCreateDialog('service')}>
+                  <Wrench className="w-4 h-4 mr-2" />
+                  New Service
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 };

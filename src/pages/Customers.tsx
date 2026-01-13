@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -376,14 +377,18 @@ const Customers = () => {
         </div>
       )}
 
-      {/* Mobile Floating Action Button */}
-      <Button
-        className="fixed right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-50"
-        style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
-        onClick={() => openEditDialog(true)}
-      >
-        <Plus className="w-6 h-6" />
-      </Button>
+      {/* Mobile Floating Action Button (portal so it stays fixed even inside PullToRefresh transforms) */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <Button
+            className="fixed right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-[80]"
+            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
+            onClick={() => openEditDialog(true)}
+          >
+            <Plus className="w-6 h-6" />
+          </Button>,
+          document.body,
+        )}
     </PageContainer>
     </PullToRefresh>
   );

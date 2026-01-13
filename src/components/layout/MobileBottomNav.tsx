@@ -64,7 +64,7 @@ const MobileBottomNav = () => {
 
   return (
     <nav 
-      className="lg:hidden fixed left-0 right-0 bg-card border-t z-[60]"
+      className="lg:hidden fixed left-0 right-0 bg-card border-t z-[90]"
       style={{ 
         bottom: 0,
         paddingBottom: 'max(0.25rem, calc(var(--safe-area-bottom) * 0.5))'
