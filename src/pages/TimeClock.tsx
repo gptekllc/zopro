@@ -14,32 +14,41 @@ import { Link } from 'react-router-dom';
 import PageContainer from '@/components/layout/PageContainer';
 import { FeatureGate } from '@/components/FeatureGate';
 import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
-
 const TimeClock = () => {
-  return (
-    <FeatureGate feature="time_clock">
+  return <FeatureGate feature="time_clock">
       <TimeClockContent />
-    </FeatureGate>
-  );
+    </FeatureGate>;
 };
-
 const TimeClockContent = () => {
-  const { user, profile, roles } = useAuth();
-  const { data: company } = useCompany();
+  const {
+    user,
+    profile,
+    roles
+  } = useAuth();
+  const {
+    data: company
+  } = useCompany();
   const queryClient = useQueryClient();
-  const { data: timeEntries = [], isLoading } = useTimeEntries();
-  const { data: activeEntry } = useActiveTimeEntry();
-
+  const {
+    data: timeEntries = [],
+    isLoading
+  } = useTimeEntries();
+  const {
+    data: activeEntry
+  } = useActiveTimeEntry();
   const handleRefresh = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ['time-entries'] });
-    await queryClient.invalidateQueries({ queryKey: ['active-time-entry'] });
+    await queryClient.invalidateQueries({
+      queryKey: ['time-entries']
+    });
+    await queryClient.invalidateQueries({
+      queryKey: ['active-time-entry']
+    });
   }, [queryClient]);
   const clockIn = useClockIn();
   const clockOut = useClockOut();
   const updateTimeEntry = useUpdateTimeEntry();
   const startBreak = useStartBreak();
   const endBreak = useEndBreak();
-  
   const [currentTime, setCurrentTime] = useState(new Date());
   const [notes, setNotes] = useState('');
   const [elapsedTime, setElapsedTime] = useState('00:00:00');
@@ -47,29 +56,32 @@ const TimeClockContent = () => {
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
-  
   const canEdit = roles.some(r => r.role === 'admin' || r.role === 'manager');
   const canViewReports = roles.some(r => r.role === 'admin' || r.role === 'manager');
   const userEntries = timeEntries.filter(e => e.user_id === user?.id);
 
   // Calculate weekly hours
   const today = new Date();
-  const currentWeekStart = startOfWeek(addWeeks(today, weekOffset), { weekStartsOn: 0 });
-  const currentWeekEnd = endOfWeek(addWeeks(today, weekOffset), { weekStartsOn: 0 });
-  const weekDays = eachDayOfInterval({ start: currentWeekStart, end: currentWeekEnd });
-  
+  const currentWeekStart = startOfWeek(addWeeks(today, weekOffset), {
+    weekStartsOn: 0
+  });
+  const currentWeekEnd = endOfWeek(addWeeks(today, weekOffset), {
+    weekStartsOn: 0
+  });
+  const weekDays = eachDayOfInterval({
+    start: currentWeekStart,
+    end: currentWeekEnd
+  });
   const weeklyEntries = userEntries.filter(e => {
     const entryDate = new Date(e.clock_in);
     return entryDate >= currentWeekStart && entryDate <= currentWeekEnd;
   });
-  
   const weeklyMinutes = weeklyEntries.reduce((total, entry) => {
     const clockOutTime = entry.clock_out ? new Date(entry.clock_out) : new Date();
     const worked = differenceInMinutes(clockOutTime, new Date(entry.clock_in));
     const breakMins = entry.break_minutes || 0;
     return total + worked - breakMins;
   }, 0);
-  
   const weeklyHours = Math.floor(weeklyMinutes / 60);
   const weeklyMins = weeklyMinutes % 60;
 
@@ -78,7 +90,6 @@ const TimeClockContent = () => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
   useEffect(() => {
     if (!activeEntry) {
       setElapsedTime('00:00:00');
@@ -111,17 +122,17 @@ const TimeClockContent = () => {
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
   }, [activeEntry]);
-
   const handleClockIn = async () => {
     try {
-      await clockIn.mutateAsync({ notes: notes || undefined });
+      await clockIn.mutateAsync({
+        notes: notes || undefined
+      });
       setNotes('');
       toast.success('Clocked in successfully!');
     } catch (error) {
       toast.error('Failed to clock in');
     }
   };
-
   const handleClockOut = async () => {
     if (!activeEntry) return;
     if (activeEntry.is_on_break && activeEntry.break_start) {
@@ -134,7 +145,7 @@ const TimeClockContent = () => {
     try {
       await clockOut.mutateAsync({
         id: activeEntry.id,
-        notes: notes || undefined,
+        notes: notes || undefined
       });
       setNotes('');
       toast.success('Clocked out successfully!');
@@ -142,7 +153,6 @@ const TimeClockContent = () => {
       toast.error('Failed to clock out');
     }
   };
-
   const handleToggleBreak = async () => {
     if (!activeEntry) return;
     if (activeEntry.is_on_break) {
@@ -157,12 +167,10 @@ const TimeClockContent = () => {
       await startBreak.mutateAsync(activeEntry.id);
     }
   };
-
   const handleViewEntry = (entry: TimeEntry) => {
     setSelectedEntry(entry);
     setDialogOpen(true);
   };
-
   const handleSaveEntry = async (data: {
     clock_in: string;
     clock_out: string | null;
@@ -175,19 +183,15 @@ const TimeClockContent = () => {
       ...data
     });
   };
-
   const getStatus = () => {
     if (!activeEntry) return 'idle';
     if (activeEntry.is_on_break) return 'break';
     return 'working';
   };
-
   const status = getStatus();
-
   const getEntriesForDay = (day: Date) => {
     return weeklyEntries.filter(e => isSameDay(new Date(e.clock_in), day));
   };
-
   const formatDayDuration = (entries: TimeEntry[]) => {
     if (entries.length === 0) return '--';
     const totalMins = entries.reduce((total, entry) => {
@@ -205,17 +209,12 @@ const TimeClockContent = () => {
     const mins = totalMins % 60;
     return `${hrs}h ${mins}m`;
   };
-
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
+    return <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={5} />} className="min-h-full">
+  return <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={5} />} className="min-h-full">
     <PageContainer width="full" className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -237,30 +236,27 @@ const TimeClockContent = () => {
           <div className="p-6 sm:p-8 lg:p-10 flex flex-col items-center justify-center text-center min-h-[400px] lg:min-h-[420px] relative z-10">
             {/* Status Badge */}
             <div className="mb-4 sm:mb-6">
-              {status === 'working' && (
-                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-green-500/10 text-green-600 dark:text-green-400 backdrop-blur-sm border border-green-500/20 shadow-sm">
+              {status === 'working' && <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-green-500/10 text-green-600 dark:text-green-400 backdrop-blur-sm border border-green-500/20 shadow-sm">
                   <span className="w-2.5 h-2.5 rounded-full bg-green-500 mr-2.5 animate-pulse shadow-lg shadow-green-500/50"></span>
                   Clocked In
-                </span>
-              )}
-              {status === 'break' && (
-                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 backdrop-blur-sm border border-amber-500/20 shadow-sm">
+                </span>}
+              {status === 'break' && <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 backdrop-blur-sm border border-amber-500/20 shadow-sm">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-500 mr-2.5 animate-bounce"></span>
                   On Break
-                </span>
-              )}
-              {status === 'idle' && (
-                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-muted/80 text-muted-foreground backdrop-blur-sm border border-border/50">
+                </span>}
+              {status === 'idle' && <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-muted/80 text-muted-foreground backdrop-blur-sm border border-border/50">
                   <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/50 mr-2.5"></span>
                   Off Clock
-                </span>
-              )}
+                </span>}
             </div>
 
             {/* Time Display */}
             <div className="mb-3 flex items-baseline justify-center">
               <span className="text-5xl sm:text-6xl lg:text-7xl font-mono font-bold tracking-tighter bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-transparent xl:text-4xl">
-                {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {currentTime.toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
               </span>
               <span className="text-lg sm:text-xl lg:text-2xl font-mono text-muted-foreground/60 font-medium ml-1 sm:ml-2 tabular-nums">
                 {currentTime.getSeconds().toString().padStart(2, '0')}
@@ -268,90 +264,53 @@ const TimeClockContent = () => {
             </div>
             <p className="text-muted-foreground font-medium mb-6 sm:mb-8 flex items-center gap-2 text-sm sm:text-base">
               <Calendar className="w-4 h-4 opacity-60" />
-              {currentTime.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}
+              {currentTime.toLocaleDateString([], {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric'
+              })}
             </p>
 
             {/* Shift Timer */}
-            {(status === 'working' || status === 'break') && (
-              <div className="mb-6 sm:mb-8 p-4 bg-muted/30 backdrop-blur-sm rounded-2xl border border-border/50 w-full max-w-xs shadow-inner">
+            {(status === 'working' || status === 'break') && <div className="mb-6 sm:mb-8 p-4 bg-muted/30 backdrop-blur-sm rounded-2xl border border-border/50 w-full max-w-xs shadow-inner">
                 <div className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-2">Current Shift</div>
                 <div className="text-2xl sm:text-3xl font-mono font-semibold tracking-tight">{elapsedTime}</div>
-                {((activeEntry?.break_minutes || 0) > 0 || status === 'break') && (
-                  <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center justify-center gap-1.5">
+                {((activeEntry?.break_minutes || 0) > 0 || status === 'break') && <div className="mt-2 text-xs text-amber-600 dark:text-amber-400 flex items-center justify-center gap-1.5">
                     <Coffee className="w-3 h-3" />
                     Break: {breakTime}
-                  </div>
-                )}
-              </div>
-            )}
+                  </div>}
+              </div>}
 
             {/* Notes Input */}
             <div className="w-full max-w-sm mb-5">
-              <Textarea 
-                placeholder="Notes (optional)..." 
-                value={notes} 
-                onChange={e => setNotes(e.target.value)} 
-                rows={2} 
-                className="text-sm bg-muted/30 border-border/50 backdrop-blur-sm resize-none" 
-              />
+              <Textarea placeholder="Notes (optional)..." value={notes} onChange={e => setNotes(e.target.value)} rows={2} className="text-sm bg-muted/30 border-border/50 backdrop-blur-sm resize-none" />
             </div>
 
             {/* Actions Grid */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-sm">
-              {status === 'idle' ? (
-                <Button 
-                  size="lg" 
-                  className="col-span-2 h-12 sm:h-14 shadow-lg shadow-green-600/25 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]" 
-                  onClick={handleClockIn} 
-                  disabled={clockIn.isPending}
-                >
+              {status === 'idle' ? <Button size="lg" className="col-span-2 h-12 sm:h-14 shadow-lg shadow-green-600/25 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]" onClick={handleClockIn} disabled={clockIn.isPending}>
                   {clockIn.isPending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Play className="w-5 h-5 mr-2 fill-current" />}
                   Clock In
-                </Button>
-              ) : (
-                <>
-                  <Button 
-                    variant="destructive" 
-                    size="lg" 
-                    className="h-12 sm:h-14 shadow-lg shadow-destructive/25 font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]" 
-                    onClick={handleClockOut} 
-                    disabled={clockOut.isPending}
-                  >
+                </Button> : <>
+                  <Button variant="destructive" size="lg" className="h-12 sm:h-14 shadow-lg shadow-destructive/25 font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]" onClick={handleClockOut} disabled={clockOut.isPending}>
                     {clockOut.isPending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Square className="w-5 h-5 mr-2 fill-current" />}
                     Clock Out
                   </Button>
 
-                  {status === 'working' ? (
-                    <Button 
-                      size="lg" 
-                      className="h-12 sm:h-14 shadow-lg shadow-amber-500/25 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]" 
-                      onClick={handleToggleBreak} 
-                      disabled={startBreak.isPending}
-                    >
+                  {status === 'working' ? <Button size="lg" className="h-12 sm:h-14 shadow-lg shadow-amber-500/25 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]" onClick={handleToggleBreak} disabled={startBreak.isPending}>
                       {startBreak.isPending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Coffee className="w-5 h-5 mr-2" />}
                       Break
-                    </Button>
-                  ) : (
-                    <Button 
-                      size="lg" 
-                      className="h-12 sm:h-14 shadow-lg font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]" 
-                      onClick={handleToggleBreak} 
-                      disabled={endBreak.isPending}
-                    >
+                    </Button> : <Button size="lg" className="h-12 sm:h-14 shadow-lg font-semibold transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]" onClick={handleToggleBreak} disabled={endBreak.isPending}>
                       {endBreak.isPending ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Play className="w-5 h-5 mr-2" />}
                       Resume
-                    </Button>
-                  )}
-                </>
-              )}
+                    </Button>}
+                </>}
             </div>
 
-            {status !== 'idle' && company?.timezone && (
-              <div className="mt-6 sm:mt-8 flex items-center text-xs text-muted-foreground/70 gap-1.5 bg-muted/30 rounded-full px-3 py-1.5 backdrop-blur-sm">
+            {status !== 'idle' && company?.timezone && <div className="mt-6 sm:mt-8 flex items-center text-xs text-muted-foreground/70 gap-1.5 bg-muted/30 rounded-full px-3 py-1.5 backdrop-blur-sm">
                 <MapPin className="w-3 h-3" />
                 <span>{company.timezone}</span>
-              </div>
-            )}
+              </div>}
           </div>
         </Card>
 
@@ -377,7 +336,9 @@ const TimeClockContent = () => {
               </div>
               {/* Progress Bar */}
               <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
-                <div className="bg-primary h-2 rounded-full transition-all" style={{ width: `${Math.min(100, weeklyMinutes / (40 * 60) * 100)}%` }}></div>
+                <div className="bg-primary h-2 rounded-full transition-all" style={{
+                  width: `${Math.min(100, weeklyMinutes / (40 * 60) * 100)}%`
+                }}></div>
               </div>
               <div className="pt-4 border-t grid grid-cols-2 gap-4">
                 <div>
@@ -400,15 +361,7 @@ const TimeClockContent = () => {
               </Button>
             </div>
             <div className="divide-y max-h-[250px] overflow-y-auto">
-              {userEntries.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground text-sm">No activity yet</div>
-              ) : (
-                userEntries.slice(0, 6).map(entry => (
-                  <div 
-                    key={entry.id} 
-                    className="p-3 flex items-start gap-3 hover:bg-muted/50 transition-colors cursor-pointer" 
-                    onClick={() => handleViewEntry(entry)}
-                  >
+              {userEntries.length === 0 ? <div className="p-8 text-center text-muted-foreground text-sm">No activity yet</div> : userEntries.slice(0, 6).map(entry => <div key={entry.id} className="p-3 flex items-start gap-3 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => handleViewEntry(entry)}>
                     <div className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${!entry.clock_out ? 'bg-green-500' : 'bg-muted-foreground'}`} />
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between">
@@ -416,9 +369,7 @@ const TimeClockContent = () => {
                         <span className="text-xs text-muted-foreground font-mono">{format(new Date(entry.clock_in), 'h:mm a')}</span>
                       </div>
                     </div>
-                  </div>
-                ))
-              )}
+                  </div>)}
             </div>
           </Card>
         </div>
@@ -427,7 +378,7 @@ const TimeClockContent = () => {
       {/* Weekly Timesheet Table */}
       <Card className="overflow-hidden">
         <div className="p-4 border-b flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="gap-4 flex-col flex items-center justify-start">
             <h3 className="font-semibold">Timesheet</h3>
             <div className="flex items-center bg-muted rounded-md p-0.5">
               <button className="p-1 hover:bg-background rounded-sm transition-all" onClick={() => setWeekOffset(prev => prev - 1)}>
@@ -441,8 +392,7 @@ const TimeClockContent = () => {
               </button>
             </div>
           </div>
-          {canViewReports && (
-            <div className="flex items-center gap-2">
+          {canViewReports && <div className="items-center gap-2 flex flex-col">
               <Link to="/timesheet">
                 <Button variant="outline" size="sm">
                   <FileText className="w-4 h-4 mr-2" />
@@ -452,8 +402,7 @@ const TimeClockContent = () => {
               <Link to="/timesheet">
                 <Button variant="outline" size="sm">Export PDF</Button>
               </Link>
-            </div>
-          )}
+            </div>}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
@@ -473,8 +422,7 @@ const TimeClockContent = () => {
                 const firstEntry = dayEntries[0];
                 const totalBreak = dayEntries.reduce((sum, e) => sum + (e.break_minutes || 0), 0);
                 const isToday = isSameDay(day, new Date());
-                return (
-                  <tr key={day.toISOString()} className={`hover:bg-muted/30 ${index % 2 === 1 ? 'bg-muted/10' : ''}`}>
+                return <tr key={day.toISOString()} className={`hover:bg-muted/30 ${index % 2 === 1 ? 'bg-muted/10' : ''}`}>
                     <td className="px-4 py-3">
                       <div className={`font-medium ${isToday ? 'text-primary' : ''}`}>
                         {format(day, 'EEE, MMM d')}
@@ -493,14 +441,11 @@ const TimeClockContent = () => {
                       {formatDayDuration(dayEntries)}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {firstEntry && (
-                        <button className="text-muted-foreground hover:text-foreground" onClick={() => handleViewEntry(firstEntry)}>
+                      {firstEntry && <button className="text-muted-foreground hover:text-foreground" onClick={() => handleViewEntry(firstEntry)}>
                           {canEdit ? <Pencil className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      )}
+                        </button>}
                     </td>
-                  </tr>
-                );
+                  </tr>;
               })}
             </tbody>
             <tfoot className="bg-muted/50 font-medium border-t">
@@ -514,17 +459,8 @@ const TimeClockContent = () => {
         </div>
       </Card>
 
-      <TimeEntryDialog 
-        entry={selectedEntry} 
-        open={dialogOpen} 
-        onOpenChange={setDialogOpen} 
-        canEdit={canEdit} 
-        onSave={handleSaveEntry} 
-        timezone={company?.timezone} 
-      />
+      <TimeEntryDialog entry={selectedEntry} open={dialogOpen} onOpenChange={setDialogOpen} canEdit={canEdit} onSave={handleSaveEntry} timezone={company?.timezone} />
     </PageContainer>
-    </PullToRefresh>
-  );
+    </PullToRefresh>;
 };
-
 export default TimeClock;
