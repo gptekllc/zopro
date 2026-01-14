@@ -97,7 +97,6 @@ export function QuoteCard({ quote, onView, onEdit, onArchive, onDelete }: QuoteC
       customerEmail={customerEmail}
       total={Number(quote.total)}
       metadataRow={metadataRow}
-      notes={quote.notes}
       tagsRow={tagsRow}
       swipeRightActions={swipeRightActions}
     />

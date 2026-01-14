@@ -17,8 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink, RotateCcw, Eye, Filter } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink, RotateCcw, Eye, Filter, MoreVertical } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import PageContainer from '@/components/layout/PageContainer';
 import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
@@ -309,13 +309,34 @@ const Customers = () => {
                     </div>
                     
                     {/* Right: Actions */}
-                    <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(customer)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(customer.id)}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
+                    <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-popover">
+                          <DropdownMenuItem onClick={() => handleEdit(customer)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          {customer.email && (
+                            <DropdownMenuItem onClick={() => handleSendPortalLink(customer)}>
+                              <ExternalLink className="w-4 h-4 mr-2" />
+                              Send Portal Link
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleDelete(customer.id)} 
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </CardContent>
