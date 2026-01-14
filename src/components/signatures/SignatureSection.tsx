@@ -5,17 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { PenTool, Calendar, User, Globe, Loader2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState } from 'react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 interface SignatureSectionProps {
   signatureId: string | null | undefined;
   title?: string;
@@ -28,7 +18,6 @@ interface SignatureSectionProps {
   showClearButton?: boolean;
   paidOnline?: boolean;
 }
-
 interface Signature {
   id: string;
   signature_data: string;
@@ -38,7 +27,6 @@ interface Signature {
   document_type: string;
   document_id: string;
 }
-
 export function SignatureSection({
   signatureId,
   title = 'Digital Signature',
@@ -49,37 +37,34 @@ export function SignatureSection({
   onClearSignature,
   isClearing = false,
   showClearButton = true,
-  paidOnline = false,
+  paidOnline = false
 }: SignatureSectionProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
-
-  const { data: signature, isLoading } = useQuery({
+  const {
+    data: signature,
+    isLoading
+  } = useQuery({
     queryKey: ['signature', signatureId],
     queryFn: async () => {
       if (!signatureId) return null;
-      const { data, error } = await supabase
-        .from('signatures')
-        .select('*')
-        .eq('id', signatureId)
-        .maybeSingle();
+      const {
+        data,
+        error
+      } = await supabase.from('signatures').select('*').eq('id', signatureId).maybeSingle();
       if (error) throw error;
       return data as Signature | null;
     },
-    enabled: !!signatureId,
+    enabled: !!signatureId
   });
-
   const handleClearClick = () => {
     setShowClearConfirm(true);
   };
-
   const handleConfirmClear = () => {
     setShowClearConfirm(false);
     onClearSignature?.();
   };
-
   if (isLoading) {
-    return (
-      <div className="space-y-2">
+    return <div className="space-y-2">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
           <PenTool className="w-3 h-3" />
           {title}
@@ -89,15 +74,12 @@ export function SignatureSection({
             <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
   if (!signatureId || !signature) {
     // No signature yet - but if paid online, show that instead
     if (paidOnline) {
-      return (
-        <div className="space-y-2">
+      return <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
             <PenTool className="w-3 h-3" />
             {title}
@@ -113,42 +95,22 @@ export function SignatureSection({
               </div>
             </CardContent>
           </Card>
-        </div>
-      );
+        </div>;
     }
-
-    return (
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-          <PenTool className="w-3 h-3" />
-          {title}
-        </p>
+    return <div className="space-y-2">
+        
         <Card className="border-dashed">
           <CardContent className="p-4 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">No signature collected yet</p>
-            {showCollectButton && onCollectSignature && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onCollectSignature}
-                disabled={isCollecting}
-              >
-                {isCollecting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <PenTool className="w-4 h-4 mr-2" />
-                )}
+            {showCollectButton && onCollectSignature && <Button variant="outline" size="sm" onClick={onCollectSignature} disabled={isCollecting}>
+                {isCollecting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <PenTool className="w-4 h-4 mr-2" />}
                 {collectButtonText}
-              </Button>
-            )}
+              </Button>}
           </CardContent>
         </Card>
-      </div>
-    );
+      </div>;
   }
-
-  return (
-    <>
+  return <>
       <div className="space-y-2">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-2">
           <PenTool className="w-3 h-3" />
@@ -158,11 +120,7 @@ export function SignatureSection({
           <CardContent className="p-4 space-y-3">
             {/* Signature Image */}
             <div className="bg-white rounded-md p-3 border">
-              <img 
-                src={signature.signature_data} 
-                alt="Customer Signature" 
-                className="max-w-full h-auto max-h-24 mx-auto"
-              />
+              <img src={signature.signature_data} alt="Customer Signature" className="max-w-full h-auto max-h-24 mx-auto" />
             </div>
 
             {/* Signature Details */}
@@ -175,33 +133,19 @@ export function SignatureSection({
                 <Calendar className="w-3.5 h-3.5" />
                 <span>{format(new Date(signature.signed_at), 'MMM d, yyyy \'at\' h:mm a')}</span>
               </div>
-              {signature.signer_ip && (
-                <div className="flex items-center gap-2 text-muted-foreground">
+              {signature.signer_ip && <div className="flex items-center gap-2 text-muted-foreground">
                   <Globe className="w-3.5 h-3.5" />
                   <span className="font-mono text-xs">{signature.signer_ip}</span>
-                </div>
-              )}
+                </div>}
             </div>
 
             {/* Clear Button */}
-            {showClearButton && onClearSignature && (
-              <div className="flex justify-end">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                  onClick={handleClearClick}
-                  disabled={isClearing}
-                >
-                  {isClearing ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-4 h-4 mr-1" />
-                  )}
+            {showClearButton && onClearSignature && <div className="flex justify-end">
+                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={handleClearClick} disabled={isClearing}>
+                  {isClearing ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Trash2 className="w-4 h-4 mr-1" />}
                   Clear
                 </Button>
-              </div>
-            )}
+              </div>}
           </CardContent>
         </Card>
       </div>
@@ -223,6 +167,5 @@ export function SignatureSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
-  );
+    </>;
 }
