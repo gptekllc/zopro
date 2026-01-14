@@ -250,7 +250,7 @@ const AppLayout = ({
     }}>
         <div className="h-16 flex items-center justify-between">
           <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain" />
+            <img src={zoproLogo} alt="ZoPro Logo" className="w-8 h-8 object-contain rounded" />
             <div className="flex flex-col">
               
               {company?.name && <span className="text-xs text-muted-foreground leading-tight line-clamp-2 max-w-[160px]">
