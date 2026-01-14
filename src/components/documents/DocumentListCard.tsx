@@ -14,8 +14,6 @@ interface DocumentListCardProps {
   total?: number;
   // Row 2: Metadata (creator, dates, etc.)
   metadataRow?: ReactNode;
-  // Notes
-  notes?: string | null;
   // Row 3: Tags on the left, actions on the right
   tagsRow: ReactNode;
   actionsMenu?: ReactNode;
@@ -39,7 +37,6 @@ export function DocumentListCard({
   customerEmail,
   total,
   metadataRow,
-  notes,
   tagsRow,
   actionsMenu,
   icon,
