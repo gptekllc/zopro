@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_items: {
         Row: {
           company_id: string
@@ -331,6 +360,44 @@ export type Database = {
             foreignKeyName: "company_feature_overrides_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_sms_settings: {
+        Row: {
+          auto_send_invoice_sms: boolean | null
+          auto_send_portal_link_sms: boolean | null
+          company_id: string
+          created_at: string | null
+          id: string
+          sms_enabled: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_send_invoice_sms?: boolean | null
+          auto_send_portal_link_sms?: boolean | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          sms_enabled?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_send_invoice_sms?: boolean | null
+          auto_send_portal_link_sms?: boolean | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          sms_enabled?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_sms_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
             referencedRelation: "companies"
             referencedColumns: ["id"]
           },
@@ -2578,6 +2645,120 @@ export type Database = {
           },
         ]
       }
+      sms_logs: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          customer_id: string | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          message_body: string
+          message_type: string
+          metadata: Json | null
+          recipient_phone: string
+          sent_by: string | null
+          status: string
+          template_name: string
+          twilio_sid: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          customer_id?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          message_body: string
+          message_type: string
+          metadata?: Json | null
+          recipient_phone: string
+          sent_by?: string | null
+          status: string
+          template_name: string
+          twilio_sid?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          customer_id?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          message_body?: string
+          message_type?: string
+          metadata?: Json | null
+          recipient_phone?: string
+          sent_by?: string | null
+          status?: string
+          template_name?: string
+          twilio_sid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_logs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sms_logs_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_usage: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          id: string
+          messages_limit: number | null
+          messages_sent: number | null
+          period_end: string
+          period_start: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          id?: string
+          messages_limit?: number | null
+          messages_sent?: number | null
+          period_end: string
+          period_start: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          messages_limit?: number | null
+          messages_sent?: number | null
+          period_end?: string
+          period_start?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_usage_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       software_versions: {
         Row: {
           bug_fixes: string[] | null
@@ -2634,6 +2815,8 @@ export type Database = {
           name: string
           price_monthly: number | null
           price_yearly: number | null
+          sms_enabled: boolean | null
+          sms_monthly_limit: number | null
           storage_addon_price_per_gb: number | null
           storage_limit_bytes: number | null
           stripe_price_id_monthly: string | null
@@ -2654,6 +2837,8 @@ export type Database = {
           name: string
           price_monthly?: number | null
           price_yearly?: number | null
+          sms_enabled?: boolean | null
+          sms_monthly_limit?: number | null
           storage_addon_price_per_gb?: number | null
           storage_limit_bytes?: number | null
           stripe_price_id_monthly?: string | null
@@ -2674,6 +2859,8 @@ export type Database = {
           name?: string
           price_monthly?: number | null
           price_yearly?: number | null
+          sms_enabled?: boolean | null
+          sms_monthly_limit?: number | null
           storage_addon_price_per_gb?: number | null
           storage_limit_bytes?: number | null
           stripe_price_id_monthly?: string | null
@@ -3160,6 +3347,14 @@ export type Database = {
         Args: { p_company_id: string; p_limit_key: string }
         Returns: number
       }
+      get_sms_usage_for_period: {
+        Args: { p_company_id: string }
+        Returns: {
+          can_send: boolean
+          messages_limit: number
+          messages_sent: number
+        }[]
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       hard_delete_auth_user: {
         Args: { target_user_id: string }
@@ -3171,6 +3366,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_sms_usage: {
+        Args: { p_company_id: string }
+        Returns: undefined
       }
       increment_storage_usage: {
         Args: { p_bytes: number; p_company_id: string; p_type: string }

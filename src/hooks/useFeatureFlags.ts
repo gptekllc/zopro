@@ -18,6 +18,7 @@ export const FEATURE_FLAGS = {
   api_access: 'API access for integrations',
   white_label: 'White-label branding',
   custom_domain: 'Use a custom domain for customer portal',
+  sms: 'Send SMS notifications to customers',
 } as const;
 
 export type FeatureFlag = keyof typeof FEATURE_FLAGS;

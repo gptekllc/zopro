@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog, LayoutDashboard, CreditCard, Wrench, History, BarChart3, ToggleLeft, Gauge, RotateCcw, MoreHorizontal, Webhook } from 'lucide-react';
+import { Building2, Users, Plus, Trash2, Edit, Shield, Loader2, Search, UserCog, LayoutDashboard, CreditCard, Wrench, History, BarChart3, ToggleLeft, Gauge, RotateCcw, MoreHorizontal, Webhook, MessageSquare } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -28,6 +28,7 @@ import UsageLimitsTab from '@/components/superadmin/UsageLimitsTab';
 import { DeletedItemsTab } from '@/components/superadmin/DeletedItemsTab';
 import { WebhooksTab } from '@/components/superadmin/WebhooksTab';
 import { EmailLogsTab } from '@/components/superadmin/EmailLogsTab';
+import { SmsTab } from '@/components/superadmin/SmsTab';
 
 interface Company {
   id: string;
