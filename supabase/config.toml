@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.update-stripe-plan-price]
 verify_jwt = false
+
+[functions.send-sms]
+verify_jwt = false
