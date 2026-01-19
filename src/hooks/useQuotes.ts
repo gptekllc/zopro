@@ -32,6 +32,7 @@ export interface Quote {
   notes: string | null;
   valid_until: string | null;
   created_by: string | null;
+  assigned_to: string | null;
   created_at: string;
   updated_at: string;
   job_id: string | null; // Reference to parent job (for child/upsell quotes)
@@ -40,6 +41,7 @@ export interface Quote {
   items?: QuoteItem[];
   customer?: { name: string; email?: string | null };
   creator?: { full_name: string | null };
+  assignee?: { full_name: string | null; email?: string | null };
 }
 
 export function useQuotes(includeArchived: boolean = false) {
@@ -105,6 +107,7 @@ export function useQuotes(includeArchived: boolean = false) {
           *,
           customer:customers(name, email),
           creator:profiles!quotes_created_by_fkey(full_name, avatar_url),
+          assignee:profiles!quotes_assigned_to_fkey(full_name, email),
           items:quote_items(*)
         `)
         .is('deleted_at', null) // Exclude soft-deleted items
@@ -184,6 +187,7 @@ export function useCreateQuote() {
           tax,
           total,
           created_by: user?.id,
+          assigned_to: (quoteValidation.data as any).assigned_to || null,
         })
         .select()
         .single();

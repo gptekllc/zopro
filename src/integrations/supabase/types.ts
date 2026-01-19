@@ -2389,6 +2389,7 @@ export type Database = {
       quotes: {
         Row: {
           archived_at: string | null
+          assigned_to: string | null
           company_id: string
           created_at: string
           created_by: string | null
@@ -2411,6 +2412,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          assigned_to?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
@@ -2433,6 +2435,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          assigned_to?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
@@ -2454,6 +2457,13 @@ export type Database = {
           valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "quotes_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quotes_company_id_fkey"
             columns: ["company_id"]
