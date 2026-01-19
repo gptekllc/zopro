@@ -33,6 +33,7 @@ import DataExportSection from '@/components/company/DataExportSection';
 import DataImportSection from '@/components/company/DataImportSection';
 import { useFeatureFlags } from '@/hooks/useFeatureFlags';
 import { useCurrentVersion } from '@/hooks/useSoftwareVersion';
+import { SmsSettingsCard } from '@/components/sms/SmsSettingsCard';
 
 // Software Version Display Component
 const SoftwareVersionDisplay = () => {
@@ -1632,6 +1633,19 @@ const Company = () => {
                           Save Notification Settings
                         </Button>
                       </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* SMS Notifications */}
+                  <AccordionItem value="sms">
+                    <AccordionTrigger className="text-base font-medium">
+                      <div className="flex items-center gap-2">
+                        <Send className="w-4 h-4" />
+                        SMS Notifications
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pt-4">
+                      <SmsSettingsCard />
                     </AccordionContent>
                   </AccordionItem>
 
