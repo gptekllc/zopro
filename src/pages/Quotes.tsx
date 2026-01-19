@@ -11,9 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Loader2, BookTemplate, ChevronsUpDown } from 'lucide-react';
+import { Plus, Loader2, BookTemplate } from 'lucide-react';
 import { format, addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { InlineCustomerForm } from '@/components/customers/InlineCustomerForm';
@@ -69,7 +67,7 @@ const Quotes = () => {
     status: string;
     validDays: number;
     createdBy: string;
-    assignedToIds: string[];
+    assignedTo: string;
     discountType: 'amount' | 'percentage';
     discountValue: number;
   }>({
@@ -79,7 +77,7 @@ const Quotes = () => {
     status: 'draft',
     validDays: 30,
     createdBy: '',
-    assignedToIds: [],
+    assignedTo: '',
     discountType: 'amount',
     discountValue: 0
   });
@@ -164,7 +162,7 @@ const Quotes = () => {
       status: 'draft',
       validDays: 30,
       createdBy: '',
-      assignedToIds: [],
+      assignedTo: '',
       discountType: 'amount',
       discountValue: 0
     });
@@ -218,7 +216,8 @@ const Quotes = () => {
       tax: 0,
       total: afterDiscount,
       discount_type: formData.discountValue > 0 ? formData.discountType : null,
-      discount_value: formData.discountValue > 0 ? formData.discountValue : 0
+      discount_value: formData.discountValue > 0 ? formData.discountValue : 0,
+      assigned_to: formData.assignedTo || null
     };
 
     if (formData.createdBy) {
@@ -270,7 +269,7 @@ const Quotes = () => {
       status: quote.status as any,
       validDays: 30,
       createdBy: quote.created_by || '',
-      assignedToIds: (quote as any).assignees?.map((a: any) => a.profile_id) || [],
+      assignedTo: quote.assigned_to || '',
       discountType: (quote.discount_type as 'amount' | 'percentage') || 'amount',
       discountValue: Number(quote.discount_value) || 0
     });
@@ -292,7 +291,7 @@ const Quotes = () => {
       status: 'draft',
       validDays: 30,
       createdBy: '',
-      assignedToIds: [],
+      assignedTo: '',
       discountType: (quote.discount_type as 'amount' | 'percentage') || 'amount',
       discountValue: Number(quote.discount_value) || 0
     });
@@ -315,7 +314,7 @@ const Quotes = () => {
       status: 'draft',
       validDays: template.valid_days || 30,
       createdBy: '',
-      assignedToIds: [],
+      assignedTo: '',
       discountType: 'amount',
       discountValue: 0
     });
@@ -401,48 +400,18 @@ const Quotes = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Assigned Technicians</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between font-normal">
-                          <span className="truncate">
-                            {formData.assignedToIds.length === 0 
-                              ? "Select technicians..." 
-                              : formData.assignedToIds.length === 1
-                                ? availableTechnicians.find(t => t.id === formData.assignedToIds[0])?.full_name || availableTechnicians.find(t => t.id === formData.assignedToIds[0])?.email || "1 selected"
-                                : `${formData.assignedToIds.length} technicians selected`}
-                          </span>
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-full p-0" align="start">
-                        <div className="p-2 space-y-1 max-h-48 overflow-y-auto">
-                          {availableTechnicians.length === 0 ? (
-                            <p className="text-sm text-muted-foreground p-2">No technicians available</p>
-                          ) : (
-                            availableTechnicians.map(t => (
-                              <div 
-                                key={t.id} 
-                                className="flex items-center gap-2 p-2 rounded-md hover:bg-accent cursor-pointer"
-                                onClick={() => {
-                                  if (formData.assignedToIds.includes(t.id)) {
-                                    setFormData({ ...formData, assignedToIds: formData.assignedToIds.filter(id => id !== t.id) });
-                                  } else {
-                                    setFormData({ ...formData, assignedToIds: [...formData.assignedToIds, t.id] });
-                                  }
-                                }}
-                              >
-                                <Checkbox
-                                  checked={formData.assignedToIds.includes(t.id)}
-                                  onCheckedChange={() => {}}
-                                />
-                                <span className="text-sm">{t.full_name || t.email}</span>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </PopoverContent>
-                    </Popover>
+                    <Label>Assign To</Label>
+                    <Select value={formData.assignedTo} onValueChange={value => setFormData({ ...formData, assignedTo: value === "none" ? "" : value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select technician (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Not assigned</SelectItem>
+                        {availableTechnicians.map(p => (
+                          <SelectItem key={p.id} value={p.id}>{p.full_name || p.email}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {technicians.some(t => t.employment_status === 'on_leave') && (
                       <p className="text-xs text-muted-foreground">Team members on leave are hidden</p>
                     )}

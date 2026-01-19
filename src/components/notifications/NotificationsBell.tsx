@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ interface Notification {
 const NotificationsBell = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
   const { data: notifications = [], isLoading } = useQuery({
@@ -131,8 +133,32 @@ const NotificationsBell = () => {
         return '🔑';
       case 'company_assigned':
         return '🏢';
+      case 'assignment':
+        return '📋';
       default:
         return '📬';
+    }
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    if (!notification.is_read) {
+      markAsReadMutation.mutate(notification.id);
+    }
+    
+    // Navigate based on record type in data
+    if (notification.data?.record_type && notification.data?.record_id) {
+      setOpen(false);
+      switch (notification.data.record_type) {
+        case 'job':
+          navigate(`/jobs?view=${notification.data.record_id}`);
+          break;
+        case 'invoice':
+          navigate(`/invoices?view=${notification.data.record_id}`);
+          break;
+        case 'quote':
+          navigate(`/quotes?view=${notification.data.record_id}`);
+          break;
+      }
     }
   };
 
@@ -222,11 +248,7 @@ const NotificationsBell = () => {
                   className={`px-4 py-3 cursor-pointer hover:bg-muted transition-colors ${
                     !notification.is_read ? 'bg-primary/5' : ''
                   }`}
-                  onClick={() => {
-                    if (!notification.is_read) {
-                      markAsReadMutation.mutate(notification.id);
-                    }
-                  }}
+                  onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="flex gap-3">
                     <span className="text-lg">{getNotificationIcon(notification.type)}</span>
