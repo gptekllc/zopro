@@ -421,6 +421,10 @@ const SuperAdmin = () => {
             <MoreHorizontal className="w-4 h-4" />
             Email Logs
           </TabsTrigger>
+          <TabsTrigger value="sms" className="gap-2">
+            <MessageSquare className="w-4 h-4" />
+            SMS
+          </TabsTrigger>
           <TabsTrigger value="audit" className="gap-2">
             <History className="w-4 h-4" />
             Audit Log
@@ -856,6 +860,11 @@ const SuperAdmin = () => {
         {/* Email Logs Tab */}
         <TabsContent value="emails">
           <EmailLogsTab />
+        </TabsContent>
+
+        {/* SMS Tab */}
+        <TabsContent value="sms">
+          <SmsTab />
         </TabsContent>
 
         {/* Audit Log Tab */}
