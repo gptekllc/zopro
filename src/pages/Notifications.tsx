@@ -16,7 +16,8 @@ import {
   XCircle, 
   FileCheck, 
   Loader2,
-  Trash2
+  Trash2,
+  Settings
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import PageContainer from '@/components/layout/PageContainer';
@@ -32,6 +33,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { NotificationSettingsDialog } from '@/components/notifications/NotificationSettingsDialog';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { useUserSettings } from '@/hooks/useUserSettings';
+import { useHaptic } from '@/hooks/useHaptic';
+import { playNotificationSound } from '@/lib/notificationSound';
+import { getNotificationTypeConfig } from '@/lib/notificationTypes';
 
 interface Notification {
   id: string;
@@ -49,6 +56,11 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  
+  const { isTypeEnabled, isSoundEnabled, isHapticEnabled } = useNotificationPreferences();
+  const { settings } = useUserSettings();
+  const { triggerHaptic } = useHaptic();
 
   const handleRefresh = useCallback(async () => {
     if (!user) return;
@@ -97,7 +109,26 @@ const Notifications = () => {
         },
         (payload) => {
           const newNotification = payload.new as Notification;
+          
+          // Check if this notification type is enabled
+          if (!isTypeEnabled(newNotification.type)) {
+            // Still add to list but don't alert
+            setNotifications((prev) => [newNotification, ...prev]);
+            return;
+          }
+          
           setNotifications((prev) => [newNotification, ...prev]);
+          
+          // Play sound if enabled (global + per-type)
+          if (settings?.sound_enabled && isSoundEnabled(newNotification.type)) {
+            playNotificationSound();
+          }
+          
+          // Trigger haptic if enabled (global + per-type)
+          if (isHapticEnabled(newNotification.type)) {
+            triggerHaptic('medium');
+          }
+          
           toast.info(newNotification.title, {
             description: newNotification.message,
           });
@@ -108,7 +139,7 @@ const Notifications = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user, isTypeEnabled, isSoundEnabled, isHapticEnabled, settings?.sound_enabled, triggerHaptic]);
 
   const markAsRead = async (notificationId: string) => {
     const { error } = await supabase
@@ -156,6 +187,7 @@ const Notifications = () => {
   };
 
   const getNotificationIcon = (type: string) => {
+    const typeConfig = getNotificationTypeConfig(type);
     switch (type) {
       case 'payment_received':
         return <CreditCard className="w-5 h-5 text-emerald-500" />;
@@ -163,6 +195,8 @@ const Notifications = () => {
         return <XCircle className="w-5 h-5 text-destructive" />;
       case 'quote_approved':
         return <FileCheck className="w-5 h-5 text-primary" />;
+      case 'assignment':
+        return <span className="text-lg">{typeConfig.icon}</span>;
       default:
         return <Bell className="w-5 h-5 text-muted-foreground" />;
     }
@@ -236,6 +270,14 @@ const Notifications = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-9 w-9"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings className="w-5 h-5" />
+            </Button>
             {unreadCount > 0 && (
               <Button variant="outline" size="sm" className="sm:size-default" onClick={markAllAsRead}>
                 <CheckCheck className="w-4 h-4 sm:mr-2" />
@@ -442,6 +484,11 @@ const Notifications = () => {
             )}
           </CardContent>
         </Card>
+        
+        <NotificationSettingsDialog 
+          open={settingsOpen} 
+          onOpenChange={setSettingsOpen} 
+        />
     </PageContainer>
     </PullToRefresh>
   );

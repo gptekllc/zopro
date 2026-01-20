@@ -24,6 +24,21 @@ export const useUnreadNotifications = () => {
     staleTime: 30 * 1000, // 30 seconds
   });
 
+  // Update PWA badge when unread count changes
+  useEffect(() => {
+    if ('setAppBadge' in navigator) {
+      if (unreadCount > 0) {
+        (navigator as any).setAppBadge(unreadCount).catch(() => {
+          // Badge API not supported or failed silently
+        });
+      } else {
+        (navigator as any).clearAppBadge?.().catch(() => {
+          // Badge API not supported or failed silently
+        });
+      }
+    }
+  }, [unreadCount]);
+
   // Real-time subscription for new notifications
   useEffect(() => {
     if (!user) return;

@@ -1904,6 +1904,39 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          enabled: boolean | null
+          haptic_enabled: boolean | null
+          id: string
+          notification_type: string
+          sound_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          enabled?: boolean | null
+          haptic_enabled?: boolean | null
+          id?: string
+          notification_type: string
+          sound_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          enabled?: boolean | null
+          haptic_enabled?: boolean | null
+          id?: string
+          notification_type?: string
+          sound_enabled?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -3146,6 +3179,36 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_settings: {
+        Row: {
+          created_at: string | null
+          haptic_feedback_enabled: boolean | null
+          haptic_navigation_enabled: boolean | null
+          id: string
+          sound_enabled: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          haptic_feedback_enabled?: boolean | null
+          haptic_navigation_enabled?: boolean | null
+          id?: string
+          sound_enabled?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          haptic_feedback_enabled?: boolean | null
+          haptic_navigation_enabled?: boolean | null
+          id?: string
+          sound_enabled?: boolean | null
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
