@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { useHaptic } from '@/hooks/useHaptic';
 import {
   LayoutDashboard,
   Briefcase,
@@ -27,6 +28,7 @@ import {
 const MobileBottomNav = () => {
   const location = useLocation();
   const { roles, isSuperAdmin } = useAuth();
+  const { triggerNavigationHaptic } = useHaptic();
   
   const userRoles = roles.map(r => r.role);
   const isAdmin = userRoles.includes('admin');
@@ -75,6 +77,7 @@ const MobileBottomNav = () => {
           <Link
             key={item.path}
             to={item.path}
+            onClick={() => triggerNavigationHaptic()}
             className={cn(
               "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
               isActive(item.path)
@@ -90,6 +93,7 @@ const MobileBottomNav = () => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
+              onClick={() => triggerNavigationHaptic()}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
                 isMoreActive
@@ -107,7 +111,11 @@ const MobileBottomNav = () => {
                 {index === 1 && isAdmin && <DropdownMenuSeparator className="my-2" />}
                 {index === 4 && <DropdownMenuSeparator className="my-2" />}
                 <DropdownMenuItem asChild className="py-3 px-3 min-h-[44px]">
-                  <Link to={item.path} className="flex items-center gap-3">
+                  <Link 
+                    to={item.path} 
+                    onClick={() => triggerNavigationHaptic()}
+                    className="flex items-center gap-3"
+                  >
                     <item.icon className="w-5 h-5" />
                     <span className="text-base">{item.label}</span>
                   </Link>

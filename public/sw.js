@@ -20,6 +20,7 @@ self.addEventListener('push', function(event) {
     tag: data.tag || 'default',
     data: {
       url: data.url || '/',
+      badge_count: data.badge_count || 1,
     },
     vibrate: [100, 50, 100],
     actions: [
@@ -27,6 +28,14 @@ self.addEventListener('push', function(event) {
       { action: 'close', title: 'Dismiss' },
     ],
   };
+  
+  // Update PWA badge with unread count
+  if ('setAppBadge' in self.navigator) {
+    const badgeCount = data.badge_count || 1;
+    self.navigator.setAppBadge(badgeCount).catch(() => {
+      // Badge API failed silently
+    });
+  }
   
   event.waitUntil(
     self.registration.showNotification(data.title, options)
