@@ -1,28 +1,41 @@
-// Service Worker for Push Notifications
+// Service Worker for Push Notifications and PWA Badge
+// This service worker handles push notifications and app badge updates
+
+self.addEventListener('install', function(event) {
+  console.log('[Service Worker] Installing...');
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', function(event) {
+  console.log('[Service Worker] Activating...');
+  event.waitUntil(clients.claim());
+});
 
 self.addEventListener('push', function(event) {
   console.log('[Service Worker] Push received');
   
-  let data = { title: 'Notification', body: 'You have a new notification' };
+  let data = { title: 'Notification', body: 'You have a new notification', badge_count: 1 };
   
   if (event.data) {
     try {
       data = event.data.json();
     } catch (e) {
       console.error('[Service Worker] Error parsing push data:', e);
+      data.body = event.data.text();
     }
   }
   
   const options = {
     body: data.body,
-    icon: data.icon || '/favicon.ico',
-    badge: data.badge || '/favicon.ico',
+    icon: data.icon || '/icons/icon-192.png',
+    badge: data.badge || '/icons/icon-192.png',
     tag: data.tag || 'default',
     data: {
-      url: data.url || '/',
+      url: data.url || '/notifications',
       badge_count: data.badge_count || 1,
     },
     vibrate: [100, 50, 100],
+    requireInteraction: false,
     actions: [
       { action: 'open', title: 'Open' },
       { action: 'close', title: 'Dismiss' },
@@ -32,8 +45,8 @@ self.addEventListener('push', function(event) {
   // Update PWA badge with unread count
   if ('setAppBadge' in self.navigator) {
     const badgeCount = data.badge_count || 1;
-    self.navigator.setAppBadge(badgeCount).catch(() => {
-      // Badge API failed silently
+    self.navigator.setAppBadge(badgeCount).catch((err) => {
+      console.log('[Service Worker] Badge API error:', err);
     });
   }
   
@@ -43,7 +56,7 @@ self.addEventListener('push', function(event) {
 });
 
 self.addEventListener('notificationclick', function(event) {
-  console.log('[Service Worker] Notification clicked');
+  console.log('[Service Worker] Notification clicked:', event.action);
   
   event.notification.close();
   
@@ -51,7 +64,7 @@ self.addEventListener('notificationclick', function(event) {
     return;
   }
   
-  const urlToOpen = event.notification.data?.url || '/';
+  const urlToOpen = event.notification.data?.url || '/notifications';
   
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
@@ -76,5 +89,19 @@ self.addEventListener('notificationclick', function(event) {
 
 self.addEventListener('pushsubscriptionchange', function(event) {
   console.log('[Service Worker] Push subscription changed');
-  // Handle subscription changes - the client will need to resubscribe
+  // The client will need to resubscribe when they next open the app
+});
+
+// Listen for messages from the main thread to update badge
+self.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'UPDATE_BADGE') {
+    const count = event.data.count || 0;
+    if ('setAppBadge' in self.navigator) {
+      if (count > 0) {
+        self.navigator.setAppBadge(count).catch(() => {});
+      } else {
+        self.navigator.clearAppBadge().catch(() => {});
+      }
+    }
+  }
 });

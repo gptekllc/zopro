@@ -26,6 +26,7 @@ export const useUnreadNotifications = () => {
 
   // Update PWA badge when unread count changes
   useEffect(() => {
+    // Update badge via navigator API
     if ('setAppBadge' in navigator) {
       if (unreadCount > 0) {
         (navigator as any).setAppBadge(unreadCount).catch(() => {
@@ -36,6 +37,14 @@ export const useUnreadNotifications = () => {
           // Badge API not supported or failed silently
         });
       }
+    }
+    
+    // Also notify service worker to update badge (for when app is in background)
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage({
+        type: 'UPDATE_BADGE',
+        count: unreadCount,
+      });
     }
   }, [unreadCount]);
 

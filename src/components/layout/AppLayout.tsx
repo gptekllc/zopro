@@ -14,6 +14,7 @@ import zoproLogo from '@/assets/zopro-logo.png';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import NotificationsBell from '@/components/notifications/NotificationsBell';
+import { PushNotificationPrompt } from '@/components/notifications/PushNotificationPrompt';
 import MobileBottomNav from '@/components/layout/MobileBottomNav';
 import MobileFAB from '@/components/layout/MobileFAB';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -438,6 +439,9 @@ const AppLayout = ({
       
       {/* Mobile FAB for quick create */}
       <MobileFAB />
+      
+      {/* Push notification prompt for first-time users */}
+      <PushNotificationPrompt />
     </div>;
 };
 export default AppLayout;

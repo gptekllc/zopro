@@ -9,6 +9,7 @@ import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useUserSettings } from '@/hooks/useUserSettings';
 import { useHaptic } from '@/hooks/useHaptic';
 import { NOTIFICATION_TYPES } from '@/lib/notificationTypes';
+import { PushNotificationToggle } from './PushNotificationToggle';
 
 interface NotificationSettingsDialogProps {
   open: boolean;
@@ -38,14 +39,22 @@ export function NotificationSettingsDialog({ open, onOpenChange }: NotificationS
           </DialogTitle>
         </DialogHeader>
         
-        <Tabs defaultValue="types" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="types">Notification Types</TabsTrigger>
-            <TabsTrigger value="global">Sound & Haptics</TabsTrigger>
+        <Tabs defaultValue="push" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="push">Push</TabsTrigger>
+            <TabsTrigger value="types">Types</TabsTrigger>
+            <TabsTrigger value="global">Sound</TabsTrigger>
           </TabsList>
           
+          <TabsContent value="push" className="mt-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Enable push notifications to receive alerts even when the app is closed.
+            </p>
+            <PushNotificationToggle />
+          </TabsContent>
+          
           <TabsContent value="types" className="mt-4">
-            <ScrollArea className="h-[400px] pr-4">
+            <ScrollArea className="h-[350px] pr-4">
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Choose which notifications you want to receive and how you want to be alerted.

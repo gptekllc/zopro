@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
-// VAPID public key - this should match your VAPID_PUBLIC_KEY secret
+// VAPID public key from Supabase secrets
+// This must match the VAPID_PUBLIC_KEY stored in Supabase Edge Function secrets
 const VAPID_PUBLIC_KEY = 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -17,6 +18,31 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return outputArray;
 }
 
+// Register service worker early for push notifications
+async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (!('serviceWorker' in navigator)) {
+    console.log('Service workers not supported');
+    return null;
+  }
+  
+  try {
+    // Check if already registered
+    const existingReg = await navigator.serviceWorker.getRegistration('/sw.js');
+    if (existingReg) {
+      console.log('Service worker already registered');
+      return existingReg;
+    }
+    
+    // Register new service worker
+    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    console.log('Service worker registered:', registration.scope);
+    return registration;
+  } catch (error) {
+    console.error('Service worker registration failed:', error);
+    return null;
+  }
+}
+
 export function usePushNotifications() {
   const { user } = useAuth();
   const [isSupported, setIsSupported] = useState(false);
@@ -25,12 +51,15 @@ export function usePushNotifications() {
   const [permission, setPermission] = useState<NotificationPermission>('default');
 
   useEffect(() => {
-    const supported = 'serviceWorker' in navigator && 'PushManager' in window;
+    const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
     setIsSupported(supported);
     
     if (supported) {
       setPermission(Notification.permission);
-      checkSubscription();
+      // Register service worker early
+      registerServiceWorker().then(() => {
+        checkSubscription();
+      });
     } else {
       setIsLoading(false);
     }
@@ -81,8 +110,11 @@ export function usePushNotifications() {
         return false;
       }
 
-      // Register service worker
-      const registration = await navigator.serviceWorker.register('/sw.js');
+      // Get or register service worker
+      let registration = await navigator.serviceWorker.getRegistration('/sw.js');
+      if (!registration) {
+        registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      }
       await navigator.serviceWorker.ready;
 
       // Subscribe to push
