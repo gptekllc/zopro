@@ -34,7 +34,9 @@ self.addEventListener('push', function(event) {
       url: data.url || '/notifications',
       badge_count: data.badge_count || 1,
     },
-    vibrate: [100, 50, 100],
+    vibrate: [100, 50, 100, 50, 100, 50, 100], // Enhanced vibration pattern for haptic feedback
+    silent: false, // Allow system notification sound to play
+    renotify: true, // Always vibrate/sound even for same tag
     requireInteraction: false,
     actions: [
       { action: 'open', title: 'Open' },

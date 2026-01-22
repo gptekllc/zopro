@@ -195,6 +195,8 @@ const Notifications = () => {
         return <XCircle className="w-5 h-5 text-destructive" />;
       case 'quote_approved':
         return <FileCheck className="w-5 h-5 text-primary" />;
+      case 'status_change':
+        return <span className="text-lg">🔄</span>;
       case 'assignment':
         return <span className="text-lg">{typeConfig.icon}</span>;
       default:
@@ -223,6 +225,8 @@ const Notifications = () => {
         return <Badge variant="destructive">Negative Feedback</Badge>;
       case 'feedback_updated':
         return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Feedback Updated</Badge>;
+      case 'status_change':
+        return <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/20">Status Change</Badge>;
       default:
         return <Badge variant="secondary">{formatNotificationType(type)}</Badge>;
     }
@@ -235,6 +239,19 @@ const Notifications = () => {
 
     // Navigate based on notification type
     const data = notification.data as Record<string, string> | null;
+    
+    // Handle status_change notifications with record_type
+    if ((notification.type === 'status_change') && data?.record_type && data?.record_id) {
+      if (data.record_type === 'job') {
+        navigate(`/jobs?view=${data.record_id}`);
+      } else if (data.record_type === 'invoice') {
+        navigate(`/invoices?view=${data.record_id}`);
+      } else if (data.record_type === 'quote') {
+        navigate(`/quotes?view=${data.record_id}`);
+      }
+      return;
+    }
+    
     if (notification.type === 'payment_received' || notification.type === 'payment_failed') {
       navigate('/invoices');
     } else if (notification.type === 'quote_approved') {
