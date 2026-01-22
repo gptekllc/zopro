@@ -15,6 +15,7 @@ interface PushNotificationRequest {
   url?: string;
   tag?: string;
   badge_count?: number;
+  skipInAppNotification?: boolean; // Set to true when called from database trigger
 }
 
 // Web Push encryption utilities
@@ -48,95 +49,103 @@ serve(async (req) => {
     
     const adminClient = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Verify caller authentication
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      console.error("No authorization header provided");
-      return new Response(
-        JSON.stringify({ error: "Unauthorized: No authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const token = authHeader?.replace("Bearer ", "");
     
-    // Create a user client with the provided auth header to verify the caller
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
+    // Check if this is a service role call (from database trigger) or user call
+    const isServiceRoleCall = token === supabaseServiceKey || token === supabaseAnonKey;
     
-    const { data: { user: callingUser }, error: userError } = await userClient.auth.getUser();
+    const { userId, companyId, title, body, icon, url, tag, badge_count, skipInAppNotification }: PushNotificationRequest = await req.json();
     
-    if (userError || !callingUser) {
-      console.error("Failed to verify user:", userError);
-      return new Response(
-        JSON.stringify({ error: "Unauthorized: Invalid authentication" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // When called from database trigger, skip creating in-app notification (it already exists)
+    const shouldSkipInApp = isServiceRoleCall || skipInAppNotification;
     
-    const { userId, companyId, title, body, icon, url, tag, badge_count }: PushNotificationRequest = await req.json();
+    console.log("Sending push notification:", { userId, companyId, title, body, isServiceRoleCall });
     
-    console.log("Sending push notification:", { userId, companyId, title, body, callingUserId: callingUser.id });
-    
-    // Get caller's profile to verify permissions
-    const { data: callerProfile, error: callerProfileError } = await adminClient
-      .from("profiles")
-      .select("id, company_id, role")
-      .eq("id", callingUser.id)
-      .single();
-    
-    if (callerProfileError || !callerProfile) {
-      console.error("Failed to fetch caller profile:", callerProfileError);
-      return new Response(
-        JSON.stringify({ error: "Unauthorized: Profile not found" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Check caller's roles from user_roles table
-    const { data: callerRoles } = await adminClient
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", callingUser.id);
-    
-    const isAdminOrManager = callerRoles?.some(r => 
-      r.role === "admin" || r.role === "manager" || r.role === "super_admin"
-    ) || ["admin", "manager", "super_admin"].includes(callerProfile.role);
-    
-    // Authorization checks
-    if (companyId) {
-      // Verify caller belongs to the target company
-      if (callerProfile.company_id !== companyId) {
-        console.error("Caller company mismatch:", { callerCompany: callerProfile.company_id, targetCompany: companyId });
+    // For service role calls (from database triggers), skip user authorization checks
+    // For user calls, verify permissions
+    if (!isServiceRoleCall) {
+      if (!authHeader) {
+        console.error("No authorization header provided");
         return new Response(
-          JSON.stringify({ error: "Forbidden: Cannot send notifications to other companies" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Unauthorized: No authorization header" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       
-      // Only admins/managers can send company-wide notifications
-      if (!isAdminOrManager) {
-        console.error("Caller not authorized to send company notifications");
+      // Create a user client with the provided auth header to verify the caller
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      
+      const { data: { user: callingUser }, error: userError } = await userClient.auth.getUser();
+      
+      if (userError || !callingUser) {
+        console.error("Failed to verify user:", userError);
         return new Response(
-          JSON.stringify({ error: "Forbidden: Only admins and managers can send company notifications" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Unauthorized: Invalid authentication" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-    }
-    
-    if (userId) {
-      // If targeting a specific user, verify they're in the same company
-      const { data: targetProfile } = await adminClient
+      
+      // Get caller's profile to verify permissions
+      const { data: callerProfile, error: callerProfileError } = await adminClient
         .from("profiles")
-        .select("company_id")
-        .eq("id", userId)
+        .select("id, company_id, role")
+        .eq("id", callingUser.id)
         .single();
       
-      if (targetProfile && targetProfile.company_id !== callerProfile.company_id) {
-        console.error("Target user not in caller's company");
+      if (callerProfileError || !callerProfile) {
+        console.error("Failed to fetch caller profile:", callerProfileError);
         return new Response(
-          JSON.stringify({ error: "Forbidden: Cannot send notifications to users in other companies" }),
-          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: "Unauthorized: Profile not found" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+      
+      // Check caller's roles from user_roles table
+      const { data: callerRoles } = await adminClient
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", callingUser.id);
+      
+      const isAdminOrManager = callerRoles?.some(r => 
+        r.role === "admin" || r.role === "manager" || r.role === "super_admin"
+      ) || ["admin", "manager", "super_admin"].includes(callerProfile.role);
+      
+      // Authorization checks for user calls
+      if (companyId) {
+        if (callerProfile.company_id !== companyId) {
+          console.error("Caller company mismatch:", { callerCompany: callerProfile.company_id, targetCompany: companyId });
+          return new Response(
+            JSON.stringify({ error: "Forbidden: Cannot send notifications to other companies" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        if (!isAdminOrManager) {
+          console.error("Caller not authorized to send company notifications");
+          return new Response(
+            JSON.stringify({ error: "Forbidden: Only admins and managers can send company notifications" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+      
+      if (userId) {
+        const { data: targetProfile } = await adminClient
+          .from("profiles")
+          .select("company_id")
+          .eq("id", userId)
+          .single();
+        
+        if (targetProfile && targetProfile.company_id !== callerProfile.company_id) {
+          console.error("Target user not in caller's company");
+          return new Response(
+            JSON.stringify({ error: "Forbidden: Cannot send notifications to users in other companies" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
     }
     
@@ -185,7 +194,8 @@ serve(async (req) => {
         .select("*", { count: "exact", head: true })
         .eq("user_id", userId)
         .eq("is_read", false);
-      badgeCount = (count || 0) + 1; // +1 for the new notification
+      // When called from trigger, notification already exists so don't add 1
+      badgeCount = count || 1;
     }
     
     // Build the push payload
@@ -198,18 +208,21 @@ serve(async (req) => {
       badge_count: badgeCount,
     };
     
-    // Store in-app notifications for each user as well
-    for (const targetUserId of uniqueUserIds) {
-      await adminClient.from("notifications").insert({
-        user_id: targetUserId,
-        title,
-        message: body,
-        type: tag || "push",
-        data: { url, icon },
-      });
+    // Store in-app notifications only if not called from database trigger
+    if (!shouldSkipInApp) {
+      for (const targetUserId of uniqueUserIds) {
+        await adminClient.from("notifications").insert({
+          user_id: targetUserId,
+          title,
+          message: body,
+          type: tag || "push",
+          data: { url, icon },
+        });
+      }
+      console.log(`Created ${uniqueUserIds.length} in-app notifications`);
+    } else {
+      console.log("Skipping in-app notification creation (called from trigger)");
     }
-    
-    console.log(`Created ${uniqueUserIds.length} in-app notifications`);
     
     // Send push notifications using web-push
     const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY");
