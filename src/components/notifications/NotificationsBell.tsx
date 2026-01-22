@@ -135,6 +135,14 @@ const NotificationsBell = () => {
         return '🏢';
       case 'assignment':
         return '📋';
+      case 'status_change':
+        return '🔄';
+      case 'payment_received':
+        return '💰';
+      case 'payment_failed':
+        return '❌';
+      case 'quote_approved':
+        return '✅';
       default:
         return '📬';
     }

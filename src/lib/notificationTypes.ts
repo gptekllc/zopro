@@ -54,6 +54,12 @@ export const NOTIFICATION_TYPES = [
     icon: '🔄'
   },
   { 
+    type: 'status_change', 
+    label: 'Status Updates', 
+    description: 'When job, quote, or invoice status changes',
+    icon: '🔄'
+  },
+  { 
     type: 'invoice_reminder', 
     label: 'Invoice Reminders', 
     description: 'Overdue invoice alerts',
