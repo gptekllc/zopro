@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Switch } from '@/components/ui/switch';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { LayoutDashboard, Users, FileText, Receipt, LogOut, UserCog, Building2, Shield, User, Briefcase, Bell, Loader2, BarChart3, ArrowRightLeft, PanelLeftClose, PanelLeft, HelpCircle } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Receipt, LogOut, UserCog, Building2, Shield, User, Briefcase, Bell, Loader2, BarChart3, ArrowRightLeft, PanelLeftClose, PanelLeft, HelpCircle, BellRing } from 'lucide-react';
 import zoproLogo from '@/assets/zopro-logo.png';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -74,7 +74,7 @@ const navItems = [{
   icon: Bell,
   label: 'Notifications',
   path: '/notifications',
-  roles: ['admin', 'manager']
+  roles: ['admin', 'manager', 'technician']
 }, {
   icon: UserCog,
   label: 'Technicians',
@@ -287,6 +287,9 @@ const AppLayout = ({
                 <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="w-4 h-4 mr-2" /> Edit Profile
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/alerts')}>
+                  <BellRing className="w-4 h-4 mr-2" /> Alerts
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/security-settings')}>
                   <Shield className="w-4 h-4 mr-2" /> Security
                 </DropdownMenuItem>
@@ -396,6 +399,10 @@ const AppLayout = ({
                 <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="w-4 h-4 mr-2" />
                   Edit Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/alerts')}>
+                  <BellRing className="w-4 h-4 mr-2" />
+                  Alerts
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/security-settings')}>
                   <Shield className="w-4 h-4 mr-2" />

@@ -49,7 +49,7 @@ const MobileBottomNav = () => {
     { icon: Package, label: 'Items', path: '/items', showFor: 'all' },
     { icon: Clock, label: 'Time Clock', path: '/timeclock', showFor: 'all' },
     { icon: BarChart3, label: 'Reports', path: '/reports', showFor: 'admin' },
-    { icon: Bell, label: 'Notifications', path: '/notifications', showFor: 'admin' },
+    { icon: Bell, label: 'Notifications', path: '/notifications', showFor: 'all' },
     { icon: UserCog, label: 'Technicians', path: '/technicians', showFor: 'admin' },
     { icon: Building2, label: 'Company', path: '/company', showFor: 'admin' },
     { icon: ShieldAlert, label: 'Super Admin', path: '/super-admin', showFor: 'super_admin' },

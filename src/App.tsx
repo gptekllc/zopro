@@ -30,6 +30,7 @@ import Profile from "./pages/Profile";
 import SuperAdmin from "./pages/SuperAdmin";
 import CustomerPortal from "./pages/CustomerPortal";
 import Notifications from "./pages/Notifications";
+import Alerts from "./pages/Alerts";
 import Subscription from "./pages/Subscription";
 import StripeConnectReturn from "./pages/StripeConnectReturn";
 import StripeConnectRefresh from "./pages/StripeConnectRefresh";
@@ -90,6 +91,7 @@ const App = () => (
                   <Route path="/security-settings" element={<SecuritySettings />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/notifications" element={<Notifications />} />
+                  <Route path="/alerts" element={<Alerts />} />
                   <Route path="/subscription" element={<Subscription />} />
                   <Route path="/super-admin" element={<SuperAdmin />} />
                   <Route path="/stripe-connect/return" element={<StripeConnectReturn />} />
