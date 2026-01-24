@@ -72,8 +72,8 @@ export function useUploadInvoicePhoto() {
         }
       }
 
-      // Compress the image
-      const compressedFile = await compressImage(file);
+      // Compress the image to 300KB
+      const compressedFile = await compressImage(file, 300);
       
       // Generate unique filename
       const fileExt = file.name.split('.').pop() || 'jpg';
@@ -84,6 +84,11 @@ export function useUploadInvoicePhoto() {
         .upload(fileName, compressedFile);
 
       if (uploadError) throw uploadError;
+
+      // Get signed URL for immediate display
+      const { data: signedData } = await supabase.storage
+        .from('invoice-photos')
+        .createSignedUrl(fileName, 3600 * 24 * 7);
 
       // Get current max display order
       const { data: existingPhotos } = await supabase
@@ -121,9 +126,15 @@ export function useUploadInvoicePhoto() {
         queryClient.invalidateQueries({ queryKey: ['storage-usage', companyId] });
       }
 
-      return data;
+      return { ...data, photo_url: signedData?.signedUrl || fileName };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
+      // Optimistically add new photo to cache
+      queryClient.setQueryData(['invoice-photos', variables.invoiceId], (old: InvoicePhoto[] | undefined) => {
+        if (!old) return [result];
+        return [...old, result];
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['invoice-photos', variables.invoiceId] });
       queryClient.invalidateQueries({ queryKey: ['photo-count', 'invoice', variables.invoiceId] });
       toast.success('Photo uploaded');
@@ -147,16 +158,32 @@ export function useDeleteInvoicePhoto() {
         .eq('id', photoId);
 
       if (error) throw error;
-      return invoiceId;
+      return { photoId, invoiceId };
     },
-    onSuccess: (invoiceId) => {
-      queryClient.invalidateQueries({ queryKey: ['invoice-photos', invoiceId] });
+    onMutate: async ({ photoId, invoiceId }) => {
+      await queryClient.cancelQueries({ queryKey: ['invoice-photos', invoiceId] });
+      
+      const previousPhotos = queryClient.getQueryData(['invoice-photos', invoiceId]);
+      
+      // Optimistically remove photo
+      queryClient.setQueryData(['invoice-photos', invoiceId], (old: InvoicePhoto[] | undefined) => {
+        if (!old) return old;
+        return old.filter(p => p.id !== photoId);
+      });
+      
+      return { previousPhotos, invoiceId };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousPhotos) {
+        queryClient.setQueryData(['invoice-photos', context.invoiceId], context.previousPhotos);
+      }
+      console.error('Failed to delete photo:', err);
+      toast.error('Failed to delete photo');
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['invoice-photos', result.invoiceId] });
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       toast.success('Photo deleted');
-    },
-    onError: (error) => {
-      console.error('Failed to delete photo:', error);
-      toast.error('Failed to delete photo');
     },
   });
 }
@@ -172,15 +199,31 @@ export function useUpdateInvoicePhotoType() {
         .eq('id', photoId);
 
       if (error) throw error;
-      return invoiceId;
+      return { photoId, photoType, invoiceId };
     },
-    onSuccess: (invoiceId) => {
-      queryClient.invalidateQueries({ queryKey: ['invoice-photos', invoiceId] });
-      toast.success('Photo category updated');
+    onMutate: async ({ photoId, photoType, invoiceId }) => {
+      await queryClient.cancelQueries({ queryKey: ['invoice-photos', invoiceId] });
+      
+      const previousPhotos = queryClient.getQueryData(['invoice-photos', invoiceId]);
+      
+      // Optimistically update photo type
+      queryClient.setQueryData(['invoice-photos', invoiceId], (old: InvoicePhoto[] | undefined) => {
+        if (!old) return old;
+        return old.map(p => p.id === photoId ? { ...p, photo_type: photoType } : p);
+      });
+      
+      return { previousPhotos, invoiceId };
     },
-    onError: (error) => {
-      console.error('Failed to update photo category:', error);
+    onError: (err, variables, context) => {
+      if (context?.previousPhotos) {
+        queryClient.setQueryData(['invoice-photos', context.invoiceId], context.previousPhotos);
+      }
+      console.error('Failed to update photo category:', err);
       toast.error('Failed to update photo category');
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['invoice-photos', result.invoiceId] });
+      toast.success('Photo category updated');
     },
   });
 }

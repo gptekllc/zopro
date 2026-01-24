@@ -65,6 +65,7 @@ export function DocumentPhotoGallery({
   // Sort photos by display_order
   const orderedPhotos = [...photos].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
 
+  // Cache signed URLs - only fetch for photos that don't have URLs yet
   useEffect(() => {
     async function loadSignedUrls() {
       if (photos.length === 0) {
@@ -72,15 +73,29 @@ export function DocumentPhotoGallery({
         return;
       }
 
-      const urls: Record<string, string> = {};
+      // Preserve existing signed URLs
+      const urls: Record<string, string> = { ...signedUrls };
+      
+      // Filter to photos that need signed URLs
+      const photosNeedingUrls = photos.filter(photo => 
+        !urls[photo.id] && !photo.photo_url.startsWith('http')
+      );
+      
+      // Also check for photos with existing http URLs (already signed)
+      photos.forEach(photo => {
+        if (photo.photo_url.startsWith('http') && !urls[photo.id]) {
+          urls[photo.id] = photo.photo_url;
+        }
+      });
+      
+      if (photosNeedingUrls.length === 0) {
+        setSignedUrls(urls);
+        setLoadingUrls(false);
+        return;
+      }
       
       await Promise.all(
-        photos.map(async (photo) => {
-          if (photo.photo_url.startsWith('http')) {
-            urls[photo.id] = photo.photo_url;
-            return;
-          }
-          
+        photosNeedingUrls.map(async (photo) => {
           const { data } = await supabase.storage
             .from(bucketName)
             .createSignedUrl(photo.photo_url, 3600);

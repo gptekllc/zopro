@@ -57,6 +57,7 @@ export function JobPhotoGallery({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  // Cache signed URLs - only fetch for photos that don't have URLs yet
   useEffect(() => {
     async function loadSignedUrls() {
       if (photos.length === 0) {
@@ -64,15 +65,29 @@ export function JobPhotoGallery({
         return;
       }
 
-      const urls: Record<string, string> = {};
+      // Preserve existing signed URLs
+      const urls: Record<string, string> = { ...signedUrls };
+      
+      // Filter to photos that need signed URLs
+      const photosNeedingUrls = photos.filter(photo => 
+        !urls[photo.id] && !photo.photo_url.startsWith('http')
+      );
+      
+      // Also check for photos with existing http URLs (already signed)
+      photos.forEach(photo => {
+        if (photo.photo_url.startsWith('http') && !urls[photo.id]) {
+          urls[photo.id] = photo.photo_url;
+        }
+      });
+      
+      if (photosNeedingUrls.length === 0) {
+        setSignedUrls(urls);
+        setLoadingUrls(false);
+        return;
+      }
       
       await Promise.all(
-        photos.map(async (photo) => {
-          if (photo.photo_url.startsWith('http')) {
-            urls[photo.id] = photo.photo_url;
-            return;
-          }
-          
+        photosNeedingUrls.map(async (photo) => {
           const { data } = await supabase.storage
             .from('job-photos')
             .createSignedUrl(photo.photo_url, 3600);

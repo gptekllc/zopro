@@ -512,9 +512,25 @@ export function useUploadJobPhoto() {
         .single();
       
       if (error) throw error;
-      return { ...data, photo_url: photoUrl }; // Return with signed URL for immediate display
+      return { ...data, photo_url: photoUrl, jobId }; // Return with signed URL for immediate display
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // Optimistically update the job cache with the new photo
+      queryClient.setQueriesData({ queryKey: ['job', result.jobId] }, (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          photos: [...(oldData.photos || []), {
+            id: result.id,
+            photo_url: result.photo_url,
+            photo_type: result.photo_type,
+            caption: result.caption || null,
+            created_at: result.created_at,
+          }]
+        };
+      });
+      
+      // Background refresh for consistency
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['job'] });
       toast.success('Photo uploaded successfully');
@@ -529,7 +545,7 @@ export function useDeleteJobPhoto() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (photoId: string) => {
+    mutationFn: async ({ photoId, jobId }: { photoId: string; jobId?: string }) => {
       // Soft delete - set deleted_at timestamp (keep file in storage for recovery)
       const { error } = await (supabase as any)
         .from('job_photos')
@@ -537,15 +553,41 @@ export function useDeleteJobPhoto() {
         .eq('id', photoId);
       
       if (error) throw error;
+      return { photoId, jobId };
+    },
+    onMutate: async ({ photoId, jobId }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['job', jobId] });
+      await queryClient.cancelQueries({ queryKey: ['jobs'] });
+      
+      // Snapshot for rollback
+      const previousJob = jobId ? queryClient.getQueryData(['job', jobId]) : null;
+      
+      // Optimistically remove photo from cache
+      if (jobId) {
+        queryClient.setQueryData(['job', jobId], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            photos: old.photos?.filter((p: any) => p.id !== photoId) || []
+          };
+        });
+      }
+      
+      return { previousJob, jobId };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousJob && context?.jobId) {
+        queryClient.setQueryData(['job', context.jobId], context.previousJob);
+      }
+      toast.error('Failed to delete photo: ' + sanitizeErrorMessage(err));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['job'] });
       queryClient.invalidateQueries({ queryKey: ['job-photos'] });
       toast.success('Photo deleted');
-    },
-    onError: (error: unknown) => {
-      toast.error('Failed to delete photo: ' + sanitizeErrorMessage(error));
     },
   });
 }
@@ -554,21 +596,45 @@ export function useUpdateJobPhotoType() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ photoId, photoType }: { photoId: string; photoType: 'before' | 'after' | 'other' }) => {
+    mutationFn: async ({ photoId, photoType, jobId }: { photoId: string; photoType: 'before' | 'after' | 'other'; jobId?: string }) => {
       const { error } = await (supabase as any)
         .from('job_photos')
         .update({ photo_type: photoType })
         .eq('id', photoId);
       
       if (error) throw error;
+      return { photoId, photoType, jobId };
+    },
+    onMutate: async ({ photoId, photoType, jobId }) => {
+      await queryClient.cancelQueries({ queryKey: ['job', jobId] });
+      
+      const previousJob = jobId ? queryClient.getQueryData(['job', jobId]) : null;
+      
+      // Optimistically update photo type
+      if (jobId) {
+        queryClient.setQueryData(['job', jobId], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            photos: old.photos?.map((p: any) => 
+              p.id === photoId ? { ...p, photo_type: photoType } : p
+            ) || []
+          };
+        });
+      }
+      
+      return { previousJob, jobId };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousJob && context?.jobId) {
+        queryClient.setQueryData(['job', context.jobId], context.previousJob);
+      }
+      toast.error('Failed to update photo category: ' + sanitizeErrorMessage(err));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['job'] });
       toast.success('Photo category updated');
-    },
-    onError: (error: unknown) => {
-      toast.error('Failed to update photo category: ' + sanitizeErrorMessage(error));
     },
   });
 }

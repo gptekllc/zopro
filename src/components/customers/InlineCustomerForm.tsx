@@ -36,6 +36,7 @@ export function InlineCustomerForm({
 }: InlineCustomerFormProps) {
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [open, setOpen] = useState(false);
+  const [localNewCustomer, setLocalNewCustomer] = useState<Customer | null>(null);
   const [newCustomer, setNewCustomer] = useState<NewCustomerData>({
     first_name: '',
     last_name: '',
@@ -49,9 +50,17 @@ export function InlineCustomerForm({
 
   const createCustomer = useCreateCustomer();
 
+  // Merge customers with local new customer for immediate availability
+  const allCustomers = useMemo(() => {
+    if (localNewCustomer && !customers.find(c => c.id === localNewCustomer.id)) {
+      return [...customers, localNewCustomer].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return customers;
+  }, [customers, localNewCustomer]);
+
   const selectedCustomer = useMemo(
-    () => customers.find((c) => c.id === selectedCustomerId),
-    [customers, selectedCustomerId]
+    () => allCustomers.find((c) => c.id === selectedCustomerId),
+    [allCustomers, selectedCustomerId]
   );
 
   const resetNewCustomerForm = () => {
@@ -87,8 +96,9 @@ export function InlineCustomerForm({
         avatar_url: null,
       });
       
-      // Select the newly created customer
+      // Set local customer for immediate availability and select it
       if (result?.id) {
+        setLocalNewCustomer(result);
         onCustomerSelect(result.id);
         onNewCustomerCreated?.(result.id);
       }
@@ -233,7 +243,7 @@ export function InlineCustomerForm({
               <CommandList>
                 <CommandEmpty>No customer found.</CommandEmpty>
                 <CommandGroup>
-                  {customers.map((customer) => (
+                  {allCustomers.map((customer) => (
                     <CommandItem
                       key={customer.id}
                       value={customer.name}
