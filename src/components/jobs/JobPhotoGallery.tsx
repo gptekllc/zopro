@@ -4,10 +4,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, Upload, FolderInput } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, Upload, FolderInput, ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { compressImageToFile } from '@/lib/imageCompression';
 import { toast } from 'sonner';
+import { PhotoUploadQueue, type QueuedFile, type UploadStatus } from '@/components/photos/PhotoUploadQueue';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export interface JobPhoto {
   id: string;
@@ -52,7 +54,7 @@ export function JobPhotoGallery({
   const [draggedPhoto, setDraggedPhoto] = useState<JobPhoto | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<'before' | 'after' | 'other' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [uploadQueue, setUploadQueue] = useState<QueuedFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -175,6 +177,22 @@ export function JobPhotoGallery({
 
   const handleMouseUp = () => setIsDragging(false);
 
+  // Helper to generate preview URL
+  const createPreviewUrl = (file: File): string => {
+    try {
+      return URL.createObjectURL(file);
+    } catch {
+      return '';
+    }
+  };
+
+  // Update queue item status
+  const updateQueueItem = (id: string, updates: Partial<QueuedFile>) => {
+    setUploadQueue(prev => prev.map(item => 
+      item.id === id ? { ...item, ...updates } : item
+    ));
+  };
+
   // Process files for upload (shared by file input and drag-drop)
   const processFilesForUpload = async (files: FileList | File[]) => {
     if (!files || files.length === 0 || !onUpload) return;
@@ -196,8 +214,16 @@ export function JobPhotoGallery({
       toast.warning(`${fileArray.length - imageFiles.length} non-image file(s) were skipped`);
     }
 
-    const totalFiles = imageFiles.length;
-    setUploadProgress({ current: 0, total: totalFiles });
+    // Initialize queue with all files
+    const initialQueue: QueuedFile[] = imageFiles.map((file, index) => ({
+      id: `upload-${Date.now()}-${index}`,
+      name: file.name,
+      status: 'pending' as UploadStatus,
+      progress: 0,
+      previewUrl: createPreviewUrl(file),
+    }));
+
+    setUploadQueue(initialQueue);
     setIsProcessing(true);
     
     let successCount = 0;
@@ -205,6 +231,8 @@ export function JobPhotoGallery({
     // Process all images
     for (let i = 0; i < imageFiles.length; i++) {
       const file = imageFiles[i];
+      const queueId = initialQueue[i].id;
+      
       try {
         // Check if it's an image file that needs compression
         const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
@@ -213,6 +241,7 @@ export function JobPhotoGallery({
         
         let fileToUpload = file;
         if (isCompressibleImage || isHeic) {
+          updateQueueItem(queueId, { status: 'compressing' });
           try {
             fileToUpload = await compressImageToFile(file, 300);
           } catch (compressionError) {
@@ -221,12 +250,16 @@ export function JobPhotoGallery({
           }
         }
         
+        updateQueueItem(queueId, { status: 'uploading' });
         await onUpload(fileToUpload, selectedPhotoType);
+        updateQueueItem(queueId, { status: 'success', progress: 100 });
         successCount++;
-        setUploadProgress({ current: i + 1, total: totalFiles });
       } catch (error) {
         console.error(`Failed to upload image ${file.name}:`, error);
-        toast.error(`Failed to upload ${file.name}`);
+        updateQueueItem(queueId, { 
+          status: 'error', 
+          error: error instanceof Error ? error.message : 'Upload failed' 
+        });
       }
     }
     
@@ -234,8 +267,11 @@ export function JobPhotoGallery({
       toast.success(`${successCount} image${successCount > 1 ? 's' : ''} uploaded`);
     }
     
-    setIsProcessing(false);
-    setUploadProgress({ current: 0, total: 0 });
+    // Clear queue after a delay to show final status
+    setTimeout(() => {
+      setUploadQueue([]);
+      setIsProcessing(false);
+    }, 2000);
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -392,8 +428,8 @@ export function JobPhotoGallery({
                   {isProcessing ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {uploadProgress.total > 1 
-                        ? `${uploadProgress.current}/${uploadProgress.total}`
+                      {uploadQueue.length > 1 
+                        ? `${uploadQueue.filter(f => f.status === 'success').length}/${uploadQueue.length}`
                         : 'Processing...'}
                     </>
                   ) : isUploading ? (
@@ -425,6 +461,12 @@ export function JobPhotoGallery({
                   className="hidden"
                 />
               </div>
+              {/* Upload Queue Progress */}
+              {uploadQueue.length > 0 && (
+                <div className="mt-3">
+                  <PhotoUploadQueue files={uploadQueue} />
+                </div>
+              )}
               <p className="text-xs text-muted-foreground mt-2 text-center hidden sm:block">
                 or drag and drop images here
               </p>
@@ -518,9 +560,12 @@ export function JobPhotoGallery({
                             draggable={false}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Camera className="w-6 h-6 text-muted-foreground" />
-                          </div>
+                          <>
+                            <Skeleton className="absolute inset-0" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <ImageIcon className="w-6 h-6 text-muted-foreground/50 animate-pulse" />
+                            </div>
+                          </>
                         )}
                       </button>
                     </div>
