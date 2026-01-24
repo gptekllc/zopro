@@ -618,11 +618,12 @@ export function JobDetailDialog({
                 photoType
               });
             }} onDelete={async photoId => {
-              await deleteJobPhoto.mutateAsync(photoId);
+              await deleteJobPhoto.mutateAsync({ photoId, jobId: job.id });
             }} onUpdateType={(photoId, photoType) => {
               updateJobPhotoType.mutate({
                 photoId,
-                photoType
+                photoType,
+                jobId: job.id
               });
             }} isUploading={uploadJobPhoto.isPending} editable={true} />
             </TabsContent>

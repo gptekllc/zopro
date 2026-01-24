@@ -118,8 +118,8 @@ export function useUploadMediaAsset() {
         }
       }
       
-      // Compress the image
-      const compressedFile = await compressImage(file);
+      // Compress the image to 300KB
+      const compressedFile = await compressImage(file, 300);
       
       // Generate unique filename
       const fileExt = file.name.split('.').pop() || 'jpg';
@@ -131,6 +131,11 @@ export function useUploadMediaAsset() {
         .upload(fileName, compressedFile);
       
       if (uploadError) throw uploadError;
+      
+      // Get signed URL for immediate display
+      const { data: signedData } = await supabase.storage
+        .from(bucket)
+        .createSignedUrl(fileName, 3600 * 24 * 7);
       
       // Create media_asset record
       const { data: mediaAsset, error: assetError } = await supabase
@@ -185,9 +190,23 @@ export function useUploadMediaAsset() {
       
       queryClient.invalidateQueries({ queryKey: ['storage-usage', profile.company_id] });
       
-      return { mediaAsset, docMedia };
+      return { 
+        mediaAsset, 
+        docMedia: { ...docMedia, signed_url: signedData?.signedUrl },
+        entityType,
+        entityId
+      };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
+      // Optimistically add to cache
+      queryClient.setQueryData(
+        ['document-media', variables.entityType, variables.entityId], 
+        (old: DocumentMedia[] | undefined) => {
+          if (!old) return [result.docMedia];
+          return [...old, result.docMedia];
+        }
+      );
+      
       queryClient.invalidateQueries({ queryKey: ['document-media', variables.entityType, variables.entityId] });
       // Also invalidate legacy photo queries for backwards compatibility
       queryClient.invalidateQueries({ queryKey: [`${variables.entityType}-photos`, variables.entityId] });
@@ -285,15 +304,37 @@ export function useDeleteDocumentMedia() {
           .eq('id', docMedia.media_asset_id);
       }
       
-      return { entityType, entityId };
+      return { entityType, entityId, documentMediaId };
+    },
+    onMutate: async ({ documentMediaId, entityType, entityId }) => {
+      await queryClient.cancelQueries({ queryKey: ['document-media', entityType, entityId] });
+      
+      const previousMedia = queryClient.getQueryData(['document-media', entityType, entityId]);
+      
+      // Optimistically remove from cache
+      queryClient.setQueryData(
+        ['document-media', entityType, entityId], 
+        (old: DocumentMedia[] | undefined) => {
+          if (!old) return old;
+          return old.filter(m => m.id !== documentMediaId);
+        }
+      );
+      
+      return { previousMedia, entityType, entityId };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousMedia) {
+        queryClient.setQueryData(
+          ['document-media', context.entityType, context.entityId], 
+          context.previousMedia
+        );
+      }
+      console.error('Failed to delete photo:', err);
+      toast.error((err as any).message || 'Failed to delete photo');
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['document-media', result.entityType, result.entityId] });
       toast.success('Photo removed');
-    },
-    onError: (error: any) => {
-      console.error('Failed to delete photo:', error);
-      toast.error(error.message || 'Failed to delete photo');
     },
   });
 }
@@ -326,15 +367,44 @@ export function useUpdateDocumentMedia() {
         .eq('id', documentMediaId);
       
       if (error) throw error;
-      return { entityType, entityId };
+      return { entityType, entityId, documentMediaId, photoType, caption };
+    },
+    onMutate: async ({ documentMediaId, entityType, entityId, photoType, caption }) => {
+      await queryClient.cancelQueries({ queryKey: ['document-media', entityType, entityId] });
+      
+      const previousMedia = queryClient.getQueryData(['document-media', entityType, entityId]);
+      
+      // Optimistically update in cache
+      queryClient.setQueryData(
+        ['document-media', entityType, entityId], 
+        (old: DocumentMedia[] | undefined) => {
+          if (!old) return old;
+          return old.map(m => {
+            if (m.id !== documentMediaId) return m;
+            return {
+              ...m,
+              ...(photoType !== undefined && { photo_type: photoType }),
+              ...(caption !== undefined && { caption }),
+            };
+          });
+        }
+      );
+      
+      return { previousMedia, entityType, entityId };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousMedia) {
+        queryClient.setQueryData(
+          ['document-media', context.entityType, context.entityId], 
+          context.previousMedia
+        );
+      }
+      console.error('Failed to update photo:', err);
+      toast.error((err as any).message || 'Failed to update photo');
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['document-media', result.entityType, result.entityId] });
       toast.success('Photo updated');
-    },
-    onError: (error: any) => {
-      console.error('Failed to update photo:', error);
-      toast.error(error.message || 'Failed to update photo');
     },
   });
 }

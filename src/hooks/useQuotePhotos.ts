@@ -72,8 +72,8 @@ export function useUploadQuotePhoto() {
         }
       }
 
-      // Compress the image
-      const compressedFile = await compressImage(file);
+      // Compress the image to 300KB
+      const compressedFile = await compressImage(file, 300);
       
       // Generate unique filename
       const fileExt = file.name.split('.').pop() || 'jpg';
@@ -84,6 +84,11 @@ export function useUploadQuotePhoto() {
         .upload(fileName, compressedFile);
 
       if (uploadError) throw uploadError;
+
+      // Get signed URL for immediate display
+      const { data: signedData } = await supabase.storage
+        .from('quote-photos')
+        .createSignedUrl(fileName, 3600 * 24 * 7);
 
       // Get current max display order
       const { data: existingPhotos } = await supabase
@@ -121,9 +126,15 @@ export function useUploadQuotePhoto() {
         queryClient.invalidateQueries({ queryKey: ['storage-usage', companyId] });
       }
 
-      return data;
+      return { ...data, photo_url: signedData?.signedUrl || fileName };
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (result, variables) => {
+      // Optimistically add new photo to cache
+      queryClient.setQueryData(['quote-photos', variables.quoteId], (old: QuotePhoto[] | undefined) => {
+        if (!old) return [result];
+        return [...old, result];
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['quote-photos', variables.quoteId] });
       queryClient.invalidateQueries({ queryKey: ['photo-count', 'quote', variables.quoteId] });
       toast.success('Photo uploaded');
@@ -147,16 +158,32 @@ export function useDeleteQuotePhoto() {
         .eq('id', photoId);
 
       if (error) throw error;
-      return quoteId;
+      return { photoId, quoteId };
     },
-    onSuccess: (quoteId) => {
-      queryClient.invalidateQueries({ queryKey: ['quote-photos', quoteId] });
+    onMutate: async ({ photoId, quoteId }) => {
+      await queryClient.cancelQueries({ queryKey: ['quote-photos', quoteId] });
+      
+      const previousPhotos = queryClient.getQueryData(['quote-photos', quoteId]);
+      
+      // Optimistically remove photo
+      queryClient.setQueryData(['quote-photos', quoteId], (old: QuotePhoto[] | undefined) => {
+        if (!old) return old;
+        return old.filter(p => p.id !== photoId);
+      });
+      
+      return { previousPhotos, quoteId };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousPhotos) {
+        queryClient.setQueryData(['quote-photos', context.quoteId], context.previousPhotos);
+      }
+      console.error('Failed to delete photo:', err);
+      toast.error('Failed to delete photo');
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['quote-photos', result.quoteId] });
       queryClient.invalidateQueries({ queryKey: ['quotes'] });
       toast.success('Photo deleted');
-    },
-    onError: (error) => {
-      console.error('Failed to delete photo:', error);
-      toast.error('Failed to delete photo');
     },
   });
 }
@@ -172,15 +199,31 @@ export function useUpdateQuotePhotoType() {
         .eq('id', photoId);
 
       if (error) throw error;
-      return quoteId;
+      return { photoId, photoType, quoteId };
     },
-    onSuccess: (quoteId) => {
-      queryClient.invalidateQueries({ queryKey: ['quote-photos', quoteId] });
-      toast.success('Photo category updated');
+    onMutate: async ({ photoId, photoType, quoteId }) => {
+      await queryClient.cancelQueries({ queryKey: ['quote-photos', quoteId] });
+      
+      const previousPhotos = queryClient.getQueryData(['quote-photos', quoteId]);
+      
+      // Optimistically update photo type
+      queryClient.setQueryData(['quote-photos', quoteId], (old: QuotePhoto[] | undefined) => {
+        if (!old) return old;
+        return old.map(p => p.id === photoId ? { ...p, photo_type: photoType } : p);
+      });
+      
+      return { previousPhotos, quoteId };
     },
-    onError: (error) => {
-      console.error('Failed to update photo category:', error);
+    onError: (err, variables, context) => {
+      if (context?.previousPhotos) {
+        queryClient.setQueryData(['quote-photos', context.quoteId], context.previousPhotos);
+      }
+      console.error('Failed to update photo category:', err);
       toast.error('Failed to update photo category');
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['quote-photos', result.quoteId] });
+      toast.success('Photo category updated');
     },
   });
 }

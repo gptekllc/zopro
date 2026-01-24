@@ -157,9 +157,17 @@ export function useCreateCustomer() {
         .single();
       
       if (error) throw error;
-      return data;
+      return data as Customer;
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // Optimistically add the new customer to the cache immediately
+      queryClient.setQueryData(['customers', profile?.company_id], (old: Customer[] | undefined) => {
+        if (!old) return [result];
+        // Add and sort alphabetically
+        return [...old, result].sort((a, b) => a.name.localeCompare(b.name));
+      });
+      
+      // Background refresh for consistency
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       toast.success('Customer added successfully');
     },
