@@ -4,7 +4,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, Upload, FolderInput, ImageIcon } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, Upload, FolderInput, ImageIcon, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { compressImageToFile } from '@/lib/imageCompression';
@@ -53,9 +54,7 @@ export function DocumentPhotoGallery({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [photoToDelete, setPhotoToDelete] = useState<DocumentPhoto | null>(null);
   const [selectedPhotoType, setSelectedPhotoType] = useState<'before' | 'after' | 'other'>('other');
-  const [changeCategoryOpen, setChangeCategoryOpen] = useState(false);
-  const [photoToChangeCategory, setPhotoToChangeCategory] = useState<DocumentPhoto | null>(null);
-  const [newCategory, setNewCategory] = useState<'before' | 'after' | 'other'>('other');
+  // Category change state removed - now using inline DropdownMenu
   const [draggedPhoto, setDraggedPhoto] = useState<DocumentPhoto | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<'before' | 'after' | 'other' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -480,20 +479,44 @@ export function DocumentPhotoGallery({
                       onDragStart={(e) => handleDragStart(e, photo)}
                       onDragEnd={handleDragEnd}
                     >
+                      {/* Category Change - Inline Dropdown */}
                       {editable && onUpdateType && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPhotoToChangeCategory(photo);
-                            setNewCategory(photo.photo_type);
-                            setChangeCategoryOpen(true);
-                          }}
-                          className="absolute bottom-1 left-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-primary/80 rounded p-1 hover:bg-primary"
-                          title="Change category"
-                        >
-                          <FolderInput className="w-4 h-4 text-white" />
-                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              onClick={(e) => e.stopPropagation()}
+                              className="absolute bottom-1 left-1 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-primary/80 rounded p-1.5 hover:bg-primary"
+                              title="Change category"
+                            >
+                              <FolderInput className="w-4 h-4 text-white" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="z-[200]">
+                            <DropdownMenuItem 
+                              onClick={() => onUpdateType(photo.id, 'before')}
+                              disabled={photo.photo_type === 'before'}
+                            >
+                              <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 mr-2">Before</Badge>
+                              Move to Before
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => onUpdateType(photo.id, 'after')}
+                              disabled={photo.photo_type === 'after'}
+                            >
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 mr-2">After</Badge>
+                              Move to After
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => onUpdateType(photo.id, 'other')}
+                              disabled={photo.photo_type === 'other'}
+                            >
+                              <Badge variant="secondary" className="mr-2">Other</Badge>
+                              Move to Other
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
+                      {/* Delete Button - Always visible on mobile */}
                       {editable && onDelete && (
                         <button
                           onClick={(e) => {
@@ -501,9 +524,9 @@ export function DocumentPhotoGallery({
                             setPhotoToDelete(photo);
                             setDeleteConfirmOpen(true);
                           }}
-                          className="absolute top-1 right-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity bg-destructive rounded p-1 hover:bg-destructive/90"
+                          className="absolute top-1 right-1 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-destructive rounded p-1.5 hover:bg-destructive/90"
                         >
-                          <X className="w-4 h-4 text-white" />
+                          <Trash2 className="w-4 h-4 text-white" />
                         </button>
                       )}
                       <button
@@ -631,63 +654,23 @@ export function DocumentPhotoGallery({
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* Delete Confirmation - Mobile Centered */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="z-[200] w-[calc(100vw-2rem)] max-w-md mx-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Photo</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this photo? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel className="mt-0">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Change Category Dialog */}
-      <Dialog open={changeCategoryOpen} onOpenChange={setChangeCategoryOpen}>
-        <DialogContent className="sm:max-w-md">
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold">Change Photo Category</h3>
-              <p className="text-sm text-muted-foreground">
-                Move this photo to a different category
-              </p>
-            </div>
-            <Select value={newCategory} onValueChange={(v) => setNewCategory(v as 'before' | 'after' | 'other')}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="before">Before</SelectItem>
-                <SelectItem value="after">After</SelectItem>
-                <SelectItem value="other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setChangeCategoryOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  if (photoToChangeCategory && onUpdateType && newCategory !== photoToChangeCategory.photo_type) {
-                    onUpdateType(photoToChangeCategory.id, newCategory);
-                  }
-                  setChangeCategoryOpen(false);
-                  setPhotoToChangeCategory(null);
-                }}
-              >
-                Save
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
