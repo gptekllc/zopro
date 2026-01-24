@@ -389,8 +389,8 @@ export function DocumentPhotoGallery({
                   {isProcessing ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {uploadProgress.total > 1 
-                        ? `${uploadProgress.current}/${uploadProgress.total}`
+                      {uploadQueue.length > 1 
+                        ? `${uploadQueue.filter(f => f.status === 'success').length}/${uploadQueue.length}`
                         : 'Processing...'}
                     </>
                   ) : isUploading ? (
@@ -422,6 +422,12 @@ export function DocumentPhotoGallery({
                   className="hidden"
                 />
               </div>
+              {/* Upload Queue Progress */}
+              {uploadQueue.length > 0 && (
+                <div className="mt-3">
+                  <PhotoUploadQueue files={uploadQueue} />
+                </div>
+              )}
               <p className="text-xs text-muted-foreground mt-2 text-center hidden sm:block">
                 or drag and drop images here
               </p>
@@ -512,9 +518,12 @@ export function DocumentPhotoGallery({
                             draggable={false}
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Camera className="w-6 h-6 text-muted-foreground" />
-                          </div>
+                          <>
+                            <Skeleton className="absolute inset-0" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <ImageIcon className="w-6 h-6 text-muted-foreground/50 animate-pulse" />
+                            </div>
+                          </>
                         )}
                       </button>
                     </div>
