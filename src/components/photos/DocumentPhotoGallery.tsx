@@ -4,10 +4,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, Upload, FolderInput } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Camera, Loader2, ZoomIn, ZoomOut, RotateCcw, Upload, FolderInput, ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { compressImageToFile } from '@/lib/imageCompression';
+import { PhotoUploadQueue, type QueuedFile, type UploadStatus } from '@/components/photos/PhotoUploadQueue';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export interface DocumentPhoto {
   id: string;
@@ -57,7 +59,7 @@ export function DocumentPhotoGallery({
   const [draggedPhoto, setDraggedPhoto] = useState<DocumentPhoto | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<'before' | 'after' | 'other' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [uploadQueue, setUploadQueue] = useState<QueuedFile[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -184,74 +186,55 @@ export function DocumentPhotoGallery({
 
   const handleMouseUp = () => setIsDragging(false);
 
-  // Process files for upload (shared by file input and drag-drop)
+  const createPreviewUrl = (file: File): string => {
+    try { return URL.createObjectURL(file); } catch { return ''; }
+  };
+
+  const updateQueueItem = (id: string, updates: Partial<QueuedFile>) => {
+    setUploadQueue(prev => prev.map(item => item.id === id ? { ...item, ...updates } : item));
+  };
+
   const processFilesForUpload = async (files: FileList | File[]) => {
     if (!files || files.length === 0 || !onUpload) return;
-
     const fileArray = Array.from(files);
-    // Filter to only image files
     const imageFiles = fileArray.filter(file => 
-      file.type.startsWith('image/') || 
-      file.name.toLowerCase().endsWith('.heic') || 
-      file.name.toLowerCase().endsWith('.heif')
+      file.type.startsWith('image/') || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')
     );
-
-    if (imageFiles.length === 0) {
-      toast.error('Please select image files only');
-      return;
-    }
-
+    if (imageFiles.length === 0) { toast.error('Please select image files only'); return; }
     if (imageFiles.length < fileArray.length) {
       toast.warning(`${fileArray.length - imageFiles.length} non-image file(s) were skipped`);
     }
-
-    const totalFiles = imageFiles.length;
-    setUploadProgress({ current: 0, total: totalFiles });
+    const initialQueue: QueuedFile[] = imageFiles.map((file, index) => ({
+      id: `upload-${Date.now()}-${index}`, name: file.name, status: 'pending' as UploadStatus, progress: 0, previewUrl: createPreviewUrl(file),
+    }));
+    setUploadQueue(initialQueue);
     setIsProcessing(true);
-    
     let successCount = 0;
-    
-    // Process all images
     for (let i = 0; i < imageFiles.length; i++) {
       const file = imageFiles[i];
+      const queueId = initialQueue[i].id;
       try {
-        // Check if it's an image file that needs compression
         const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
         const isCompressibleImage = imageTypes.includes(file.type.toLowerCase());
         const isHeic = file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
-        
         let fileToUpload = file;
         if (isCompressibleImage || isHeic) {
-          try {
-            fileToUpload = await compressImageToFile(file, 300);
-          } catch (compressionError) {
-            console.warn('Image compression failed, uploading original:', compressionError);
-            fileToUpload = file;
-          }
+          updateQueueItem(queueId, { status: 'compressing' });
+          try { fileToUpload = await compressImageToFile(file, 300); } catch { fileToUpload = file; }
         }
-        
+        updateQueueItem(queueId, { status: 'uploading' });
         await onUpload(fileToUpload, selectedPhotoType);
+        updateQueueItem(queueId, { status: 'success', progress: 100 });
         successCount++;
-        setUploadProgress({ current: i + 1, total: totalFiles });
       } catch (error) {
         console.error(`Failed to upload image ${file.name}:`, error);
-        toast.error(`Failed to upload ${file.name}`);
+        updateQueueItem(queueId, { status: 'error', error: error instanceof Error ? error.message : 'Upload failed' });
       }
     }
-    
-    if (successCount > 0) {
-      toast.success(`${successCount} image${successCount > 1 ? 's' : ''} uploaded`);
-    }
-    
-    setIsProcessing(false);
-    setUploadProgress({ current: 0, total: 0 });
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    if (cameraInputRef.current) {
-      cameraInputRef.current.value = '';
-    }
+    if (successCount > 0) { toast.success(`${successCount} image${successCount > 1 ? 's' : ''} uploaded`); }
+    setTimeout(() => { setUploadQueue([]); setIsProcessing(false); }, 2000);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (cameraInputRef.current) cameraInputRef.current.value = '';
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
