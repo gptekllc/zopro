@@ -214,7 +214,6 @@ export function useJob(jobId: string | null) {
       } as Job;
     },
     enabled: !!jobId,
-    staleTime: 1000 * 60 * 5, // 5 minutes - trust optimistic updates
   });
 }
 

@@ -174,7 +174,6 @@ export function useInvoices(includeArchived: boolean = false) {
       return data as Invoice[];
     },
     enabled: !!profile?.company_id,
-    staleTime: 1000 * 60 * 5, // 5 minutes - trust optimistic updates
   });
 }
 
