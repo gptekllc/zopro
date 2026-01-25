@@ -64,8 +64,10 @@ export function DocumentPhotoGallery({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Sort photos by display_order
-  const orderedPhotos = [...photos].sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+  // Filter out photos that are being deleted for immediate UI feedback, then sort by display_order
+  const orderedPhotos = [...photos]
+    .filter(p => !deletingPhotoIds.has(p.id))
+    .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
 
   // Cache signed URLs - only fetch for photos that don't have URLs yet
   useEffect(() => {
@@ -466,7 +468,7 @@ export function DocumentPhotoGallery({
       )}
 
       {/* Photos Display */}
-      {photos.length === 0 ? (
+      {orderedPhotos.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <Camera className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p className="text-sm">No photos yet</p>
@@ -479,7 +481,7 @@ export function DocumentPhotoGallery({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Camera className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Photos ({photos.length})</span>
+              <span className="font-medium text-sm">Photos ({orderedPhotos.length})</span>
             </div>
             {editable && onUpdateType && (
               <span className="text-xs text-muted-foreground">Drag to move between categories</span>
