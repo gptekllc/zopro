@@ -44,6 +44,7 @@ serve(async (req) => {
       expiredQuotes: 0,
       remindersSent: 0,
       lateFeesApplied: 0,
+      trialReminders: { sevenDay: 0, oneDay: 0 },
       permanentlyDeleted: { jobs: 0, quotes: 0, invoices: 0, customers: 0 },
       errors: [] as string[],
     };
@@ -111,7 +112,17 @@ serve(async (req) => {
       }
     }
 
-    // 5. Permanently delete soft-deleted records older than 6 months (global, not per-company)
+    // 5. Send trial expiration reminders (global, not per-company filter)
+    try {
+      console.log("Checking for trial expiration reminders...");
+      const trialReminderResults = await sendTrialExpirationReminders(supabase, resend);
+      results.trialReminders = trialReminderResults;
+      console.log(`Sent ${trialReminderResults.sevenDay} seven-day and ${trialReminderResults.oneDay} one-day trial reminders`);
+    } catch (trialErr: any) {
+      console.error("Error sending trial expiration reminders:", trialErr);
+      results.errors.push(`Trial reminders: ${trialErr.message}`);
+    }
+
     try {
       console.log("Running permanent deletion cleanup for soft-deleted records older than 6 months...");
       const { data: cleanupResult, error: cleanupError } = await supabase
@@ -369,4 +380,228 @@ async function sendAdminNotification(
       console.error(`Failed to create notification for admin ${admin.id}:`, err);
     }
   }
+}
+
+async function sendTrialExpirationReminders(
+  supabase: any, 
+  resendClient: any
+): Promise<{ sevenDay: number; oneDay: number }> {
+  const results = { sevenDay: 0, oneDay: 0 };
+  const now = new Date();
+  const baseUrl = Deno.env.get("APP_BASE_URL") || "https://zopro.lovable.app";
+
+  // Calculate date ranges for 7-day and 1-day reminders
+  const sevenDaysFromNow = new Date(now);
+  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+  const sevenDayStart = sevenDaysFromNow.toISOString().split('T')[0];
+  const sevenDayEnd = new Date(sevenDaysFromNow);
+  sevenDayEnd.setDate(sevenDayEnd.getDate() + 1);
+
+  const oneDayFromNow = new Date(now);
+  oneDayFromNow.setDate(oneDayFromNow.getDate() + 1);
+  const oneDayStart = oneDayFromNow.toISOString().split('T')[0];
+  const oneDayEnd = new Date(oneDayFromNow);
+  oneDayEnd.setDate(oneDayEnd.getDate() + 1);
+
+  // Find trialing subscriptions expiring in 7 days
+  const { data: sevenDayTrials, error: sevenDayError } = await supabase
+    .from("company_subscriptions")
+    .select(`
+      id,
+      company_id,
+      trial_ends_at,
+      companies (
+        id,
+        name
+      )
+    `)
+    .eq("status", "trialing")
+    .gte("trial_ends_at", sevenDayStart)
+    .lt("trial_ends_at", sevenDayEnd.toISOString().split('T')[0]);
+
+  if (sevenDayError) {
+    console.error("Error fetching 7-day trial expirations:", sevenDayError);
+  }
+
+  // Find trialing subscriptions expiring in 1 day
+  const { data: oneDayTrials, error: oneDayError } = await supabase
+    .from("company_subscriptions")
+    .select(`
+      id,
+      company_id,
+      trial_ends_at,
+      companies (
+        id,
+        name
+      )
+    `)
+    .eq("status", "trialing")
+    .gte("trial_ends_at", oneDayStart)
+    .lt("trial_ends_at", oneDayEnd.toISOString().split('T')[0]);
+
+  if (oneDayError) {
+    console.error("Error fetching 1-day trial expirations:", oneDayError);
+  }
+
+  // Send 7-day reminder emails
+  for (const subscription of sevenDayTrials || []) {
+    const company = subscription.companies;
+    if (!company) continue;
+
+    const sent = await sendTrialReminderToAdmins(
+      supabase,
+      resendClient,
+      company.id,
+      company.name,
+      subscription.trial_ends_at,
+      7,
+      baseUrl
+    );
+    if (sent) results.sevenDay++;
+  }
+
+  // Send 1-day reminder emails
+  for (const subscription of oneDayTrials || []) {
+    const company = subscription.companies;
+    if (!company) continue;
+
+    const sent = await sendTrialReminderToAdmins(
+      supabase,
+      resendClient,
+      company.id,
+      company.name,
+      subscription.trial_ends_at,
+      1,
+      baseUrl
+    );
+    if (sent) results.oneDay++;
+  }
+
+  return results;
+}
+
+async function sendTrialReminderToAdmins(
+  supabase: any,
+  resendClient: any,
+  companyId: string,
+  companyName: string,
+  trialEndsAt: string,
+  daysRemaining: number,
+  baseUrl: string
+): Promise<boolean> {
+  // Get admin emails for this company
+  const { data: admins, error: adminsError } = await supabase
+    .from("profiles")
+    .select("id, email, full_name")
+    .eq("company_id", companyId)
+    .eq("role", "admin")
+    .is("deleted_at", null);
+
+  if (adminsError || !admins || admins.length === 0) {
+    console.log(`No admins found for company ${companyId}`);
+    return false;
+  }
+
+  const trialEndDate = new Date(trialEndsAt).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const urgencyColor = daysRemaining === 1 ? '#dc2626' : '#f59e0b';
+  const urgencyText = daysRemaining === 1 ? 'URGENT: ' : '';
+
+  let emailsSent = false;
+
+  for (const admin of admins) {
+    if (!admin.email) continue;
+
+    try {
+      const { error: emailError } = await resendClient.emails.send({
+        from: "ZoPro <noreply@email.zopro.app>",
+        to: [admin.email],
+        subject: `${urgencyText}Your ZoPro trial expires in ${daysRemaining} day${daysRemaining > 1 ? 's' : ''}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #1f2937; margin: 0;">ZoPro</h1>
+            </div>
+            
+            <div style="background-color: ${urgencyColor}; color: white; padding: 15px 20px; border-radius: 8px; margin-bottom: 25px; text-align: center;">
+              <h2 style="margin: 0; font-size: 18px;">
+                ⏰ Your free trial expires in ${daysRemaining} day${daysRemaining > 1 ? 's' : ''}
+              </h2>
+            </div>
+
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+              Hi ${admin.full_name || 'there'},
+            </p>
+
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+              Your free trial for <strong>${companyName}</strong> will end on <strong>${trialEndDate}</strong>.
+            </p>
+
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+              To continue using ZoPro and keep access to all your data, jobs, invoices, and customer information, please upgrade to a paid plan before your trial expires.
+            </p>
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${baseUrl}/subscription" 
+                 style="background-color: #2563eb; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px; display: inline-block;">
+                Upgrade Now
+              </a>
+            </div>
+
+            <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 25px 0;">
+              <h3 style="color: #1f2937; margin-top: 0;">What you'll keep with a paid plan:</h3>
+              <ul style="color: #4b5563; line-height: 1.8; margin: 0; padding-left: 20px;">
+                <li>All your jobs, quotes, and invoices</li>
+                <li>Customer database and history</li>
+                <li>Team member access</li>
+                <li>Photo storage and documents</li>
+                <li>Automated reminders and notifications</li>
+              </ul>
+            </div>
+
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+              Have questions? Just reply to this email and we'll be happy to help.
+            </p>
+
+            <p style="color: #4b5563; font-size: 16px; line-height: 1.6;">
+              Thank you for trying ZoPro!<br>
+              <strong>The ZoPro Team</strong>
+            </p>
+
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+            
+            <p style="color: #9ca3af; font-size: 12px; text-align: center;">
+              You're receiving this email because you're an admin of ${companyName} on ZoPro.
+            </p>
+          </div>
+        `,
+      });
+
+      if (emailError) {
+        console.error(`Error sending trial reminder to ${admin.email}:`, emailError);
+        continue;
+      }
+
+      console.log(`Sent ${daysRemaining}-day trial reminder to ${admin.email} for company ${companyName}`);
+      emailsSent = true;
+
+      // Create in-app notification as well
+      await supabase.from("notifications").insert({
+        user_id: admin.id,
+        type: "trial_expiring",
+        title: `Trial expires in ${daysRemaining} day${daysRemaining > 1 ? 's' : ''}`,
+        message: `Your free trial will end on ${trialEndDate}. Upgrade now to keep your data.`,
+        data: { companyId, trialEndsAt, daysRemaining },
+      });
+    } catch (err: any) {
+      console.error(`Failed to send trial reminder to ${admin.email}:`, err);
+    }
+  }
+
+  return emailsSent;
 }
