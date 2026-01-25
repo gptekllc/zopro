@@ -89,12 +89,16 @@ const Quotes = () => {
     if (!open) restoreScrollPosition();
   }, [saveScrollPosition, restoreScrollPosition]);
 
-  // Handle URL params for edit/duplicate/saveTemplate/create
+  // State for viewing quote from URL
+  const [urlViewQuoteId, setUrlViewQuoteId] = useState<string | null>(null);
+
+  // Handle URL params for edit/duplicate/saveTemplate/create/view
   useEffect(() => {
     const createParam = searchParams.get('create');
     const editQuoteId = searchParams.get('edit');
     const duplicateQuoteId = searchParams.get('duplicate');
     const saveTemplateId = searchParams.get('saveTemplate');
+    const viewQuoteId = searchParams.get('view');
     
     // Handle create param from mobile FAB
     if (createParam === 'true') {
@@ -105,7 +109,11 @@ const Quotes = () => {
       return;
     }
     
-    if (saveTemplateId && quotes.length > 0) {
+    if (viewQuoteId && quotes.length > 0) {
+      setUrlViewQuoteId(viewQuoteId);
+      searchParams.delete('view');
+      setSearchParams(searchParams, { replace: true });
+    } else if (saveTemplateId && quotes.length > 0) {
       setPendingSaveTemplateQuoteId(saveTemplateId);
       searchParams.delete('saveTemplate');
       setSearchParams(searchParams, { replace: true });
@@ -513,8 +521,11 @@ const Quotes = () => {
           onCreateQuote={() => openEditDialog(true)}
           onRefetch={async () => { await refetchQuotes(); }}
           isLoading={isLoading}
-          initialViewQuoteId={pendingViewQuoteId}
-          onInitialViewHandled={() => setPendingViewQuoteId(null)}
+          initialViewQuoteId={urlViewQuoteId || pendingViewQuoteId}
+          onInitialViewHandled={() => {
+            setUrlViewQuoteId(null);
+            setPendingViewQuoteId(null);
+          }}
         />
       </div>
 

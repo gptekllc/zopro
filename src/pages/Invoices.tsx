@@ -91,11 +91,15 @@ const Invoices = () => {
     if (!open) restoreScrollPosition();
   }, [saveScrollPosition, restoreScrollPosition]);
 
-  // Handle URL params for edit/duplicate/create
+  // State for viewing invoice from URL
+  const [urlViewInvoiceId, setUrlViewInvoiceId] = useState<string | null>(null);
+
+  // Handle URL params for edit/duplicate/create/view
   useEffect(() => {
     const createParam = searchParams.get("create");
     const editInvoiceId = searchParams.get("edit");
     const duplicateInvoiceId = searchParams.get("duplicate");
+    const viewInvoiceId = searchParams.get("view");
     
     // Handle create param from mobile FAB
     if (createParam === "true") {
@@ -106,7 +110,11 @@ const Invoices = () => {
       return;
     }
     
-    if (editInvoiceId && invoices.length > 0) {
+    if (viewInvoiceId && invoices.length > 0) {
+      setUrlViewInvoiceId(viewInvoiceId);
+      searchParams.delete("view");
+      setSearchParams(searchParams, { replace: true });
+    } else if (editInvoiceId && invoices.length > 0) {
       setPendingEditInvoiceId(editInvoiceId);
       searchParams.delete("edit");
       setSearchParams(searchParams, { replace: true });
@@ -592,8 +600,11 @@ const Invoices = () => {
           onCreateInvoice={() => openEditDialog(true)}
           onRefetch={async () => { await refetchInvoices(); }}
           isLoading={isLoading}
-          initialViewInvoiceId={pendingViewInvoiceId}
-          onInitialViewHandled={() => setPendingViewInvoiceId(null)}
+          initialViewInvoiceId={urlViewInvoiceId || pendingViewInvoiceId}
+          onInitialViewHandled={() => {
+            setUrlViewInvoiceId(null);
+            setPendingViewInvoiceId(null);
+          }}
         />
       </div>
     </PageContainer>
