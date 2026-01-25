@@ -9,7 +9,7 @@ import { useProfiles } from "@/hooks/useProfiles";
 import { useAllPayments } from "@/hooks/usePayments";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, Briefcase, CheckCircle, Clock, DollarSign, FileText, Filter, Info, Loader2, Percent, Star, TrendingUp } from "lucide-react";
+import { AlertCircle, Briefcase, CheckCircle, Clock, DollarSign, FileText, Filter, Info, Loader2, Percent, Plus, Star, TrendingUp, UserPlus } from "lucide-react";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subWeeks, subMonths, subYears, isWithinInterval } from "date-fns";
 import { Link } from "react-router-dom";
 import { useDashboardAccess } from "./useDashboardAccess";
@@ -328,6 +328,66 @@ export default function DashboardPage() {
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
+
+      {/* Empty State for New Companies */}
+      {customers.length === 0 && jobs.length === 0 && invoices.length === 0 && quotes.length === 0 && (
+        <section aria-label="Get started" className="mt-6">
+          <Card className="border-dashed border-2">
+            <CardContent className="py-8 sm:py-12 text-center">
+              <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Briefcase className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-semibold mb-2">Welcome to Your Dashboard!</h2>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                Get started by adding your first customer, then create jobs, quotes, and invoices to track your business.
+              </p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Button asChild className="gap-2">
+                  <Link to="/customers?create=true">
+                    <UserPlus className="w-4 h-4" />
+                    Add Customer
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="gap-2">
+                  <Link to="/jobs?create=true">
+                    <Briefcase className="w-4 h-4" />
+                    Create Job
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="gap-2">
+                  <Link to="/quotes?create=true">
+                    <TrendingUp className="w-4 h-4" />
+                    Create Quote
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="gap-2">
+                  <Link to="/invoices?create=true">
+                    <FileText className="w-4 h-4" />
+                    Create Invoice
+                  </Link>
+                </Button>
+              </div>
+              <div className="mt-6 pt-6 border-t">
+                <p className="text-sm text-muted-foreground mb-3">Quick tips to get started:</p>
+                <ul className="text-sm text-muted-foreground space-y-1 max-w-sm mx-auto text-left">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-success mt-0.5 shrink-0" />
+                    <span>Add customers with their contact details</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-success mt-0.5 shrink-0" />
+                    <span>Create jobs to schedule and track work</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-success mt-0.5 shrink-0" />
+                    <span>Send quotes and convert them to invoices</span>
+                  </li>
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      )}
 
       <section aria-label="Key metrics">
         <TooltipProvider>
