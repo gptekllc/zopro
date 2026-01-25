@@ -66,17 +66,21 @@ export function JobPhotoGallery({
         return;
       }
 
+      // Helper to check if URL is already displayable (http, https, or blob)
+      const isDisplayableUrl = (url: string) => 
+        url.startsWith('http') || url.startsWith('blob:');
+      
       // Preserve existing signed URLs
       const urls: Record<string, string> = { ...signedUrls };
       
-      // Filter to photos that need signed URLs
+      // Filter to photos that need signed URLs (exclude already displayable URLs)
       const photosNeedingUrls = photos.filter(photo => 
-        !urls[photo.id] && !photo.photo_url.startsWith('http')
+        !urls[photo.id] && !isDisplayableUrl(photo.photo_url)
       );
       
-      // Also check for photos with existing http URLs (already signed)
+      // Also check for photos with existing displayable URLs
       photos.forEach(photo => {
-        if (photo.photo_url.startsWith('http') && !urls[photo.id]) {
+        if (isDisplayableUrl(photo.photo_url) && !urls[photo.id]) {
           urls[photo.id] = photo.photo_url;
         }
       });
