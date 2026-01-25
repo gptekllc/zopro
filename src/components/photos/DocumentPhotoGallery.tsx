@@ -53,6 +53,7 @@ export function DocumentPhotoGallery({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [photoToDelete, setPhotoToDelete] = useState<DocumentPhoto | null>(null);
+  const [deletingPhotoIds, setDeletingPhotoIds] = useState<Set<string>>(new Set());
   const [selectedPhotoType, setSelectedPhotoType] = useState<'before' | 'after' | 'other'>('other');
   // Category change state removed - now using inline DropdownMenu
   const [draggedPhoto, setDraggedPhoto] = useState<DocumentPhoto | null>(null);
@@ -284,10 +285,24 @@ export function DocumentPhotoGallery({
 
   const handleDeleteConfirm = async () => {
     if (photoToDelete && onDelete) {
-      await onDelete(photoToDelete.id, photoToDelete.photo_url);
+      // Add to deleting set to trigger fade-out animation
+      setDeletingPhotoIds(prev => new Set(prev).add(photoToDelete.id));
+      setDeleteConfirmOpen(false);
+      
+      // Wait for animation to complete before actually deleting
+      setTimeout(async () => {
+        await onDelete(photoToDelete.id, photoToDelete.photo_url);
+        setDeletingPhotoIds(prev => {
+          const next = new Set(prev);
+          next.delete(photoToDelete.id);
+          return next;
+        });
+        setPhotoToDelete(null);
+      }, 200);
+    } else {
+      setDeleteConfirmOpen(false);
+      setPhotoToDelete(null);
     }
-    setDeleteConfirmOpen(false);
-    setPhotoToDelete(null);
   };
 
   // Drag and drop handlers for moving between categories
@@ -489,7 +504,13 @@ export function DocumentPhotoGallery({
                   {group.photos.map((photo) => (
                     <div 
                       key={photo.id} 
-                      className={`relative group ${draggedPhoto?.id === photo.id ? 'opacity-50' : ''}`}
+                      className={`relative group transition-all duration-200 ${
+                        deletingPhotoIds.has(photo.id) 
+                          ? 'opacity-0 scale-95' 
+                          : draggedPhoto?.id === photo.id 
+                            ? 'opacity-50' 
+                            : ''
+                      }`}
                       draggable={editable && !!onUpdateType}
                       onDragStart={(e) => handleDragStart(e, photo)}
                       onDragEnd={handleDragEnd}
