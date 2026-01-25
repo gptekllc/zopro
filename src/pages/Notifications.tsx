@@ -240,8 +240,8 @@ const Notifications = () => {
     // Navigate based on notification type
     const data = notification.data as Record<string, string> | null;
     
-    // Handle status_change notifications with record_type
-    if ((notification.type === 'status_change') && data?.record_type && data?.record_id) {
+    // Handle assignment and status_change notifications with record_type
+    if ((notification.type === 'assignment' || notification.type === 'status_change') && data?.record_type && data?.record_id) {
       if (data.record_type === 'job') {
         navigate(`/jobs?view=${data.record_id}`);
       } else if (data.record_type === 'invoice') {
@@ -253,9 +253,17 @@ const Notifications = () => {
     }
     
     if (notification.type === 'payment_received' || notification.type === 'payment_failed') {
-      navigate('/invoices');
+      if (data?.invoiceId) {
+        navigate(`/invoices?view=${data.invoiceId}`);
+      } else {
+        navigate('/invoices');
+      }
     } else if (notification.type === 'quote_approved') {
-      navigate('/quotes');
+      if (data?.quoteId) {
+        navigate(`/quotes?view=${data.quoteId}`);
+      } else {
+        navigate('/quotes');
+      }
     } else if ((notification.type === 'negative_feedback' || notification.type === 'feedback_updated') && data?.jobId) {
       navigate(`/jobs?view=${data.jobId}&tab=feedback`);
     }
