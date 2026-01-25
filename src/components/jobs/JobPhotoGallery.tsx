@@ -49,7 +49,7 @@ export function JobPhotoGallery({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [photoToDelete, setPhotoToDelete] = useState<JobPhoto | null>(null);
   const [deletingPhotoIds, setDeletingPhotoIds] = useState<Set<string>>(new Set());
-  const [selectedPhotoType, setSelectedPhotoType] = useState<'before' | 'after' | 'other'>('other');
+  const [selectedPhotoType, setSelectedPhotoType] = useState<'before' | 'after' | 'other'>('before');
   // Category change state removed - now using inline DropdownMenu
   const [draggedPhoto, setDraggedPhoto] = useState<JobPhoto | null>(null);
   const [dragOverCategory, setDragOverCategory] = useState<'before' | 'after' | 'other' | null>(null);

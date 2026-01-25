@@ -236,9 +236,12 @@ export function useDeleteInvoicePhoto() {
       toast.error('Failed to delete photo');
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['invoice-photos', result.invoiceId] });
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
       toast.success('Photo deleted');
+      // Delay invalidation to prevent race condition where refetch shows deleted photo
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['invoice-photos', result.invoiceId] });
+        queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      }, 500);
     },
   });
 }
@@ -277,8 +280,11 @@ export function useUpdateInvoicePhotoType() {
       toast.error('Failed to update photo category');
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['invoice-photos', result.invoiceId] });
       toast.success('Photo category updated');
+      // Delay invalidation to prevent race condition that reverts optimistic update
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['invoice-photos', result.invoiceId] });
+      }, 500);
     },
   });
 }
