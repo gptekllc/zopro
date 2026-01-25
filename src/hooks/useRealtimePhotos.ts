@@ -6,6 +6,7 @@ import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 interface PhotoRecord {
   id: string;
   photo_url: string;
+  thumbnail_url: string | null;
   photo_type: string;
   caption: string | null;
   display_order: number | null;

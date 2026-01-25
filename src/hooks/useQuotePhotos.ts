@@ -2,12 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
-import { compressImage } from '@/lib/imageCompression';
+import { compressImage, createThumbnail } from '@/lib/imageCompression';
 
 export interface QuotePhoto {
   id: string;
   quote_id: string;
   photo_url: string;
+  thumbnail_url: string | null;
   photo_type: 'before' | 'after' | 'other';
   caption: string | null;
   display_order: number | null;
@@ -73,17 +74,27 @@ export function useUploadQuotePhoto() {
       }
 
       // Compress the image to 300KB
-      const compressedFile = await compressImage(file, 300);
+      const compressedBlob = await compressImage(file, 300);
+      const compressedFile = new File([compressedBlob], file.name, { type: 'image/jpeg' });
       
-      // Generate unique filename
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `${quoteId}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('quote-photos')
-        .upload(fileName, compressedFile);
+      // Generate thumbnail (200px, ~15KB)
+      const thumbnailBlob = await createThumbnail(file, 200, 0.6);
+      const thumbnailFile = new File([thumbnailBlob], `thumb_${file.name}`, { type: 'image/jpeg' });
+      
+      // Generate unique filenames
+      const baseName = `${quoteId}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const fileName = `${baseName}.jpg`;
+      const thumbFileName = `${baseName}_thumb.jpg`;
+      
+      // Upload both files in parallel
+      const [uploadResult, thumbUploadResult] = await Promise.all([
+        supabase.storage.from('quote-photos').upload(fileName, compressedFile),
+        supabase.storage.from('quote-photos').upload(thumbFileName, thumbnailFile)
+      ]);
 
-      if (uploadError) throw uploadError;
+      if (uploadResult.error) throw uploadResult.error;
+      // Thumbnail upload failure is non-critical
+      const thumbnailPath = thumbUploadResult.error ? null : thumbFileName;
 
       // Get signed URL for immediate display
       const { data: signedData } = await supabase.storage
@@ -106,6 +117,7 @@ export function useUploadQuotePhoto() {
         .insert({
           quote_id: quoteId,
           photo_url: fileName,
+          thumbnail_url: thumbnailPath,
           photo_type: photoType,
           caption: caption || null,
           display_order: nextOrder,
@@ -145,6 +157,7 @@ export function useUploadQuotePhoto() {
           id: tempId,
           quote_id: quoteId,
           photo_url: tempUrl,
+          thumbnail_url: tempUrl, // Use same URL for temp thumbnail
           photo_type: photoType,
           caption: null,
           display_order: (old?.length ?? 0),
@@ -235,11 +248,9 @@ export function useDeleteQuotePhoto() {
       console.error('Failed to delete photo:', err);
       toast.error('Failed to delete photo');
     },
-    onSuccess: (result, variables) => {
+    onSuccess: () => {
       toast.success('Photo deleted');
-      // Invalidate to sync with realtime - the realtime subscription will update the cache
-      queryClient.invalidateQueries({ queryKey: ['quote-photos', variables.quoteId] });
-      queryClient.invalidateQueries({ queryKey: ['photo-count', 'quote', variables.quoteId] });
+      // Realtime subscription handles cache updates - no invalidation needed
     },
   });
 }
@@ -277,10 +288,9 @@ export function useUpdateQuotePhotoType() {
       console.error('Failed to update photo category:', err);
       toast.error('Failed to update photo category');
     },
-    onSuccess: (result, variables) => {
+    onSuccess: () => {
       toast.success('Photo category updated');
-      // Invalidate to sync with realtime - the realtime subscription will update the cache
-      queryClient.invalidateQueries({ queryKey: ['quote-photos', variables.quoteId] });
+      // Realtime subscription handles cache updates - no invalidation needed
     },
   });
 }

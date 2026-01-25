@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 import { jobSchema, sanitizeErrorMessage } from '@/lib/validation';
-import { compressImage } from '@/lib/imageCompression';
+import { compressImage, createThumbnail } from '@/lib/imageCompression';
 import { useEffect } from 'react';
 import { calculateDiscountAmount } from '@/components/ui/discount-input';
 
@@ -482,13 +482,27 @@ export function useUploadJobPhoto() {
         { type: 'image/jpeg' }
       );
       
-      // Upload compressed image to storage
-      const fileName = `${user?.id}/${jobId}/${Date.now()}-${compressedFile.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('job-photos')
-        .upload(fileName, compressedFile);
+      // Generate thumbnail (200px, ~15KB)
+      const thumbnailBlob = await createThumbnail(file, 200, 0.6);
+      const thumbnailFile = new File(
+        [thumbnailBlob],
+        file.name.replace(/\.[^/.]+$/, '') + '_thumb.jpg',
+        { type: 'image/jpeg' }
+      );
       
-      if (uploadError) throw uploadError;
+      const baseName = `${user?.id}/${jobId}/${Date.now()}`;
+      const fileName = `${baseName}.jpg`;
+      const thumbFileName = `${baseName}_thumb.jpg`;
+      
+      // Upload both files in parallel
+      const [uploadResult, thumbUploadResult] = await Promise.all([
+        supabase.storage.from('job-photos').upload(fileName, compressedFile),
+        supabase.storage.from('job-photos').upload(thumbFileName, thumbnailFile)
+      ]);
+      
+      if (uploadResult.error) throw uploadResult.error;
+      // Thumbnail upload failure is non-critical, continue without it
+      const thumbnailPath = thumbUploadResult.error ? null : thumbFileName;
       
       // Get signed URL since bucket is now private
       const { data: signedUrlData, error: signedUrlError } = await supabase.storage
@@ -504,6 +518,7 @@ export function useUploadJobPhoto() {
         .insert({
           job_id: jobId,
           photo_url: fileName, // Store path instead of signed URL
+          thumbnail_url: thumbnailPath, // Store thumbnail path
           photo_type: photoType,
           caption,
           uploaded_by: user?.id,
@@ -628,14 +643,9 @@ export function useDeleteJobPhoto() {
       }
       toast.error('Failed to delete photo: ' + sanitizeErrorMessage(err));
     },
-    onSuccess: (result) => {
+    onSuccess: () => {
       toast.success('Photo deleted');
-      // Invalidate to sync with realtime - the realtime subscription will update the cache
-      if (result.jobId) {
-        queryClient.invalidateQueries({ queryKey: ['job', result.jobId] });
-        queryClient.invalidateQueries({ queryKey: ['job-photos', result.jobId] });
-      }
-      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      // Realtime subscription handles cache updates - no invalidation needed
     },
   });
 }
@@ -679,13 +689,9 @@ export function useUpdateJobPhotoType() {
       }
       toast.error('Failed to update photo category: ' + sanitizeErrorMessage(err));
     },
-    onSuccess: (result) => {
+    onSuccess: () => {
       toast.success('Photo category updated');
-      // Invalidate to sync with realtime - the realtime subscription will update the cache
-      if (result.jobId) {
-        queryClient.invalidateQueries({ queryKey: ['job', result.jobId] });
-        queryClient.invalidateQueries({ queryKey: ['job-photos', result.jobId] });
-      }
+      // Realtime subscription handles cache updates - no invalidation needed
     },
   });
 }

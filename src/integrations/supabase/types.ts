@@ -974,6 +974,7 @@ export type Database = {
           invoice_id: string
           photo_type: string
           photo_url: string
+          thumbnail_url: string | null
           uploaded_by: string | null
         }
         Insert: {
@@ -985,6 +986,7 @@ export type Database = {
           invoice_id: string
           photo_type?: string
           photo_url: string
+          thumbnail_url?: string | null
           uploaded_by?: string | null
         }
         Update: {
@@ -996,6 +998,7 @@ export type Database = {
           invoice_id?: string
           photo_type?: string
           photo_url?: string
+          thumbnail_url?: string | null
           uploaded_by?: string | null
         }
         Relationships: [
@@ -1542,6 +1545,7 @@ export type Database = {
           job_id: string
           photo_type: string
           photo_url: string
+          thumbnail_url: string | null
           uploaded_by: string | null
         }
         Insert: {
@@ -1553,6 +1557,7 @@ export type Database = {
           job_id: string
           photo_type: string
           photo_url: string
+          thumbnail_url?: string | null
           uploaded_by?: string | null
         }
         Update: {
@@ -1564,6 +1569,7 @@ export type Database = {
           job_id?: string
           photo_type?: string
           photo_url?: string
+          thumbnail_url?: string | null
           uploaded_by?: string | null
         }
         Relationships: [
@@ -2286,6 +2292,7 @@ export type Database = {
           photo_type: string
           photo_url: string
           quote_id: string
+          thumbnail_url: string | null
           uploaded_by: string | null
         }
         Insert: {
@@ -2297,6 +2304,7 @@ export type Database = {
           photo_type?: string
           photo_url: string
           quote_id: string
+          thumbnail_url?: string | null
           uploaded_by?: string | null
         }
         Update: {
@@ -2308,6 +2316,7 @@ export type Database = {
           photo_type?: string
           photo_url?: string
           quote_id?: string
+          thumbnail_url?: string | null
           uploaded_by?: string | null
         }
         Relationships: [
