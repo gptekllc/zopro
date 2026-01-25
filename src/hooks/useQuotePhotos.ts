@@ -126,20 +126,75 @@ export function useUploadQuotePhoto() {
         queryClient.invalidateQueries({ queryKey: ['storage-usage', companyId] });
       }
 
-      return { ...data, photo_url: signedData?.signedUrl || fileName };
+      return { ...data, quoteId, photo_url: signedData?.signedUrl || fileName };
     },
-    onSuccess: (result, variables) => {
-      // Optimistically add new photo to cache
-      queryClient.setQueryData(['quote-photos', variables.quoteId], (old: QuotePhoto[] | undefined) => {
-        if (!old) return [result];
-        return [...old, result];
+    onMutate: async ({ quoteId, file, photoType }) => {
+      // Cancel any outgoing refetches to prevent race conditions
+      await queryClient.cancelQueries({ queryKey: ['quote-photos', quoteId] });
+      
+      // Create a temporary local URL for immediate display
+      const tempUrl = URL.createObjectURL(file);
+      const tempId = `temp-${Date.now()}`;
+      
+      // Save previous state for rollback
+      const previousPhotos = queryClient.getQueryData(['quote-photos', quoteId]);
+      
+      // Optimistically add the photo with temp URL for instant feedback
+      queryClient.setQueryData(['quote-photos', quoteId], (old: QuotePhoto[] | undefined) => {
+        const newPhoto: QuotePhoto = {
+          id: tempId,
+          quote_id: quoteId,
+          photo_url: tempUrl,
+          photo_type: photoType,
+          caption: null,
+          display_order: (old?.length ?? 0),
+          uploaded_by: null,
+          created_at: new Date().toISOString(),
+        };
+        if (!old) return [newPhoto];
+        return [...old, newPhoto];
       });
+      
+      return { previousPhotos, tempId, tempUrl, quoteId };
+    },
+    onSuccess: (result, variables, context) => {
+      // Replace temporary photo with real one from server
+      queryClient.setQueryData(['quote-photos', result.quoteId], (old: QuotePhoto[] | undefined) => {
+        if (!old) return [result];
+        return old.map((p) => 
+          p.id === context?.tempId 
+            ? {
+                id: result.id,
+                quote_id: result.quote_id,
+                photo_url: result.photo_url,
+                photo_type: result.photo_type,
+                caption: result.caption,
+                display_order: result.display_order,
+                uploaded_by: result.uploaded_by,
+                created_at: result.created_at,
+              }
+            : p
+        );
+      });
+      
+      // Revoke the temporary object URL to free memory
+      if (context?.tempUrl) {
+        URL.revokeObjectURL(context.tempUrl);
+      }
       
       queryClient.invalidateQueries({ queryKey: ['quote-photos', variables.quoteId] });
       queryClient.invalidateQueries({ queryKey: ['photo-count', 'quote', variables.quoteId] });
       toast.success('Photo uploaded');
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
+      // Rollback on error
+      if (context?.previousPhotos && context?.quoteId) {
+        queryClient.setQueryData(['quote-photos', context.quoteId], context.previousPhotos);
+      }
+      // Revoke temp URL on error too
+      if (context?.tempUrl) {
+        URL.revokeObjectURL(context.tempUrl);
+      }
       console.error('Failed to upload photo:', error);
       toast.error(error.message || 'Failed to upload photo');
     },
