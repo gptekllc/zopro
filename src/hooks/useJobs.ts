@@ -628,9 +628,14 @@ export function useDeleteJobPhoto() {
       }
       toast.error('Failed to delete photo: ' + sanitizeErrorMessage(err));
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast.success('Photo deleted');
-      // Trust optimistic update - no invalidation to prevent revert
+      // Invalidate to sync with realtime - the realtime subscription will update the cache
+      if (result.jobId) {
+        queryClient.invalidateQueries({ queryKey: ['job', result.jobId] });
+        queryClient.invalidateQueries({ queryKey: ['job-photos', result.jobId] });
+      }
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
     },
   });
 }
@@ -674,9 +679,13 @@ export function useUpdateJobPhotoType() {
       }
       toast.error('Failed to update photo category: ' + sanitizeErrorMessage(err));
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast.success('Photo category updated');
-      // Trust optimistic update - no invalidation to prevent revert
+      // Invalidate to sync with realtime - the realtime subscription will update the cache
+      if (result.jobId) {
+        queryClient.invalidateQueries({ queryKey: ['job', result.jobId] });
+        queryClient.invalidateQueries({ queryKey: ['job-photos', result.jobId] });
+      }
     },
   });
 }

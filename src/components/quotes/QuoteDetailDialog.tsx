@@ -13,6 +13,7 @@ import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useJobs, Job } from '@/hooks/useJobs';
 import { useInvoices, Invoice } from '@/hooks/useInvoices';
 import { useQuotePhotos, useUploadQuotePhoto, useDeleteQuotePhoto, useUpdateQuotePhotoType } from '@/hooks/useQuotePhotos';
+import { useRealtimeQuotePhotos } from '@/hooks/useRealtimePhotos';
 import { useMemo, useState, useEffect } from 'react';
 import { formatAmount } from '@/lib/formatAmount';
 const QUOTE_STATUSES = ['draft', 'sent', 'accepted', 'rejected', 'expired'] as const;
@@ -90,6 +91,9 @@ export function QuoteDetailDialog({
   const uploadPhoto = useUploadQuotePhoto();
   const deletePhoto = useDeleteQuotePhoto();
   const updatePhotoType = useUpdateQuotePhotoType();
+  
+  // Subscribe to realtime photo changes from database
+  useRealtimeQuotePhotos(quote?.id || null);
 
   // Local state for optimistic UI updates
   const [localStatus, setLocalStatus] = useState(quote?.status);
