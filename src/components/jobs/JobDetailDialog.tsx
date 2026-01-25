@@ -6,8 +6,8 @@ import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Edit, PenTool, Calendar, User, Briefcase, Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt, Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star, List, Camera, StickyNote, History, RefreshCw, ChevronDown } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
+import { Edit, PenTool, Calendar, User, Briefcase, Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt, Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star, List, Camera, StickyNote, History, RefreshCw, ChevronDown, MoreVertical } from 'lucide-react';
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -1117,43 +1117,93 @@ export function JobDetailDialog({
 
         {/* Footer Actions - Fixed at bottom */}
         <div className="border-t bg-background p-4 sm:px-6">
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => downloadDocument.mutate({
-            type: 'job',
-            documentId: job.id
-          })} disabled={downloadDocument.isPending} className="flex-1 sm:flex-none">
-              {downloadDocument.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
-              Download
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleOpenEmailModal} className="flex-1 sm:flex-none">
-              <Mail className="w-4 h-4 mr-1" />
-              Email
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleCreateUpsellQuote} disabled={convertJobToQuote.isPending} className="flex-1 sm:flex-none">
-              <FileText className="w-4 h-4 mr-1" />
-              Create Quote
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleCreateInvoice} disabled={convertJobToInvoice.isPending} className="flex-1 sm:flex-none">
-              <Receipt className="w-4 h-4 mr-1" />
-              Convert to Invoice
-            </Button>
-            {/* On My Way with ETA dropdown */}
-            {['scheduled', 'in_progress'].includes(job.status) && <DropdownMenu>
+          <div className="flex gap-2">
+            {/* Desktop: Show all buttons */}
+            <div className="hidden sm:flex flex-wrap gap-2 flex-1">
+              <Button variant="outline" size="sm" onClick={() => downloadDocument.mutate({
+                type: 'job',
+                documentId: job.id
+              })} disabled={downloadDocument.isPending}>
+                {downloadDocument.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Download className="w-4 h-4 mr-1" />}
+                Download
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleOpenEmailModal}>
+                <Mail className="w-4 h-4 mr-1" />
+                Email
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleCreateUpsellQuote} disabled={convertJobToQuote.isPending}>
+                <FileText className="w-4 h-4 mr-1" />
+                Create Quote
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleCreateInvoice} disabled={convertJobToInvoice.isPending}>
+                <Receipt className="w-4 h-4 mr-1" />
+                Convert to Invoice
+              </Button>
+              {['scheduled', 'in_progress'].includes(job.status) && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" title={customerPhone ? "Send SMS to customer" : "Copy message (no phone on file)"}>
+                      <Navigation className="w-4 h-4 mr-1" />
+                      On My Way
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {etaOptions.map(eta => (
+                      <DropdownMenuItem key={eta} onClick={() => handleOnMyWay(eta)}>
+                        ~{eta} minutes
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Button size="sm" onClick={() => onEdit?.(job.id)} className="ml-auto">
+                <Edit className="w-4 h-4 mr-1" /> Edit
+              </Button>
+            </div>
+
+            {/* Mobile: Edit button + Actions dropdown */}
+            <div className="flex sm:hidden gap-2 w-full">
+              <Button size="sm" onClick={() => onEdit?.(job.id)} className="flex-1">
+                <Edit className="w-4 h-4 mr-1" /> Edit
+              </Button>
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="flex-1 sm:flex-none" title={customerPhone ? "Send SMS to customer" : "Copy message (no phone on file)"}>
-                    <Navigation className="w-4 h-4 mr-1" />
-                    On My Way
+                  <Button variant="outline" size="sm">
+                    <MoreVertical className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  {etaOptions.map(eta => <DropdownMenuItem key={eta} onClick={() => handleOnMyWay(eta)}>
-                      ~{eta} minutes
-                    </DropdownMenuItem>)}
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => downloadDocument.mutate({ type: 'job', documentId: job.id })} disabled={downloadDocument.isPending}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleOpenEmailModal}>
+                    <Mail className="w-4 h-4 mr-2" />
+                    Email
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCreateUpsellQuote} disabled={convertJobToQuote.isPending}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    Create Quote
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleCreateInvoice} disabled={convertJobToInvoice.isPending}>
+                    <Receipt className="w-4 h-4 mr-2" />
+                    Convert to Invoice
+                  </DropdownMenuItem>
+                  {['scheduled', 'in_progress'].includes(job.status) && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">On My Way ETA</DropdownMenuLabel>
+                      {etaOptions.map(eta => (
+                        <DropdownMenuItem key={eta} onClick={() => handleOnMyWay(eta)}>
+                          <Navigation className="w-4 h-4 mr-2" />
+                          ~{eta} minutes
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
                 </DropdownMenuContent>
-              </DropdownMenu>}
-            <Button size="sm" onClick={() => onEdit?.(job.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
-              <Edit className="w-4 h-4 mr-1" /> Edit
-            </Button>
+              </DropdownMenu>
+            </div>
           </div>
         </div>
       </DialogContent>
