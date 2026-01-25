@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import OnboardingChoice from './OnboardingChoice';
 import CreateCompanyFlow from './CreateCompanyFlow';
@@ -36,10 +37,9 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
     );
   }
 
-  // If user already has a company, they shouldn't be here
+  // If user already has a company, redirect to dashboard
   if (profile?.company_id) {
-    window.location.href = '/dashboard';
-    return null;
+    return <Navigate to="/dashboard" replace />;
   }
 
   switch (currentStep) {
@@ -47,7 +47,6 @@ const OnboardingFlow = ({ onComplete }: OnboardingFlowProps) => {
       return (
         <CreateCompanyFlow 
           onBack={() => setCurrentStep('choice')} 
-          onComplete={handleComplete} 
         />
       );
     case 'customer':
