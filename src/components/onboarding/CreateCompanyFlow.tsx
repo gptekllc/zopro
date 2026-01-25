@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,11 +11,11 @@ import { toast } from 'sonner';
 
 interface CreateCompanyFlowProps {
   onBack: () => void;
-  onComplete: () => void;
 }
 
-const CreateCompanyFlow = ({ onBack, onComplete }: CreateCompanyFlowProps) => {
-  const { user } = useAuth();
+const CreateCompanyFlow = ({ onBack }: CreateCompanyFlowProps) => {
+  const navigate = useNavigate();
+  const { user, refreshProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -68,12 +69,14 @@ const CreateCompanyFlow = ({ onBack, onComplete }: CreateCompanyFlowProps) => {
       }
 
       console.log('[CreateCompanyFlow] Company created successfully, new company ID:', data);
-      toast.success('Company created successfully!');
+      toast.success('Company created successfully! Starting your 30-day free trial.');
       
       // Force a session refresh to pick up the new company_id
       await supabase.auth.refreshSession();
       
-      onComplete();
+      // Refresh the profile in auth context and navigate directly to dashboard
+      await refreshProfile();
+      navigate('/dashboard');
     } catch (error: any) {
       console.error('[CreateCompanyFlow] Error:', error);
       toast.error(error.message || 'Failed to create company. Please try again.');
