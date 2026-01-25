@@ -122,9 +122,12 @@ export function JobPhotoGallery({
     loadSignedUrls();
   }, [photos]);
 
-  const beforePhotos = photos.filter(p => p.photo_type === 'before');
-  const afterPhotos = photos.filter(p => p.photo_type === 'after');
-  const otherPhotos = photos.filter(p => p.photo_type === 'other');
+  // Filter out photos that are being deleted for immediate UI feedback
+  const visiblePhotos = photos.filter(p => !deletingPhotoIds.has(p.id));
+  
+  const beforePhotos = visiblePhotos.filter(p => p.photo_type === 'before');
+  const afterPhotos = visiblePhotos.filter(p => p.photo_type === 'after');
+  const otherPhotos = visiblePhotos.filter(p => p.photo_type === 'other');
 
   const allCategories = [
     { type: 'before', label: 'Before', photos: beforePhotos, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
@@ -505,7 +508,7 @@ export function JobPhotoGallery({
       )}
 
       {/* Photos Display */}
-      {photos.length === 0 ? (
+      {visiblePhotos.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           <Camera className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p className="text-sm">No photos yet</p>
@@ -518,7 +521,7 @@ export function JobPhotoGallery({
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Camera className="w-4 h-4 text-muted-foreground" />
-              <span className="font-medium text-sm">Photos ({photos.length})</span>
+              <span className="font-medium text-sm">Photos ({visiblePhotos.length})</span>
             </div>
             {editable && onUpdateType && (
               <span className="text-xs text-muted-foreground">Drag to move between categories</span>
