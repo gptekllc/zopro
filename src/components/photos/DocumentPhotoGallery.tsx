@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export interface DocumentPhoto {
   id: string;
   photo_url: string;
+  thumbnail_url?: string | null;
   photo_type: 'before' | 'after' | 'other';
   caption: string | null;
   created_at: string;
@@ -44,7 +45,7 @@ export function DocumentPhotoGallery({
   editable = true,
   className 
 }: DocumentPhotoGalleryProps) {
-  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [signedUrls, setSignedUrls] = useState<Record<string, { thumbnail: string; full: string }>>({});
   const [loadingUrls, setLoadingUrls] = useState(true);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -69,7 +70,7 @@ export function DocumentPhotoGallery({
     .filter(p => !deletingPhotoIds.has(p.id))
     .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
 
-  // Cache signed URLs - only fetch for photos that don't have URLs yet
+  // Cache signed URLs - fetch both thumbnail and full URLs
   useEffect(() => {
     async function loadSignedUrls() {
       if (photos.length === 0) {
@@ -86,19 +87,23 @@ export function DocumentPhotoGallery({
       const currentPhotoIds = new Set(photos.map(p => p.id));
       
       // Start fresh - only keep URLs for photos that still exist
-      const urls: Record<string, string> = {};
+      const urls: Record<string, { thumbnail: string; full: string }> = {};
       
       // Preserve existing signed URLs ONLY for photos that still exist
-      Object.entries(signedUrls).forEach(([id, url]) => {
+      Object.entries(signedUrls).forEach(([id, urlObj]) => {
         if (currentPhotoIds.has(id)) {
-          urls[id] = url;
+          urls[id] = urlObj;
         }
       });
       
-      // Add displayable URLs for current photos
+      // Add displayable URLs for current photos (blob/http URLs)
       photos.forEach(photo => {
         if (isDisplayableUrl(photo.photo_url) && !urls[photo.id]) {
-          urls[photo.id] = photo.photo_url;
+          // For temp/blob URLs, use same URL for both
+          urls[photo.id] = { 
+            thumbnail: photo.photo_url, 
+            full: photo.photo_url 
+          };
         }
       });
       
@@ -115,12 +120,25 @@ export function DocumentPhotoGallery({
       
       await Promise.all(
         photosNeedingUrls.map(async (photo) => {
-          const { data } = await supabase.storage
+          // Get full image URL
+          const { data: fullData } = await supabase.storage
             .from(bucketName)
             .createSignedUrl(photo.photo_url, 3600);
           
-          if (data?.signedUrl) {
-            urls[photo.id] = data.signedUrl;
+          // Get thumbnail URL if available, otherwise use full
+          let thumbnailUrl = fullData?.signedUrl || '';
+          if (photo.thumbnail_url) {
+            const { data: thumbData } = await supabase.storage
+              .from(bucketName)
+              .createSignedUrl(photo.thumbnail_url, 3600);
+            thumbnailUrl = thumbData?.signedUrl || fullData?.signedUrl || '';
+          }
+          
+          if (fullData?.signedUrl) {
+            urls[photo.id] = {
+              thumbnail: thumbnailUrl,
+              full: fullData.signedUrl
+            };
           }
         })
       );
@@ -573,7 +591,7 @@ export function DocumentPhotoGallery({
                       >
                         {signedUrls[photo.id] ? (
                           <img
-                            src={signedUrls[photo.id]}
+                            src={signedUrls[photo.id].thumbnail}
                             alt={photo.caption || `${photo.photo_type} photo`}
                             className="w-full h-full object-cover"
                             draggable={false}
@@ -665,7 +683,7 @@ export function DocumentPhotoGallery({
               >
                 {signedUrls[allPhotosFlat[lightboxIndex].id] ? (
                   <img
-                    src={signedUrls[allPhotosFlat[lightboxIndex].id]}
+                    src={signedUrls[allPhotosFlat[lightboxIndex].id].full}
                     alt={allPhotosFlat[lightboxIndex].caption || 'Photo'}
                     className="max-w-full max-h-[80vh] object-contain transition-transform duration-200 select-none"
                     style={{

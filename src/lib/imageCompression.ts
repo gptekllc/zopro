@@ -174,3 +174,65 @@ export async function compressImageToFile(
   
   return new File([blob], newName, { type: 'image/jpeg' });
 }
+
+const THUMBNAIL_MAX_DIMENSION = 200;
+const THUMBNAIL_QUALITY = 0.6;
+
+/**
+ * Create a small thumbnail version of an image
+ * Returns a tiny preview (~10-20KB) for fast grid loading
+ */
+export async function createThumbnail(
+  file: File,
+  maxDimension: number = THUMBNAIL_MAX_DIMENSION,
+  quality: number = THUMBNAIL_QUALITY
+): Promise<Blob> {
+  const img = await loadImage(file);
+  
+  const { width, height } = calculateDimensions(
+    img.naturalWidth,
+    img.naturalHeight,
+    maxDimension
+  );
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Failed to get canvas context');
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'medium';
+  ctx.drawImage(img, 0, 0, width, height);
+
+  // Clean up object URL
+  URL.revokeObjectURL(img.src);
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => {
+        if (blob) {
+          resolve(blob);
+        } else {
+          reject(new Error('Failed to create thumbnail'));
+        }
+      },
+      'image/jpeg',
+      quality
+    );
+  });
+}
+
+/**
+ * Create a thumbnail File from an image file
+ */
+export async function createThumbnailFile(
+  file: File,
+  maxDimension: number = THUMBNAIL_MAX_DIMENSION,
+  quality: number = THUMBNAIL_QUALITY
+): Promise<File> {
+  const blob = await createThumbnail(file, maxDimension, quality);
+  const originalName = file.name.replace(/\.[^/.]+$/, '');
+  return new File([blob], `${originalName}_thumb.jpg`, { type: 'image/jpeg' });
+}
