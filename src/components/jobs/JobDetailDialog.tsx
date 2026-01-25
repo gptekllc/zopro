@@ -16,7 +16,7 @@ import { format, differenceInMinutes, isToday, isYesterday, startOfDay } from 'd
 import { CustomerJob } from '@/hooks/useCustomerHistory';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { JobPhotoGallery } from '@/components/jobs/JobPhotoGallery';
-import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job, useUploadJobPhoto, useDeleteJobPhoto, useUpdateJobPhotoType, useUpdateJob } from '@/hooks/useJobs';
+import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job, useUploadJobPhoto, useDeleteJobPhoto, useUpdateJobPhotoType, useUpdateJob, useJob } from '@/hooks/useJobs';
 import { Quote } from '@/hooks/useQuotes';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { useInvoices, Invoice, getInvoiceStatusLabel } from '@/hooks/useInvoices';
@@ -61,7 +61,7 @@ const priorityColors: Record<string, string> = {
   urgent: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
 };
 export function JobDetailDialog({
-  job,
+  job: initialJob,
   customerName,
   customerEmail,
   customerPhone,
@@ -82,6 +82,14 @@ export function JobDetailDialog({
   const {
     data: company
   } = useCompany();
+  
+  // Fetch reactive job data - this updates when cache changes (for instant photo updates)
+  const { data: reactiveJob } = useJob(initialJob?.id || null);
+  
+  // Use reactive job photos when available, fall back to initial job for other data
+  const job = initialJob; // Keep using initialJob for non-photo data
+  const reactivePhotos = reactiveJob?.photos || initialJob?.photos || [];
+  
   const {
     data: relatedQuotes,
     isLoading: loadingQuotes
@@ -568,8 +576,8 @@ export function JobDetailDialog({
               <TabsTrigger value="photos" className="flex items-center gap-1 text-xs sm:text-sm px-1">
                 <Camera className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="hidden sm:inline">Photos</span>
-                {(job.photos?.length || 0) > 0 && <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
-                    {job.photos?.length}
+                {(reactivePhotos?.length || 0) > 0 && <Badge variant="secondary" className="ml-0.5 text-xs hidden sm:inline-flex">
+                    {reactivePhotos?.length}
                   </Badge>}
               </TabsTrigger>
 
@@ -605,7 +613,7 @@ export function JobDetailDialog({
 
             {/* Photos Tab */}
             <TabsContent value="photos" className="mt-4">
-              <JobPhotoGallery photos={(job.photos || []).map(p => ({
+              <JobPhotoGallery photos={(reactivePhotos || []).map(p => ({
               id: p.id,
               photo_url: p.photo_url,
               photo_type: p.photo_type as 'before' | 'after' | 'other',
