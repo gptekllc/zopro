@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { useInvoices, useCreateInvoice, useUpdateInvoice, Invoice } from "@/hooks/useInvoices";
 import { useCustomers } from "@/hooks/useCustomers";
@@ -24,9 +25,11 @@ import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEdit
 import { InvoiceListManager } from "@/components/invoices/InvoiceListManager";
 import { InvoiceListControls } from "@/components/invoices/InvoiceListControls";
 import PageContainer from '@/components/layout/PageContainer';
+import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
 
 const Invoices = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
 
   // Determine if we need archived data based on URL or default
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -38,6 +41,10 @@ const Invoices = () => {
   const createInvoice = useCreateInvoice();
   const updateInvoice = useUpdateInvoice();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
+
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+  }, [queryClient]);
 
   // Jobs available for import (completed/in_progress but not yet invoiced)
   const availableJobsForImport = jobs.filter(job => 
@@ -357,6 +364,7 @@ const Invoices = () => {
   }
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={6} />} className="min-h-full">
     <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
@@ -608,6 +616,7 @@ const Invoices = () => {
         />
       </div>
     </PageContainer>
+    </PullToRefresh>
   );
 };
 
