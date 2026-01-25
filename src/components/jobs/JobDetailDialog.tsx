@@ -17,6 +17,7 @@ import { CustomerJob } from '@/hooks/useCustomerHistory';
 import { PhotoGallery } from '@/components/photos/PhotoGallery';
 import { JobPhotoGallery } from '@/components/jobs/JobPhotoGallery';
 import { useJobRelatedQuotes, useConvertJobToQuote, useConvertJobToInvoice, Job, useUploadJobPhoto, useDeleteJobPhoto, useUpdateJobPhotoType, useUpdateJob, useJob } from '@/hooks/useJobs';
+import { useRealtimeJobPhotos } from '@/hooks/useRealtimePhotos';
 import { Quote } from '@/hooks/useQuotes';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { useInvoices, Invoice, getInvoiceStatusLabel } from '@/hooks/useInvoices';
@@ -89,6 +90,9 @@ export function JobDetailDialog({
   
   // Fetch reactive job data - this updates when cache changes (for instant photo updates)
   const { data: reactiveJob } = useJob(initialJob?.id || null);
+  
+  // Subscribe to realtime photo changes from database
+  useRealtimeJobPhotos(initialJob?.id || null);
   
   // Seed the cache with initialJob data so optimistic updates have a target
   useEffect(() => {

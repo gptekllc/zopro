@@ -12,6 +12,7 @@ import { SignatureSection } from '@/components/signatures/SignatureSection';
 import { ConstrainedPanel } from '@/components/ui/constrained-panel';
 import { DocumentPhotoGallery } from '@/components/photos/DocumentPhotoGallery';
 import { useInvoicePhotos, useUploadInvoicePhoto, useDeleteInvoicePhoto, useUpdateInvoicePhotoType } from '@/hooks/useInvoicePhotos';
+import { useRealtimeInvoicePhotos } from '@/hooks/useRealtimePhotos';
 import { usePayments, useDeletePayment, useUpdatePayment, useRefundPayment, useVoidPayment, useCreatePayment, Payment } from '@/hooks/usePayments';
 import { useVoidInvoice } from '@/hooks/useInvoices';
 import { useCompany } from '@/hooks/useCompany';
@@ -140,6 +141,9 @@ export function InvoiceDetailDialog({
   const uploadPhoto = useUploadInvoicePhoto();
   const deletePhoto = useDeleteInvoicePhoto();
   const updatePhotoType = useUpdateInvoicePhotoType();
+  
+  // Subscribe to realtime photo changes from database
+  useRealtimeInvoicePhotos(invoice?.id || null);
 
   // Fetch payments for this invoice
   const {

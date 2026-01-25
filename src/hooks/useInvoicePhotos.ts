@@ -235,9 +235,11 @@ export function useDeleteInvoicePhoto() {
       console.error('Failed to delete photo:', err);
       toast.error('Failed to delete photo');
     },
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
       toast.success('Photo deleted');
-      // Trust optimistic update - no invalidation to prevent revert
+      // Invalidate to sync with realtime - the realtime subscription will update the cache
+      queryClient.invalidateQueries({ queryKey: ['invoice-photos', variables.invoiceId] });
+      queryClient.invalidateQueries({ queryKey: ['photo-count', 'invoice', variables.invoiceId] });
     },
   });
 }
@@ -275,9 +277,10 @@ export function useUpdateInvoicePhotoType() {
       console.error('Failed to update photo category:', err);
       toast.error('Failed to update photo category');
     },
-    onSuccess: () => {
+    onSuccess: (result, variables) => {
       toast.success('Photo category updated');
-      // Trust optimistic update - no invalidation to prevent revert
+      // Invalidate to sync with realtime - the realtime subscription will update the cache
+      queryClient.invalidateQueries({ queryKey: ['invoice-photos', variables.invoiceId] });
     },
   });
 }
