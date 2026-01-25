@@ -21,6 +21,7 @@ import { Quote } from '@/hooks/useQuotes';
 import { QuoteCard } from '@/components/quotes/QuoteCard';
 import { useInvoices, Invoice, getInvoiceStatusLabel } from '@/hooks/useInvoices';
 import { useMemo, useState, useRef, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { formatAmount } from '@/lib/formatAmount';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
 import { useJobNotifications } from '@/hooks/useJobNotifications';
@@ -83,8 +84,21 @@ export function JobDetailDialog({
     data: company
   } = useCompany();
   
+  // Get query client for cache seeding
+  const queryClient = useQueryClient();
+  
   // Fetch reactive job data - this updates when cache changes (for instant photo updates)
   const { data: reactiveJob } = useJob(initialJob?.id || null);
+  
+  // Seed the cache with initialJob data so optimistic updates have a target
+  useEffect(() => {
+    if (initialJob?.id && open) {
+      queryClient.setQueryData(['job', initialJob.id], (existing: any) => {
+        // Only seed if no data exists - preserve existing cache
+        return existing || initialJob;
+      });
+    }
+  }, [initialJob?.id, open, queryClient, initialJob]);
   
   // Use reactive job photos when available, fall back to initial job for other data
   const job = initialJob; // Keep using initialJob for non-photo data
