@@ -126,20 +126,75 @@ export function useUploadInvoicePhoto() {
         queryClient.invalidateQueries({ queryKey: ['storage-usage', companyId] });
       }
 
-      return { ...data, photo_url: signedData?.signedUrl || fileName };
+      return { ...data, invoiceId, photo_url: signedData?.signedUrl || fileName };
     },
-    onSuccess: (result, variables) => {
-      // Optimistically add new photo to cache
-      queryClient.setQueryData(['invoice-photos', variables.invoiceId], (old: InvoicePhoto[] | undefined) => {
-        if (!old) return [result];
-        return [...old, result];
+    onMutate: async ({ invoiceId, file, photoType }) => {
+      // Cancel any outgoing refetches to prevent race conditions
+      await queryClient.cancelQueries({ queryKey: ['invoice-photos', invoiceId] });
+      
+      // Create a temporary local URL for immediate display
+      const tempUrl = URL.createObjectURL(file);
+      const tempId = `temp-${Date.now()}`;
+      
+      // Save previous state for rollback
+      const previousPhotos = queryClient.getQueryData(['invoice-photos', invoiceId]);
+      
+      // Optimistically add the photo with temp URL for instant feedback
+      queryClient.setQueryData(['invoice-photos', invoiceId], (old: InvoicePhoto[] | undefined) => {
+        const newPhoto: InvoicePhoto = {
+          id: tempId,
+          invoice_id: invoiceId,
+          photo_url: tempUrl,
+          photo_type: photoType,
+          caption: null,
+          display_order: (old?.length ?? 0),
+          uploaded_by: null,
+          created_at: new Date().toISOString(),
+        };
+        if (!old) return [newPhoto];
+        return [...old, newPhoto];
       });
+      
+      return { previousPhotos, tempId, tempUrl, invoiceId };
+    },
+    onSuccess: (result, variables, context) => {
+      // Replace temporary photo with real one from server
+      queryClient.setQueryData(['invoice-photos', result.invoiceId], (old: InvoicePhoto[] | undefined) => {
+        if (!old) return [result];
+        return old.map((p) => 
+          p.id === context?.tempId 
+            ? {
+                id: result.id,
+                invoice_id: result.invoice_id,
+                photo_url: result.photo_url,
+                photo_type: result.photo_type,
+                caption: result.caption,
+                display_order: result.display_order,
+                uploaded_by: result.uploaded_by,
+                created_at: result.created_at,
+              }
+            : p
+        );
+      });
+      
+      // Revoke the temporary object URL to free memory
+      if (context?.tempUrl) {
+        URL.revokeObjectURL(context.tempUrl);
+      }
       
       queryClient.invalidateQueries({ queryKey: ['invoice-photos', variables.invoiceId] });
       queryClient.invalidateQueries({ queryKey: ['photo-count', 'invoice', variables.invoiceId] });
       toast.success('Photo uploaded');
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
+      // Rollback on error
+      if (context?.previousPhotos && context?.invoiceId) {
+        queryClient.setQueryData(['invoice-photos', context.invoiceId], context.previousPhotos);
+      }
+      // Revoke temp URL on error too
+      if (context?.tempUrl) {
+        URL.revokeObjectURL(context.tempUrl);
+      }
       console.error('Failed to upload photo:', error);
       toast.error(error.message || 'Failed to upload photo');
     },
