@@ -235,13 +235,9 @@ export function useDeleteQuotePhoto() {
       console.error('Failed to delete photo:', err);
       toast.error('Failed to delete photo');
     },
-    onSuccess: (result) => {
+    onSuccess: () => {
       toast.success('Photo deleted');
-      // Delay invalidation to prevent race condition where refetch shows deleted photo
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['quote-photos', result.quoteId] });
-        queryClient.invalidateQueries({ queryKey: ['quotes'] });
-      }, 500);
+      // Trust optimistic update - no invalidation to prevent revert
     },
   });
 }
@@ -279,12 +275,9 @@ export function useUpdateQuotePhotoType() {
       console.error('Failed to update photo category:', err);
       toast.error('Failed to update photo category');
     },
-    onSuccess: (result) => {
+    onSuccess: () => {
       toast.success('Photo category updated');
-      // Delay invalidation to prevent race condition that reverts optimistic update
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['quote-photos', result.quoteId] });
-      }, 500);
+      // Trust optimistic update - no invalidation to prevent revert
     },
   });
 }

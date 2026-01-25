@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useQuotes, useCreateQuote, useUpdateQuote, Quote } from '@/hooks/useQuotes';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -24,9 +25,11 @@ import { QuoteListManager } from '@/components/quotes/QuoteListManager';
 import { QuoteListControls } from '@/components/quotes/QuoteListControls';
 import PageContainer from '@/components/layout/PageContainer';
 import { formatAmount } from '@/lib/formatAmount';
+import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
 
 const Quotes = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const queryClient = useQueryClient();
 
   // Determine if we need archived data
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -38,6 +41,10 @@ const Quotes = () => {
   const createQuote = useCreateQuote();
   const updateQuote = useUpdateQuote();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
+
+  const handleRefresh = useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: ['quotes'] });
+  }, [queryClient]);
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -339,6 +346,7 @@ const Quotes = () => {
   }
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={6} />} className="min-h-full">
     <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
@@ -548,6 +556,7 @@ const Quotes = () => {
         onSelect={handleSelectTemplate}
       />
     </PageContainer>
+    </PullToRefresh>
   );
 };
 

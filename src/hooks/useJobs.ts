@@ -630,12 +630,7 @@ export function useDeleteJobPhoto() {
     },
     onSuccess: () => {
       toast.success('Photo deleted');
-      // Delay invalidation to prevent race condition where refetch shows deleted photo
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['jobs'] });
-        queryClient.invalidateQueries({ queryKey: ['job'] });
-        queryClient.invalidateQueries({ queryKey: ['job-photos'] });
-      }, 500);
+      // Trust optimistic update - no invalidation to prevent revert
     },
   });
 }
@@ -681,11 +676,7 @@ export function useUpdateJobPhotoType() {
     },
     onSuccess: () => {
       toast.success('Photo category updated');
-      // Delay invalidation to prevent race condition that reverts optimistic update
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['jobs'] });
-        queryClient.invalidateQueries({ queryKey: ['job'] });
-      }, 500);
+      // Trust optimistic update - no invalidation to prevent revert
     },
   });
 }
