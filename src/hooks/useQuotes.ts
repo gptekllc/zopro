@@ -123,6 +123,7 @@ export function useQuotes(includeArchived: boolean = false) {
       return data as Quote[];
     },
     enabled: !!profile?.company_id,
+    staleTime: 1000 * 60 * 5, // 5 minutes - trust optimistic updates
   });
 }
 
