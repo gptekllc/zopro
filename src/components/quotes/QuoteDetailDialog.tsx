@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, DollarSign, FileText, CheckCircle, Send, UserCog, ChevronRight, CheckCircle2, Briefcase, Receipt, Link2, List, Image as ImageIcon, StickyNote, ChevronDown } from 'lucide-react';
+import { FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, DollarSign, FileText, CheckCircle, Send, UserCog, ChevronRight, CheckCircle2, Briefcase, Receipt, Link2, List, Image as ImageIcon, StickyNote, ChevronDown, MoreVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
@@ -398,30 +398,71 @@ export function QuoteDetailDialog({
 
         {/* Footer Actions - Fixed at bottom */}
         <div className="border-t bg-background p-4 sm:px-6">
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => onEmail?.(quote.id)} disabled={!customerEmail} className="flex-1 sm:flex-none" title={!customerEmail ? 'Customer has no email address' : undefined}>
+          {/* Desktop: All buttons visible */}
+          <div className="hidden sm:flex flex-wrap gap-2">
+            <Button size="sm" onClick={() => onEmail?.(quote.id)} disabled={!customerEmail} title={!customerEmail ? 'Customer has no email address' : undefined}>
               <Send className="w-4 h-4 mr-1" />
               Send
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onDownload?.(quote.id)} className="flex-1 sm:flex-none">
+            <Button variant="outline" size="sm" onClick={() => onDownload?.(quote.id)}>
               <FileDown className="w-4 h-4 mr-1" />
               Download
             </Button>
-            <Button variant="outline" size="sm" onClick={() => onEmailCustom?.(quote.id)} className="flex-1 sm:flex-none">
+            <Button variant="outline" size="sm" onClick={() => onEmailCustom?.(quote.id)}>
               <Mail className="w-4 h-4 mr-1" />
               Email
             </Button>
-            {quote.status !== 'rejected' && <Button variant="outline" size="sm" onClick={() => onConvertToInvoice?.(quote.id)} className="flex-1 sm:flex-none">
+            {quote.status !== 'rejected' && <Button variant="outline" size="sm" onClick={() => onConvertToInvoice?.(quote.id)}>
                 <ArrowRight className="w-4 h-4 mr-1" />
                 Convert to Invoice
               </Button>}
-            {quote.status !== 'rejected' && !linkedJob && <Button variant="outline" size="sm" onClick={() => onCreateJob?.(quote.id)} className="flex-1 sm:flex-none">
+            {quote.status !== 'rejected' && !linkedJob && <Button variant="outline" size="sm" onClick={() => onCreateJob?.(quote.id)}>
                 <Briefcase className="w-4 h-4 mr-1" />
                 Create Job
               </Button>}
-            <Button size="sm" onClick={() => onEdit?.(quote.id)} className="w-full sm:w-auto sm:ml-auto mt-2 sm:mt-0">
+            <Button size="sm" onClick={() => onEdit?.(quote.id)} className="ml-auto">
               <Edit className="w-4 h-4 mr-1" /> Edit
             </Button>
+          </div>
+
+          {/* Mobile: Edit button + Actions dropdown */}
+          <div className="flex sm:hidden gap-2 w-full">
+            <Button size="sm" onClick={() => onEdit?.(quote.id)} className="flex-1">
+              <Edit className="w-4 h-4 mr-1" /> Edit
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
+                <DropdownMenuItem onClick={() => onEmail?.(quote.id)} disabled={!customerEmail}>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onDownload?.(quote.id)}>
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Download
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onEmailCustom?.(quote.id)}>
+                  <Mail className="w-4 h-4 mr-2" />
+                  Email
+                </DropdownMenuItem>
+                {quote.status !== 'rejected' && (
+                  <DropdownMenuItem onClick={() => onConvertToInvoice?.(quote.id)}>
+                    <ArrowRight className="w-4 h-4 mr-2" />
+                    Convert to Invoice
+                  </DropdownMenuItem>
+                )}
+                {quote.status !== 'rejected' && !linkedJob && (
+                  <DropdownMenuItem onClick={() => onCreateJob?.(quote.id)}>
+                    <Briefcase className="w-4 h-4 mr-2" />
+                    Create Job
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </DialogContent>
