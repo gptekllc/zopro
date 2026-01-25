@@ -514,29 +514,74 @@ export function useUploadJobPhoto() {
       if (error) throw error;
       return { ...data, photo_url: photoUrl, jobId }; // Return with signed URL for immediate display
     },
-    onSuccess: (result) => {
-      // Optimistically update the job cache with the new photo
-      queryClient.setQueriesData({ queryKey: ['job', result.jobId] }, (oldData: any) => {
-        if (!oldData) return oldData;
+    onMutate: async ({ jobId, file, photoType }) => {
+      // Cancel any outgoing refetches to prevent race conditions
+      await queryClient.cancelQueries({ queryKey: ['job', jobId] });
+      
+      // Create a temporary local URL for immediate display
+      const tempUrl = URL.createObjectURL(file);
+      const tempId = `temp-${Date.now()}`;
+      
+      // Save previous state for rollback
+      const previousJob = queryClient.getQueryData(['job', jobId]);
+      
+      // Optimistically add the photo with temp URL for instant feedback
+      queryClient.setQueryData(['job', jobId], (old: any) => {
+        if (!old) return old;
         return {
-          ...oldData,
-          photos: [...(oldData.photos || []), {
-            id: result.id,
-            photo_url: result.photo_url,
-            photo_type: result.photo_type,
-            caption: result.caption || null,
-            created_at: result.created_at,
+          ...old,
+          photos: [...(old.photos || []), {
+            id: tempId,
+            photo_url: tempUrl,
+            photo_type: photoType,
+            caption: null,
+            created_at: new Date().toISOString(),
+            _isOptimistic: true, // Mark as temporary
           }]
         };
       });
       
+      return { previousJob, tempId, tempUrl, jobId };
+    },
+    onSuccess: (result, variables, context) => {
+      // Replace temporary photo with real one from server
+      queryClient.setQueryData(['job', result.jobId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          photos: oldData.photos?.map((p: any) => 
+            p.id === context?.tempId 
+              ? {
+                  id: result.id,
+                  photo_url: result.photo_url,
+                  photo_type: result.photo_type,
+                  caption: result.caption || null,
+                  created_at: result.created_at,
+                }
+              : p
+          ) || []
+        };
+      });
+      
+      // Revoke the temporary object URL to free memory
+      if (context?.tempUrl) {
+        URL.revokeObjectURL(context.tempUrl);
+      }
+      
       // Background refresh for consistency
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['job'] });
       toast.success('Photo uploaded successfully');
     },
-    onError: (error: unknown) => {
-      toast.error('Failed to upload photo: ' + sanitizeErrorMessage(error));
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousJob && context?.jobId) {
+        queryClient.setQueryData(['job', context.jobId], context.previousJob);
+      }
+      // Revoke temp URL on error too
+      if (context?.tempUrl) {
+        URL.revokeObjectURL(context.tempUrl);
+      }
+      toast.error('Failed to upload photo: ' + sanitizeErrorMessage(err));
     },
   });
 }
