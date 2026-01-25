@@ -70,6 +70,7 @@ export function DocumentPhotoGallery({
   useEffect(() => {
     async function loadSignedUrls() {
       if (photos.length === 0) {
+        setSignedUrls({});
         setLoadingUrls(false);
         return;
       }
@@ -78,20 +79,30 @@ export function DocumentPhotoGallery({
       const isDisplayableUrl = (url: string) => 
         url.startsWith('http') || url.startsWith('blob:');
       
-      // Preserve existing signed URLs
-      const urls: Record<string, string> = { ...signedUrls };
+      // Get current photo IDs for cleanup
+      const currentPhotoIds = new Set(photos.map(p => p.id));
       
-      // Filter to photos that need signed URLs (exclude already displayable URLs)
-      const photosNeedingUrls = photos.filter(photo => 
-        !urls[photo.id] && !isDisplayableUrl(photo.photo_url)
-      );
+      // Start fresh - only keep URLs for photos that still exist
+      const urls: Record<string, string> = {};
       
-      // Also check for photos with existing displayable URLs
+      // Preserve existing signed URLs ONLY for photos that still exist
+      Object.entries(signedUrls).forEach(([id, url]) => {
+        if (currentPhotoIds.has(id)) {
+          urls[id] = url;
+        }
+      });
+      
+      // Add displayable URLs for current photos
       photos.forEach(photo => {
         if (isDisplayableUrl(photo.photo_url) && !urls[photo.id]) {
           urls[photo.id] = photo.photo_url;
         }
       });
+      
+      // Filter to photos that need signed URLs (exclude already displayable URLs)
+      const photosNeedingUrls = photos.filter(photo => 
+        !urls[photo.id] && !isDisplayableUrl(photo.photo_url)
+      );
       
       if (photosNeedingUrls.length === 0) {
         setSignedUrls(urls);
