@@ -1,15 +1,27 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Search, Filter, Archive } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const JOB_STATUSES_EDITABLE = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced'] as const;
+
+const STATUS_LABELS: Record<string, string> = {
+  all: 'All Status',
+  draft: 'Draft',
+  scheduled: 'Scheduled',
+  in_progress: 'In Progress',
+  completed: 'Completed',
+  invoiced: 'Invoiced',
+  archived: 'Archived',
+};
 
 interface JobListControlsProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
-  statusFilter: string;
-  onStatusFilterChange: (status: string) => void;
+  statusFilter: string[];
+  onStatusFilterChange: (statuses: string[]) => void;
   showSearch?: boolean;
   showFilters?: boolean;
 }
@@ -22,6 +34,43 @@ export function JobListControls({
   showSearch = true,
   showFilters = true,
 }: JobListControlsProps) {
+  const isAllSelected = statusFilter.length === 0 || statusFilter.includes('all');
+  const hasActiveFilters = !isAllSelected;
+
+  const toggleStatus = (status: string) => {
+    if (status === 'all') {
+      onStatusFilterChange(['all']);
+      return;
+    }
+    
+    // Remove 'all' if present and toggle the specific status
+    let newFilters = statusFilter.filter(s => s !== 'all');
+    
+    if (newFilters.includes(status)) {
+      newFilters = newFilters.filter(s => s !== status);
+    } else {
+      newFilters = [...newFilters, status];
+    }
+    
+    // If nothing selected, revert to 'all'
+    if (newFilters.length === 0) {
+      onStatusFilterChange(['all']);
+    } else {
+      onStatusFilterChange(newFilters);
+    }
+  };
+
+  const isStatusSelected = (status: string) => {
+    if (status === 'all') return isAllSelected;
+    return statusFilter.includes(status);
+  };
+
+  const getFilterLabel = () => {
+    if (isAllSelected) return 'All Status';
+    if (statusFilter.length === 1) return STATUS_LABELS[statusFilter[0]] || statusFilter[0];
+    return `${statusFilter.length} selected`;
+  };
+
   return (
     <div className="flex items-center gap-2">
       {showSearch && (
@@ -38,24 +87,48 @@ export function JobListControls({
       {showFilters && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant={statusFilter !== 'all' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9">
+            <Button variant={hasActiveFilters ? 'secondary' : 'outline'} size="sm" className="h-9 gap-1.5">
               <Filter className="w-4 h-4" />
+              <span className="hidden sm:inline">{getFilterLabel()}</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-popover">
-            <DropdownMenuItem onClick={() => onStatusFilterChange('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
-              All Status
-            </DropdownMenuItem>
-            {JOB_STATUSES_EDITABLE.map(s => (
-              <DropdownMenuItem key={s} onClick={() => onStatusFilterChange(s)} className={`capitalize ${statusFilter === s ? 'bg-accent' : ''}`}>
-                {s.replace('_', ' ')}
-              </DropdownMenuItem>
+          <DropdownMenuContent align="end" className="bg-popover w-48">
+            <div
+              className={cn(
+                "flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm",
+                isAllSelected && "bg-accent"
+              )}
+              onClick={() => toggleStatus('all')}
+            >
+              <Checkbox checked={isAllSelected} className="pointer-events-none" />
+              <span className="text-sm">All Status</span>
+            </div>
+            <DropdownMenuSeparator />
+            {JOB_STATUSES_EDITABLE.map(status => (
+              <div
+                key={status}
+                className={cn(
+                  "flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm",
+                  isStatusSelected(status) && "bg-accent"
+                )}
+                onClick={() => toggleStatus(status)}
+              >
+                <Checkbox checked={isStatusSelected(status)} className="pointer-events-none" />
+                <span className="text-sm capitalize">{status.replace('_', ' ')}</span>
+              </div>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onStatusFilterChange('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
-              <Archive className="w-4 h-4 mr-2" />
-              Archived
-            </DropdownMenuItem>
+            <div
+              className={cn(
+                "flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm",
+                isStatusSelected('archived') && "bg-accent"
+              )}
+              onClick={() => toggleStatus('archived')}
+            >
+              <Checkbox checked={isStatusSelected('archived')} className="pointer-events-none" />
+              <Archive className="w-4 h-4" />
+              <span className="text-sm">Archived</span>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       )}
