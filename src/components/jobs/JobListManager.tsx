@@ -50,8 +50,8 @@ interface JobListManagerProps {
   showSearch?: boolean;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
-  statusFilter?: string;
-  onStatusFilterChange?: (status: string) => void;
+  statusFilter?: string[];
+  onStatusFilterChange?: (statuses: string[]) => void;
   hideInlineControls?: boolean;
   onEditJob?: (job: Job) => void;
   onCreateJob?: () => void;
@@ -145,7 +145,7 @@ export function JobListManager({
   );
 
   // State - use external values if provided, otherwise use internal state
-  const [internalStatusFilter, setInternalStatusFilter] = useState('all');
+  const [internalStatusFilter, setInternalStatusFilter] = useState<string[]>(['all']);
   const [internalSearchQuery, setInternalSearchQuery] = useState('');
   
   const statusFilter = externalStatusFilter ?? internalStatusFilter;
@@ -159,11 +159,11 @@ export function JobListManager({
     }
   };
   
-  const handleStatusFilterChange = (status: string) => {
+  const handleStatusFilterChange = (statuses: string[]) => {
     if (onStatusFilterChange) {
-      onStatusFilterChange(status);
+      onStatusFilterChange(statuses);
     } else {
-      setInternalStatusFilter(status);
+      setInternalStatusFilter(statuses);
     }
   };
   const [viewingJob, setViewingJob] = useState<Job | null>(null);
@@ -214,6 +214,9 @@ export function JobListManager({
 
   // Filtering
   const filteredJobs = useMemo(() => {
+    const isAllSelected = statusFilter.length === 0 || statusFilter.includes('all');
+    const includesArchived = statusFilter.includes('archived');
+    
     const filtered = jobs.filter(job => {
       if (!job) return false;
       if (customerId && job.customer_id !== customerId) return false;
@@ -222,10 +225,19 @@ export function JobListManager({
         String(job.job_number ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         String((job as any).customer?.name ?? '').toLowerCase().includes(searchQuery.toLowerCase());
 
-      if (statusFilter === 'archived') {
-        return matchesSearch && !!job.archived_at;
+      // Handle archived filter
+      if (includesArchived && !isAllSelected) {
+        // If only archived is selected, show only archived
+        if (statusFilter.length === 1) {
+          return matchesSearch && !!job.archived_at;
+        }
+        // If archived + other statuses, show archived OR matching active statuses
+        const activeStatuses = statusFilter.filter(s => s !== 'archived');
+        return matchesSearch && (!!job.archived_at || (activeStatuses.includes(job.status) && !job.archived_at));
       }
-      const matchesStatus = statusFilter === 'all' || job.status === statusFilter;
+      
+      // Normal filtering (no archived)
+      const matchesStatus = isAllSelected || statusFilter.includes(job.status);
       const notArchived = !job.archived_at;
       return matchesSearch && matchesStatus && notArchived;
     });
@@ -487,21 +499,21 @@ export function JobListManager({
           {showFilters && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant={statusFilter !== 'all' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9">
+                <Button variant={!statusFilter.includes('all') && statusFilter.length > 0 ? 'secondary' : 'outline'} size="icon" className="h-9 w-9">
                   <Filter className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(['all'])} className={statusFilter.includes('all') ? 'bg-accent' : ''}>
                   All Status
                 </DropdownMenuItem>
                 {JOB_STATUSES_EDITABLE.map(s => (
-                  <DropdownMenuItem key={s} onClick={() => handleStatusFilterChange(s)} className={`capitalize ${statusFilter === s ? 'bg-accent' : ''}`}>
+                  <DropdownMenuItem key={s} onClick={() => handleStatusFilterChange([s])} className={`capitalize ${statusFilter.includes(s) ? 'bg-accent' : ''}`}>
                     {s.replace('_', ' ')}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(['archived'])} className={statusFilter.includes('archived') ? 'bg-accent' : ''}>
                   <Archive className="w-4 h-4 mr-2" />
                   Archived
                 </DropdownMenuItem>
