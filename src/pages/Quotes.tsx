@@ -55,7 +55,7 @@ const Quotes = () => {
 
   // Search and filter state (lifted for header placement)
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<string[]>(['all']);
 
   // Template dialogs
   const [saveTemplateDialogOpen, setSaveTemplateDialogOpen] = useState(false);

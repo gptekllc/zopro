@@ -44,8 +44,8 @@ interface InvoiceListManagerProps {
   showHeader?: boolean;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
-  statusFilter?: string;
-  onStatusFilterChange?: (status: string) => void;
+  statusFilter?: string[];
+  onStatusFilterChange?: (statuses: string[]) => void;
   hideInlineControls?: boolean;
   onEditInvoice?: (invoice: Invoice) => void;
   onCreateInvoice?: () => void;
@@ -101,7 +101,7 @@ export function InvoiceListManager({
   );
 
   // State - use external values if provided, otherwise use internal state
-  const [internalStatusFilter, setInternalStatusFilter] = useState('all');
+  const [internalStatusFilter, setInternalStatusFilter] = useState<string[]>(['all']);
   const [internalSearchQuery, setInternalSearchQuery] = useState('');
   
   const statusFilter = externalStatusFilter ?? internalStatusFilter;
@@ -115,11 +115,11 @@ export function InvoiceListManager({
     }
   };
   
-  const handleStatusFilterChange = (status: string) => {
+  const handleStatusFilterChange = (statuses: string[]) => {
     if (onStatusFilterChange) {
-      onStatusFilterChange(status);
+      onStatusFilterChange(statuses);
     } else {
-      setInternalStatusFilter(status);
+      setInternalStatusFilter(statuses);
     }
   };
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
@@ -169,6 +169,9 @@ export function InvoiceListManager({
 
   // Filtering
   const filteredInvoices = useMemo(() => {
+    const isAllSelected = statusFilter.length === 0 || statusFilter.includes('all');
+    const includesArchived = statusFilter.includes('archived');
+    
     const filtered = invoices.filter(inv => {
       // Pre-filter by customerId if provided
       if (customerId && inv.customer_id !== customerId) return false;
@@ -178,10 +181,19 @@ export function InvoiceListManager({
       const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         inv.invoice_number.toLowerCase().includes(searchQuery.toLowerCase());
 
-      if (statusFilter === 'archived') {
-        return matchesSearch && !!(inv as any).archived_at;
+      // Handle archived filter
+      if (includesArchived && !isAllSelected) {
+        // If only archived is selected, show only archived
+        if (statusFilter.length === 1) {
+          return matchesSearch && !!(inv as any).archived_at;
+        }
+        // If archived + other statuses, show archived OR matching active statuses
+        const activeStatuses = statusFilter.filter(s => s !== 'archived');
+        return matchesSearch && (!!(inv as any).archived_at || (activeStatuses.includes(inv.status) && !(inv as any).archived_at));
       }
-      const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
+      
+      // Normal filtering (no archived)
+      const matchesStatus = isAllSelected || statusFilter.includes(inv.status);
       const notArchived = !(inv as any).archived_at;
       return matchesSearch && matchesStatus && notArchived;
     });
@@ -434,7 +446,7 @@ export function InvoiceListManager({
           {showFilters && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant={statusFilter !== 'all' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9">
+                <Button variant={!statusFilter.includes('all') && statusFilter.length > 0 ? 'secondary' : 'outline'} size="icon" className="h-9 w-9">
                   <Filter className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -442,14 +454,14 @@ export function InvoiceListManager({
                 {['all', 'draft', 'sent', 'partially_paid', 'paid', 'overdue', 'voided'].map((status) => (
                   <DropdownMenuItem 
                     key={status}
-                    onClick={() => handleStatusFilterChange(status)} 
-                    className={statusFilter === status ? 'bg-accent' : ''}
+                    onClick={() => handleStatusFilterChange([status])} 
+                    className={statusFilter.includes(status) ? 'bg-accent' : ''}
                   >
                     {status === 'all' ? 'All Status' : getInvoiceStatusLabel(status)}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(['archived'])} className={statusFilter.includes('archived') ? 'bg-accent' : ''}>
                   <Archive className="w-4 h-4 mr-2" />
                   Archived
                 </DropdownMenuItem>
