@@ -43,8 +43,8 @@ interface QuoteListManagerProps {
   showSearch?: boolean;
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
-  statusFilter?: string;
-  onStatusFilterChange?: (status: string) => void;
+  statusFilter?: string[];
+  onStatusFilterChange?: (statuses: string[]) => void;
   hideInlineControls?: boolean;
   onEditQuote?: (quote: Quote) => void;
   onCreateQuote?: () => void;
@@ -119,7 +119,7 @@ export function QuoteListManager({
   );
 
   // State - use external values if provided, otherwise use internal state
-  const [internalStatusFilter, setInternalStatusFilter] = useState('all');
+  const [internalStatusFilter, setInternalStatusFilter] = useState<string[]>(['all']);
   const [internalSearchQuery, setInternalSearchQuery] = useState('');
   
   const statusFilter = externalStatusFilter ?? internalStatusFilter;
@@ -133,11 +133,11 @@ export function QuoteListManager({
     }
   };
   
-  const handleStatusFilterChange = (status: string) => {
+  const handleStatusFilterChange = (statuses: string[]) => {
     if (onStatusFilterChange) {
-      onStatusFilterChange(status);
+      onStatusFilterChange(statuses);
     } else {
-      setInternalStatusFilter(status);
+      setInternalStatusFilter(statuses);
     }
   };
   const [viewingQuote, setViewingQuote] = useState<Quote | null>(null);
@@ -189,6 +189,9 @@ export function QuoteListManager({
 
   // Filtering
   const filteredQuotes = useMemo(() => {
+    const isAllSelected = statusFilter.length === 0 || statusFilter.includes('all');
+    const includesArchived = statusFilter.includes('archived');
+    
     const filtered = quotes.filter(q => {
       if (customerId && q.customer_id !== customerId) return false;
       
@@ -197,11 +200,22 @@ export function QuoteListManager({
       const matchesSearch = customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         q.quote_number.toLowerCase().includes(searchQuery.toLowerCase());
 
-      if (statusFilter === 'archived') {
-        return matchesSearch && !!(q as any).archived_at;
+      // Handle archived filter
+      if (includesArchived && !isAllSelected) {
+        // If only archived is selected, show only archived
+        if (statusFilter.length === 1) {
+          return matchesSearch && !!(q as any).archived_at;
+        }
+        // If archived + other statuses, show archived OR matching active statuses
+        const activeStatuses = statusFilter.filter(s => s !== 'archived');
+        const matchesActiveStatus = activeStatuses.includes(q.status) || 
+          (activeStatuses.includes('approved') && q.status === 'accepted');
+        return matchesSearch && (!!(q as any).archived_at || (matchesActiveStatus && !(q as any).archived_at));
       }
-      const matchesStatus = statusFilter === 'all' || q.status === statusFilter ||
-        (statusFilter === 'approved' && q.status === 'accepted');
+      
+      // Normal filtering (no archived)
+      const matchesStatus = isAllSelected || statusFilter.includes(q.status) ||
+        (statusFilter.includes('approved') && q.status === 'accepted');
       const notArchived = !(q as any).archived_at;
       return matchesSearch && matchesStatus && notArchived;
     });
@@ -428,28 +442,28 @@ export function QuoteListManager({
           {showFilters && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant={statusFilter !== 'all' ? 'secondary' : 'outline'} size="icon" className="h-9 w-9">
+                <Button variant={!statusFilter.includes('all') && statusFilter.length > 0 ? 'secondary' : 'outline'} size="icon" className="h-9 w-9">
                   <Filter className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('all')} className={statusFilter === 'all' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(['all'])} className={statusFilter.includes('all') ? 'bg-accent' : ''}>
                   All Status
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('draft')} className={statusFilter === 'draft' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(['draft'])} className={statusFilter.includes('draft') ? 'bg-accent' : ''}>
                   Draft
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('sent')} className={statusFilter === 'sent' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(['sent'])} className={statusFilter.includes('sent') ? 'bg-accent' : ''}>
                   Sent
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('approved')} className={statusFilter === 'approved' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(['approved'])} className={statusFilter.includes('approved') ? 'bg-accent' : ''}>
                   Approved
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('rejected')} className={statusFilter === 'rejected' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(['rejected'])} className={statusFilter.includes('rejected') ? 'bg-accent' : ''}>
                   Rejected
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleStatusFilterChange('archived')} className={statusFilter === 'archived' ? 'bg-accent' : ''}>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange(['archived'])} className={statusFilter.includes('archived') ? 'bg-accent' : ''}>
                   <Archive className="w-4 h-4 mr-2" />
                   Archived
                 </DropdownMenuItem>
