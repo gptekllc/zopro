@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Edit, Loader2, DollarSign, Users, Briefcase, HardDrive, Check, X, Percent, Calendar, ExternalLink, CreditCard, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Loader2, DollarSign, Users, Briefcase, HardDrive, Check, X, Percent, Calendar, ExternalLink, CreditCard, AlertCircle, CheckCircle2, RefreshCw, CalendarIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { format, addMonths, addDays } from 'date-fns';
@@ -91,6 +93,8 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
   const [trialDays, setTrialDays] = useState('14');
   const [pricingView, setPricingView] = useState<'monthly' | 'yearly'>('monthly');
   const [isSyncingStripe, setIsSyncingStripe] = useState(false);
+  const [selectedPeriodEnd, setSelectedPeriodEnd] = useState<Date | undefined>(undefined);
+  const [selectedBillingInterval, setSelectedBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
   
   // Track original prices to detect changes
   const [originalPrices, setOriginalPrices] = useState<{
@@ -273,9 +277,20 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
         updated_at: new Date().toISOString(),
       };
 
+      // Always update period end if set
+      if (selectedPeriodEnd) {
+        updates.current_period_end = selectedPeriodEnd.toISOString();
+      }
+
+      // If transitioning to active, set period start and calculate period end based on billing interval
       if (selectedStatus === 'active' && selectedSubscription.status !== 'active') {
         updates.current_period_start = new Date().toISOString();
-        updates.current_period_end = addMonths(new Date(), 1).toISOString();
+        // Only set period end from interval if not manually overridden
+        if (!selectedPeriodEnd) {
+          updates.current_period_end = selectedBillingInterval === 'yearly' 
+            ? addMonths(new Date(), 12).toISOString()
+            : addMonths(new Date(), 1).toISOString();
+        }
       }
 
       const { error } = await supabase
@@ -329,6 +344,8 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
     setSelectedSubscription(sub);
     setSelectedPlanId(sub.plan_id);
     setSelectedStatus(sub.status);
+    setSelectedPeriodEnd(sub.current_period_end ? new Date(sub.current_period_end) : undefined);
+    setSelectedBillingInterval('monthly');
     setManageDialogOpen(true);
   };
 
@@ -883,6 +900,56 @@ export function SubscriptionsTab({ companies }: SubscriptionsTabProps) {
                   </SelectContent>
                 </Select>
               </div>
+              
+              {/* Billing Interval - show when changing to active */}
+              {selectedStatus === 'active' && selectedSubscription.status !== 'active' && (
+                <div className="space-y-2">
+                  <Label>Billing Interval</Label>
+                  <Select 
+                    value={selectedBillingInterval} 
+                    onValueChange={(v) => setSelectedBillingInterval(v as 'monthly' | 'yearly')}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Period end will be set to {selectedBillingInterval === 'yearly' ? '12 months' : '1 month'} from now
+                  </p>
+                </div>
+              )}
+              
+              {/* Period End Date */}
+              <div className="space-y-2">
+                <Label>Period End Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedPeriodEnd ? format(selectedPeriodEnd, 'PPP') : 'Select date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={selectedPeriodEnd}
+                      onSelect={setSelectedPeriodEnd}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                <p className="text-xs text-muted-foreground">
+                  Override the automatic period end calculation
+                </p>
+              </div>
+
               <div className="flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setManageDialogOpen(false)}>
                   Cancel
