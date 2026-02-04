@@ -34,6 +34,8 @@ import Alerts from "./pages/Alerts";
 import Subscription from "./pages/Subscription";
 import StripeConnectReturn from "./pages/StripeConnectReturn";
 import StripeConnectRefresh from "./pages/StripeConnectRefresh";
+import PayPalConnectReturn from "./pages/PayPalConnectReturn";
+import SquareConnectReturn from "./pages/SquareConnectReturn";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import ScrollToTop from "./components/layout/ScrollToTop";
@@ -96,6 +98,8 @@ const App = () => (
                   <Route path="/super-admin" element={<SuperAdmin />} />
                   <Route path="/stripe-connect/return" element={<StripeConnectReturn />} />
                   <Route path="/stripe-connect/refresh" element={<StripeConnectRefresh />} />
+                  <Route path="/paypal-connect/return" element={<PayPalConnectReturn />} />
+                  <Route path="/square-connect/return" element={<SquareConnectReturn />} />
                 </Route>
               </Route>
 

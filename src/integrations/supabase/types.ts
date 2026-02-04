@@ -129,6 +129,9 @@ export type Database = {
           notify_on_automation_run: boolean
           notify_on_job_assignment: boolean
           payment_terms_days: number | null
+          paypal_merchant_id: string | null
+          paypal_onboarding_complete: boolean | null
+          paypal_payments_enabled: boolean | null
           pdf_footer_text: string | null
           pdf_show_invoice_photos: boolean
           pdf_show_job_photos: boolean
@@ -149,6 +152,10 @@ export type Database = {
           require_mfa: boolean
           require_quote_signature: boolean
           send_weekly_summary: boolean
+          square_location_id: string | null
+          square_merchant_id: string | null
+          square_onboarding_complete: boolean | null
+          square_payments_enabled: boolean | null
           state: string | null
           stripe_account_id: string | null
           stripe_charges_enabled: boolean | null
@@ -207,6 +214,9 @@ export type Database = {
           notify_on_automation_run?: boolean
           notify_on_job_assignment?: boolean
           payment_terms_days?: number | null
+          paypal_merchant_id?: string | null
+          paypal_onboarding_complete?: boolean | null
+          paypal_payments_enabled?: boolean | null
           pdf_footer_text?: string | null
           pdf_show_invoice_photos?: boolean
           pdf_show_job_photos?: boolean
@@ -227,6 +237,10 @@ export type Database = {
           require_mfa?: boolean
           require_quote_signature?: boolean
           send_weekly_summary?: boolean
+          square_location_id?: string | null
+          square_merchant_id?: string | null
+          square_onboarding_complete?: boolean | null
+          square_payments_enabled?: boolean | null
           state?: string | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean | null
@@ -285,6 +299,9 @@ export type Database = {
           notify_on_automation_run?: boolean
           notify_on_job_assignment?: boolean
           payment_terms_days?: number | null
+          paypal_merchant_id?: string | null
+          paypal_onboarding_complete?: boolean | null
+          paypal_payments_enabled?: boolean | null
           pdf_footer_text?: string | null
           pdf_show_invoice_photos?: boolean
           pdf_show_job_photos?: boolean
@@ -305,6 +322,10 @@ export type Database = {
           require_mfa?: boolean
           require_quote_signature?: boolean
           send_weekly_summary?: boolean
+          square_location_id?: string | null
+          square_merchant_id?: string | null
+          square_onboarding_complete?: boolean | null
+          square_payments_enabled?: boolean | null
           state?: string | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean | null
