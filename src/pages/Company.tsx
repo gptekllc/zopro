@@ -609,7 +609,7 @@ const Company = () => {
                     Business Hours
                   </h3>
                   <div className="space-y-3">
-                    {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((day) => (
+                    {(['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const).map((day) => (
                       <div key={day} className="flex items-center gap-3">
                         <div className="w-24 shrink-0">
                           <Label className="capitalize text-sm">{day}</Label>
