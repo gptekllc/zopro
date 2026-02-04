@@ -747,7 +747,7 @@ export function JobPhotoGallery({
 
       {/* Delete Confirmation - Mobile Centered */}
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <AlertDialogContent className="z-[200] w-[calc(100vw-2rem)] max-w-md mx-auto">
+        <AlertDialogContent className="w-[calc(100vw-2rem)] max-w-md mx-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Photo</AlertDialogTitle>
             <AlertDialogDescription>
