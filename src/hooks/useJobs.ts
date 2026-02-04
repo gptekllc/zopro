@@ -541,11 +541,12 @@ export function useUploadJobPhoto() {
       const previousJob = queryClient.getQueryData(['job', jobId]);
       
       // Optimistically add the photo with temp URL for instant feedback
+      // Create default structure if cache is empty to handle race conditions
       queryClient.setQueryData(['job', jobId], (old: any) => {
-        if (!old) return old;
+        const baseJob = old || { id: jobId, photos: [] };
         return {
-          ...old,
-          photos: [...(old.photos || []), {
+          ...baseJob,
+          photos: [...(baseJob.photos || []), {
             id: tempId,
             photo_url: tempUrl,
             photo_type: photoType,
