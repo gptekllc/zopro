@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
+import { TablePagination } from '@/components/ui/table-pagination';
 import { useCustomers, useCreateCustomer, useUpdateCustomer, useSoftDeleteCustomer, useRestoreCustomer, useDeletedCustomers, Customer } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -43,6 +44,8 @@ const Customers = () => {
   const [showDeleted, setShowDeleted] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   const openEditDialog = useCallback((open: boolean) => {
     if (open) saveScrollPosition();
@@ -63,13 +66,33 @@ const Customers = () => {
   });
 
   const currentCustomers = showDeleted ? deletedCustomers : customers;
-  const filteredCustomers = currentCustomers.filter(c => {
-    const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ').toLowerCase();
-    return fullName.includes(searchQuery.toLowerCase()) ||
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (c.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (c.phone || '').includes(searchQuery);
-  });
+  const filteredCustomers = useMemo(() => {
+    return currentCustomers.filter(c => {
+      const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ').toLowerCase();
+      return fullName.includes(searchQuery.toLowerCase()) ||
+        c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (c.phone || '').includes(searchQuery);
+    });
+  }, [currentCustomers, searchQuery]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredCustomers.length / pageSize);
+  const paginatedCustomers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredCustomers.slice(startIndex, startIndex + pageSize);
+  }, [filteredCustomers, currentPage, pageSize]);
+
+  // Reset to page 1 when search or filter changes
+  const handleSearchChange = (query: string) => {
+    setSearchQuery(query);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
 
   // Helper to get display name
   const getDisplayName = (customer: Customer) => {
@@ -176,7 +199,7 @@ const Customers = () => {
             <Input
               placeholder="Search..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-8 h-9"
             />
           </div>
@@ -281,7 +304,7 @@ const Customers = () => {
         <div className="space-y-4">
 
           <div className="flex flex-col gap-3">
-            {filteredCustomers.map((customer) => (
+            {paginatedCustomers.map((customer) => (
               <Card 
                 key={customer.id} 
                 className="overflow-hidden hover:shadow-md transition-shadow cursor-pointer group"
@@ -344,6 +367,18 @@ const Customers = () => {
             ))}
           </div>
 
+          {/* Pagination */}
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            totalItems={filteredCustomers.length}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={handlePageSizeChange}
+            itemLabel="customers"
+            pageSizeOptions={[25, 50, 100, 150]}
+          />
+
           {filteredCustomers.length === 0 && (
             <div className="text-center py-12">
               <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -357,7 +392,7 @@ const Customers = () => {
         <div className="space-y-4">
           {filteredCustomers.length > 0 ? (
             <div className="flex flex-col gap-3">
-              {filteredCustomers.map((customer) => (
+              {paginatedCustomers.map((customer) => (
                 <Card key={customer.id} className="overflow-hidden opacity-60 hover:opacity-100 transition-opacity">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between gap-4">
@@ -388,7 +423,23 @@ const Customers = () => {
                 </Card>
               ))}
             </div>
-          ) : (
+          ) : null}
+
+          {/* Pagination for deleted customers */}
+          {filteredCustomers.length > 0 && (
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={filteredCustomers.length}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={handlePageSizeChange}
+              itemLabel="customers"
+              pageSizeOptions={[25, 50, 100, 150]}
+            />
+          )}
+
+          {filteredCustomers.length === 0 && (
             <div className="text-center py-12">
               <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium">{searchQuery ? 'No deleted customers found' : 'No deleted customers'}</h3>
