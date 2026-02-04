@@ -1,144 +1,233 @@
 
-# Fix Photo Upload Visibility and Dialog Z-Index Issues
 
-## Summary
+# Twilio SMS Integration - Implementation Plan
 
-You've identified two separate issues:
-1. **Photos not appearing immediately after upload** - requires fix to cache handling
-2. **Confirmation dialogs appearing behind the Job Detail dialog** - requires z-index adjustments
+## Current State Analysis
+
+After a thorough exploration of the codebase, I discovered that **your SMS infrastructure is already 90% complete**. Here's what exists:
+
+### Already Implemented
+
+| Component | Status |
+|-----------|--------|
+| `send-sms` Edge Function | ✅ Complete with all enforcement logic |
+| Database tables (`sms_logs`, `sms_usage`, `company_sms_settings`) | ✅ Created |
+| RPC functions (`get_sms_usage_for_period`, `increment_sms_usage`) | ✅ Created |
+| Plan-based SMS limits in `subscription_plans` | ✅ Configured |
+| Global kill switch in `app_settings` | ✅ Working |
+| Company SMS Settings Card | ✅ Integrated in Company page |
+| Super Admin SMS Tab | ✅ Full monitoring dashboard |
+| Frontend hooks (`useSmsSettings`, `useSendSms`, `useSmsLogs`) | ✅ Complete |
+| `SendSmsDialog` component | ✅ Built but not wired |
+| `SmsLogsTable` component | ✅ Built |
+
+### Missing Pieces
+
+| Component | Status |
+|-----------|--------|
+| Twilio credentials (secrets) | ❌ Not configured |
+| "On My Way" SMS using Twilio (currently uses `sms:` native links) | ❌ Not integrated |
+| Invoice SMS button | ❌ Not present |
+| Customer Portal link SMS | ❌ Not present |
+| Company SMS logs view for admins | ❌ Not integrated |
 
 ---
 
-## Problem Analysis
+## Implementation Plan
 
-### Issue 1: Photos Not Appearing Immediately
+### Phase 1: Add Twilio Credentials
 
-**Root Cause:** The optimistic update logic in the `useUploadJobPhoto` hook has a check that fails when the query cache is empty:
+**Action**: Prompt you to add the required Twilio secrets.
 
-```typescript
-// Current problematic code in useJobs.ts
-queryClient.setQueryData(['job', jobId], (old: any) => {
-  if (!old) return old;  // If cache is empty, optimistic update is skipped entirely
-  // ... add photo to cache
-});
+**Secrets needed**:
+- `TWILIO_ACCOUNT_SID` - Your Twilio Account SID
+- `TWILIO_AUTH_TOKEN` - Your Twilio Auth Token  
+- `TWILIO_PHONE_NUMBER` - Your Twilio phone number (in E.164 format, e.g., `+15551234567`)
+
+These will be stored securely in Supabase environment variables and are only accessible by Edge Functions.
+
+---
+
+### Phase 2: Integrate SMS into Job Flow (Technician ETA)
+
+**File**: `src/components/jobs/JobDetailDialog.tsx`
+
+**Change**: Replace the current "On My Way" button that opens the device's native SMS app with an option to send via Twilio.
+
+**Logic**:
+1. Check if company has SMS enabled (via `useSmsSettings` hook)
+2. If SMS is available and enabled → Show "Send via Twilio" option
+3. If SMS is not available → Fall back to current native `sms:` link behavior
+4. Use `useSendSms` mutation with `message_type: 'technician_eta'`
+
+**User Experience**:
+- Dropdown shows ETA options (5, 10, 15, 20, 30 minutes)
+- Selecting an ETA sends the SMS immediately via Twilio
+- Toast notification confirms success/failure
+- Falls back gracefully for companies without SMS
+
+---
+
+### Phase 3: Integrate SMS into Invoice Flow
+
+**File**: `src/components/invoices/InvoiceDetailDialog.tsx`
+
+**Change**: Add "Send SMS" action next to the "Send Email" button in the invoice actions.
+
+**Logic**:
+1. Show SMS button only if:
+   - Customer has a valid phone number
+   - Company has SMS enabled
+   - Plan allows SMS
+2. Open `SendSmsDialog` with `message_type: 'invoice'`
+3. Pre-fill variables: `customer_first_name`, `invoice_number`, `portal_link`
+
+**User Experience**:
+- Button shows "Send SMS" with phone icon
+- Clicking opens dialog with preview of the message
+- Disabled with tooltip if phone is missing or SMS not available
+
+---
+
+### Phase 4: Integrate SMS into Customer Portal Sharing
+
+**File**: `src/pages/Customers.tsx` (and related customer actions)
+
+**Change**: Add "Send Portal Link via SMS" option when sharing customer portal access.
+
+**Logic**:
+1. After generating portal link, offer SMS option alongside email
+2. Use `message_type: 'portal_link'`
+3. Pre-fill: `customer_first_name`, `company_name`, `portal_link`
+
+**User Experience**:
+- In customer detail or when sharing portal, show both email and SMS options
+- SMS option disabled if no phone or SMS not available
+
+---
+
+### Phase 5: Add SMS Logs to Company Settings
+
+**File**: `src/pages/Company.tsx`
+
+**Change**: Add an "SMS Logs" section within the SMS Settings accordion.
+
+**Logic**:
+- Use existing `useSmsLogs` hook
+- Display recent SMS sent by the company
+- Show status (sent/failed/blocked), recipient, timestamp
+- Link to view full message details
+
+**Components Used**:
+- Existing `SmsLogsTable` component (already built)
+
+---
+
+### Phase 6: Auto-Send SMS (Event-Triggered)
+
+**Enhancement**: Leverage the existing `auto_send_invoice_sms` and `auto_send_portal_link_sms` settings.
+
+**File**: `supabase/functions/send-notification/index.ts` (and similar)
+
+**Change**: When sending invoice email, also trigger SMS if:
+- `auto_send_invoice_sms = true`
+- Customer has phone
+- All SMS checks pass
+
+This makes SMS truly event-driven rather than manual.
+
+---
+
+## Technical Details
+
+### Edge Function Flow (Already Implemented)
+
+```text
+┌─────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   Client    │────▶│  send-sms Edge  │────▶│   Twilio API    │
+│  (Browser)  │     │    Function     │     │                 │
+└─────────────┘     └─────────────────┘     └─────────────────┘
+                           │
+                           ▼
+              ┌─────────────────────────────┐
+              │     Enforcement Checks      │
+              │  1. Global kill switch      │
+              │  2. Plan SMS enabled        │
+              │  3. Company SMS enabled     │
+              │  4. Monthly limit check     │
+              │  5. Phone format valid      │
+              └─────────────────────────────┘
+                           │
+                           ▼
+              ┌─────────────────────────────┐
+              │    Database Updates         │
+              │  - Log to sms_logs          │
+              │  - Increment sms_usage      │
+              └─────────────────────────────┘
 ```
 
-When the dialog opens, if the cache hasn't been populated yet (still loading), the optimistic update is skipped and the photo doesn't appear until the realtime subscription triggers a refresh.
+### Plan Quotas (Already Configured)
 
-**Why the cache seeding in JobDetailDialog isn't sufficient:**
-The dialog seeds the cache with `initialJob` data, but this only happens once on open. If the `reactiveJob` query is still pending when upload starts, the optimistic update fails.
+| Plan | SMS Enabled | Monthly Limit |
+|------|-------------|---------------|
+| Free | No | 0 |
+| Starter | No | 50 |
+| Professional | Yes | 200 |
+| Enterprise | Yes | Unlimited |
 
-### Issue 2: Confirmation Dialogs Behind Job Detail Dialog
+### Message Templates (Already Defined)
 
-**Root Cause:** Z-index mismatch between components:
+```text
+invoice:        "Hi {{customer_first_name}}, your invoice {{invoice_number}} 
+                 is ready. View and pay: {{portal_link}}"
 
-| Component | Current Z-Index | Location |
-|-----------|-----------------|----------|
-| Dialog Overlay | z-65 | `dialog.tsx:22` |
-| Dialog Content | z-70 | `dialog.tsx:43` |
-| AlertDialog Overlay | z-50 | `alert-dialog.tsx:19` |
-| AlertDialog Content | z-50 | `alert-dialog.tsx:37` |
-| JobPhotoGallery AlertDialog | z-200 (content only) | `JobPhotoGallery.tsx:750` |
+portal_link:    "Hi {{customer_first_name}}, access your {{company_name}} 
+                 customer portal here: {{portal_link}}"
 
-The AlertDialog overlay at z-50 is **below** the Dialog content at z-70, making it appear behind. While `JobPhotoGallery.tsx` tried to fix this by setting content to z-200, the **overlay** remains at z-50, causing the dim effect and click blocking to happen behind the dialog.
-
----
-
-## Solution Plan
-
-### Fix 1: Photo Upload Immediate Visibility
-
-Update the optimistic update in `useUploadJobPhoto` to create a default cache structure when none exists:
-
-**File:** `src/hooks/useJobs.ts`
-
-**Changes:**
-- Modify `onMutate` to initialize a default job structure if cache is empty, ensuring the optimistic photo is added
-- This allows uploads to show immediately even if the reactive query hasn't resolved yet
-
-### Fix 2: AlertDialog Z-Index Alignment
-
-Update the AlertDialog component to use consistent z-index values that appear above standard dialogs:
-
-**File:** `src/components/ui/alert-dialog.tsx`
-
-**Changes:**
-- Increase `AlertDialogOverlay` from z-50 to z-[200]
-- Increase `AlertDialogContent` from z-50 to z-[200]
-
-This aligns with the existing pattern noted in the project memory: "Critical confirmation dialogs use z-index 200 to stay centered and visible over all layers."
-
-### Fix 3: Remove Redundant Z-Index Override
-
-Clean up the now-unnecessary inline z-index override in JobPhotoGallery:
-
-**File:** `src/components/jobs/JobPhotoGallery.tsx`
-
-**Changes:**
-- Remove the `z-[200]` class from line 750 since AlertDialog will now handle this globally
-
----
-
-## Technical Implementation Details
-
-### useJobs.ts - onMutate update
-```typescript
-onMutate: async ({ jobId, file, photoType }) => {
-  await queryClient.cancelQueries({ queryKey: ['job', jobId] });
-  
-  const tempUrl = URL.createObjectURL(file);
-  const tempId = `temp-${Date.now()}`;
-  
-  const previousJob = queryClient.getQueryData(['job', jobId]);
-  
-  // Create default structure if cache is empty
-  queryClient.setQueryData(['job', jobId], (old: any) => {
-    const baseJob = old || { id: jobId, photos: [] };
-    return {
-      ...baseJob,
-      photos: [...(baseJob.photos || []), {
-        id: tempId,
-        photo_url: tempUrl,
-        photo_type: photoType,
-        caption: null,
-        created_at: new Date().toISOString(),
-        _isOptimistic: true,
-      }]
-    };
-  });
-  
-  return { previousJob, tempId, tempUrl, jobId };
-}
-```
-
-### alert-dialog.tsx - Z-Index update
-```typescript
-// AlertDialogOverlay
-className={cn(
-  "fixed inset-0 z-[200] bg-black/80 ...",
-  className,
-)}
-
-// AlertDialogContent  
-className={cn(
-  "fixed left-[50%] top-[50%] z-[200] ...",
-  className,
-)}
+technician_eta: "Hi {{customer_first_name}}, {{technician_name}} is on 
+                 the way for {{job_title}}. ETA: {{eta_time}}"
 ```
 
 ---
 
 ## Files to Modify
 
-1. `src/hooks/useJobs.ts` - Fix optimistic update for empty cache
-2. `src/components/ui/alert-dialog.tsx` - Increase z-index for overlay and content
-3. `src/components/jobs/JobPhotoGallery.tsx` - Remove redundant z-index class
+| File | Change |
+|------|--------|
+| `src/components/jobs/JobDetailDialog.tsx` | Add Twilio SMS option for "On My Way" |
+| `src/components/jobs/JobListManager.tsx` | Add Twilio SMS option in list actions |
+| `src/components/invoices/InvoiceDetailDialog.tsx` | Add "Send SMS" button |
+| `src/pages/Customers.tsx` | Add SMS option for portal sharing |
+| `src/pages/Company.tsx` | Add SMS logs section |
+| `supabase/functions/send-notification/index.ts` | Add auto-send SMS logic |
 
 ---
 
-## Expected Results
+## Security Guarantees
 
-After these changes:
-- Uploaded photos will appear instantly in the gallery (using blob: URLs)
-- Delete and category change confirmation dialogs will appear above the Job Detail dialog
-- Users will be able to interact with confirmation dialogs without them being blocked
+All requirements from your specification are already met:
+
+- ✅ Twilio credentials never exposed to client (Edge Function only)
+- ✅ All SMS goes through backend enforcement
+- ✅ JWT validation on every request
+- ✅ Company ID resolved from authenticated user
+- ✅ Plan limits enforced before Twilio call
+- ✅ Usage tracked atomically
+- ✅ All attempts logged (success, failure, blocked)
+- ✅ Global kill switch for emergencies
+- ✅ Super admin oversight dashboard
+- ✅ No free-text messages (templates only)
+- ✅ No marketing SMS capability
+
+---
+
+## Summary
+
+Your SMS system is architecturally complete. The remaining work is:
+
+1. **Add Twilio secrets** (required)
+2. **Wire up UI components** (~4 files)
+3. **Add auto-send logic** (1 Edge Function enhancement)
+
+Estimated effort: **30-45 minutes** to complete integration.
+
