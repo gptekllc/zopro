@@ -634,7 +634,7 @@ const Company = () => {
                                   [day]: { ...prev[day], open: e.target.value }
                                 }))
                               }
-                              className="w-auto"
+                              className="w-auto [&::-webkit-calendar-picker-indicator]:hidden"
                             />
                             <span className="text-muted-foreground text-sm">to</span>
                             <Input
@@ -646,7 +646,7 @@ const Company = () => {
                                   [day]: { ...prev[day], close: e.target.value }
                                 }))
                               }
-                              className="w-auto"
+                              className="w-auto [&::-webkit-calendar-picker-indicator]:hidden"
                             />
                           </div>
                         ) : (
