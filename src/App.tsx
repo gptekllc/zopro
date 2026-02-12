@@ -9,6 +9,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import Login from "./pages/Login";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
+import SmsTerms from "./pages/SmsTerms";
 import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
@@ -68,6 +69,7 @@ const App = () => (
               <Route path="/login" element={<Login />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
+              <Route path="/sms-terms" element={<SmsTerms />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/customer-portal" element={<CustomerPortal />} />
               <Route path="/portal" element={<Navigate to="/customer-portal" replace />} />
