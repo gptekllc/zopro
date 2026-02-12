@@ -613,17 +613,10 @@ const CustomerPortal = () => {
 
   // Guard to prevent repeated verification from sessionStorage
   const didVerifyFromStorageRef = useRef(false);
-  const lastProcessedParamsRef = useRef<string>('');
+  // Guard ref removed - using simpler mount-only effect
 
   // Check for magic link token and payment status in URL
   useEffect(() => {
-    const paramsString = searchParams.toString();
-    
-    // Prevent processing the same params multiple times
-    if (paramsString === lastProcessedParamsRef.current && !paramsString) {
-      return;
-    }
-    
     const token = searchParams.get('token');
     const customerId = searchParams.get('customer');
     const paymentStatus = searchParams.get('payment');
@@ -634,12 +627,10 @@ const CustomerPortal = () => {
     if (paymentStatus === 'success') {
       toast.success('Payment successful! Thank you.');
       navigate('/customer-portal', { replace: true });
-      lastProcessedParamsRef.current = '';
       return;
     } else if (paymentStatus === 'cancelled') {
       toast.info('Payment was cancelled.');
       navigate('/customer-portal', { replace: true });
-      lastProcessedParamsRef.current = '';
       return;
     }
     
@@ -650,20 +641,23 @@ const CustomerPortal = () => {
     
     if (token && customerId) {
       // URL token verification - clean URL after verifying
-      lastProcessedParamsRef.current = paramsString;
       verifyToken(token, customerId, signDocType, signDocId, true);
     } else if (!didVerifyFromStorageRef.current) {
       // Check sessionStorage only once per page load
+      didVerifyFromStorageRef.current = true;
       const savedCustomerId = sessionStorage.getItem('customer_portal_id');
       const savedToken = sessionStorage.getItem('customer_portal_token');
       if (savedCustomerId && savedToken) {
-        didVerifyFromStorageRef.current = true;
         verifyToken(savedToken, savedCustomerId, signDocType, signDocId, false);
       } else {
         setIsLoading(false);
       }
+    } else {
+      // No token, no session, already checked - stop loading
+      setIsLoading(false);
     }
-  }, [searchParams.toString()]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Play notification sound
   const playNotificationSound = () => {
