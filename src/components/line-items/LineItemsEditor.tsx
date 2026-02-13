@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ItemsPicker } from './ItemsPicker';
@@ -19,6 +20,7 @@ export interface LineItem {
   quantity: number;
   unitPrice: number;
   type?: 'product' | 'service';
+  taxable?: boolean;
 }
 
 interface LineItemsEditorProps {
@@ -26,7 +28,7 @@ interface LineItemsEditorProps {
   onAddItem: (type: 'product' | 'service') => void;
   onAddFromCatalog?: (item: Item) => void;
   onRemoveItem: (id: string) => void;
-  onUpdateItem: (id: string, field: keyof LineItem, value: string | number) => void;
+  onUpdateItem: (id: string, field: keyof LineItem, value: string | number | boolean) => void;
   showTypeColumn?: boolean;
   quantityLabel?: string;
   minItems?: number;
@@ -142,6 +144,16 @@ export const LineItemsEditor = ({
               ${formatAmount(item.quantity * item.unitPrice)}
             </div>
           </div>
+          <div className="flex items-center gap-2 px-1">
+            <Checkbox
+              id={`taxable-mobile-${item.id}`}
+              checked={item.taxable !== false}
+              onCheckedChange={(checked) => onUpdateItem(item.id, 'taxable', !!checked)}
+            />
+            <label htmlFor={`taxable-mobile-${item.id}`} className="text-xs text-muted-foreground cursor-pointer">
+              Taxable
+            </label>
+          </div>
           <Textarea
             placeholder="Description (optional)"
             value={item.itemDescription || ''}
@@ -191,6 +203,16 @@ export const LineItemsEditor = ({
             </div>
             <div className="w-24 text-right text-sm font-medium">
               ${formatAmount(item.quantity * item.unitPrice)}
+            </div>
+            <div className="flex items-center gap-1.5 min-w-[70px]">
+              <Checkbox
+                id={`taxable-desktop-${item.id}`}
+                checked={item.taxable !== false}
+                onCheckedChange={(checked) => onUpdateItem(item.id, 'taxable', !!checked)}
+              />
+              <label htmlFor={`taxable-desktop-${item.id}`} className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+                Tax
+              </label>
             </div>
             <Button
               type="button"
