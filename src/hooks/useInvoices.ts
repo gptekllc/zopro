@@ -15,6 +15,7 @@ export interface InvoiceItem {
   unit_price: number;
   total: number;
   type?: 'product' | 'service';
+  taxable?: boolean;
   created_at: string;
 }
 
@@ -222,9 +223,11 @@ export function useCreateInvoice() {
       
       // Calculate totals
       const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+      const taxableSubtotal = items.filter(item => (item as any).taxable !== false).reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
       const discountAmount = calculateDiscountAmount(subtotal, (invoiceValidation.data as any).discount_type, (invoiceValidation.data as any).discount_value);
+      const discountRatio = subtotal > 0 ? (subtotal - discountAmount) / subtotal : 1;
       const afterDiscount = subtotal - discountAmount;
-      const tax = afterDiscount * taxRate;
+      const tax = taxableSubtotal * discountRatio * taxRate;
       const total = afterDiscount + tax;
       
       // Create invoice
@@ -257,6 +260,7 @@ export function useCreateInvoice() {
               unit_price: item.unit_price,
               total: item.quantity * item.unit_price,
               type: (item as any).type || 'service',
+              taxable: (item as any).taxable !== false,
             }))
           );
         
@@ -309,6 +313,7 @@ export function useUpdateInvoice() {
                 unit_price: item.unit_price,
                 total: item.quantity * item.unit_price,
                 type: (item as any).type || 'service',
+                taxable: (item as any).taxable !== false,
               }))
             );
           

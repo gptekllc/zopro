@@ -16,6 +16,7 @@ export interface JobItem {
   unit_price: number;
   total: number;
   type?: 'product' | 'service';
+  taxable?: boolean;
   created_at: string;
 }
 
@@ -263,9 +264,11 @@ export function useCreateJob() {
       // Calculate totals from items
       const items = jobData.items || [];
       const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+      const taxableSubtotal = items.filter(item => (item as any).taxable !== false).reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
       const discountAmount = calculateDiscountAmount(subtotal, (validation.data as any).discount_type, (validation.data as any).discount_value);
+      const discountRatio = subtotal > 0 ? (subtotal - discountAmount) / subtotal : 1;
       const afterDiscount = subtotal - discountAmount;
-      const tax = afterDiscount * taxRate;
+      const tax = taxableSubtotal * discountRatio * taxRate;
       const total = afterDiscount + tax;
       
       // Use first assignee for backwards compatibility with assigned_to column
@@ -316,6 +319,7 @@ export function useCreateJob() {
               unit_price: item.unit_price,
               total: item.quantity * item.unit_price,
               type: item.type || 'service',
+              taxable: (item as any).taxable !== false,
             }))
           );
         
@@ -358,9 +362,11 @@ export function useUpdateJob() {
         const taxRate = (company?.tax_rate ?? 8.25) / 100;
         
         const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
+        const taxableSubtotal = items.filter(item => (item as any).taxable !== false).reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
         const discountAmount = calculateDiscountAmount(subtotal, (updates as any).discount_type, (updates as any).discount_value);
+        const discountRatio = subtotal > 0 ? (subtotal - discountAmount) / subtotal : 1;
         const afterDiscount = subtotal - discountAmount;
-        const tax = afterDiscount * taxRate;
+        const tax = taxableSubtotal * discountRatio * taxRate;
         const total = afterDiscount + tax;
         
         (updates as any).subtotal = subtotal;
@@ -385,6 +391,7 @@ export function useUpdateJob() {
                 unit_price: item.unit_price,
                 total: item.quantity * item.unit_price,
                 type: item.type || 'service',
+                taxable: (item as any).taxable !== false,
               }))
             );
           

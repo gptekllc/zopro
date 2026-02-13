@@ -327,7 +327,7 @@ const Jobs = () => {
   const removeLineItem = (id: string) => {
     setLineItems(lineItems.filter(item => item.id !== id));
   };
-  const updateLineItem = (id: string, field: keyof LineItem, value: string | number) => {
+  const updateLineItem = (id: string, field: keyof LineItem, value: string | number | boolean) => {
     setLineItems(lineItems.map(item => item.id === id ? {
       ...item,
       [field]: value
@@ -360,7 +360,12 @@ const Jobs = () => {
     toast.success(`Synced ${hours} hours of labor @ $${rate}/hr`);
   };
   const calculateSubtotal = () => lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
-  const calculateTax = () => calculateSubtotal() * (taxRate / 100);
+  const calculateTaxableSubtotal = () => lineItems.filter(item => item.taxable !== false).reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+  const calculateTax = () => {
+    const taxableSubtotal = calculateTaxableSubtotal();
+    const discountRatio = calculateSubtotal() > 0 ? (calculateSubtotal() - calculateDiscountAmount(calculateSubtotal(), formData.discountType, formData.discountValue)) / calculateSubtotal() : 1;
+    return taxableSubtotal * discountRatio * (taxRate / 100);
+  };
   const calculateTotal = () => calculateSubtotal() + calculateTax();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -388,7 +393,8 @@ const Jobs = () => {
         item_description: item.itemDescription || null,
         quantity: item.quantity,
         unit_price: item.unitPrice,
-        type: item.type || 'service'
+        type: item.type || 'service',
+        taxable: item.taxable !== false
       }))
     };
     try {
@@ -438,7 +444,8 @@ const Jobs = () => {
         itemDescription: (item as any).item_description || '',
         quantity: item.quantity,
         unitPrice: item.unit_price,
-        type: (item as any).type || 'service'
+        type: (item as any).type || 'service',
+        taxable: (item as any).taxable !== false
       })));
     } else {
       setLineItems([]);

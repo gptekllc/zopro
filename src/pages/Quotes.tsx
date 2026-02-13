@@ -197,7 +197,7 @@ const Quotes = () => {
     }
   };
 
-  const handleItemChange = (id: string, field: keyof LineItem, value: string | number) => {
+  const handleItemChange = (id: string, field: keyof LineItem, value: string | number | boolean) => {
     setFormData({
       ...formData,
       items: formData.items.map(item => item.id === id ? { ...item, [field]: value } : item)
@@ -246,7 +246,8 @@ const Quotes = () => {
         quantity: item.quantity,
         unit_price: item.unitPrice,
         total: item.quantity * item.unitPrice,
-        type: item.type || 'service'
+        type: item.type || 'service',
+        taxable: item.taxable !== false
       }));
       
       let resultQuoteId: string | null = null;
@@ -278,7 +279,8 @@ const Quotes = () => {
         itemDescription: item.item_description || '',
         quantity: item.quantity,
         unitPrice: Number(item.unit_price),
-        type: item.type || 'service'
+        type: item.type || 'service',
+        taxable: item.taxable !== false
       })) || [{ id: '1', description: '', itemDescription: '', quantity: 1, unitPrice: 0, type: 'service' }],
       notes: quote.notes || '',
       status: quote.status as any,

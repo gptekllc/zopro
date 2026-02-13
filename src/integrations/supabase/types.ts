@@ -949,6 +949,7 @@ export type Database = {
           invoice_id: string
           item_description: string | null
           quantity: number
+          taxable: boolean
           total: number
           type: string
           unit_price: number
@@ -960,6 +961,7 @@ export type Database = {
           invoice_id: string
           item_description?: string | null
           quantity?: number
+          taxable?: boolean
           total?: number
           type?: string
           unit_price?: number
@@ -971,6 +973,7 @@ export type Database = {
           invoice_id?: string
           item_description?: string | null
           quantity?: number
+          taxable?: boolean
           total?: number
           type?: string
           unit_price?: number
@@ -1459,6 +1462,7 @@ export type Database = {
           item_description: string | null
           job_id: string
           quantity: number
+          taxable: boolean
           total: number
           type: string
           unit_price: number
@@ -1470,6 +1474,7 @@ export type Database = {
           item_description?: string | null
           job_id: string
           quantity?: number
+          taxable?: boolean
           total?: number
           type?: string
           unit_price?: number
@@ -1481,6 +1486,7 @@ export type Database = {
           item_description?: string | null
           job_id?: string
           quantity?: number
+          taxable?: boolean
           total?: number
           type?: string
           unit_price?: number
@@ -2267,6 +2273,7 @@ export type Database = {
           item_description: string | null
           quantity: number
           quote_id: string
+          taxable: boolean
           total: number
           type: string
           unit_price: number
@@ -2278,6 +2285,7 @@ export type Database = {
           item_description?: string | null
           quantity?: number
           quote_id: string
+          taxable?: boolean
           total?: number
           type?: string
           unit_price?: number
@@ -2289,6 +2297,7 @@ export type Database = {
           item_description?: string | null
           quantity?: number
           quote_id?: string
+          taxable?: boolean
           total?: number
           type?: string
           unit_price?: number
