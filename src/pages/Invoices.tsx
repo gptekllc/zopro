@@ -78,7 +78,7 @@ const Invoices = () => {
     customerId: "",
     assignedToIds: [],
     createdBy: "",
-    items: [{ id: "1", description: "", quantity: 1, unitPrice: 0, type: 'service' }],
+    items: [{ id: "1", description: "", quantity: 1, unitPrice: 0, type: 'service', taxable: true }],
     notes: "",
     status: "draft",
     dueDays: 30,
@@ -321,7 +321,7 @@ const Invoices = () => {
         unitPrice: Number(item.unit_price),
         type: item.type || 'service',
         taxable: item.taxable !== false
-      })) || [{ id: "1", description: "", itemDescription: "", quantity: 1, unitPrice: 0, type: 'service' }],
+      })) || [{ id: "1", description: "", itemDescription: "", quantity: 1, unitPrice: 0, type: 'service', taxable: true }],
       notes: invoice.notes || "",
       status: invoice.status as any,
       dueDays: 30,

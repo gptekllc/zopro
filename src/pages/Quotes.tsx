@@ -79,7 +79,7 @@ const Quotes = () => {
     discountValue: number;
   }>({
     customerId: '',
-    items: [{ id: '1', description: '', quantity: 1, unitPrice: 0, type: 'service' }],
+    items: [{ id: '1', description: '', quantity: 1, unitPrice: 0, type: 'service', taxable: true }],
     notes: '',
     status: 'draft',
     validDays: 30,
@@ -281,7 +281,7 @@ const Quotes = () => {
         unitPrice: Number(item.unit_price),
         type: item.type || 'service',
         taxable: item.taxable !== false
-      })) || [{ id: '1', description: '', itemDescription: '', quantity: 1, unitPrice: 0, type: 'service' }],
+      })) || [{ id: '1', description: '', itemDescription: '', quantity: 1, unitPrice: 0, type: 'service', taxable: true }],
       notes: quote.notes || '',
       status: quote.status as any,
       validDays: 30,
