@@ -25,7 +25,7 @@ import { LineItemsEditor, LineItem } from '@/components/line-items/LineItemsEdit
 import { InvoiceListManager } from "@/components/invoices/InvoiceListManager";
 import { InvoiceListControls } from "@/components/invoices/InvoiceListControls";
 import PageContainer from '@/components/layout/PageContainer';
-import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
+
 
 const Invoices = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -366,7 +366,6 @@ const Invoices = () => {
   }
 
   return (
-    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={6} />} className="min-h-full">
     <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
@@ -618,7 +617,6 @@ const Invoices = () => {
         />
       </div>
     </PageContainer>
-    </PullToRefresh>
   );
 };
 
