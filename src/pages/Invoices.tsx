@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useNavigationBlocker } from '@/hooks/useNavigationBlocker';
+import { UnsavedChangesDialog } from '@/components/common/UnsavedChangesDialog';
 import { useQueryClient } from "@tanstack/react-query";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { useInvoices, useCreateInvoice, useUpdateInvoice, Invoice } from "@/hooks/useInvoices";
@@ -54,6 +56,7 @@ const Invoices = () => {
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const blocker = useNavigationBlocker(isDialogOpen);
   const [editingInvoice, setEditingInvoice] = useState<string | null>(null);
   const [pendingEditInvoiceId, setPendingEditInvoiceId] = useState<string | null>(null);
   const [pendingDuplicateInvoiceId, setPendingDuplicateInvoiceId] = useState<string | null>(null);
@@ -616,6 +619,11 @@ const Invoices = () => {
           }}
         />
       </div>
+      <UnsavedChangesDialog
+        isOpen={blocker.state === 'blocked'}
+        onStay={() => blocker.reset?.()}
+        onLeave={() => blocker.proceed?.()}
+      />
     </PageContainer>
   );
 };
