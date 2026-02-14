@@ -688,7 +688,7 @@ const Jobs = () => {
                   })} rows={3} placeholder="Describe the issue..." />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Priority</Label>
                       <Select value={formData.priority} onValueChange={value => setFormData({
@@ -713,6 +713,9 @@ const Jobs = () => {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Est. Duration</Label>
                       <Select value={String(formData.estimated_duration)} onValueChange={value => setFormData({
@@ -721,6 +724,7 @@ const Jobs = () => {
                     })}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="15">15 min</SelectItem>
                           <SelectItem value="30">30 min</SelectItem>
                           <SelectItem value="60">1 hour</SelectItem>
                           <SelectItem value="90">1.5 hours</SelectItem>
@@ -733,9 +737,6 @@ const Jobs = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Scheduled Start</Label>
                       <Input type="datetime-local" value={formData.scheduled_start} onChange={e => setFormData({
@@ -743,13 +744,9 @@ const Jobs = () => {
                       scheduled_start: e.target.value
                     })} />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Scheduled End</Label>
-                      <Input type="datetime-local" value={formData.scheduled_end} onChange={e => setFormData({
-                      ...formData,
-                      scheduled_end: e.target.value
-                    })} />
-                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Labor Rate ($/hr)</Label>
                       <Input type="number" min="0" step="0.01" placeholder="0.00" value={formData.laborHourlyRate || ''} onChange={e => setFormData({
