@@ -1,84 +1,79 @@
 
 
-## Restructure Job Form Layout: Priority/Status Row, Duration Options, and Remove Scheduled End
+## Fix Pull-to-Refresh and Dialog Persistence Issues
 
-### Changes (all in `src/pages/Jobs.tsx`)
+### Problem 1: Pull-to-Refresh Not Working / Double Pull Gesture
+The `PullToRefresh` component uses `container.scrollTop` to detect if the user is at the top of the page. However, the actual scrolling happens at the body/window level (the `<main>` element in `AppLayout` does not have `overflow: auto`), so the PullToRefresh container's `scrollTop` is always `0`. This causes gesture conflicts and the "double pull" behavior.
 
-**1. Priority and Status on the same row (including mobile)**
+**Fix**: On the Jobs, Quotes, and Invoices pages, change the `PullToRefresh` component to use `window.scrollY` instead of `container.scrollTop` when detecting scroll position. This aligns with how the pages actually scroll.
 
-Currently these are in a `grid-cols-1 sm:grid-cols-3` grid (lines 691-736), meaning they stack on mobile. Change the first row to always show Priority and Status side-by-side using `grid-cols-2`, and move Est. Duration out of this row.
+### Problem 2: Dialogs Closing When Switching Apps
+When you leave the app (switch to another app on your phone) and return, the PWA service worker detects a potential update and may trigger a page reload via the `onNeedRefresh` callback in `main.tsx`. The current code shows a `confirm()` dialog, but on mobile PWA this can behave unpredictably, and the visibility change event can cause React to re-render and reset state.
 
-**2. Add 15-minute option to Est. Duration**
+**Fix**: Update `main.tsx` to NOT auto-prompt for updates immediately on regaining focus. Instead, defer the update prompt or use a non-intrusive toast notification so dialogs and form state are preserved.
 
-Add `<SelectItem value="15">15 min</SelectItem>` as the first option in the duration dropdown (before the existing "30 min" option).
+### Changes
 
-**3. Est. Duration and Scheduled Start on the same row**
+**1. `src/components/ui/pull-to-refresh.tsx` -- Fix scroll detection**
 
-Create a new `grid-cols-2` row containing Est. Duration and Scheduled Start, so they sit side-by-side on all screen sizes.
+Update `handleTouchStart` to check `window.scrollY` instead of `container.scrollTop`:
 
-**4. Remove Scheduled End field**
-
-Remove the Scheduled End input entirely from the form. The `scheduled_end` field in `formData` can remain in state (defaulting to empty string) so existing data is not broken, but the UI field is removed.
-
-**5. Labor Rate stays on its own row or joins another row**
-
-Labor Rate will move to its own single-field row beneath the Duration/Scheduled Start row.
-
-### Layout Summary
-
-```text
-Row 1: [ Priority (1/2) ] [ Status (1/2) ]
-Row 2: [ Est. Duration (1/2) ] [ Scheduled Start (1/2) ]
-Row 3: [ Labor Rate ($/hr) ]
-```
-
-### Technical Details
-
-**Lines 691-760** will be restructured as follows:
-
-Row 1 (Priority + Status) -- always 2 columns:
 ```tsx
-<div className="grid grid-cols-2 gap-4">
-  <div className="space-y-2">
-    <Label>Priority</Label>
-    <Select ...>{/* unchanged */}</Select>
-  </div>
-  <div className="space-y-2">
-    <Label>Status</Label>
-    <Select ...>{/* unchanged */}</Select>
-  </div>
-</div>
+const handleTouchStart = useCallback((e: React.TouchEvent) => {
+  if (isRefreshing) return;
+  // Check window scroll position instead of container
+  if (window.scrollY > 0) return;
+  startY.current = e.touches[0].clientY;
+  setIsPulling(true);
+}, [isRefreshing]);
 ```
 
-Row 2 (Est. Duration + Scheduled Start) -- always 2 columns:
+Similarly update `handleTouchMove`:
 ```tsx
-<div className="grid grid-cols-2 gap-4">
-  <div className="space-y-2">
-    <Label>Est. Duration</Label>
-    <Select ...>
-      <SelectContent>
-        <SelectItem value="15">15 min</SelectItem>  {/* NEW */}
-        <SelectItem value="30">30 min</SelectItem>
-        {/* ...rest unchanged */}
-      </SelectContent>
-    </Select>
-  </div>
-  <div className="space-y-2">
-    <Label>Scheduled Start</Label>
-    <Input type="datetime-local" ... />
-  </div>
-</div>
+if (window.scrollY > 0) {
+  setPullDistance(0);
+  return;
+}
 ```
 
-Row 3 (Labor Rate alone):
+Remove the `overflow-auto` class from the container div since the page scrolls at the body level, not within this container.
+
+**2. `src/main.tsx` -- Prevent dialog-closing reload**
+
+Replace the `confirm()` call with a deferred, non-destructive approach:
+
 ```tsx
-<div className="grid grid-cols-2 gap-4">
-  <div className="space-y-2">
-    <Label>Labor Rate ($/hr)</Label>
-    <Input type="number" ... />
-  </div>
-</div>
+const updateSW = registerSW({
+  onNeedRefresh() {
+    // Don't use confirm() which blocks and can cause issues on mobile
+    // Instead, store the update and apply it on next navigation
+    console.log("New version available - will update on next navigation");
+    // Store update function for later use
+    (window as any).__pendingSWUpdate = () => updateSW(true);
+  },
+  // ... rest unchanged
+});
 ```
 
-The Scheduled End field (lines 746-752) will be removed entirely.
+This prevents the page from reloading while a dialog is open, preserving all entered form data.
+
+**3. Remove duplicate pull-to-refresh from Jobs, Quotes, Invoices (as requested)**
+
+Since the user explicitly asked to remove the pull-to-refresh on these three pages in mobile view, we will:
+
+- **`src/pages/Jobs.tsx`**: Remove the `PullToRefresh` wrapper, render `PageContainer` directly
+- **`src/pages/Quotes.tsx`**: Remove the `PullToRefresh` wrapper, render `PageContainer` directly
+- **`src/pages/Invoices.tsx`**: Remove the `PullToRefresh` wrapper, render `PageContainer` directly
+
+The Dashboard page will keep pull-to-refresh since the user confirmed it works there.
+
+### Summary
+
+| File | Change |
+|------|--------|
+| `src/pages/Jobs.tsx` | Remove PullToRefresh wrapper |
+| `src/pages/Quotes.tsx` | Remove PullToRefresh wrapper |
+| `src/pages/Invoices.tsx` | Remove PullToRefresh wrapper |
+| `src/components/ui/pull-to-refresh.tsx` | Fix scroll detection to use `window.scrollY` instead of `container.scrollTop` |
+| `src/main.tsx` | Replace `confirm()` update prompt with deferred non-destructive approach to prevent dialog state loss |
 
