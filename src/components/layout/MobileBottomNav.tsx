@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useHaptic } from '@/hooks/useHaptic';
 import {
@@ -27,8 +27,21 @@ import {
 
 const MobileBottomNav = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { roles, isSuperAdmin } = useAuth();
   const { triggerNavigationHaptic } = useHaptic();
+
+  const guardedNavigate = (path: string, e: React.MouseEvent) => {
+    if ((window as any).__hasUnsavedChanges) {
+      e.preventDefault();
+      if (!window.confirm('You have unsaved changes. Leave this page?')) {
+        return;
+      }
+      (window as any).__hasUnsavedChanges = false;
+    }
+    triggerNavigationHaptic();
+    navigate(path);
+  };
   
   const userRoles = roles.map(r => r.role);
   const isAdmin = userRoles.includes('admin');
@@ -75,10 +88,10 @@ const MobileBottomNav = () => {
     >
       <div className="flex items-center justify-around h-16">
         {mainNavItems.map((item) => (
-          <Link
+          <a
             key={item.path}
-            to={item.path}
-            onClick={() => triggerNavigationHaptic()}
+            href={item.path}
+            onClick={(e) => { e.preventDefault(); guardedNavigate(item.path, e); }}
             className={cn(
               "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
               isActive(item.path)
@@ -88,7 +101,7 @@ const MobileBottomNav = () => {
           >
             <item.icon className="w-5 h-5" />
             <span className="text-xs font-medium">{item.label}</span>
-          </Link>
+          </a>
         ))}
         
         <DropdownMenu>
@@ -111,15 +124,14 @@ const MobileBottomNav = () => {
               <div key={item.path}>
                 {index === 1 && isAdmin && <DropdownMenuSeparator className="my-2" />}
                 {index === 4 && <DropdownMenuSeparator className="my-2" />}
-                <DropdownMenuItem asChild className="py-3 px-3 min-h-[44px]">
-                  <Link 
-                    to={item.path} 
-                    onClick={() => triggerNavigationHaptic()}
-                    className="flex items-center gap-3"
-                  >
+                <DropdownMenuItem
+                  className="py-3 px-3 min-h-[44px] cursor-pointer"
+                  onClick={(e) => guardedNavigate(item.path, e as any)}
+                >
+                  <div className="flex items-center gap-3">
                     <item.icon className="w-5 h-5" />
                     <span className="text-base">{item.label}</span>
-                  </Link>
+                  </div>
                 </DropdownMenuItem>
               </div>
             ))}

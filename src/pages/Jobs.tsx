@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useNavigationBlocker } from '@/hooks/useNavigationBlocker';
-import { UnsavedChangesDialog } from '@/components/common/UnsavedChangesDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useJobs, useCreateJob, useUpdateJob, Job } from '@/hooks/useJobs';
@@ -115,7 +114,7 @@ const Jobs = () => {
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const blocker = useNavigationBlocker(isDialogOpen);
+  useNavigationBlocker(isDialogOpen);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [importQuoteId, setImportQuoteId] = useState<string>('');
   const [saveAsTemplateJob, setSaveAsTemplateJob] = useState<Job | null>(null);
@@ -794,11 +793,6 @@ const Jobs = () => {
 
       {/* Save As Template Dialog */}
       {saveAsTemplateJob && <SaveAsTemplateDialog job={saveAsTemplateJob} open={!!saveAsTemplateJob} onOpenChange={open => !open && setSaveAsTemplateJob(null)} />}
-      <UnsavedChangesDialog
-        isOpen={blocker.state === 'blocked'}
-        onStay={() => blocker.reset?.()}
-        onLeave={() => blocker.proceed?.()}
-      />
     </PageContainer>;
 };
 export default Jobs;
