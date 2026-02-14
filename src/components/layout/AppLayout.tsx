@@ -34,22 +34,22 @@ const navItems = [{
   icon: LayoutDashboard,
   label: 'Dashboard',
   path: '/dashboard',
-  roles: ['admin', 'technician', 'super_admin']
+  roles: ['admin', 'manager', 'technician', 'super_admin']
 }, {
   icon: Users,
   label: 'Customers',
   path: '/customers',
-  roles: ['admin', 'technician']
+  roles: ['admin', 'manager', 'technician']
 }, {
   icon: Briefcase,
   label: 'Jobs',
   path: '/jobs',
-  roles: ['admin', 'technician']
+  roles: ['admin', 'manager', 'technician']
 }, {
   icon: FileText,
   label: 'Quotes',
   path: '/quotes',
-  roles: ['admin', 'technician']
+  roles: ['admin', 'manager', 'technician']
 }, {
   icon: Receipt,
   label: 'Invoices',
@@ -69,7 +69,7 @@ const navItems = [{
   icon: Clock,
   label: 'Time Clock',
   path: '/timeclock',
-  roles: ['admin', 'technician']
+  roles: ['admin', 'manager', 'technician']
 }, {
   icon: Bell,
   label: 'Notifications',
@@ -79,7 +79,7 @@ const navItems = [{
   icon: UserCog,
   label: 'Technicians',
   path: '/technicians',
-  roles: ['admin', 'technician']
+  roles: ['admin', 'manager', 'technician']
 }, {
   icon: Building2,
   label: 'Company',

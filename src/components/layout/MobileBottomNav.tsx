@@ -32,8 +32,9 @@ const MobileBottomNav = () => {
   
   const userRoles = roles.map(r => r.role);
   const isAdmin = userRoles.includes('admin');
+  const isManager = userRoles.includes('manager');
   const isTechnician = userRoles.includes('technician');
-  const hasAccess = isAdmin || isTechnician || userRoles.length === 0;
+  const hasAccess = isAdmin || isManager || isTechnician || userRoles.length === 0;
 
   if (!hasAccess) return null;
 
@@ -48,7 +49,7 @@ const MobileBottomNav = () => {
     { icon: Users, label: 'Customers', path: '/customers', showFor: 'all' },
     { icon: Package, label: 'Items', path: '/items', showFor: 'all' },
     { icon: Clock, label: 'Time Clock', path: '/timeclock', showFor: 'all' },
-    { icon: BarChart3, label: 'Reports', path: '/reports', showFor: 'admin' },
+    { icon: BarChart3, label: 'Reports', path: '/reports', showFor: 'all' },
     { icon: Bell, label: 'Notifications', path: '/notifications', showFor: 'all' },
     { icon: UserCog, label: 'Technicians', path: '/technicians', showFor: 'admin' },
     { icon: Building2, label: 'Company', path: '/company', showFor: 'admin' },
