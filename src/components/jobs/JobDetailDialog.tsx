@@ -580,7 +580,7 @@ export function JobDetailDialog({
                   {isCollectingSignature ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenTool className="w-4 h-4" />}
                   Collect Signature
                 </Button>
-                <Button variant="ghost" size="sm" onClick={onSendSignatureRequest} disabled={!customerEmail} className="gap-1" title={customerEmail ? "Send signature request via email" : "No email on file"}>
+                <Button variant="outline" size="sm" onClick={onSendSignatureRequest} disabled={!customerEmail} className="gap-1" title={customerEmail ? "Send signature request via email" : "No email on file"}>
                   <Mail className="w-4 h-4" />
                   Send Signature Request via Email
                 </Button>
