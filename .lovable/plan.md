@@ -1,43 +1,114 @@
 
 
-## Prevent Accidental Navigation When Dialogs Are Open
+## Fix Page Crashes and Add Real-Time Updates
 
-### The Problem
-When you have a Create/Edit Job, Quote, or Invoice dialog open and accidentally tap a navigation item (bottom nav, sidebar, etc.), React Router navigates to the new page, unmounting the current page and destroying all dialog state and form data.
+### Problem: Pages Crash
+The Jobs, Quotes, and Invoices pages crash because `useBlocker` from react-router-dom v7 requires a data router (`createBrowserRouter`), but the app uses the legacy `BrowserRouter`. This is a known incompatibility.
 
-### The Solution
-Use React Router v7's `useBlocker` hook to block navigation when a dialog with form data is open. When blocked, show a confirmation alert asking "You have unsaved changes. Are you sure you want to leave?" with Stay/Leave options.
+### Fix 1: Replace useBlocker with a Compatible Approach
+
+Since migrating the entire app to `createBrowserRouter` is a large refactor, we will replace the blocker with a simpler, compatible approach:
+
+- **Remove** `useNavigationBlocker` hook usage from Jobs, Quotes, and Invoices pages
+- **Remove** the `UnsavedChangesDialog` component usage from those pages
+- **Add `window.onbeforeunload`** protection when dialogs are open -- this catches browser back button, tab close, and accidental refresh
+- **Wrap navigation links** with an `onBeforeNavigate` check in `MobileBottomNav` and sidebar that checks a global state flag before navigating
+
+**Simplified approach**: Use a global Zustand flag (`hasUnsavedChanges`) that the dialog sets when opened. The `MobileBottomNav` and `AppLayout` sidebar links check this flag and show a `confirm()` before navigating.
 
 ### Changes
 
-**1. Create a reusable `useNavigationBlocker` hook (`src/hooks/useNavigationBlocker.ts`)**
+**1. `src/hooks/useNavigationBlocker.ts` -- Rewrite without useBlocker**
 
-A simple hook that wraps `useBlocker` from `react-router-dom`. It accepts a `shouldBlock` boolean (true when a dialog is open) and shows an `AlertDialog` when the user tries to navigate away.
+Replace the hook to use `window.onbeforeunload` and expose a global flag:
 
-**2. Create an `UnsavedChangesDialog` component (`src/components/common/UnsavedChangesDialog.tsx`)**
+```tsx
+import { useEffect } from 'react';
 
-A small `AlertDialog` component that displays "You have unsaved changes" with "Stay" and "Leave" buttons. It calls `blocker.reset()` on Stay and `blocker.proceed()` on Leave.
+export function useNavigationBlocker(shouldBlock: boolean) {
+  useEffect(() => {
+    if (!shouldBlock) return;
 
-**3. Update `src/pages/Jobs.tsx`**
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
 
-- Import and use `useNavigationBlocker` with `shouldBlock = isDialogOpen`
-- Render the `UnsavedChangesDialog` component
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [shouldBlock]);
 
-**4. Update `src/pages/Quotes.tsx`**
+  // Set a global flag for in-app navigation guards
+  useEffect(() => {
+    (window as any).__hasUnsavedChanges = shouldBlock;
+    return () => { (window as any).__hasUnsavedChanges = false; };
+  }, [shouldBlock]);
+}
+```
 
-- Same pattern: block navigation when the create/edit dialog is open
+**2. `src/components/layout/MobileBottomNav.tsx` -- Add navigation guard**
 
-**5. Update `src/pages/Invoices.tsx`**
+Before navigating, check `window.__hasUnsavedChanges` and show a confirm dialog:
 
-- Same pattern: block navigation when the create/edit dialog is open
+```tsx
+const handleNavClick = (path: string) => {
+  if ((window as any).__hasUnsavedChanges) {
+    if (!window.confirm('You have unsaved changes. Leave this page?')) {
+      return;
+    }
+  }
+  navigate(path);
+};
+```
 
-### How It Works
+**3. `src/components/layout/AppLayout.tsx` -- Add navigation guard to sidebar links**
 
-When a dialog is open:
-- Tapping a nav item triggers React Router navigation
-- `useBlocker` intercepts it and prevents the route change
-- The confirmation dialog appears on top of the form
-- "Stay" keeps the user on the page with the dialog still open
-- "Leave" proceeds with navigation (dialog and data are lost)
+Same pattern for desktop sidebar navigation links.
 
-This does not affect closing the dialog normally via its Cancel button or the X button -- those still work as before.
+**4. `src/pages/Jobs.tsx`, `src/pages/Quotes.tsx`, `src/pages/Invoices.tsx`**
+
+- Remove `UnsavedChangesDialog` import and rendering
+- Keep `useNavigationBlocker(isDialogOpen)` call (now using the rewritten hook)
+- Remove blocker state/reset/proceed references
+
+**5. Remove `src/components/common/UnsavedChangesDialog.tsx`** (no longer needed)
+
+### Fix 2: Real-Time Updates Across Devices
+
+TanStack Query already refetches data when the browser tab regains focus. For automatic real-time sync, add Supabase Realtime subscriptions to the main data hooks:
+
+**Update `src/hooks/useJobs.ts`, `src/hooks/useQuotes.ts`, `src/hooks/useInvoices.ts`**
+
+Add a `useEffect` in each hook that subscribes to Supabase Realtime changes on the respective table and invalidates the TanStack Query cache when changes are detected:
+
+```tsx
+useEffect(() => {
+  const channel = supabase
+    .channel('jobs-changes')
+    .on('postgres_changes', 
+      { event: '*', schema: 'public', table: 'jobs' },
+      () => { queryClient.invalidateQueries({ queryKey: ['jobs'] }); }
+    )
+    .subscribe();
+
+  return () => { supabase.removeChannel(channel); };
+}, [queryClient]);
+```
+
+This ensures all users see new/updated items automatically without manual refresh.
+
+### Summary
+
+| File | Change |
+|------|--------|
+| `src/hooks/useNavigationBlocker.ts` | Rewrite to use `beforeunload` + global flag (no `useBlocker`) |
+| `src/components/layout/MobileBottomNav.tsx` | Add navigation guard check before navigating |
+| `src/components/layout/AppLayout.tsx` | Add navigation guard check to sidebar links |
+| `src/pages/Jobs.tsx` | Remove `UnsavedChangesDialog`, keep rewritten blocker hook |
+| `src/pages/Quotes.tsx` | Remove `UnsavedChangesDialog`, keep rewritten blocker hook |
+| `src/pages/Invoices.tsx` | Remove `UnsavedChangesDialog`, keep rewritten blocker hook |
+| `src/hooks/useJobs.ts` | Add Supabase Realtime subscription for auto-refresh |
+| `src/hooks/useQuotes.ts` | Add Supabase Realtime subscription for auto-refresh |
+| `src/hooks/useInvoices.ts` | Add Supabase Realtime subscription for auto-refresh |
+| `src/components/common/UnsavedChangesDialog.tsx` | Remove (no longer needed) |
+
