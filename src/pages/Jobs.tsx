@@ -738,16 +738,6 @@ const Jobs = () => {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label>Scheduled Start</Label>
-                      <Input type="datetime-local" value={formData.scheduled_start} onChange={e => setFormData({
-                      ...formData,
-                      scheduled_start: e.target.value
-                    })} />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
                       <Label>Labor Rate ($/hr)</Label>
                       <Input type="number" min="0" step="0.01" placeholder="0.00" value={formData.laborHourlyRate || ''} onChange={e => setFormData({
                       ...formData,
