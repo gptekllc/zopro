@@ -434,7 +434,7 @@ export function InvoiceDetailDialog({
                     {(localStatus || invoice.status) === 'paid' ? 'Paid in Full' : (localStatus || invoice.status) === 'partially_paid' ? 'Partially Paid' : (localStatus || invoice.status) === 'voided' ? 'Voided' : (localStatus || invoice.status).charAt(0).toUpperCase() + (localStatus || invoice.status).slice(1)}
                   </Badge>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-popover z-50 min-w-[120px]">
+                <DropdownMenuContent align="end" className="bg-popover min-w-[120px]">
                   {INVOICE_STATUSES.map(status => <DropdownMenuItem key={status} onClick={() => {
                 if ((localStatus || invoice.status) !== status) {
                   setLocalStatus(status);
