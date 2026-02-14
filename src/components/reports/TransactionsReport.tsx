@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { PermissionGate } from '@/components/PermissionGate';
 import { format } from 'date-fns';
 import { useAllPayments, PaymentWithDetails } from '@/hooks/usePayments';
 import { useCustomers } from '@/hooks/useCustomers';
@@ -393,10 +394,12 @@ const TransactionsReport = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
             </div>
-            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2 shrink-0">
-              <Plus className="w-4 h-4" />
-              Add Record
-            </Button>
+            <PermissionGate permission="record_payments" deniedMessage="You don't have permission to record payments">
+              <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2 shrink-0">
+                <Plus className="w-4 h-4" />
+                Add Record
+              </Button>
+            </PermissionGate>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="shrink-0">
@@ -422,10 +425,12 @@ const TransactionsReport = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
             </div>
-            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2 shrink-0">
-              <Plus className="w-4 h-4" />
-              Record Payment
-            </Button>
+            <PermissionGate permission="record_payments" deniedMessage="You don't have permission to record payments">
+              <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2 shrink-0">
+                <Plus className="w-4 h-4" />
+                Record Payment
+              </Button>
+            </PermissionGate>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="icon" className="shrink-0">
@@ -451,10 +456,12 @@ const TransactionsReport = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9" />
             </div>
-            <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2 shrink-0">
-              <Plus className="w-4 h-4" />
-              Record Payment
-            </Button>
+            <PermissionGate permission="record_payments" deniedMessage="You don't have permission to record payments">
+              <Button onClick={() => setSelectInvoiceOpen(true)} className="gap-2 shrink-0">
+                <Plus className="w-4 h-4" />
+                Record Payment
+              </Button>
+            </PermissionGate>
             <Button onClick={() => setEmailDialogOpen(true)} variant="outline" size="sm" disabled={filteredPayments.length === 0}>
               <Mail className="w-4 h-4 mr-2" />
               Email
