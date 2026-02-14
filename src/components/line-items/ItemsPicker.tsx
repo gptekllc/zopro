@@ -17,9 +17,8 @@ export const ItemsPicker = ({ type, onSelect }: ItemsPickerProps) => {
 
   const filteredItems = items.filter(item => item.type === type);
 
-  if (filteredItems.length === 0) {
-    return null;
-  }
+
+
 
   const handleSelect = (item: Item) => {
     onSelect(item);

@@ -64,7 +64,7 @@ const navItems = [{
   icon: Package,
   label: 'Items',
   path: '/items',
-  roles: ['admin', 'technician']
+  roles: ['admin', 'manager', 'technician']
 }, {
   icon: Clock,
   label: 'Time Clock',
