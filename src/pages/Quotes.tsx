@@ -25,7 +25,7 @@ import { QuoteListManager } from '@/components/quotes/QuoteListManager';
 import { QuoteListControls } from '@/components/quotes/QuoteListControls';
 import PageContainer from '@/components/layout/PageContainer';
 import { formatAmount } from '@/lib/formatAmount';
-import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
+
 
 const Quotes = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -348,7 +348,6 @@ const Quotes = () => {
   }
 
   return (
-    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={6} />} className="min-h-full">
     <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
@@ -558,7 +557,6 @@ const Quotes = () => {
         onSelect={handleSelectTemplate}
       />
     </PageContainer>
-    </PullToRefresh>
   );
 };
 

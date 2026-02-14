@@ -44,8 +44,8 @@ export function PullToRefresh({ onRefresh, children, className, renderSkeleton }
     const container = containerRef.current;
     if (!container) return;
     
-    // Only enable pull-to-refresh when scrolled to top
-    if (container.scrollTop > 0) return;
+    // Only enable pull-to-refresh when scrolled to top (use window scroll)
+    if (window.scrollY > 0) return;
     
     startY.current = e.touches[0].clientY;
     setIsPulling(true);
@@ -54,8 +54,7 @@ export function PullToRefresh({ onRefresh, children, className, renderSkeleton }
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (!isPulling || isRefreshing) return;
     
-    const container = containerRef.current;
-    if (!container || container.scrollTop > 0) {
+    if (window.scrollY > 0) {
       setPullDistance(0);
       return;
     }
@@ -102,7 +101,7 @@ export function PullToRefresh({ onRefresh, children, className, renderSkeleton }
   return (
     <div
       ref={containerRef}
-      className={cn("relative overflow-auto", className)}
+      className={cn("relative", className)}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

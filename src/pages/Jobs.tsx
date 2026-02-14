@@ -34,7 +34,7 @@ import PageContainer from '@/components/layout/PageContainer';
 import { UsageLimitWarning, UsageLimitBadge } from '@/components/UsageLimitWarning';
 import { useUsageLimits } from '@/hooks/useUsageLimits';
 import { formatAmount } from '@/lib/formatAmount';
-import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
+
 const JOB_STATUSES_EDITABLE = ['draft', 'scheduled', 'in_progress', 'completed', 'invoiced'] as const;
 const JOB_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 const Jobs = () => {
@@ -546,8 +546,7 @@ const Jobs = () => {
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>;
   }
-  return <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={6} />} className="min-h-full">
-    <PageContainer className="space-y-6">
+  return <PageContainer className="space-y-6">
       {/* Usage Limit Warning */}
       <UsageLimitWarning type="jobs" showProgress />
 
@@ -792,7 +791,6 @@ const Jobs = () => {
 
       {/* Save As Template Dialog */}
       {saveAsTemplateJob && <SaveAsTemplateDialog job={saveAsTemplateJob} open={!!saveAsTemplateJob} onOpenChange={open => !open && setSaveAsTemplateJob(null)} />}
-    </PageContainer>
-  </PullToRefresh>;
+    </PageContainer>;
 };
 export default Jobs;
