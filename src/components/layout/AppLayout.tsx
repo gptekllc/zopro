@@ -54,7 +54,7 @@ const navItems = [{
   icon: Receipt,
   label: 'Invoices',
   path: '/invoices',
-  roles: ['admin', 'technician', 'customer']
+  roles: ['admin', 'manager', 'technician', 'customer']
 }, {
   icon: BarChart3,
   label: 'Reports',
