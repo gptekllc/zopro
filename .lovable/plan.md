@@ -1,79 +1,43 @@
 
 
-## Fix Pull-to-Refresh and Dialog Persistence Issues
+## Prevent Accidental Navigation When Dialogs Are Open
 
-### Problem 1: Pull-to-Refresh Not Working / Double Pull Gesture
-The `PullToRefresh` component uses `container.scrollTop` to detect if the user is at the top of the page. However, the actual scrolling happens at the body/window level (the `<main>` element in `AppLayout` does not have `overflow: auto`), so the PullToRefresh container's `scrollTop` is always `0`. This causes gesture conflicts and the "double pull" behavior.
+### The Problem
+When you have a Create/Edit Job, Quote, or Invoice dialog open and accidentally tap a navigation item (bottom nav, sidebar, etc.), React Router navigates to the new page, unmounting the current page and destroying all dialog state and form data.
 
-**Fix**: On the Jobs, Quotes, and Invoices pages, change the `PullToRefresh` component to use `window.scrollY` instead of `container.scrollTop` when detecting scroll position. This aligns with how the pages actually scroll.
-
-### Problem 2: Dialogs Closing When Switching Apps
-When you leave the app (switch to another app on your phone) and return, the PWA service worker detects a potential update and may trigger a page reload via the `onNeedRefresh` callback in `main.tsx`. The current code shows a `confirm()` dialog, but on mobile PWA this can behave unpredictably, and the visibility change event can cause React to re-render and reset state.
-
-**Fix**: Update `main.tsx` to NOT auto-prompt for updates immediately on regaining focus. Instead, defer the update prompt or use a non-intrusive toast notification so dialogs and form state are preserved.
+### The Solution
+Use React Router v7's `useBlocker` hook to block navigation when a dialog with form data is open. When blocked, show a confirmation alert asking "You have unsaved changes. Are you sure you want to leave?" with Stay/Leave options.
 
 ### Changes
 
-**1. `src/components/ui/pull-to-refresh.tsx` -- Fix scroll detection**
+**1. Create a reusable `useNavigationBlocker` hook (`src/hooks/useNavigationBlocker.ts`)**
 
-Update `handleTouchStart` to check `window.scrollY` instead of `container.scrollTop`:
+A simple hook that wraps `useBlocker` from `react-router-dom`. It accepts a `shouldBlock` boolean (true when a dialog is open) and shows an `AlertDialog` when the user tries to navigate away.
 
-```tsx
-const handleTouchStart = useCallback((e: React.TouchEvent) => {
-  if (isRefreshing) return;
-  // Check window scroll position instead of container
-  if (window.scrollY > 0) return;
-  startY.current = e.touches[0].clientY;
-  setIsPulling(true);
-}, [isRefreshing]);
-```
+**2. Create an `UnsavedChangesDialog` component (`src/components/common/UnsavedChangesDialog.tsx`)**
 
-Similarly update `handleTouchMove`:
-```tsx
-if (window.scrollY > 0) {
-  setPullDistance(0);
-  return;
-}
-```
+A small `AlertDialog` component that displays "You have unsaved changes" with "Stay" and "Leave" buttons. It calls `blocker.reset()` on Stay and `blocker.proceed()` on Leave.
 
-Remove the `overflow-auto` class from the container div since the page scrolls at the body level, not within this container.
+**3. Update `src/pages/Jobs.tsx`**
 
-**2. `src/main.tsx` -- Prevent dialog-closing reload**
+- Import and use `useNavigationBlocker` with `shouldBlock = isDialogOpen`
+- Render the `UnsavedChangesDialog` component
 
-Replace the `confirm()` call with a deferred, non-destructive approach:
+**4. Update `src/pages/Quotes.tsx`**
 
-```tsx
-const updateSW = registerSW({
-  onNeedRefresh() {
-    // Don't use confirm() which blocks and can cause issues on mobile
-    // Instead, store the update and apply it on next navigation
-    console.log("New version available - will update on next navigation");
-    // Store update function for later use
-    (window as any).__pendingSWUpdate = () => updateSW(true);
-  },
-  // ... rest unchanged
-});
-```
+- Same pattern: block navigation when the create/edit dialog is open
 
-This prevents the page from reloading while a dialog is open, preserving all entered form data.
+**5. Update `src/pages/Invoices.tsx`**
 
-**3. Remove duplicate pull-to-refresh from Jobs, Quotes, Invoices (as requested)**
+- Same pattern: block navigation when the create/edit dialog is open
 
-Since the user explicitly asked to remove the pull-to-refresh on these three pages in mobile view, we will:
+### How It Works
 
-- **`src/pages/Jobs.tsx`**: Remove the `PullToRefresh` wrapper, render `PageContainer` directly
-- **`src/pages/Quotes.tsx`**: Remove the `PullToRefresh` wrapper, render `PageContainer` directly
-- **`src/pages/Invoices.tsx`**: Remove the `PullToRefresh` wrapper, render `PageContainer` directly
+When a dialog is open:
+- Tapping a nav item triggers React Router navigation
+- `useBlocker` intercepts it and prevents the route change
+- The confirmation dialog appears on top of the form
+- "Stay" keeps the user on the page with the dialog still open
+- "Leave" proceeds with navigation (dialog and data are lost)
 
-The Dashboard page will keep pull-to-refresh since the user confirmed it works there.
-
-### Summary
-
-| File | Change |
-|------|--------|
-| `src/pages/Jobs.tsx` | Remove PullToRefresh wrapper |
-| `src/pages/Quotes.tsx` | Remove PullToRefresh wrapper |
-| `src/pages/Invoices.tsx` | Remove PullToRefresh wrapper |
-| `src/components/ui/pull-to-refresh.tsx` | Fix scroll detection to use `window.scrollY` instead of `container.scrollTop` |
-| `src/main.tsx` | Replace `confirm()` update prompt with deferred non-destructive approach to prevent dialog state loss |
-
+This does not affect closing the dialog normally via its Cancel button or the X button -- those still work as before.
