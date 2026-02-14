@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useNavigationBlocker } from '@/hooks/useNavigationBlocker';
-import { UnsavedChangesDialog } from '@/components/common/UnsavedChangesDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useQuotes, useCreateQuote, useUpdateQuote, Quote } from '@/hooks/useQuotes';
@@ -50,7 +49,7 @@ const Quotes = () => {
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const blocker = useNavigationBlocker(isDialogOpen);
+  useNavigationBlocker(isDialogOpen);
   const [editingQuote, setEditingQuote] = useState<string | null>(null);
   const [pendingEditQuoteId, setPendingEditQuoteId] = useState<string | null>(null);
   const [pendingDuplicateQuoteId, setPendingDuplicateQuoteId] = useState<string | null>(null);
@@ -558,11 +557,6 @@ const Quotes = () => {
         open={selectTemplateDialogOpen}
         onOpenChange={setSelectTemplateDialogOpen}
         onSelect={handleSelectTemplate}
-      />
-      <UnsavedChangesDialog
-        isOpen={blocker.state === 'blocked'}
-        onStay={() => blocker.reset?.()}
-        onLeave={() => blocker.proceed?.()}
       />
     </PageContainer>
   );

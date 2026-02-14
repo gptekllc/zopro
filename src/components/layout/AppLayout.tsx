@@ -347,7 +347,17 @@ const AppLayout = ({
             {filteredNavItems.map(item => {
             const isActive = location.pathname === item.path;
             const showBadge = item.path === '/notifications' && unreadNotifications > 0;
-            const linkContent = <Link key={item.path} to={item.path} className={cn("flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200", sidebarCollapsed && "justify-center px-2", isActive ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg" : "hover:bg-sidebar-accent text-sidebar-foreground/80 hover:text-sidebar-foreground")}>
+            const handleSidebarNav = (e: React.MouseEvent) => {
+              if ((window as any).__hasUnsavedChanges) {
+                e.preventDefault();
+                if (!window.confirm('You have unsaved changes. Leave this page?')) {
+                  return;
+                }
+                (window as any).__hasUnsavedChanges = false;
+              }
+              navigate(item.path);
+            };
+            const linkContent = <a key={item.path} href={item.path} onClick={(e) => { e.preventDefault(); handleSidebarNav(e); }} className={cn("flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200", sidebarCollapsed && "justify-center px-2", isActive ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg" : "hover:bg-sidebar-accent text-sidebar-foreground/80 hover:text-sidebar-foreground")}>
                   <div className="relative shrink-0">
                     <item.icon className="w-5 h-5" />
                     {showBadge && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center font-medium">
@@ -355,7 +365,7 @@ const AppLayout = ({
                       </span>}
                   </div>
                   {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
-                </Link>;
+                </a>;
             if (sidebarCollapsed) {
               return <Tooltip key={item.path}>
                     <TooltipTrigger asChild>
