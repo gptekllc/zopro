@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { PermissionGate } from '@/components/PermissionGate';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -844,14 +845,18 @@ export function InvoiceDetailDialog({
               Email
             </Button>
             {invoice.status !== 'paid' && remainingBalance > 0 && <>
-                <Button size="sm" onClick={() => setRecordPaymentDialogOpen(true)} className="bg-green-600 hover:bg-green-700 justify-center">
-                  <DollarSign className="w-4 h-4 mr-1" />
-                  Payment
-                </Button>
-                {company?.stripe_payments_enabled !== false && <Button size="sm" variant="outline" onClick={handleGeneratePaymentLink} disabled={isGeneratingPaymentLink} className="justify-center">
-                    {isGeneratingPaymentLink ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <ExternalLink className="w-4 h-4 mr-1" />}
-                    Pay Online
-                  </Button>}
+                <PermissionGate permission="record_payments" deniedMessage="You don't have permission to record payments">
+                  <Button size="sm" onClick={() => setRecordPaymentDialogOpen(true)} className="bg-green-600 hover:bg-green-700 justify-center">
+                    <DollarSign className="w-4 h-4 mr-1" />
+                    Payment
+                  </Button>
+                </PermissionGate>
+                {company?.stripe_payments_enabled !== false && <PermissionGate permission="record_payments" deniedMessage="You don't have permission to record payments">
+                    <Button size="sm" variant="outline" onClick={handleGeneratePaymentLink} disabled={isGeneratingPaymentLink} className="justify-center">
+                      {isGeneratingPaymentLink ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <ExternalLink className="w-4 h-4 mr-1" />}
+                      Pay Online
+                    </Button>
+                  </PermissionGate>}
               </>}
             {invoice.status !== 'paid' && invoice.status !== 'voided' && <Button variant="outline" size="sm" onClick={() => setVoidInvoiceDialogOpen(true)} className="text-destructive hover:text-destructive hover:bg-destructive/10 justify-center">
                 <Ban className="w-4 h-4 mr-1" />
