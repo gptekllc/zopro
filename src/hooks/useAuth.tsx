@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { User, Session, Factor } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { handleDespiaLogout } from '@/lib/despia';
@@ -68,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const [mfaFactors, setMFAFactors] = useState<Factor[]>([]);
   const [aal, setAAL] = useState<{ currentLevel: string; nextLevel: string } | null>(null);
+  const initialLoadComplete = useRef(false);
 
   const isAdmin = roles.some(r => r.role === 'admin');
   const isManager = roles.some(r => r.role === 'manager');
@@ -119,7 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshMFAStatus = async (userId?: string) => {
-    setIsMFALoading(true);
+    if (!initialLoadComplete.current) {
+      setIsMFALoading(true);
+    }
     try {
       const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (data) {
@@ -152,6 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } finally {
       setIsMFALoading(false);
+      initialLoadComplete.current = true;
     }
   };
 
@@ -234,6 +238,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         
+        // Token refresh happens on every app resume -- skip full re-fetch
+        // to prevent unmounting the page and closing open dialogs
+        if (event === 'TOKEN_REFRESHED') return;
+
         // Defer Supabase calls with setTimeout
         if (session?.user) {
           setTimeout(async () => {
