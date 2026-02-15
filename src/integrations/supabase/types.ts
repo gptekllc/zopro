@@ -2166,6 +2166,7 @@ export type Database = {
           company_id: string | null
           created_at: string
           deleted_at: string | null
+          despia_device_uuid: string | null
           email: string
           employment_status: string | null
           first_name: string | null
@@ -2174,6 +2175,7 @@ export type Database = {
           hourly_rate: number | null
           id: string
           last_name: string | null
+          onesignal_player_id: string | null
           phone: string | null
           role: string
           state: string | null
@@ -2188,6 +2190,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           deleted_at?: string | null
+          despia_device_uuid?: string | null
           email: string
           employment_status?: string | null
           first_name?: string | null
@@ -2196,6 +2199,7 @@ export type Database = {
           hourly_rate?: number | null
           id: string
           last_name?: string | null
+          onesignal_player_id?: string | null
           phone?: string | null
           role?: string
           state?: string | null
@@ -2210,6 +2214,7 @@ export type Database = {
           company_id?: string | null
           created_at?: string
           deleted_at?: string | null
+          despia_device_uuid?: string | null
           email?: string
           employment_status?: string | null
           first_name?: string | null
@@ -2218,6 +2223,7 @@ export type Database = {
           hourly_rate?: number | null
           id?: string
           last_name?: string | null
+          onesignal_player_id?: string | null
           phone?: string | null
           role?: string
           state?: string | null

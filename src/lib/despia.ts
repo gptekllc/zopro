@@ -75,6 +75,15 @@ export function triggerDespiaHaptic(type: DespiaHapticType = 'light'): void {
  * 
  * Source: https://setup.despia.com/lovable/native-features/onesignal
  */
+/** Get the OneSignal player ID from the Despia runtime */
+export function getDespiaOneSignalPlayerId(): string | undefined {
+  try {
+    return (despia as any).onesignalplayerid;
+  } catch {
+    return undefined;
+  }
+}
+
 export function setOneSignalPlayerId(userId: string): void {
   if (!isDespiaNative() || !userId) return;
   try {
