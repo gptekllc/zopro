@@ -304,8 +304,11 @@ const Invoices = () => {
       openEditDialog(false);
       resetForm();
       
-      // Refresh the page to ensure all list cards show updated data
-      window.location.reload();
+      // Invalidate queries and open detail dialog for the saved invoice
+      await queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      if (resultInvoiceId) {
+        setPendingViewInvoiceId(resultInvoiceId);
+      }
     } catch (error) {
       toast.error(editingInvoice ? "Failed to update invoice" : "Failed to create invoice");
     }

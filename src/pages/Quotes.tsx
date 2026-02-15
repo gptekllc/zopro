@@ -266,8 +266,11 @@ const Quotes = () => {
       openEditDialog(false);
       resetForm();
       
-      // Refresh the page to ensure all list cards show updated data
-      window.location.reload();
+      // Invalidate queries and open detail dialog for the saved quote
+      await queryClient.invalidateQueries({ queryKey: ['quotes'] });
+      if (resultQuoteId) {
+        setPendingViewQuoteId(resultQuoteId);
+      }
     } catch (error) {
       toast.error(editingQuote ? 'Failed to update quote' : 'Failed to create quote');
     }
