@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useNavigationBlocker } from '@/hooks/useNavigationBlocker';
 import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
@@ -544,6 +544,27 @@ const Jobs = () => {
     }));
     openEditDialog(true);
   };
+
+
+  // Dirty check for unsaved changes warning
+  const initialFormRef = useRef<string>('');
+  useEffect(() => {
+    if (isDialogOpen) {
+      initialFormRef.current = JSON.stringify({ formData, lineItems });
+    }
+  }, [isDialogOpen]);
+
+  const handleDialogClose = useCallback(() => {
+    const isDirty = JSON.stringify({ formData, lineItems }) !== initialFormRef.current;
+    if (isDirty) {
+      if (!window.confirm('You have unsaved changes. Discard and close?')) {
+        return;
+      }
+    }
+    openEditDialog(false);
+    resetForm();
+  }, [formData, lineItems, openEditDialog]);
+
   if (isLoading) {
     return <div className="flex items-center justify-center h-64">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -580,8 +601,8 @@ const Jobs = () => {
             </div>
 
             <Dialog open={isDialogOpen} onOpenChange={open => {
+            if (!open) { handleDialogClose(); return; }
             openEditDialog(open);
-            if (!open) resetForm();
           }}>
               <DialogTrigger asChild>
                 <Button className="gap-2 hidden sm:flex" disabled={isAtJobLimit && !editingJob} title={isAtJobLimit ? 'Job limit reached. Upgrade to create more.' : undefined}>
@@ -768,7 +789,7 @@ const Jobs = () => {
                   </div>
 
                   <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-                    <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
+                    <Button type="button" variant="outline" className="flex-1" onClick={handleDialogClose}>
                       Cancel
                     </Button>
                     <Button type="submit" className="flex-1" disabled={createJob.isPending || updateJob.isPending}>

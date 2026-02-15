@@ -360,6 +360,26 @@ const Invoices = () => {
     toast.success("Invoice duplicated - make changes and save");
   };
 
+
+  // Dirty check for unsaved changes warning
+  const initialFormRef = useRef<string>('');
+  useEffect(() => {
+    if (isDialogOpen) {
+      initialFormRef.current = JSON.stringify(formData);
+    }
+  }, [isDialogOpen]);
+
+  const handleDialogClose = useCallback(() => {
+    const isDirty = JSON.stringify(formData) !== initialFormRef.current;
+    if (isDirty) {
+      if (!window.confirm('You have unsaved changes. Discard and close?')) {
+        return;
+      }
+    }
+    openEditDialog(false);
+    resetForm();
+  }, [formData, openEditDialog]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -387,8 +407,8 @@ const Invoices = () => {
           />
 
         <Dialog open={isDialogOpen} onOpenChange={open => {
+          if (!open) { handleDialogClose(); return; }
           openEditDialog(open);
-          if (!open) resetForm();
         }}>
           <DialogTrigger asChild>
             <Button className="gap-2 hidden sm:flex">
@@ -584,7 +604,7 @@ const Invoices = () => {
               </div>
 
               <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>
+                <Button type="button" variant="outline" className="flex-1" onClick={handleDialogClose}>
                   Cancel
                 </Button>
                 <Button type="submit" className="flex-1" disabled={createInvoice.isPending || updateInvoice.isPending}>
