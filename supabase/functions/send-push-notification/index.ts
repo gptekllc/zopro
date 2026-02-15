@@ -102,14 +102,6 @@ serve(async (req) => {
     const expectedSecret = Deno.env.get("INTERNAL_TRIGGER_SECRET");
     const isTrustedTrigger = !!(triggerSecret && expectedSecret && triggerSecret === expectedSecret);
 
-    console.log("Auth debug:", {
-      hasTriggerSecret: !!triggerSecret,
-      hasExpectedSecret: !!expectedSecret,
-      triggerSecretPrefix: triggerSecret?.substring(0, 8),
-      expectedSecretPrefix: expectedSecret?.substring(0, 8),
-      match: triggerSecret === expectedSecret,
-    });
-
     const isServiceRoleCall = isTrustedTrigger || token === supabaseServiceKey || token === supabaseAnonKey;
 
     const { userId, companyId, title, body, icon, url, tag, badge_count, skipInAppNotification }: PushNotificationRequest = await req.json();
