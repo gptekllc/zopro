@@ -415,8 +415,11 @@ const Jobs = () => {
       openEditDialog(false);
       resetForm();
 
-      // Refresh the page to ensure all list cards show updated data
-      window.location.reload();
+      // Invalidate queries and open detail dialog for the saved job
+      await queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      if (resultJobId) {
+        setPendingViewJobId(resultJobId);
+      }
     } catch (error) {
       // Error handled by hook
     }
