@@ -17,12 +17,15 @@ import {
   Briefcase,
   ExternalLink,
   Sparkles,
-  AlertTriangle
+  AlertTriangle,
+  Smartphone
 } from 'lucide-react';
 import PageContainer from '@/components/layout/PageContainer';
 import { PlanComparisonTable } from '@/components/subscription/PlanComparisonTable';
 import { useSubscriptionPlans, useCurrentSubscription, useSubscriptionActions } from '@/hooks/useSubscription';
 import { useUsageLimits } from '@/hooks/useUsageLimits';
+import { isDespiaNative, isDespiaIOS, isDespiaAndroid, startNativePurchase } from '@/lib/despia';
+import { useAuth } from '@/hooks/useAuth';
 
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -38,7 +41,8 @@ export default function Subscription() {
   const { data: subscription, isLoading: subscriptionLoading } = useCurrentSubscription();
   const { startCheckout, openCustomerPortal } = useSubscriptionActions();
   const { currentUsers, maxUsers, currentJobsThisMonth, maxJobsPerMonth } = useUsageLimits();
-  
+  const { user } = useAuth();
+  const inDespia = isDespiaNative();
 
   // Handle success/cancel from Stripe
   useEffect(() => {
@@ -64,19 +68,29 @@ export default function Subscription() {
       return;
     }
 
-    // Get the correct Stripe price ID based on billing interval
-    const priceId = billingInterval === 'yearly' 
-      ? plan.stripe_price_id_yearly 
-      : plan.stripe_price_id_monthly;
-
-    if (!priceId) {
-      toast.error('This plan is not configured for online purchase. Please contact support.');
-      return;
-    }
-
     setCheckoutLoading(planId);
     try {
-      await startCheckout(priceId);
+      if (inDespia) {
+        // Native in-app purchase via RevenueCat
+        if (!user?.id) {
+          toast.error('You must be logged in to subscribe');
+          return;
+        }
+        // Use the plan name as the RevenueCat product identifier
+        await startNativePurchase(plan.name, user.id);
+        toast.info('Processing your purchase…');
+      } else {
+        // Web: Stripe checkout
+        const priceId = billingInterval === 'yearly' 
+          ? plan.stripe_price_id_yearly 
+          : plan.stripe_price_id_monthly;
+
+        if (!priceId) {
+          toast.error('This plan is not configured for online purchase. Please contact support.');
+          return;
+        }
+        await startCheckout(priceId);
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to start checkout');
     } finally {
@@ -179,19 +193,26 @@ export default function Subscription() {
                   </Alert>
                 )}
 
-                <Button 
-                  variant="outline" 
-                  onClick={handleManageSubscription}
-                  disabled={portalLoading}
-                  className="gap-2"
-                >
-                  {portalLoading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <ExternalLink className="w-4 h-4" />
-                  )}
-                  Manage Billing
-                </Button>
+                {inDespia ? (
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Smartphone className="w-4 h-4" />
+                    Managed via {isDespiaIOS() ? 'App Store' : isDespiaAndroid() ? 'Google Play' : 'your device'}
+                  </p>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    onClick={handleManageSubscription}
+                    disabled={portalLoading}
+                    className="gap-2"
+                  >
+                    {portalLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ExternalLink className="w-4 h-4" />
+                    )}
+                    Manage Billing
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-4">

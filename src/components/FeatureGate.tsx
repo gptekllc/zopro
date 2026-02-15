@@ -3,9 +3,10 @@ import { useFeatureFlags, FeatureFlag, FEATURE_FLAGS } from '@/hooks/useFeatureF
 import { useSubscriptionPlans, useCurrentSubscription } from '@/hooks/useSubscription';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Lock, Sparkles, ArrowRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { Lock, Sparkles, ArrowRight, ChevronDown, ChevronUp, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { PlanComparisonTable } from '@/components/subscription/PlanComparisonTable';
+import { isDespiaNative } from '@/lib/despia';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface FeatureGateProps {
