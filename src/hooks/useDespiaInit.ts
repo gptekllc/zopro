@@ -5,7 +5,6 @@ import {
   isDespiaNative,
   getDespiaUUID,
   getDespiaOneSignalPlayerId,
-  initializeDespiaIdentity,
   handleDespiaLogin,
   processIdentityRetryQueue,
 } from '@/lib/despia';
@@ -26,13 +25,12 @@ export function useDespiaInit() {
   const deviceLinked = useRef(false);
   const prevUserId = useRef<string | null>(null);
 
-  // Initialize identity + retry queue on first mount
+  // Process retry queue on first mount (skip early anonymous identity init to avoid race condition)
   useEffect(() => {
     if (identityInitialized.current) return;
     if (!isDespiaNative()) return;
     identityInitialized.current = true;
 
-    initializeDespiaIdentity();
     processIdentityRetryQueue();
   }, []);
 

@@ -42,9 +42,8 @@ async function sendOneSignalNotifications(
   try {
     const payload: Record<string, unknown> = {
       app_id: appId,
-      // Modernized: use include_aliases instead of deprecated include_external_user_ids
-      include_aliases: { external_id: externalUserIds },
-      target_channel: "push",
+      // Legacy API: matches Despia's setonesignalplayerid:// scheme registration
+      include_external_user_ids: externalUserIds,
       headings: { en: title },
       contents: { en: body },
     };
