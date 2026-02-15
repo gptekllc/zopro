@@ -1,68 +1,53 @@
 
 
-# Implementation Plan: Despia Push Notifications (All 3 Parts)
+# Fix: Stop Auto-Refresh on App Open / Preserve Dialogs When Switching Apps
 
-The secret will be auto-generated during the SQL migration -- you don't need to provide anything.
+## Problem
 
-## Step 1: Generate INTERNAL_TRIGGER_SECRET via SQL Migration
+Every time you open the app (or return to it after switching to another app), the page automatically refreshes. This causes any open create/edit dialog to close, losing your unsaved work.
 
-A SQL migration will:
-- Generate a random UUID as the secret
-- Store it in `vault.secrets` with the name `internal_trigger_secret`
-- Replace the `trigger_push_notification()` function to read this secret and send it as an `x-trigger-secret` header
+## Root Cause
 
-No manual step required from you.
+The PWA service worker is configured with `registerType: "autoUpdate"`, which automatically activates new service worker versions in the background. When the service worker updates (which happens frequently during development/deployment), it calls `skipWaiting()` and `clients.claim()`, which can trigger a full page reload -- closing any open dialogs.
 
-## Step 2: Update Edge Function (`send-push-notification/index.ts`)
+Additionally, there is a second service worker (`public/sw.js`) for push notifications that also calls `self.skipWaiting()` on install, creating a conflict with the Workbox-managed service worker.
 
-- Add `x-trigger-secret` to CORS allowed headers
-- Add trust check: if `x-trigger-secret` header matches `INTERNAL_TRIGGER_SECRET` env var, treat as trusted
-- Modernize OneSignal API: replace `include_external_user_ids` with `include_aliases: { external_id: [...] }` and add `target_channel: "push"`
+## Solution
 
-## Step 3: Add INTERNAL_TRIGGER_SECRET to Edge Function Secrets
+### 1. Change PWA register type from `autoUpdate` to `prompt`
 
-Use the secrets tool to add the same UUID value. Since the migration generates it in the DB, we need to pick a value upfront and use it in both places. I'll use a pre-generated UUID.
+In `vite.config.ts`, switch from `autoUpdate` to `prompt`. This prevents the new service worker from auto-activating and reloading the page. Instead, the app stores the update function and only applies it when the user explicitly navigates (not when returning from another app).
 
-## Step 4: Update Client Identity (`src/lib/despia.ts`)
+### 2. Remove `skipWaiting()` from `public/sw.js`
 
-Add vault-based identity resolution functions:
-- `initializeDespiaIdentity()` -- vault read, purchase restore, install_id fallback, persist, OneSignal sync
-- `handleDespiaLogin(userId)` -- persist Supabase user ID to vault + OneSignal
-- `handleDespiaLogout()` -- generate anonymous ID, sync to OneSignal
-- `processIdentityRetryQueue()` -- retry failed backend syncs
+The custom push notification service worker should not call `self.skipWaiting()` on install, as this conflicts with the Workbox SW lifecycle. Instead, let it wait for the natural activation cycle.
 
-## Step 5: Update `src/hooks/useDespiaInit.ts`
+### 3. Update `main.tsx` registration
 
-- On mount: call `initializeDespiaIdentity()` + `processIdentityRetryQueue()`
-- On login: call `handleDespiaLogin(user.id)`
-- Keep existing device-linking and iapSuccess logic
-
-## Step 6: Update `src/hooks/useAuth.tsx`
-
-- Call `handleDespiaLogout()` inside the sign-out flow
-
-## Step 7: Deploy and Verify
-
-- Deploy the updated Edge Function
-- Test by calling the function directly with curl to verify the `x-trigger-secret` path works
-- Check Edge Function logs for "OneSignal API response" instead of 401 errors
-
----
-
-## Technical: Secret Flow
-
-The secret value `d7f3a1b2-9e4c-4d8f-b6a5-3c2e1f0d9a8b` (example) will be:
-1. Inserted into `vault.secrets` via SQL migration (DB trigger reads it)
-2. Added as `INTERNAL_TRIGGER_SECRET` Edge Function secret (function reads it)
-3. Both sides compare the value -- match means trusted call
+Adjust the `registerSW` call to match the `prompt` behavior -- the `onNeedRefresh` callback already defers the update correctly, but the registration type needs to match.
 
 ## Files Changed
 
-| File | Action |
+| File | Change |
 |---|---|
-| `supabase/migrations/XXXX_fix_push_trigger_auth.sql` | New: vault secret + updated trigger function |
-| `supabase/functions/send-push-notification/index.ts` | Edit: add trust check + modernize OneSignal API |
-| `src/lib/despia.ts` | Edit: add identity resolution functions |
-| `src/hooks/useDespiaInit.ts` | Edit: use new identity functions |
-| `src/hooks/useAuth.tsx` | Edit: add logout identity cleanup |
+| `vite.config.ts` | Change `registerType` from `"autoUpdate"` to `"prompt"` |
+| `public/sw.js` | Remove `self.skipWaiting()` from install handler |
+| `src/main.tsx` | No change needed (already defers updates correctly) |
+
+## Technical Details
+
+**`vite.config.ts`** -- line 20:
+```
+registerType: "prompt"    // was: "autoUpdate"
+```
+
+**`public/sw.js`** -- install handler:
+```javascript
+self.addEventListener('install', function(event) {
+  console.log('[Service Worker] Installing...');
+  // Removed: self.skipWaiting() -- let Workbox control the lifecycle
+});
+```
+
+With `prompt` mode, the `onNeedRefresh` callback in `main.tsx` fires when a new version is available, but the update is only applied when `updateSW(true)` is explicitly called (currently stored as `__pendingSWUpdate` for the next navigation). The page will never reload automatically just because a new deployment happened.
 
