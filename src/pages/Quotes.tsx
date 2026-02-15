@@ -383,7 +383,7 @@ const Quotes = () => {
                 Create Quote
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl overflow-y-auto">
+            <DialogContent className="max-w-[95vw] sm:max-w-xl md:max-w-2xl lg:max-w-3xl overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
               <DialogHeader className="flex-shrink-0 pr-8">
                 <DialogTitle>{editingQuote ? 'Edit Quote' : 'Create New Quote'}</DialogTitle>
               </DialogHeader>

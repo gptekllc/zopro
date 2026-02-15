@@ -589,7 +589,7 @@ const Jobs = () => {
                   Create Job
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl overflow-y-auto">
+              <DialogContent className="max-w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl xl:max-w-5xl overflow-y-auto" onInteractOutside={(e) => e.preventDefault()}>
                 <DialogHeader className="flex-shrink-0 pr-8">
                   <DialogTitle>{editingJob ? 'Edit Job' : 'Create New Job'}</DialogTitle>
                 </DialogHeader>
