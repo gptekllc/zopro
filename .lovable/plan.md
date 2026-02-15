@@ -1,130 +1,68 @@
 
 
-# Despia Push Notification Integration (Per Official Docs)
+# Implementation Plan: Despia Push Notifications (All 3 Parts)
 
-This plan updates the push notification system to follow the Despia User Session documentation exactly, fixing the 401 trigger auth bug and modernizing the OneSignal API usage.
+The secret will be auto-generated during the SQL migration -- you don't need to provide anything.
 
-## Changes Overview
+## Step 1: Generate INTERNAL_TRIGGER_SECRET via SQL Migration
 
-There are three areas of work:
+A SQL migration will:
+- Generate a random UUID as the secret
+- Store it in `vault.secrets` with the name `internal_trigger_secret`
+- Replace the `trigger_push_notification()` function to read this secret and send it as an `x-trigger-secret` header
 
-1. **Client-side identity resolution** -- Update `src/lib/despia.ts` and `src/hooks/useDespiaInit.ts` to implement the full vault-based identity flow (read vault, restore purchases, fallback to install ID, persist, sync to OneSignal on every launch)
-2. **OneSignal API modernization** -- Update `send-push-notification` Edge Function to use `include_aliases: { external_id: [...] }` with `target_channel: "push"` instead of the deprecated `include_external_user_ids`
-3. **Fix 401 trigger auth** -- Update the `trigger_push_notification()` database function and Edge Function to use a shared `INTERNAL_TRIGGER_SECRET` header for trusted internal calls
+No manual step required from you.
 
----
+## Step 2: Update Edge Function (`send-push-notification/index.ts`)
 
-## Part 1: Client-Side Identity Resolution
+- Add `x-trigger-secret` to CORS allowed headers
+- Add trust check: if `x-trigger-secret` header matches `INTERNAL_TRIGGER_SECRET` env var, treat as trusted
+- Modernize OneSignal API: replace `include_external_user_ids` with `include_aliases: { external_id: [...] }` and add `target_channel: "push"`
 
-### File: `src/lib/despia.ts`
+## Step 3: Add INTERNAL_TRIGGER_SECRET to Edge Function Secrets
 
-Add new functions following the Despia docs:
+Use the secrets tool to add the same UUID value. Since the migration generates it in the DB, we need to pick a value upfront and use it in both places. I'll use a pre-generated UUID.
 
-- `initializeDespiaIdentity()` -- Full identity resolution: vault read, purchase history restore, install_id fallback, vault persist, OneSignal sync
-- `handleDespiaLogin(supabaseUserId)` -- After Supabase auth, sync the user's Supabase ID as the `app_user_id` to vault and OneSignal
-- `handleDespiaLogout()` -- Generate anonymous ID, clear vault lock, sync to OneSignal
-- `checkNativePushPermission()` -- Check push permission status
-- `requestNativePushPermission()` -- Manually request push permission
-- `processIdentityRetryQueue()` -- Retry failed syncs from localStorage queue
+## Step 4: Update Client Identity (`src/lib/despia.ts`)
 
-### File: `src/hooks/useDespiaInit.ts`
+Add vault-based identity resolution functions:
+- `initializeDespiaIdentity()` -- vault read, purchase restore, install_id fallback, persist, OneSignal sync
+- `handleDespiaLogin(userId)` -- persist Supabase user ID to vault + OneSignal
+- `handleDespiaLogout()` -- generate anonymous ID, sync to OneSignal
+- `processIdentityRetryQueue()` -- retry failed backend syncs
 
-Rewrite to use the new identity functions:
+## Step 5: Update `src/hooks/useDespiaInit.ts`
 
-- On app launch (mount): call `initializeDespiaIdentity()` + `processIdentityRetryQueue()`
-- On login (when `user.id` changes from null to value): call `handleDespiaLogin(user.id)` which persists to vault and calls `setonesignalplayerid://`
-- On logout: the `signOut` in `useAuth.tsx` will call `handleDespiaLogout()`
-- Keep existing device-linking logic (save `despia_device_uuid` to profiles table)
-- Keep existing `bindIapSuccessOnce` logic
+- On mount: call `initializeDespiaIdentity()` + `processIdentityRetryQueue()`
+- On login: call `handleDespiaLogin(user.id)`
+- Keep existing device-linking and iapSuccess logic
 
-### File: `src/hooks/useAuth.tsx`
+## Step 6: Update `src/hooks/useAuth.tsx`
 
-Add `handleDespiaLogout()` call inside the `signOut` function to generate a new anonymous identity on logout (per docs: "Do not reuse the device's install_id to prevent identity collision").
+- Call `handleDespiaLogout()` inside the sign-out flow
 
----
+## Step 7: Deploy and Verify
 
-## Part 2: Fix OneSignal API Call (Edge Function)
-
-### File: `supabase/functions/send-push-notification/index.ts`
-
-Update the `sendOneSignalNotifications` function:
-
-**Before (deprecated):**
-```javascript
-include_external_user_ids: externalUserIds,
-```
-
-**After (current API per Despia docs):**
-```javascript
-include_aliases: { external_id: externalUserIds },
-target_channel: 'push',
-```
+- Deploy the updated Edge Function
+- Test by calling the function directly with curl to verify the `x-trigger-secret` path works
+- Check Edge Function logs for "OneSignal API response" instead of 401 errors
 
 ---
 
-## Part 3: Fix 401 Trigger Authentication
+## Technical: Secret Flow
 
-### Secret: `INTERNAL_TRIGGER_SECRET`
+The secret value `d7f3a1b2-9e4c-4d8f-b6a5-3c2e1f0d9a8b` (example) will be:
+1. Inserted into `vault.secrets` via SQL migration (DB trigger reads it)
+2. Added as `INTERNAL_TRIGGER_SECRET` Edge Function secret (function reads it)
+3. Both sides compare the value -- match means trusted call
 
-Generate a random UUID value. Store it in:
-- Supabase Edge Function secrets (via the secrets tool)
-- Database vault (`vault.secrets`) via a SQL migration
+## Files Changed
 
-### File: `supabase/functions/send-push-notification/index.ts`
+| File | Action |
+|---|---|
+| `supabase/migrations/XXXX_fix_push_trigger_auth.sql` | New: vault secret + updated trigger function |
+| `supabase/functions/send-push-notification/index.ts` | Edit: add trust check + modernize OneSignal API |
+| `src/lib/despia.ts` | Edit: add identity resolution functions |
+| `src/hooks/useDespiaInit.ts` | Edit: use new identity functions |
+| `src/hooks/useAuth.tsx` | Edit: add logout identity cleanup |
 
-Add a check at the top of the auth logic:
-
-```javascript
-const triggerSecret = req.headers.get("x-trigger-secret");
-const expectedSecret = Deno.env.get("INTERNAL_TRIGGER_SECRET");
-const isTrustedTrigger = triggerSecret && expectedSecret && triggerSecret === expectedSecret;
-const isServiceRoleCall = isTrustedTrigger || token === supabaseServiceKey || token === supabaseAnonKey;
-```
-
-Also update CORS headers to allow `x-trigger-secret`.
-
-### SQL Migration: Update `trigger_push_notification()` function
-
-Replace the current function that tries to read `service_role_key` from vault. Instead:
-
-- Read `INTERNAL_TRIGGER_SECRET` from `vault.decrypted_secrets`
-- Send it in `x-trigger-secret` header
-- Use the anon key for the `Authorization` header (required by Supabase gateway)
-- Send `skipInAppNotification: true` in the body to avoid duplicate in-app notifications
-
----
-
-## Technical Summary
-
-| Component | Change | Why |
-|---|---|---|
-| `src/lib/despia.ts` | Add vault-based identity resolution, login/logout handlers | Follow Despia docs exactly |
-| `src/hooks/useDespiaInit.ts` | Use new identity functions on mount/login | Proper lifecycle |
-| `src/hooks/useAuth.tsx` | Call `handleDespiaLogout()` on sign out | Prevent identity collision |
-| Edge Function | Use `include_aliases` + `x-trigger-secret` auth | Fix deprecated API + fix 401 |
-| SQL migration | Store secret in vault, update trigger function | Enable trusted internal calls |
-
-## Sequence After Fix
-
-```text
-App Launch --> initializeDespiaIdentity()
-  --> Read vault for app_user_id
-  --> Fallback to despia.uuid
-  --> setonesignalplayerid://?user_id=<app_user_id>
-
-User Login --> handleDespiaLogin(supabase_user_id)
-  --> setvault://?key=app_user_id&value=<supabase_uid>
-  --> setonesignalplayerid://?user_id=<supabase_uid>
-  --> Save device UUID to profiles table
-
-Job Assigned --> DB trigger fires
-  --> trigger_push_notification() reads INTERNAL_TRIGGER_SECRET from vault
-  --> POST /send-push-notification with x-trigger-secret header
-  --> Edge Function: secret matches = trusted
-  --> OneSignal API: include_aliases: { external_id: [user_id] }
-  --> Native push delivered
-
-User Logout --> handleDespiaLogout()
-  --> Generate anonymous ID
-  --> setonesignalplayerid://?user_id=<anonymous_id>
-```
