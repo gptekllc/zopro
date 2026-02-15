@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trigger-secret, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface PushNotificationRequest {
@@ -18,7 +18,7 @@ interface PushNotificationRequest {
   skipInAppNotification?: boolean;
 }
 
-// --- OneSignal delivery ---
+// --- OneSignal delivery (modernized API) ---
 async function sendOneSignalNotifications(
   externalUserIds: string[],
   title: string,
@@ -42,7 +42,9 @@ async function sendOneSignalNotifications(
   try {
     const payload: Record<string, unknown> = {
       app_id: appId,
-      include_external_user_ids: externalUserIds,
+      // Modernized: use include_aliases instead of deprecated include_external_user_ids
+      include_aliases: { external_id: externalUserIds },
+      target_channel: "push",
       headings: { en: title },
       contents: { en: body },
     };
@@ -95,15 +97,20 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     const token = authHeader?.replace("Bearer ", "");
 
-    const isServiceRoleCall = token === supabaseServiceKey || token === supabaseAnonKey;
+    // Check for trusted internal trigger via shared secret
+    const triggerSecret = req.headers.get("x-trigger-secret");
+    const expectedSecret = Deno.env.get("INTERNAL_TRIGGER_SECRET");
+    const isTrustedTrigger = !!(triggerSecret && expectedSecret && triggerSecret === expectedSecret);
+
+    const isServiceRoleCall = isTrustedTrigger || token === supabaseServiceKey || token === supabaseAnonKey;
 
     const { userId, companyId, title, body, icon, url, tag, badge_count, skipInAppNotification }: PushNotificationRequest = await req.json();
 
     const shouldSkipInApp = isServiceRoleCall || skipInAppNotification;
 
-    console.log("Sending push notification:", { userId, companyId, title, body, isServiceRoleCall });
+    console.log("Sending push notification:", { userId, companyId, title, body, isServiceRoleCall, isTrustedTrigger });
 
-    // --- Authorization (unchanged) ---
+    // --- Authorization ---
     if (!isServiceRoleCall) {
       if (!authHeader) {
         return new Response(
@@ -219,7 +226,6 @@ serve(async (req) => {
     }
 
     // --- OneSignal native push delivery ---
-    // Use the user IDs directly as external_user_ids (set via setonesignalplayerid:// on login)
     const onesignalResult = await sendOneSignalNotifications(
       targetUserIds,
       title,
@@ -242,7 +248,6 @@ serve(async (req) => {
         .in("user_id", targetUserIds);
 
       if (subscriptions && subscriptions.length > 0) {
-        // Web push placeholder — full VAPID encryption requires web-push library
         webPushSent = subscriptions.length;
         console.log(`Found ${subscriptions.length} web push subscriptions`);
       }
