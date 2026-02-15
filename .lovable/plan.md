@@ -1,77 +1,130 @@
 
 
-# Fix Push Notification Trigger Auth (401 Bug)
+# Despia Push Notification Integration (Per Official Docs)
 
-## Problem Found
+This plan updates the push notification system to follow the Despia User Session documentation exactly, fixing the 401 trigger auth bug and modernizing the OneSignal API usage.
 
-The database trigger `trigger_push_notification()` calls the `send-push-notification` Edge Function, but **every call returns 401**. Root cause:
+## Changes Overview
 
-1. The trigger tries to read `service_role_key` from `vault.decrypted_secrets` -- it does not exist there
-2. It falls back to a **hardcoded anon key** that does not match the actual `SUPABASE_ANON_KEY` on the Edge Function side (Lovable Cloud uses different keys than what was hardcoded)
-3. The Edge Function compares the token against its own `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_ANON_KEY` env vars -- neither matches, so `isServiceRoleCall = false`
-4. It then tries user-auth validation, which fails because the token is not a user JWT
+There are three areas of work:
 
-## Fix
+1. **Client-side identity resolution** -- Update `src/lib/despia.ts` and `src/hooks/useDespiaInit.ts` to implement the full vault-based identity flow (read vault, restore purchases, fallback to install ID, persist, sync to OneSignal on every launch)
+2. **OneSignal API modernization** -- Update `send-push-notification` Edge Function to use `include_aliases: { external_id: [...] }` with `target_channel: "push"` instead of the deprecated `include_external_user_ids`
+3. **Fix 401 trigger auth** -- Update the `trigger_push_notification()` database function and Edge Function to use a shared `INTERNAL_TRIGGER_SECRET` header for trusted internal calls
 
-### Step 1: Store the service role key in vault
+---
 
-Run a SQL migration to insert the actual service role key into `vault.secrets` so the trigger can retrieve it. The key will be obtained from the Edge Function environment.
+## Part 1: Client-Side Identity Resolution
 
-### Step 2: Alternative approach -- bypass auth for trigger calls
+### File: `src/lib/despia.ts`
 
-Since the DB trigger runs server-side and is trusted, a simpler fix is to add a shared secret header that the Edge Function checks. This avoids vault dependency:
+Add new functions following the Despia docs:
 
-1. Add a secret (e.g., `PUSH_TRIGGER_SECRET`) to both the DB function and Edge Function secrets
-2. The trigger sends it as a custom header
-3. The Edge Function recognizes it and treats the call as trusted
+- `initializeDespiaIdentity()` -- Full identity resolution: vault read, purchase history restore, install_id fallback, vault persist, OneSignal sync
+- `handleDespiaLogin(supabaseUserId)` -- After Supabase auth, sync the user's Supabase ID as the `app_user_id` to vault and OneSignal
+- `handleDespiaLogout()` -- Generate anonymous ID, clear vault lock, sync to OneSignal
+- `checkNativePushPermission()` -- Check push permission status
+- `requestNativePushPermission()` -- Manually request push permission
+- `processIdentityRetryQueue()` -- Retry failed syncs from localStorage queue
 
-### Step 3 (Recommended): Simplest fix -- use `skipInAppNotification` flag as trust signal
+### File: `src/hooks/useDespiaInit.ts`
 
-Since the trigger always sends `skipInAppNotification: true` implicitly (via the `isServiceRoleCall` path), we can instead restructure: have the Edge Function accept calls with the anon key by passing the actual project anon key dynamically rather than hardcoding it in the trigger.
+Rewrite to use the new identity functions:
 
-**Chosen approach**: Update the `trigger_push_notification()` DB function to use the correct Supabase URL and anon key dynamically, and update the Edge Function to also accept a shared internal secret header.
+- On app launch (mount): call `initializeDespiaIdentity()` + `processIdentityRetryQueue()`
+- On login (when `user.id` changes from null to value): call `handleDespiaLogin(user.id)` which persists to vault and calls `setonesignalplayerid://`
+- On logout: the `signOut` in `useAuth.tsx` will call `handleDespiaLogout()`
+- Keep existing device-linking logic (save `despia_device_uuid` to profiles table)
+- Keep existing `bindIapSuccessOnce` logic
 
-## Technical Details
+### File: `src/hooks/useAuth.tsx`
 
-### A. Update `trigger_push_notification()` SQL function
-- Remove the hardcoded anon key fallback
-- Instead, pass a custom header `x-trigger-secret` with a value from a new vault secret
-- Keep using `net.http_post` to call the Edge Function
+Add `handleDespiaLogout()` call inside the `signOut` function to generate a new anonymous identity on logout (per docs: "Do not reuse the device's install_id to prevent identity collision").
 
-### B. Add `INTERNAL_TRIGGER_SECRET` to Edge Function secrets
-- Generate a random secret value
-- Store it in Supabase secrets for Edge Functions
-- Store the same value in `vault.secrets` for the DB trigger to read
+---
 
-### C. Update `send-push-notification` Edge Function
-- Add a check: if `x-trigger-secret` header matches `INTERNAL_TRIGGER_SECRET` env var, treat as trusted (service-role equivalent)
-- Keep existing auth checks for user-initiated calls unchanged
+## Part 2: Fix OneSignal API Call (Edge Function)
 
-### D. Test end-to-end
-- Assign a technician to a job from the dashboard
-- Verify the notification trigger fires
-- Verify the Edge Function logs show "OneSignal API response" (not 401)
-- Verify the native push arrives on the Despia device
+### File: `supabase/functions/send-push-notification/index.ts`
 
-## Expected Flow After Fix
+Update the `sendOneSignalNotifications` function:
 
-```text
-Job assigned --> DB trigger fires
-     |
-     v
-trigger_push_notification() reads secret from vault
-     |
-     v
-POST /send-push-notification with x-trigger-secret header
-     |
-     v
-Edge Function: secret matches --> trusted call
-     |
-     v
-Skip in-app insert (already created by trigger)
-Query badge count --> Call OneSignal API
-     |
-     v
-Native push delivered to device
+**Before (deprecated):**
+```javascript
+include_external_user_ids: externalUserIds,
 ```
 
+**After (current API per Despia docs):**
+```javascript
+include_aliases: { external_id: externalUserIds },
+target_channel: 'push',
+```
+
+---
+
+## Part 3: Fix 401 Trigger Authentication
+
+### Secret: `INTERNAL_TRIGGER_SECRET`
+
+Generate a random UUID value. Store it in:
+- Supabase Edge Function secrets (via the secrets tool)
+- Database vault (`vault.secrets`) via a SQL migration
+
+### File: `supabase/functions/send-push-notification/index.ts`
+
+Add a check at the top of the auth logic:
+
+```javascript
+const triggerSecret = req.headers.get("x-trigger-secret");
+const expectedSecret = Deno.env.get("INTERNAL_TRIGGER_SECRET");
+const isTrustedTrigger = triggerSecret && expectedSecret && triggerSecret === expectedSecret;
+const isServiceRoleCall = isTrustedTrigger || token === supabaseServiceKey || token === supabaseAnonKey;
+```
+
+Also update CORS headers to allow `x-trigger-secret`.
+
+### SQL Migration: Update `trigger_push_notification()` function
+
+Replace the current function that tries to read `service_role_key` from vault. Instead:
+
+- Read `INTERNAL_TRIGGER_SECRET` from `vault.decrypted_secrets`
+- Send it in `x-trigger-secret` header
+- Use the anon key for the `Authorization` header (required by Supabase gateway)
+- Send `skipInAppNotification: true` in the body to avoid duplicate in-app notifications
+
+---
+
+## Technical Summary
+
+| Component | Change | Why |
+|---|---|---|
+| `src/lib/despia.ts` | Add vault-based identity resolution, login/logout handlers | Follow Despia docs exactly |
+| `src/hooks/useDespiaInit.ts` | Use new identity functions on mount/login | Proper lifecycle |
+| `src/hooks/useAuth.tsx` | Call `handleDespiaLogout()` on sign out | Prevent identity collision |
+| Edge Function | Use `include_aliases` + `x-trigger-secret` auth | Fix deprecated API + fix 401 |
+| SQL migration | Store secret in vault, update trigger function | Enable trusted internal calls |
+
+## Sequence After Fix
+
+```text
+App Launch --> initializeDespiaIdentity()
+  --> Read vault for app_user_id
+  --> Fallback to despia.uuid
+  --> setonesignalplayerid://?user_id=<app_user_id>
+
+User Login --> handleDespiaLogin(supabase_user_id)
+  --> setvault://?key=app_user_id&value=<supabase_uid>
+  --> setonesignalplayerid://?user_id=<supabase_uid>
+  --> Save device UUID to profiles table
+
+Job Assigned --> DB trigger fires
+  --> trigger_push_notification() reads INTERNAL_TRIGGER_SECRET from vault
+  --> POST /send-push-notification with x-trigger-secret header
+  --> Edge Function: secret matches = trusted
+  --> OneSignal API: include_aliases: { external_id: [user_id] }
+  --> Native push delivered
+
+User Logout --> handleDespiaLogout()
+  --> Generate anonymous ID
+  --> setonesignalplayerid://?user_id=<anonymous_id>
+```
