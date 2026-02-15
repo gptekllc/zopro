@@ -3,7 +3,7 @@
 
 self.addEventListener('install', function(event) {
   console.log('[Service Worker] Installing...');
-  self.skipWaiting();
+  // Do NOT call self.skipWaiting() — let Workbox control the lifecycle
 });
 
 self.addEventListener('activate', function(event) {
