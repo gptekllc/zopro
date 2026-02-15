@@ -63,7 +63,11 @@ const Invoices = () => {
 
   // Search and filter state (lifted for header placement)
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string[]>(['all']);
+  const [statusFilter, setStatusFilter] = useState<string[]>(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam) return statusParam.split(',');
+    return ['all'];
+  });
 
   // Form state
   const [formData, setFormData] = useState<{
