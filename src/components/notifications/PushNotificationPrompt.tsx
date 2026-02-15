@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useAuth } from '@/hooks/useAuth';
+import { isDespiaNative } from '@/lib/despia';
 
 const PROMPT_DISMISSED_KEY = 'push-notification-prompt-dismissed';
 const PROMPT_DELAY_MS = 3000; // Wait 3 seconds before showing prompt
@@ -15,6 +16,11 @@ export function PushNotificationPrompt() {
   const [isEnabling, setIsEnabling] = useState(false);
 
   useEffect(() => {
+    // Native push is automatic in Despia — skip prompt
+    if (isDespiaNative()) {
+      setShowPrompt(false);
+      return;
+    }
     // Only show prompt if:
     // 1. User is logged in
     // 2. Push is supported

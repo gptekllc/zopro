@@ -18,6 +18,8 @@ This project uses [Despia](https://despia.com) to wrap the Lovable web app as a 
 - **RevenueCat IAP**: Purchase flow via `revenuecat://purchase`, `iapSuccess` handler, server-driven offerings
 - **Sign in with Apple**: AppleJS inline + custom Edge Functions (concept — needs Apple Developer credentials)
 
+- **Push Notifications (Platform-Aware)**: Native push via OneSignal in Despia; PWA push on web. UI conditionally renders based on `isDespiaNative()`. Device UUID and OneSignal player ID are linked to user profile on login.
+
 ## Documentation Sources (memory-proof)
 - Primary sitemap: https://setup.despia.com/llms.txt
 - Feature page(s) used most recently:
