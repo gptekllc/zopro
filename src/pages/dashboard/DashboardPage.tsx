@@ -427,9 +427,12 @@ export default function DashboardPage() {
                 <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
                 <div>
                   <p className="font-medium text-destructive">Overdue Invoices</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    You have {overdueInvoices.length} overdue invoice(s).
-                  </p>
+                  <Link 
+                    to="/invoices?status=overdue"
+                    className="text-sm text-muted-foreground mt-1 block hover:underline"
+                  >
+                    You have {overdueInvoices.length} overdue invoice(s). Tap to view.
+                  </Link>
                 </div>
               </div>
             </CardContent>
