@@ -1,53 +1,70 @@
 
 
-# Fix: Stop Auto-Refresh on App Open / Preserve Dialogs When Switching Apps
+# Fix: Stop Page Refresh When Reopening the App
 
 ## Problem
-
-Every time you open the app (or return to it after switching to another app), the page automatically refreshes. This causes any open create/edit dialog to close, losing your unsaved work.
+When you switch away from the app and come back, the entire page refreshes, closing any open dialogs and losing unsaved work. The previous service worker fix was necessary but didn't solve the issue completely.
 
 ## Root Cause
-
-The PWA service worker is configured with `registerType: "autoUpdate"`, which automatically activates new service worker versions in the background. When the service worker updates (which happens frequently during development/deployment), it calls `skipWaiting()` and `clients.claim()`, which can trigger a full page reload -- closing any open dialogs.
-
-Additionally, there is a second service worker (`public/sw.js`) for push notifications that also calls `self.skipWaiting()` on install, creating a conflict with the Workbox-managed service worker.
+When you return to the app, Supabase automatically refreshes the authentication token and fires a `TOKEN_REFRESHED` event. The current code in `useAuth.tsx` treats this event the same as a fresh login -- it re-fetches the profile, roles, and MFA status. Critically, `refreshMFAStatus()` sets `isMFALoading = true`, which causes `ProtectedRoute` to unmount the entire page and show a "Loading..." screen. When it finishes, the page re-renders from scratch and any open dialog is gone.
 
 ## Solution
 
-### 1. Change PWA register type from `autoUpdate` to `prompt`
+Two changes in a single file (`src/hooks/useAuth.tsx`):
 
-In `vite.config.ts`, switch from `autoUpdate` to `prompt`. This prevents the new service worker from auto-activating and reloading the page. Instead, the app stores the update function and only applies it when the user explicitly navigates (not when returning from another app).
+### 1. Skip full re-fetch on TOKEN_REFRESHED events
+Add an early return in the `onAuthStateChange` handler for `TOKEN_REFRESHED` events. A token refresh doesn't change the user's profile, roles, or MFA status -- it just extends the session. There's no reason to re-fetch everything.
 
-### 2. Remove `skipWaiting()` from `public/sw.js`
-
-The custom push notification service worker should not call `self.skipWaiting()` on install, as this conflicts with the Workbox SW lifecycle. Instead, let it wait for the natural activation cycle.
-
-### 3. Update `main.tsx` registration
-
-Adjust the `registerSW` call to match the `prompt` behavior -- the `onNeedRefresh` callback already defers the update correctly, but the registration type needs to match.
+### 2. Only show MFA loading screen on initial app boot
+Add a `useRef` flag (`initialLoadComplete`) so that `refreshMFAStatus` only sets `isMFALoading = true` during the very first load. After that, MFA checks still run (for enroll/verify actions) but they update state silently without triggering the full-page loading screen in `ProtectedRoute`.
 
 ## Files Changed
 
 | File | Change |
 |---|---|
-| `vite.config.ts` | Change `registerType` from `"autoUpdate"` to `"prompt"` |
-| `public/sw.js` | Remove `self.skipWaiting()` from install handler |
-| `src/main.tsx` | No change needed (already defers updates correctly) |
+| `src/hooks/useAuth.tsx` | Filter out `TOKEN_REFRESHED` in auth listener; guard `isMFALoading` with initial-load ref |
 
 ## Technical Details
 
-**`vite.config.ts`** -- line 20:
-```
-registerType: "prompt"    // was: "autoUpdate"
-```
+**Change 1** -- `onAuthStateChange` handler (around line 233):
+```typescript
+supabase.auth.onAuthStateChange((event, session) => {
+  setSession(session);
+  setUser(session?.user ?? null);
 
-**`public/sw.js`** -- install handler:
-```javascript
-self.addEventListener('install', function(event) {
-  console.log('[Service Worker] Installing...');
-  // Removed: self.skipWaiting() -- let Workbox control the lifecycle
+  // Token refresh happens on every app resume -- skip full re-fetch
+  // to prevent unmounting the page and closing open dialogs
+  if (event === 'TOKEN_REFRESHED') return;
+
+  if (session?.user) {
+    // ... existing profile/roles/MFA fetch
+  } else {
+    // ... existing cleanup
+  }
 });
 ```
 
-With `prompt` mode, the `onNeedRefresh` callback in `main.tsx` fires when a new version is available, but the update is only applied when `updateSW(true)` is explicitly called (currently stored as `__pendingSWUpdate` for the next navigation). The page will never reload automatically just because a new deployment happened.
+**Change 2** -- `refreshMFAStatus` function (around line 121):
+```typescript
+const initialLoadComplete = useRef(false);
+
+const refreshMFAStatus = async (userId?: string) => {
+  // Only show the full loading screen during initial app boot
+  if (!initialLoadComplete.current) {
+    setIsMFALoading(true);
+  }
+  try {
+    // ... existing MFA + trusted device logic (unchanged)
+  } finally {
+    setIsMFALoading(false);
+    initialLoadComplete.current = true;
+  }
+};
+```
+
+These two changes ensure:
+- Returning to the app after switching never triggers a full-page reload
+- Open dialogs and unsaved work are preserved
+- MFA security is still enforced on initial login
+- Explicit MFA actions (enroll, verify, unenroll) still work correctly
 
