@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useNavigationBlocker } from '@/hooks/useNavigationBlocker';
-import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+
 import { useCompany } from '@/hooks/useCompany';
 import { useEmailDocument, useDownloadDocument, useConvertQuoteToInvoice } from '@/hooks/useDocumentActions';
 import { useUndoableDelete } from '@/hooks/useUndoableDelete';
@@ -476,7 +476,6 @@ export function QuoteListManager({
       )}
 
       {/* Quote List */}
-      <PullToRefresh onRefresh={async () => { if (onRefetch) await onRefetch(); }} className="sm:contents">
         <div className="space-y-3">
           {paginatedQuotes.map((quote, index) => (
             <QuoteListCard
@@ -522,7 +521,6 @@ export function QuoteListManager({
             pageSizeOptions={[25, 50, 100, 150]}
           />
         </div>
-      </PullToRefresh>
 
       {/* Quote Email Dialog with Templates */}
       <DocumentEmailDialog

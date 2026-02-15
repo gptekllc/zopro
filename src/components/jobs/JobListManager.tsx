@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useNavigationBlocker } from '@/hooks/useNavigationBlocker';
-import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/hooks/useAuth';
 import { useDownloadDocument, useEmailDocument } from '@/hooks/useDocumentActions';
@@ -526,7 +526,6 @@ export function JobListManager({
       )}
 
       {/* Job List */}
-      <PullToRefresh onRefresh={async () => { if (onRefetch) await onRefetch(); }} className="sm:contents">
         <div className="space-y-3">
           {paginatedJobs.map((job, index) => (
             <JobListCard
@@ -575,7 +574,6 @@ export function JobListManager({
             pageSizeOptions={[25, 50, 100, 150]}
           />
         </div>
-      </PullToRefresh>
 
       {/* Job Email Dialog with Templates */}
       <DocumentEmailDialog

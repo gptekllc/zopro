@@ -338,7 +338,7 @@ export function JobDetailDialog({
   };
   const etaOptions = [10, 20, 30, 45, 60] as const;
   return <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl overflow-hidden rounded-lg p-0 flex flex-col">
+      <DialogContent className="max-w-2xl md:max-w-4xl lg:max-w-5xl overflow-hidden rounded-lg p-0 flex flex-col" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader className="p-4 sm:p-6 pb-0 sm:pb-0">
           <div className="flex items-center justify-between gap-2 pr-8">
             <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
