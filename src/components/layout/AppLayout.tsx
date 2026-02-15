@@ -348,8 +348,10 @@ const AppLayout = ({
             const isActive = location.pathname === item.path;
             const showBadge = item.path === '/notifications' && unreadNotifications > 0;
             const handleSidebarNav = (e: React.MouseEvent) => {
+              e.preventDefault();
+              // Skip if already on the target page
+              if (location.pathname === item.path) return;
               if ((window as any).__hasUnsavedChanges) {
-                e.preventDefault();
                 if (!window.confirm('You have unsaved changes. Leave this page?')) {
                   return;
                 }

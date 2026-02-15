@@ -32,8 +32,10 @@ const MobileBottomNav = () => {
   const { triggerNavigationHaptic } = useHaptic();
 
   const guardedNavigate = (path: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    // Skip if already on the target page
+    if (location.pathname === path) return;
     if ((window as any).__hasUnsavedChanges) {
-      e.preventDefault();
       if (!window.confirm('You have unsaved changes. Leave this page?')) {
         return;
       }
