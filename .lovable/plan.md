@@ -1,64 +1,77 @@
 
 
-# Add OneSignal Push Delivery to Edge Function
+# Fix Push Notification Trigger Auth (401 Bug)
 
-## Step 1: Add Required Secrets
-Two secrets need to be added to Supabase Edge Functions:
+## Problem Found
 
-- **ONESIGNAL_APP_ID** -- Found in OneSignal Dashboard > Settings > Keys and IDs
-- **ONESIGNAL_REST_API_KEY** -- Found in the same location (labeled "REST API Key")
+The database trigger `trigger_push_notification()` calls the `send-push-notification` Edge Function, but **every call returns 401**. Root cause:
 
-I will prompt you to add these before proceeding with code changes.
+1. The trigger tries to read `service_role_key` from `vault.decrypted_secrets` -- it does not exist there
+2. It falls back to a **hardcoded anon key** that does not match the actual `SUPABASE_ANON_KEY` on the Edge Function side (Lovable Cloud uses different keys than what was hardcoded)
+3. The Edge Function compares the token against its own `SUPABASE_SERVICE_ROLE_KEY` and `SUPABASE_ANON_KEY` env vars -- neither matches, so `isServiceRoleCall = false`
+4. It then tries user-auth validation, which fails because the token is not a user JWT
 
-## Step 2: Update `supabase/functions/send-push-notification/index.ts`
+## Fix
 
-After the existing in-app notification logic, add OneSignal delivery:
+### Step 1: Store the service role key in vault
 
-1. Read `ONESIGNAL_APP_ID` and `ONESIGNAL_REST_API_KEY` from environment
-2. Query the `profiles` table for users matching the target `userId` or `companyId` who have a non-null `onesignal_player_id`
-3. If player IDs are found, call OneSignal's Create Notification API:
+Run a SQL migration to insert the actual service role key into `vault.secrets` so the trigger can retrieve it. The key will be obtained from the Edge Function environment.
 
-```
-POST https://onesignal.com/api/v1/notifications
-Authorization: Basic <ONESIGNAL_REST_API_KEY>
+### Step 2: Alternative approach -- bypass auth for trigger calls
 
-{
-  "app_id": "<ONESIGNAL_APP_ID>",
-  "include_external_user_ids": ["<user_id>"],
-  "headings": { "en": "<title>" },
-  "contents": { "en": "<body>" },
-  "data": { "url": "<url>", "tag": "<tag>" },
-  "ios_badgeType": "SetTo",
-  "ios_badgeCount": <badge_count>
-}
-```
+Since the DB trigger runs server-side and is trusted, a simpler fix is to add a shared secret header that the Edge Function checks. This avoids vault dependency:
 
-4. Log the OneSignal API response for debugging
-5. Keep the existing VAPID/web-push path unchanged for web users
+1. Add a secret (e.g., `PUSH_TRIGGER_SECRET`) to both the DB function and Edge Function secrets
+2. The trigger sends it as a custom header
+3. The Edge Function recognizes it and treats the call as trusted
 
-## Step 3: No Frontend Changes
+### Step 3 (Recommended): Simplest fix -- use `skipInAppNotification` flag as trust signal
 
-The UI (`PushNotificationToggle`, `useDespiaInit`) is already correctly wired. The `setonesignalplayerid://` call on login maps user IDs to devices in OneSignal, and `onesignal_player_id` is stored in the `profiles` table.
+Since the trigger always sends `skipInAppNotification: true` implicitly (via the `isServiceRoleCall` path), we can instead restructure: have the Edge Function accept calls with the anon key by passing the actual project anon key dynamically rather than hardcoding it in the trigger.
 
-## Flow After Fix
+**Chosen approach**: Update the `trigger_push_notification()` DB function to use the correct Supabase URL and anon key dynamically, and update the Edge Function to also accept a shared internal secret header.
+
+## Technical Details
+
+### A. Update `trigger_push_notification()` SQL function
+- Remove the hardcoded anon key fallback
+- Instead, pass a custom header `x-trigger-secret` with a value from a new vault secret
+- Keep using `net.http_post` to call the Edge Function
+
+### B. Add `INTERNAL_TRIGGER_SECRET` to Edge Function secrets
+- Generate a random secret value
+- Store it in Supabase secrets for Edge Functions
+- Store the same value in `vault.secrets` for the DB trigger to read
+
+### C. Update `send-push-notification` Edge Function
+- Add a check: if `x-trigger-secret` header matches `INTERNAL_TRIGGER_SECRET` env var, treat as trusted (service-role equivalent)
+- Keep existing auth checks for user-initiated calls unchanged
+
+### D. Test end-to-end
+- Assign a technician to a job from the dashboard
+- Verify the notification trigger fires
+- Verify the Edge Function logs show "OneSignal API response" (not 401)
+- Verify the native push arrives on the Despia device
+
+## Expected Flow After Fix
 
 ```text
-Notification inserted in DB
-        |
-        v
-DB trigger --> send-push-notification Edge Function
-        |
-        v
-  1. Skip in-app insert (already exists)
-  2. Query profiles for onesignal_player_id
-  3. If found --> POST to OneSignal REST API --> native push delivered
-  4. Also handle web push_subscriptions (existing path)
+Job assigned --> DB trigger fires
+     |
+     v
+trigger_push_notification() reads secret from vault
+     |
+     v
+POST /send-push-notification with x-trigger-secret header
+     |
+     v
+Edge Function: secret matches --> trusted call
+     |
+     v
+Skip in-app insert (already created by trigger)
+Query badge count --> Call OneSignal API
+     |
+     v
+Native push delivered to device
 ```
 
-## What You Need To Do
-
-When I prompt you, paste in your:
-- OneSignal App ID
-- OneSignal REST API Key
-
-Both are found at: OneSignal Dashboard > Your App > Settings > Keys and IDs
