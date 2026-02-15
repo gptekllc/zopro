@@ -88,7 +88,7 @@ const MobileBottomNav = () => {
         paddingBottom: 'max(0.25rem, calc(var(--safe-area-bottom) * 0.5))'
       }}
     >
-      <div className="flex items-center justify-around h-16">
+      <div className="flex items-center justify-around" style={{ height: '4.375rem' }}>
         {mainNavItems.map((item) => (
           <a
             key={item.path}
