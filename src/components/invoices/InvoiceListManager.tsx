@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { useNavigationBlocker } from '@/hooks/useNavigationBlocker';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCompany } from '@/hooks/useCompany';
 import { useEmailDocument, useDownloadDocument } from '@/hooks/useDocumentActions';
@@ -123,6 +124,7 @@ export function InvoiceListManager({
     }
   };
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
+  useNavigationBlocker(!!viewingInvoice);
 
   // Handle initial view invoice from parent
   useEffect(() => {

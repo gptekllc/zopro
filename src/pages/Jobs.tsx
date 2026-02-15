@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useNavigationBlocker } from '@/hooks/useNavigationBlocker';
+import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
 import { useQueryClient } from '@tanstack/react-query';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useJobs, useCreateJob, useUpdateJob, Job } from '@/hooks/useJobs';
@@ -114,7 +115,7 @@ const Jobs = () => {
 
   // Dialog state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  useNavigationBlocker(isDialogOpen);
+  useNavigationBlocker(isDialogOpen || !!viewingJob);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [importQuoteId, setImportQuoteId] = useState<string>('');
   const [saveAsTemplateJob, setSaveAsTemplateJob] = useState<Job | null>(null);
@@ -548,7 +549,8 @@ const Jobs = () => {
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>;
   }
-  return <PageContainer className="space-y-6">
+  return <PullToRefresh onRefresh={async () => { await refetchJobs(); }} renderSkeleton={() => <ListSkeleton count={5} />} className="min-h-full">
+    <PageContainer className="space-y-6">
       {/* Usage Limit Warning */}
       <UsageLimitWarning type="jobs" showProgress />
 
@@ -793,6 +795,7 @@ const Jobs = () => {
 
       {/* Save As Template Dialog */}
       {saveAsTemplateJob && <SaveAsTemplateDialog job={saveAsTemplateJob} open={!!saveAsTemplateJob} onOpenChange={open => !open && setSaveAsTemplateJob(null)} />}
-    </PageContainer>;
+    </PageContainer>
+    </PullToRefresh>;
 };
 export default Jobs;

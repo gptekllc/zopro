@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useNavigationBlocker } from '@/hooks/useNavigationBlocker';
+import { PullToRefresh, ListSkeleton } from '@/components/ui/pull-to-refresh';
 import { useQueryClient } from "@tanstack/react-query";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { useInvoices, useCreateInvoice, useUpdateInvoice, Invoice } from "@/hooks/useInvoices";
@@ -368,6 +369,7 @@ const Invoices = () => {
   }
 
   return (
+    <PullToRefresh onRefresh={handleRefresh} renderSkeleton={() => <ListSkeleton count={5} />} className="min-h-full">
     <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
@@ -619,6 +621,7 @@ const Invoices = () => {
         />
       </div>
     </PageContainer>
+    </PullToRefresh>
   );
 };
 
