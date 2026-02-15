@@ -85,7 +85,7 @@ const MobileBottomNav = () => {
       className="lg:hidden fixed left-0 right-0 bg-card border-t z-[90]"
       style={{ 
         bottom: 0,
-        paddingBottom: 'max(0.25rem, calc(var(--safe-area-bottom) * 0.5))'
+        paddingBottom: 'max(calc(0.25rem + 5px), calc(var(--safe-area-bottom) * 0.5 + 5px))'
       }}
     >
       <div className="flex items-center justify-around" style={{ height: '4.375rem' }}>
