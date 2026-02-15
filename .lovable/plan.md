@@ -1,78 +1,50 @@
 
-## Fix Detail Dialog Outside-Click and Add Unsaved Changes Warning on Close
+# Push Notification Enhancement for Despia Native
 
-### Change 1: Remove `onInteractOutside` from Detail Dialogs
+## Summary
+The OneSignal push integration via Despia is already wired up -- `setonesignalplayerid://` is called on every login. The main improvement needed is making the UI **platform-aware**: when running inside Despia, push is handled natively via OneSignal (no user opt-in needed), so the PWA push toggle and prompt should be replaced with a native-appropriate display.
 
-The detail dialogs (JobDetailDialog, QuoteDetailDialog, InvoiceDetailDialog) should allow closing by clicking outside -- they are read-only views, not forms with unsaved data.
+## What Already Works
+- `src/lib/despia.ts` calls `despia('setonesignalplayerid://?user_id=...')` correctly
+- `useDespiaInit` hook fires this on every login inside `AuthedLayout`
+- Deep links (AASA/assetlinks) are hosted
+- PWA push works for web users via service worker
 
-**Files:**
-- `src/components/jobs/JobDetailDialog.tsx` -- Remove `onInteractOutside={(e) => e.preventDefault()}`
-- `src/components/quotes/QuoteDetailDialog.tsx` -- Remove `onInteractOutside={(e) => e.preventDefault()}`
-- `src/components/invoices/InvoiceDetailDialog.tsx` -- Remove `onInteractOutside={(e) => e.preventDefault()}`
+## Changes
 
-### Change 2: Add Unsaved Changes Confirmation on Create/Edit Dialog Close
+### 1. Update PushNotificationToggle to be platform-aware
+**File:** `src/components/notifications/PushNotificationToggle.tsx`
 
-When the user clicks the X button or Cancel on a create/edit dialog, check if any form fields have been modified from their initial state. If changes exist, show a `window.confirm()` prompt before closing.
+When inside Despia native runtime:
+- Show a card confirming "Native push notifications are active via OneSignal"
+- Display the platform (iOS / Android)
+- No toggle needed -- push is managed at the OS level
+- Provide guidance to manage in device Settings if needed
 
-**Approach:**
-- Store the initial form state when the dialog opens (using a `useRef`)
-- On close attempt (via `onOpenChange(false)` or Cancel button), compare current form data to the initial snapshot
-- If different, show `window.confirm('You have unsaved changes. Discard and close?')`
-- If confirmed or no changes, close the dialog and reset form
-- Keep `onInteractOutside={(e) => e.preventDefault()}` to prevent accidental background taps from triggering the close flow
+When on web (not Despia):
+- Keep the existing PWA push toggle behavior unchanged
 
-**Files:**
-- `src/pages/Jobs.tsx` -- Add `initialFormRef`, dirty check in `onOpenChange` and Cancel button
-- `src/pages/Quotes.tsx` -- Same pattern
-- `src/pages/Invoices.tsx` -- Same pattern
+### 2. Update PushNotificationPrompt to skip in Despia
+**File:** `src/components/notifications/PushNotificationPrompt.tsx`
 
-### Technical Detail
+When inside Despia, return `null` immediately -- native push is automatic, no prompt needed.
 
-For each page, the implementation will:
+### 3. Update useDespiaInit to also send device UUID
+**File:** `src/hooks/useDespiaInit.ts`
 
-1. Add a `useRef` to capture the initial form state when the dialog opens:
-```tsx
-const initialFormRef = useRef<string>('');
-```
+After login, also read `despia.uuid` and `despia.onesignalplayerid` and post them to the backend to link the device identity with the user. This enables server-side targeted push via OneSignal REST API.
 
-2. When dialog opens, snapshot the form:
-```tsx
-useEffect(() => {
-  if (isDialogOpen) {
-    initialFormRef.current = JSON.stringify(formData);
-  }
-}, [isDialogOpen]);
-```
+### 4. Add device linking helper
+**File:** `src/lib/despia.ts`
 
-3. Create a `handleDialogClose` function:
-```tsx
-const handleDialogClose = () => {
-  const isDirty = JSON.stringify(formData) !== initialFormRef.current;
-  if (isDirty) {
-    if (!window.confirm('You have unsaved changes. Discard and close?')) {
-      return;
-    }
-  }
-  openEditDialog(false);
-  resetForm();
-};
-```
+Add a `getDespiaOneSignalPlayerId()` helper to read the OneSignal player ID variable from the Despia runtime.
 
-4. Wire it to `onOpenChange` and the Cancel button:
-```tsx
-<Dialog open={isDialogOpen} onOpenChange={(open) => {
-  if (!open) { handleDialogClose(); return; }
-  openEditDialog(open);
-}}>
-```
+### 5. Update DESPIA_README.md
+Log the source URL for this feature implementation.
 
-### Summary
+## Technical Details
 
-| File | Change |
-|------|--------|
-| `src/components/jobs/JobDetailDialog.tsx` | Remove `onInteractOutside` |
-| `src/components/quotes/QuoteDetailDialog.tsx` | Remove `onInteractOutside` |
-| `src/components/invoices/InvoiceDetailDialog.tsx` | Remove `onInteractOutside` |
-| `src/pages/Jobs.tsx` | Add dirty-check confirmation on close |
-| `src/pages/Quotes.tsx` | Add dirty-check confirmation on close |
-| `src/pages/Invoices.tsx` | Add dirty-check confirmation on close |
+- Detection uses `isDespiaNative()` which checks `navigator.userAgent` for "despia" (case-insensitive)
+- The `setonesignalplayerid://` scheme call maps the app's `user.id` to the OneSignal player, enabling targeted push from the backend
+- No new dependencies needed -- `despia-native` is already installed
+- The existing `send-push-notification` Edge Function can be extended later to also call OneSignal REST API for native users alongside the existing web push logic
