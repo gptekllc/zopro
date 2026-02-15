@@ -1,114 +1,48 @@
 
 
-## Fix Page Crashes and Add Real-Time Updates
+## Fix Pull-to-Refresh, Dialog Persistence, and Navigation Guard Issues
 
-### Problem: Pages Crash
-The Jobs, Quotes, and Invoices pages crash because `useBlocker` from react-router-dom v7 requires a data router (`createBrowserRouter`), but the app uses the legacy `BrowserRouter`. This is a known incompatibility.
+### Issue 1: Pull-to-Refresh Not Working on Most Pages
 
-### Fix 1: Replace useBlocker with a Compatible Approach
+**Root Cause**: The pull-to-refresh actually works correctly on Dashboard, Customers, Technicians, Notifications, Items, TimeClock, and Reports pages -- all pages that have the `PullToRefresh` wrapper. However, it was intentionally removed from Jobs, Quotes, and Invoices in a previous change. The user reports it doesn't work on the other pages either, which likely means the gesture feels unresponsive because there's a conflict with the browser's native pull-to-refresh or the touch events are being consumed by scrollable content within the page.
 
-Since migrating the entire app to `createBrowserRouter` is a large refactor, we will replace the blocker with a simpler, compatible approach:
+**Fix**: Add `overscroll-behavior-y: contain` to the PullToRefresh container to prevent the browser's native pull-to-refresh from competing with the custom one. Also add `touch-action: pan-y` to ensure vertical touch events are properly captured.
 
-- **Remove** `useNavigationBlocker` hook usage from Jobs, Quotes, and Invoices pages
-- **Remove** the `UnsavedChangesDialog` component usage from those pages
-- **Add `window.onbeforeunload`** protection when dialogs are open -- this catches browser back button, tab close, and accidental refresh
-- **Wrap navigation links** with an `onBeforeNavigate` check in `MobileBottomNav` and sidebar that checks a global state flag before navigating
+### Issue 2: Dialogs Closing When Switching Apps
 
-**Simplified approach**: Use a global Zustand flag (`hasUnsavedChanges`) that the dialog sets when opened. The `MobileBottomNav` and `AppLayout` sidebar links check this flag and show a `confirm()` before navigating.
+**Root Cause**: The current `main.tsx` no longer force-reloads on SW update (that was fixed). However, TanStack Query's `refetchOnWindowFocus` is enabled by default. When you switch back, all queries refetch, which can cause the page to re-render and reset local state (including dialog open state) if the data shape changes or triggers loading states.
 
-### Changes
+**Fix**: Disable `refetchOnWindowFocus` globally in the QueryClient config. The app already has Supabase Realtime subscriptions for live updates, so window-focus refetching is redundant and harmful to dialog state.
 
-**1. `src/hooks/useNavigationBlocker.ts` -- Rewrite without useBlocker**
+### Issue 3: Navigation Guard Not Prompting on Bottom Nav Taps
 
-Replace the hook to use `window.onbeforeunload` and expose a global flag:
+**Root Cause**: The `guardedNavigate` function in `MobileBottomNav.tsx` correctly checks `__hasUnsavedChanges` and shows `window.confirm()`. However, when the user taps the same page they're already on (e.g., tapping "Jobs" while on `/jobs`), the navigation still fires and can reset the page state. Also, the `DropdownMenuItem` in the "More" menu uses `onClick` which may not properly prevent the default behavior when the confirm is cancelled.
 
-```tsx
-import { useEffect } from 'react';
+**Fix**: 
+- Skip navigation if already on the target page
+- Ensure the confirm dialog actually blocks navigation in all code paths
+- Clear the `__hasUnsavedChanges` flag only after confirmed leave
 
-export function useNavigationBlocker(shouldBlock: boolean) {
-  useEffect(() => {
-    if (!shouldBlock) return;
+### Technical Changes
 
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
+**1. `src/components/ui/pull-to-refresh.tsx`**
+- Add `overscroll-behavior-y: contain` style to the container to prevent browser native pull-to-refresh from competing
+- Add `touch-action: pan-y` to improve gesture reliability
 
-    window.addEventListener('beforeunload', handler);
-    return () => window.removeEventListener('beforeunload', handler);
-  }, [shouldBlock]);
+**2. `src/App.tsx`**
+- Add `refetchOnWindowFocus: false` to the global QueryClient config to prevent background refetches from resetting dialog state when returning from another app
 
-  // Set a global flag for in-app navigation guards
-  useEffect(() => {
-    (window as any).__hasUnsavedChanges = shouldBlock;
-    return () => { (window as any).__hasUnsavedChanges = false; };
-  }, [shouldBlock]);
-}
-```
+**3. `src/components/layout/MobileBottomNav.tsx`**
+- Fix `guardedNavigate` to skip navigation when already on the target path
+- Ensure the navigation guard works correctly for all nav items including the "More" dropdown items
 
-**2. `src/components/layout/MobileBottomNav.tsx` -- Add navigation guard**
-
-Before navigating, check `window.__hasUnsavedChanges` and show a confirm dialog:
-
-```tsx
-const handleNavClick = (path: string) => {
-  if ((window as any).__hasUnsavedChanges) {
-    if (!window.confirm('You have unsaved changes. Leave this page?')) {
-      return;
-    }
-  }
-  navigate(path);
-};
-```
-
-**3. `src/components/layout/AppLayout.tsx` -- Add navigation guard to sidebar links**
-
-Same pattern for desktop sidebar navigation links.
-
-**4. `src/pages/Jobs.tsx`, `src/pages/Quotes.tsx`, `src/pages/Invoices.tsx`**
-
-- Remove `UnsavedChangesDialog` import and rendering
-- Keep `useNavigationBlocker(isDialogOpen)` call (now using the rewritten hook)
-- Remove blocker state/reset/proceed references
-
-**5. Remove `src/components/common/UnsavedChangesDialog.tsx`** (no longer needed)
-
-### Fix 2: Real-Time Updates Across Devices
-
-TanStack Query already refetches data when the browser tab regains focus. For automatic real-time sync, add Supabase Realtime subscriptions to the main data hooks:
-
-**Update `src/hooks/useJobs.ts`, `src/hooks/useQuotes.ts`, `src/hooks/useInvoices.ts`**
-
-Add a `useEffect` in each hook that subscribes to Supabase Realtime changes on the respective table and invalidates the TanStack Query cache when changes are detected:
-
-```tsx
-useEffect(() => {
-  const channel = supabase
-    .channel('jobs-changes')
-    .on('postgres_changes', 
-      { event: '*', schema: 'public', table: 'jobs' },
-      () => { queryClient.invalidateQueries({ queryKey: ['jobs'] }); }
-    )
-    .subscribe();
-
-  return () => { supabase.removeChannel(channel); };
-}, [queryClient]);
-```
-
-This ensures all users see new/updated items automatically without manual refresh.
-
-### Summary
+**4. `src/components/layout/AppLayout.tsx`**
+- Same fix for desktop sidebar: skip navigation to current page
 
 | File | Change |
 |------|--------|
-| `src/hooks/useNavigationBlocker.ts` | Rewrite to use `beforeunload` + global flag (no `useBlocker`) |
-| `src/components/layout/MobileBottomNav.tsx` | Add navigation guard check before navigating |
-| `src/components/layout/AppLayout.tsx` | Add navigation guard check to sidebar links |
-| `src/pages/Jobs.tsx` | Remove `UnsavedChangesDialog`, keep rewritten blocker hook |
-| `src/pages/Quotes.tsx` | Remove `UnsavedChangesDialog`, keep rewritten blocker hook |
-| `src/pages/Invoices.tsx` | Remove `UnsavedChangesDialog`, keep rewritten blocker hook |
-| `src/hooks/useJobs.ts` | Add Supabase Realtime subscription for auto-refresh |
-| `src/hooks/useQuotes.ts` | Add Supabase Realtime subscription for auto-refresh |
-| `src/hooks/useInvoices.ts` | Add Supabase Realtime subscription for auto-refresh |
-| `src/components/common/UnsavedChangesDialog.tsx` | Remove (no longer needed) |
+| `src/components/ui/pull-to-refresh.tsx` | Add `overscroll-behavior-y: contain` and `touch-action: pan-y` |
+| `src/App.tsx` | Add `refetchOnWindowFocus: false` to QueryClient defaults |
+| `src/components/layout/MobileBottomNav.tsx` | Skip same-page navigation, fix guard logic |
+| `src/components/layout/AppLayout.tsx` | Skip same-page navigation in sidebar |
 
