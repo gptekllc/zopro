@@ -1,50 +1,64 @@
 
-# Push Notification Enhancement for Despia Native
 
-## Summary
-The OneSignal push integration via Despia is already wired up -- `setonesignalplayerid://` is called on every login. The main improvement needed is making the UI **platform-aware**: when running inside Despia, push is handled natively via OneSignal (no user opt-in needed), so the PWA push toggle and prompt should be replaced with a native-appropriate display.
+# Add OneSignal Push Delivery to Edge Function
 
-## What Already Works
-- `src/lib/despia.ts` calls `despia('setonesignalplayerid://?user_id=...')` correctly
-- `useDespiaInit` hook fires this on every login inside `AuthedLayout`
-- Deep links (AASA/assetlinks) are hosted
-- PWA push works for web users via service worker
+## Step 1: Add Required Secrets
+Two secrets need to be added to Supabase Edge Functions:
 
-## Changes
+- **ONESIGNAL_APP_ID** -- Found in OneSignal Dashboard > Settings > Keys and IDs
+- **ONESIGNAL_REST_API_KEY** -- Found in the same location (labeled "REST API Key")
 
-### 1. Update PushNotificationToggle to be platform-aware
-**File:** `src/components/notifications/PushNotificationToggle.tsx`
+I will prompt you to add these before proceeding with code changes.
 
-When inside Despia native runtime:
-- Show a card confirming "Native push notifications are active via OneSignal"
-- Display the platform (iOS / Android)
-- No toggle needed -- push is managed at the OS level
-- Provide guidance to manage in device Settings if needed
+## Step 2: Update `supabase/functions/send-push-notification/index.ts`
 
-When on web (not Despia):
-- Keep the existing PWA push toggle behavior unchanged
+After the existing in-app notification logic, add OneSignal delivery:
 
-### 2. Update PushNotificationPrompt to skip in Despia
-**File:** `src/components/notifications/PushNotificationPrompt.tsx`
+1. Read `ONESIGNAL_APP_ID` and `ONESIGNAL_REST_API_KEY` from environment
+2. Query the `profiles` table for users matching the target `userId` or `companyId` who have a non-null `onesignal_player_id`
+3. If player IDs are found, call OneSignal's Create Notification API:
 
-When inside Despia, return `null` immediately -- native push is automatic, no prompt needed.
+```
+POST https://onesignal.com/api/v1/notifications
+Authorization: Basic <ONESIGNAL_REST_API_KEY>
 
-### 3. Update useDespiaInit to also send device UUID
-**File:** `src/hooks/useDespiaInit.ts`
+{
+  "app_id": "<ONESIGNAL_APP_ID>",
+  "include_external_user_ids": ["<user_id>"],
+  "headings": { "en": "<title>" },
+  "contents": { "en": "<body>" },
+  "data": { "url": "<url>", "tag": "<tag>" },
+  "ios_badgeType": "SetTo",
+  "ios_badgeCount": <badge_count>
+}
+```
 
-After login, also read `despia.uuid` and `despia.onesignalplayerid` and post them to the backend to link the device identity with the user. This enables server-side targeted push via OneSignal REST API.
+4. Log the OneSignal API response for debugging
+5. Keep the existing VAPID/web-push path unchanged for web users
 
-### 4. Add device linking helper
-**File:** `src/lib/despia.ts`
+## Step 3: No Frontend Changes
 
-Add a `getDespiaOneSignalPlayerId()` helper to read the OneSignal player ID variable from the Despia runtime.
+The UI (`PushNotificationToggle`, `useDespiaInit`) is already correctly wired. The `setonesignalplayerid://` call on login maps user IDs to devices in OneSignal, and `onesignal_player_id` is stored in the `profiles` table.
 
-### 5. Update DESPIA_README.md
-Log the source URL for this feature implementation.
+## Flow After Fix
 
-## Technical Details
+```text
+Notification inserted in DB
+        |
+        v
+DB trigger --> send-push-notification Edge Function
+        |
+        v
+  1. Skip in-app insert (already exists)
+  2. Query profiles for onesignal_player_id
+  3. If found --> POST to OneSignal REST API --> native push delivered
+  4. Also handle web push_subscriptions (existing path)
+```
 
-- Detection uses `isDespiaNative()` which checks `navigator.userAgent` for "despia" (case-insensitive)
-- The `setonesignalplayerid://` scheme call maps the app's `user.id` to the OneSignal player, enabling targeted push from the backend
-- No new dependencies needed -- `despia-native` is already installed
-- The existing `send-push-notification` Edge Function can be extended later to also call OneSignal REST API for native users alongside the existing web push logic
+## What You Need To Do
+
+When I prompt you, paste in your:
+- OneSignal App ID
+- OneSignal REST API Key
+
+Both are found at: OneSignal Dashboard > Your App > Settings > Keys and IDs
