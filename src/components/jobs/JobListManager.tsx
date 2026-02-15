@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useScrollRestoration } from '@/hooks/useScrollRestoration';
+import { useNavigationBlocker } from '@/hooks/useNavigationBlocker';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/hooks/useAuth';
@@ -167,6 +168,7 @@ export function JobListManager({
     }
   };
   const [viewingJob, setViewingJob] = useState<Job | null>(null);
+  useNavigationBlocker(!!viewingJob);
   const [jobDetailTab, setJobDetailTab] = useState<'photos' | 'linked' | 'feedback' | 'activities'>('photos');
   const [deleteConfirmJob, setDeleteConfirmJob] = useState<Job | null>(null);
   const [archiveConfirmJob, setArchiveConfirmJob] = useState<Job | null>(null);
