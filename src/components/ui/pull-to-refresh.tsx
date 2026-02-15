@@ -102,6 +102,7 @@ export function PullToRefresh({ onRefresh, children, className, renderSkeleton }
     <div
       ref={containerRef}
       className={cn("relative", className)}
+      style={{ overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
