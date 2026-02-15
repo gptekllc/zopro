@@ -1,0 +1,17 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "TEAMID.BUNDLEID"
+        ],
+        "components": [
+          {
+            "/": "/*",
+            "comment": "Matches any URL path"
+          }
+        ]
+      }
+    ]
+  }
+}

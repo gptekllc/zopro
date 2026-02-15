@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { useDespiaInit } from "@/hooks/useDespiaInit";
 import AppLayout from "@/components/layout/AppLayout";
 import Login from "./pages/Login";
 import Privacy from "./pages/Privacy";
@@ -50,11 +51,14 @@ const queryClient = new QueryClient({
   },
 });
 
-const AuthedLayout = () => (
-  <AppLayout>
-    <Outlet />
-  </AppLayout>
-);
+const AuthedLayout = () => {
+  useDespiaInit();
+  return (
+    <AppLayout>
+      <Outlet />
+    </AppLayout>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
