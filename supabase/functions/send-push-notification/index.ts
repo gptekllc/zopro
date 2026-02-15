@@ -20,6 +20,7 @@ interface PushNotificationRequest {
 
 // --- OneSignal delivery (modernized API) ---
 async function sendOneSignalNotifications(
+  playerIds: string[],
   externalUserIds: string[],
   title: string,
   body: string,
@@ -34,19 +35,30 @@ async function sendOneSignalNotifications(
     return { success: false, errors: "Missing ONESIGNAL_APP_ID or ONESIGNAL_REST_API_KEY" };
   }
 
-  if (externalUserIds.length === 0) {
-    console.log("No external user IDs for OneSignal delivery");
+  // Prefer player IDs (direct device targeting), fall back to external user IDs
+  const hasPlayerIds = playerIds.length > 0;
+  const hasExternalIds = externalUserIds.length > 0;
+
+  if (!hasPlayerIds && !hasExternalIds) {
+    console.log("No player IDs or external user IDs for OneSignal delivery");
     return { success: true };
   }
 
   try {
     const payload: Record<string, unknown> = {
       app_id: appId,
-      // Legacy API: matches Despia's setonesignalplayerid:// scheme registration
-      include_external_user_ids: externalUserIds,
       headings: { en: title },
       contents: { en: body },
     };
+
+    // Use player IDs for direct targeting (most reliable with Despia SDK)
+    if (hasPlayerIds) {
+      payload.include_player_ids = playerIds;
+      console.log("OneSignal: targeting by player IDs:", playerIds);
+    } else {
+      payload.include_external_user_ids = externalUserIds;
+      console.log("OneSignal: targeting by external user IDs:", externalUserIds);
+    }
 
     if (data) {
       payload.data = data;
@@ -224,8 +236,22 @@ serve(async (req) => {
       console.log("Skipping in-app notification creation (called from trigger)");
     }
 
+    // --- Look up OneSignal player IDs from profiles ---
+    let onesignalPlayerIds: string[] = [];
+    if (targetUserIds.length > 0) {
+      const { data: profilesWithPlayerIds } = await adminClient
+        .from("profiles")
+        .select("onesignal_player_id")
+        .in("id", targetUserIds)
+        .not("onesignal_player_id", "is", null);
+      onesignalPlayerIds = (profilesWithPlayerIds || [])
+        .map((p) => p.onesignal_player_id)
+        .filter(Boolean) as string[];
+    }
+
     // --- OneSignal native push delivery ---
     const onesignalResult = await sendOneSignalNotifications(
+      onesignalPlayerIds,
       targetUserIds,
       title,
       body,
