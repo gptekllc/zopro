@@ -1,25 +1,49 @@
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { setOneSignalPlayerId, bindIapSuccessOnce, isDespiaNative, getDespiaUUID, getDespiaOneSignalPlayerId } from '@/lib/despia';
+import {
+  bindIapSuccessOnce,
+  isDespiaNative,
+  getDespiaUUID,
+  getDespiaOneSignalPlayerId,
+  initializeDespiaIdentity,
+  handleDespiaLogin,
+  processIdentityRetryQueue,
+} from '@/lib/despia';
 import { useCurrentSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Hook that initializes Despia native integrations after auth:
- * - Sets OneSignal external user ID for push targeting
+ * - Runs vault-based identity resolution on mount
+ * - Syncs Supabase user ID to vault + OneSignal on login
  * - Links device UUID and OneSignal player ID to the user profile
  * - Binds iapSuccess handler for RevenueCat purchase flow
  */
 export function useDespiaInit() {
   const { user } = useAuth();
   const { data: subscription, refetch: refetchSubscription } = useCurrentSubscription();
-  const initialized = useRef(false);
+  const identityInitialized = useRef(false);
   const deviceLinked = useRef(false);
+  const prevUserId = useRef<string | null>(null);
 
-  // Set OneSignal player ID after login
+  // Initialize identity + retry queue on first mount
   useEffect(() => {
-    if (user?.id) {
-      setOneSignalPlayerId(user.id);
+    if (identityInitialized.current) return;
+    if (!isDespiaNative()) return;
+    identityInitialized.current = true;
+
+    initializeDespiaIdentity();
+    processIdentityRetryQueue();
+  }, []);
+
+  // On login (user.id transitions from null to a value), sync identity
+  useEffect(() => {
+    if (!user?.id || !isDespiaNative()) return;
+
+    // Only call handleDespiaLogin when user actually logs in (not on every render)
+    if (prevUserId.current !== user.id) {
+      prevUserId.current = user.id;
+      handleDespiaLogin(user.id);
     }
   }, [user?.id]);
 
@@ -47,9 +71,7 @@ export function useDespiaInit() {
 
   // Bind iapSuccess once at boot
   useEffect(() => {
-    if (initialized.current) return;
     if (!isDespiaNative()) return;
-    initialized.current = true;
 
     bindIapSuccessOnce(async () => {
       const result = await refetchSubscription();

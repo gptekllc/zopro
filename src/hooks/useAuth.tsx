@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session, Factor } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { handleDespiaLogout } from '@/lib/despia';
 
 interface Profile {
   id: string;
@@ -328,6 +329,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Generate anonymous identity before signing out to prevent identity collision
+    await handleDespiaLogout();
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
