@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import { Edit, PenTool, Calendar, User, Briefcase, Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt, Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star, List, Camera, StickyNote, History, RefreshCw, ChevronDown, MoreVertical } from 'lucide-react';
+import { Edit, PenTool, Calendar, User, Briefcase, Clock, FileText, ArrowUp, ArrowDown, Plus, Receipt, Download, Mail, Loader2, Send, Bell, Navigation, MessageSquare, Star, List, Camera, StickyNote, History, RefreshCw, ChevronDown, MoreVertical, X } from 'lucide-react';
 import { createOnMyWaySmsLink, createOnMyWayMessage } from '@/lib/smsLink';
 import { useAuth } from '@/hooks/useAuth';
 import { useCompany } from '@/hooks/useCompany';
@@ -1160,7 +1160,10 @@ export function JobDetailDialog({
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <Button size="sm" onClick={() => onEdit?.(job.id)} className="ml-auto">
+              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="ml-auto">
+                <X className="w-4 h-4 mr-1" /> Close
+              </Button>
+              <Button size="sm" onClick={() => onEdit?.(job.id)}>
                 <Edit className="w-4 h-4 mr-1" /> Edit
               </Button>
             </div>

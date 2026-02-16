@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, DollarSign, FileText, CheckCircle, Send, UserCog, ChevronRight, CheckCircle2, Briefcase, Receipt, Link2, List, Image as ImageIcon, StickyNote, ChevronDown, MoreVertical } from 'lucide-react';
+import { FileDown, Mail, ArrowRight, Edit, PenTool, Calendar, DollarSign, FileText, CheckCircle, Send, UserCog, ChevronRight, CheckCircle2, Briefcase, Receipt, Link2, List, Image as ImageIcon, StickyNote, ChevronDown, MoreVertical, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { CustomerQuote } from '@/hooks/useCustomerHistory';
 import { SignatureSection } from '@/components/signatures/SignatureSection';
@@ -424,7 +424,10 @@ export function QuoteDetailDialog({
                 <Briefcase className="w-4 h-4 mr-1" />
                 Create Job
               </Button>}
-            <Button size="sm" onClick={() => onEdit?.(quote.id)} className="ml-auto">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="ml-auto">
+              <X className="w-4 h-4 mr-1" /> Close
+            </Button>
+            <Button size="sm" onClick={() => onEdit?.(quote.id)}>
               <Edit className="w-4 h-4 mr-1" /> Edit
             </Button>
           </div>
