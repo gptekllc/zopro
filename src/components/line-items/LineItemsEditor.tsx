@@ -144,22 +144,24 @@ export const LineItemsEditor = ({
               ${formatAmount(item.quantity * item.unitPrice)}
             </div>
           </div>
-          <div className="flex items-center gap-2 px-1">
-            <Checkbox
-              id={`taxable-mobile-${item.id}`}
-              checked={item.taxable !== false}
-              onCheckedChange={(checked) => onUpdateItem(item.id, 'taxable', !!checked)}
+          <div className="flex items-center gap-2">
+            <Textarea
+              placeholder="Description (optional)"
+              value={item.itemDescription || ''}
+              onChange={e => onUpdateItem(item.id, 'itemDescription', e.target.value)}
+              className="min-h-[40px] resize-none text-sm flex-1"
             />
-            <label htmlFor={`taxable-mobile-${item.id}`} className="text-xs text-muted-foreground cursor-pointer">
-              Taxable
-            </label>
+            <div className="flex items-center gap-1.5 self-start pt-2">
+              <Checkbox
+                id={`taxable-mobile-${item.id}`}
+                checked={item.taxable !== false}
+                onCheckedChange={(checked) => onUpdateItem(item.id, 'taxable', !!checked)}
+              />
+              <label htmlFor={`taxable-mobile-${item.id}`} className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+                Taxable
+              </label>
+            </div>
           </div>
-          <Textarea
-            placeholder="Description (optional)"
-            value={item.itemDescription || ''}
-            onChange={e => onUpdateItem(item.id, 'itemDescription', e.target.value)}
-            className="min-h-[40px] resize-none text-sm"
-          />
         </div>
         
         {/* Desktop layout */}
@@ -204,16 +206,6 @@ export const LineItemsEditor = ({
             <div className="w-24 text-right text-sm font-medium">
               ${formatAmount(item.quantity * item.unitPrice)}
             </div>
-            <div className="flex items-center gap-1.5 min-w-[70px]">
-              <Checkbox
-                id={`taxable-desktop-${item.id}`}
-                checked={item.taxable !== false}
-                onCheckedChange={(checked) => onUpdateItem(item.id, 'taxable', !!checked)}
-              />
-              <label htmlFor={`taxable-desktop-${item.id}`} className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
-                Tax
-              </label>
-            </div>
             <Button
               type="button"
               variant="ghost"
@@ -225,13 +217,23 @@ export const LineItemsEditor = ({
               <X className="w-4 h-4" />
             </Button>
           </div>
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex items-center gap-2">
             <Input
               placeholder="Description (optional)"
               value={item.itemDescription || ''}
               onChange={e => onUpdateItem(item.id, 'itemDescription', e.target.value)}
-              className="h-8 text-sm"
+              className="h-8 text-sm flex-1"
             />
+            <div className="flex items-center gap-1.5">
+              <Checkbox
+                id={`taxable-desktop-${item.id}`}
+                checked={item.taxable !== false}
+                onCheckedChange={(checked) => onUpdateItem(item.id, 'taxable', !!checked)}
+              />
+              <label htmlFor={`taxable-desktop-${item.id}`} className="text-xs text-muted-foreground cursor-pointer whitespace-nowrap">
+                Taxable
+              </label>
+            </div>
           </div>
         </div>
       </div>
