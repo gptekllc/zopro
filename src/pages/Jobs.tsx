@@ -742,6 +742,22 @@ const Jobs = () => {
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Scheduled Start</Label>
+                      <Input type="datetime-local" value={formData.scheduled_start} onChange={e => setFormData({
+                        ...formData,
+                        scheduled_start: e.target.value
+                      })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Est. Duration (min)</Label>
+                      <Input type="number" min={0} value={formData.estimated_duration || ''} onChange={e => setFormData({
+                        ...formData,
+                        estimated_duration: parseInt(e.target.value) || 0
+                      })} placeholder="60" />
+                    </div>
+                  </div>
 
                   {/* Line Items Section */}
                   <Separator />
