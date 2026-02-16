@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PhoneInput, formatPhoneNumber, getPhoneDigits } from '@/components/ui/phone-input';
+import { EmailInput } from '@/components/ui/email-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -67,7 +69,8 @@ const CustomerDetail = () => {
   
   // Edit form
   const [editForm, setEditForm] = useState({
-    name: '',
+    first_name: '',
+    last_name: '',
     email: '',
     phone: '',
     address: '',
@@ -129,9 +132,10 @@ const CustomerDetail = () => {
   const handleOpenEdit = () => {
     if (customer) {
       setEditForm({
-        name: customer.name || '',
+        first_name: customer.first_name || '',
+        last_name: customer.last_name || '',
         email: customer.email || '',
-        phone: customer.phone || '',
+        phone: formatPhoneNumber(customer.phone || ''),
         address: customer.address || '',
         city: customer.city || '',
         state: customer.state || '',
@@ -148,6 +152,8 @@ const CustomerDetail = () => {
       await updateCustomer.mutateAsync({
         id: customerId,
         ...editForm,
+        name: [editForm.first_name, editForm.last_name].filter(Boolean).join(' '),
+        phone: getPhoneDigits(editForm.phone) || null,
       });
       openEditDialog(false);
       refetch();
@@ -497,39 +503,49 @@ const CustomerDetail = () => {
             <DialogTitle>Edit Customer</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Name *</Label>
-              <Input
-                value={editForm.name}
-                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>First Name *</Label>
+                <Input
+                  value={editForm.first_name}
+                  onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Last Name</Label>
+                <Input
+                  value={editForm.last_name}
+                  onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                />
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Email</Label>
-                <Input
-                  type="email"
+                <EmailInput
                   value={editForm.email}
-                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  onChange={(value) => setEditForm({ ...editForm, email: value })}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Phone</Label>
-                <Input
+                <PhoneInput
                   value={editForm.phone}
-                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  onChange={(value) => setEditForm({ ...editForm, phone: value })}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Address</Label>
+              <Label>Street Address</Label>
               <Input
                 value={editForm.address}
                 onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                placeholder="123 Main St"
               />
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="space-y-2 col-span-2 sm:col-span-2">
                 <Label>City</Label>
                 <Input
                   value={editForm.city}
@@ -541,6 +557,7 @@ const CustomerDetail = () => {
                 <Input
                   value={editForm.state}
                   onChange={(e) => setEditForm({ ...editForm, state: e.target.value })}
+                  placeholder="CA"
                 />
               </div>
               <div className="space-y-2">
@@ -548,6 +565,7 @@ const CustomerDetail = () => {
                 <Input
                   value={editForm.zip}
                   onChange={(e) => setEditForm({ ...editForm, zip: e.target.value })}
+                  placeholder="12345"
                 />
               </div>
             </div>
@@ -566,7 +584,7 @@ const CustomerDetail = () => {
               <Button 
                 className="flex-1" 
                 onClick={handleSaveEdit}
-                disabled={updateCustomer.isPending || !editForm.name}
+                disabled={updateCustomer.isPending || !editForm.first_name}
               >
                 {updateCustomer.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Save Changes
