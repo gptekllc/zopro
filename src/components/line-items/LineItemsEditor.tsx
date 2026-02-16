@@ -121,10 +121,12 @@ export const LineItemsEditor = ({
             <div className="flex-1">
               <Input
                 type="number"
+                inputMode="decimal"
                 min="0.01"
                 step="0.01"
                 value={item.quantity}
                 onChange={e => onUpdateItem(item.id, 'quantity', parseFloat(e.target.value) || 1)}
+                onFocus={e => e.target.select()}
                 className="h-9"
                 placeholder={quantityLabel}
               />
@@ -184,10 +186,12 @@ export const LineItemsEditor = ({
             <div className="w-20">
               <Input
                 type="number"
+                inputMode="decimal"
                 min="0.01"
                 step="0.01"
                 value={item.quantity}
                 onChange={e => onUpdateItem(item.id, 'quantity', parseFloat(e.target.value) || 1)}
+                onFocus={e => e.target.select()}
                 className="h-9"
                 placeholder="Qty"
               />
