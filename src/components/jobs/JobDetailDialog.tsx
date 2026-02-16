@@ -1120,7 +1120,7 @@ export function JobDetailDialog({
         </div>
 
         {/* Footer Actions - Fixed at bottom */}
-        <div className="border-t bg-background p-4 pb-20 sm:pb-4 sm:px-6">
+        <div className="border-t bg-background p-4 pb-[calc(1rem+10px)] sm:pb-4 sm:px-6">
           <div className="flex gap-2">
             {/* Desktop: Show all buttons */}
             <div className="hidden sm:flex flex-wrap gap-2 flex-1">

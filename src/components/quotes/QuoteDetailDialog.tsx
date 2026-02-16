@@ -401,7 +401,7 @@ export function QuoteDetailDialog({
         </div>
 
         {/* Footer Actions - Fixed at bottom */}
-        <div className="border-t bg-background p-4 pb-20 sm:pb-4 sm:px-6">
+        <div className="border-t bg-background p-4 pb-[calc(1rem+10px)] sm:pb-4 sm:px-6">
           {/* Desktop: All buttons visible */}
           <div className="hidden sm:flex flex-wrap gap-2">
             <Button size="sm" onClick={() => onEmail?.(quote.id)} disabled={!customerEmail} title={!customerEmail ? 'Customer has no email address' : undefined}>
