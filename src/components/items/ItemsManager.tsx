@@ -701,7 +701,7 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
                   <Plus className="w-6 h-6" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="mb-2 bg-popover">
+              <DropdownMenuContent align="end" side="top" className="mb-2 bg-popover">
                 <DropdownMenuItem onClick={() => openCreateDialog('product')}>
                   <Package className="w-4 h-4 mr-2" />
                   New Product
