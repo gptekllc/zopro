@@ -82,18 +82,18 @@ const MobileBottomNav = () => {
 
   return (
     <nav 
-      className="lg:hidden fixed left-0 right-0 z-[90] mx-4"
+      className="lg:hidden fixed left-0 right-0 z-[90] mx-4 dark:border-white/15"
       style={{ 
         bottom: 'max(0.75rem, calc(var(--safe-area-bottom) * 0.5 + 0.75rem))',
-        background: 'rgba(255, 255, 255, 0.1)',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         borderRadius: '9999px',
-        border: '1px solid rgba(255, 255, 255, 0.15)',
         boxShadow: '0 4px 30px rgba(0, 0, 0, 0.15)',
       }}
     >
-      <div className="flex items-center justify-around" style={{ height: 'calc(4.375rem + 5px)' }}>
+      {/* Light/dark background layers via Tailwind */}
+      <div className="absolute inset-0 rounded-full bg-white/70 border border-black/10 dark:bg-white/10 dark:border-white/15" />
+      <div className="relative flex items-center justify-around" style={{ height: 'calc(4.375rem + 5px)' }}>
         {mainNavItems.map((item) => {
           const active = isActive(item.path);
           return (
@@ -103,9 +103,11 @@ const MobileBottomNav = () => {
               onClick={(e) => { e.preventDefault(); guardedNavigate(item.path, e); }}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
-                active ? "text-white" : "text-white/60 hover:text-white/90"
+                active
+                  ? "text-primary dark:text-white"
+                  : "text-foreground/60 hover:text-foreground/90 dark:text-white/60 dark:hover:text-white/90"
               )}
-              style={active ? { filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.5))' } : undefined}
+              style={active ? { filter: 'drop-shadow(0 0 6px hsl(217 91% 45% / 0.4))' } : undefined}
             >
               <item.icon className="w-5 h-5" />
               <span className="text-xs font-medium">{item.label}</span>
@@ -119,9 +121,11 @@ const MobileBottomNav = () => {
               onClick={() => triggerNavigationHaptic()}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors",
-                isMoreActive ? "text-white" : "text-white/60 hover:text-white/90"
+                isMoreActive
+                  ? "text-primary dark:text-white"
+                  : "text-foreground/60 hover:text-foreground/90 dark:text-white/60 dark:hover:text-white/90"
               )}
-              style={isMoreActive ? { filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.5))' } : undefined}
+              style={isMoreActive ? { filter: 'drop-shadow(0 0 6px hsl(217 91% 45% / 0.4))' } : undefined}
             >
               <MoreHorizontal className="w-5 h-5" />
               <span className="text-xs font-medium">More</span>
@@ -130,15 +134,14 @@ const MobileBottomNav = () => {
           <DropdownMenuContent
             align="end"
             side="top"
-            className="mb-2 w-56 p-2 backdrop-blur-md border-white/15 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.15)]"
-            style={{ background: 'rgba(255, 255, 255, 0.1)' }}
+            className="mb-2 w-56 p-2 backdrop-blur-md rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.15)] bg-white/70 border-black/10 dark:bg-white/10 dark:border-white/15"
           >
             {filteredMoreItems.map((item, index) => (
               <div key={item.path}>
-                {index === 1 && isAdmin && <DropdownMenuSeparator className="my-2 bg-white/15" />}
-                {index === 4 && <DropdownMenuSeparator className="my-2 bg-white/15" />}
+                {index === 1 && isAdmin && <DropdownMenuSeparator className="my-2 bg-black/10 dark:bg-white/15" />}
+                {index === 4 && <DropdownMenuSeparator className="my-2 bg-black/10 dark:bg-white/15" />}
                 <DropdownMenuItem
-                  className="py-3 px-3 min-h-[44px] cursor-pointer text-white hover:bg-white/10 focus:bg-white/10 focus:text-white"
+                  className="py-3 px-3 min-h-[44px] cursor-pointer text-foreground hover:bg-black/5 focus:bg-black/5 focus:text-foreground dark:text-white dark:hover:bg-white/10 dark:focus:bg-white/10 dark:focus:text-white"
                   onClick={(e) => guardedNavigate(item.path, e as any)}
                 >
                   <div className="flex items-center gap-3">
