@@ -1,23 +1,31 @@
 
 
-## Prevent Bottom Nav from Blocking Dialog Action Buttons
+## Fix Dropdown Menus in Detail Dialogs
 
 ### Problem
-When opening Job, Quote, or Invoice detail dialogs on mobile, the footer action buttons (Edit, dropdown menus, Payment, etc.) sit at the bottom of the dialog content and get obscured by the floating bottom navigation bar.
+The dropdown menus in Job and Quote detail dialogs are invisible when clicked. Two issues combine to cause this:
+
+1. The `z-50` class added to the dropdown overrides the built-in `z-[100]`, making the dropdown render behind the dialog (which sits at z-[70]).
+2. Radix's collision detection combined with `side="top"` inside a CSS-transformed dialog container miscalculates position, applying `transform: translate(0px, -200%)` to the dropdown wrapper -- pushing it completely off-screen.
 
 ### Solution
-Add bottom padding to the footer action sections inside all three detail dialogs so the buttons remain fully visible and tappable above the bottom nav bar on mobile. The padding will only apply on mobile (below `sm` breakpoint) since the desktop layout centers dialogs differently.
+- Remove `side="top"` -- let Radix auto-detect the best direction (it will naturally open upward if there's no room below).
+- Remove the `z-50` override so the dropdown keeps its default `z-[100]`, which is higher than the dialog's `z-[70]`.
+- Keep `bg-popover` for solid background.
 
-### Changes
+### Files to Change
 
-**1. `src/components/jobs/JobDetailDialog.tsx`**
-- Update the footer `<div>` (line ~1123) from `p-4` to include mobile-specific bottom padding: `p-4 pb-20 sm:pb-4 sm:px-6`
+**1. `src/components/jobs/JobDetailDialog.tsx` (line 1179)**
+Change:
+```
+className="w-48 bg-popover z-50"  side="top"
+```
+To:
+```
+className="w-48 bg-popover"
+```
+(Remove `side="top"` prop and `z-50` class)
 
-**2. `src/components/quotes/QuoteDetailDialog.tsx`**
-- Update the footer `<div>` (line ~404) from `p-4` to include mobile-specific bottom padding: `p-4 pb-20 sm:pb-4 sm:px-6`
+**2. `src/components/quotes/QuoteDetailDialog.tsx` (line 443)**
+Same change -- remove `side="top"` and `z-50` from the DropdownMenuContent.
 
-**3. `src/components/invoices/InvoiceDetailDialog.tsx`**
-- Update the footer `<div>` (line ~837) from `p-4` to include mobile-specific bottom padding: `p-4 pb-20 sm:pb-4 sm:px-6`
-
-### Why `pb-20`
-The floating bottom nav has a height of roughly `4.375rem + 5px` plus a `1.25rem` offset from the bottom. Using `pb-20` (5rem) provides enough clearance so action buttons are not blocked, consistent with the existing pattern used elsewhere in the app for bottom-nav-aware spacing.
