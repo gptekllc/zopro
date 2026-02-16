@@ -1176,7 +1176,7 @@ export function JobDetailDialog({
                     <MoreVertical className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" side="top" className="w-48 bg-popover z-50">
                   <DropdownMenuItem onClick={() => downloadDocument.mutate({ type: 'job', documentId: job.id })} disabled={downloadDocument.isPending}>
                     <Download className="w-4 h-4 mr-2" />
                     Download
