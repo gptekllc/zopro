@@ -527,8 +527,8 @@ const Quotes = () => {
                   <Textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} rows={3} />
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-                <Button type="button" variant="outline" className="flex-1" onClick={handleDialogClose}>
+                <div className="flex flex-row gap-3 pt-4">
+                  <Button type="button" variant="outline" className="flex-1" onClick={handleDialogClose}>
                     Cancel
                   </Button>
                   <Button type="submit" className="flex-1" disabled={createQuote.isPending || updateQuote.isPending}>
