@@ -440,7 +440,7 @@ export function QuoteDetailDialog({
                   <MoreVertical className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 bg-popover z-50">
+              <DropdownMenuContent align="end" side="top" className="w-48 bg-popover z-50">
                 <DropdownMenuItem onClick={() => onEmail?.(quote.id)} disabled={!customerEmail}>
                   <Send className="w-4 h-4 mr-2" />
                   Send
