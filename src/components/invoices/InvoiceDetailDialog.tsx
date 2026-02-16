@@ -851,7 +851,7 @@ export function InvoiceDetailDialog({
                     Payment
                   </Button>
                 </PermissionGate>
-                {company?.stripe_payments_enabled !== false && <PermissionGate permission="record_payments" deniedMessage="You don't have permission to record payments">
+                {company?.stripe_payments_enabled !== false && company?.stripe_charges_enabled === true && <PermissionGate permission="record_payments" deniedMessage="You don't have permission to record payments">
                     <Button size="sm" variant="outline" onClick={handleGeneratePaymentLink} disabled={isGeneratingPaymentLink} className="justify-center">
                       {isGeneratingPaymentLink ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <ExternalLink className="w-4 h-4 mr-1" />}
                       Pay Online
