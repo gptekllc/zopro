@@ -702,12 +702,12 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" side="top" className="mb-2 bg-popover">
-                <DropdownMenuItem onClick={() => openCreateDialog('product')}>
-                  <Package className="w-4 h-4 mr-2" />
+                <DropdownMenuItem className="py-3 text-base" onClick={() => openCreateDialog('product')}>
+                  <Package className="w-5 h-5 mr-2" />
                   New Product
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => openCreateDialog('service')}>
-                  <Wrench className="w-4 h-4 mr-2" />
+                <DropdownMenuItem className="py-3 text-base" onClick={() => openCreateDialog('service')}>
+                  <Wrench className="w-5 h-5 mr-2" />
                   New Service
                 </DropdownMenuItem>
               </DropdownMenuContent>
