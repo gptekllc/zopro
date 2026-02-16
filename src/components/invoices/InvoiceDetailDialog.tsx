@@ -834,7 +834,7 @@ export function InvoiceDetailDialog({
         </div>
 
         {/* Footer Actions - Fixed at bottom */}
-        <div className="border-t bg-background p-4 sm:px-6">
+        <div className="border-t bg-background p-4 pb-20 sm:pb-4 sm:px-6">
           <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
             <Button variant="outline" size="sm" onClick={() => onDownload?.(invoice.id)} className="justify-center">
               <FileDown className="w-4 h-4 mr-1" />
