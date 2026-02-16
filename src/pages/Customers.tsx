@@ -4,7 +4,7 @@ import { useScrollRestoration } from '@/hooks/useScrollRestoration';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { TablePagination } from '@/components/ui/table-pagination';
-import { useCustomers, useCreateCustomer, useUpdateCustomer, useSoftDeleteCustomer, useRestoreCustomer, useDeletedCustomers, Customer } from '@/hooks/useCustomers';
+import { useCustomers, useCreateCustomer, useSoftDeleteCustomer, useRestoreCustomer, useDeletedCustomers, Customer } from '@/hooks/useCustomers';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,7 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Mail, Phone, MapPin, Edit, Trash2, User, Loader2, ExternalLink, RotateCcw, Eye, Filter, MoreVertical } from 'lucide-react';
+import { Plus, Search, Mail, Phone, MapPin, Trash2, User, Loader2, ExternalLink, RotateCcw, Eye, Filter, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import PageContainer from '@/components/layout/PageContainer';
@@ -31,7 +31,7 @@ const Customers = () => {
   const { data: deletedCustomers = [] } = useDeletedCustomers();
   const { isAdmin } = useAuth();
   const createCustomer = useCreateCustomer();
-  const updateCustomer = useUpdateCustomer();
+  
   const softDeleteCustomer = useSoftDeleteCustomer();
   const restoreCustomer = useRestoreCustomer();
   const { saveScrollPosition, restoreScrollPosition } = useScrollRestoration();
@@ -43,7 +43,7 @@ const Customers = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDeleted, setShowDeleted] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<string | null>(null);
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
 
@@ -102,7 +102,6 @@ const Customers = () => {
 
   const resetForm = () => {
     setFormData({ first_name: '', last_name: '', email: '', phone: '', address: '', city: '', state: '', zip: '', notes: '' });
-    setEditingCustomer(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,35 +109,14 @@ const Customers = () => {
     
     const submitData = {
       ...formData,
-      // Derive name from first_name + last_name for backward compatibility
       name: [formData.first_name, formData.last_name].filter(Boolean).join(' '),
       phone: getPhoneDigits(formData.phone) || null,
     };
     
-    if (editingCustomer) {
-      await updateCustomer.mutateAsync({ id: editingCustomer, ...submitData });
-    } else {
-      await createCustomer.mutateAsync(submitData as any);
-    }
+    await createCustomer.mutateAsync(submitData as any);
     
     openEditDialog(false);
     resetForm();
-  };
-
-  const handleEdit = (customer: Customer) => {
-    setFormData({
-      first_name: customer.first_name || '',
-      last_name: customer.last_name || '',
-      email: customer.email || '',
-      phone: formatPhoneNumber(customer.phone || ''),
-      address: customer.address || '',
-      city: customer.city || '',
-      state: customer.state || '',
-      zip: customer.zip || '',
-      notes: customer.notes || '',
-    });
-    setEditingCustomer(customer.id);
-    openEditDialog(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -239,7 +217,7 @@ const Customers = () => {
             </DialogTrigger>
             <DialogContent className="max-w-md overflow-hidden flex flex-col">
               <DialogHeader className="flex-shrink-0 pr-8">
-                <DialogTitle>{editingCustomer ? 'Edit Customer' : 'Add New Customer'}</DialogTitle>
+                <DialogTitle>Add New Customer</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto space-y-4 pr-1">
                 <div className="grid grid-cols-2 gap-4">
@@ -290,8 +268,8 @@ const Customers = () => {
               </form>
               <div className="flex gap-3 pt-4 border-t flex-shrink-0 bg-background">
                 <Button type="button" variant="outline" className="flex-1" onClick={() => openEditDialog(false)}>Cancel</Button>
-                <Button type="submit" className="flex-1" disabled={createCustomer.isPending || updateCustomer.isPending} onClick={handleSubmit}>
-                  {editingCustomer ? 'Update' : 'Add'} Customer
+                <Button type="submit" className="flex-1" disabled={createCustomer.isPending} onClick={handleSubmit}>
+                  Add Customer
                 </Button>
               </div>
             </DialogContent>
@@ -340,9 +318,9 @@ const Customers = () => {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-popover">
-                          <DropdownMenuItem onClick={() => handleEdit(customer)}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit
+                          <DropdownMenuItem onClick={() => navigate(`/customers/${customer.id}`)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View
                           </DropdownMenuItem>
                           {customer.email && (
                             <DropdownMenuItem onClick={() => handleSendPortalLink(customer)}>
