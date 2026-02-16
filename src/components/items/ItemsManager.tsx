@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Plus, Edit, Trash2, Package, Wrench, Loader2, MoreVertical, Eye, EyeOff, Copy, ArrowUpDown, Download, Upload, FileDown, Check, X } from 'lucide-react';
 import { formatAmount } from '@/lib/formatAmount';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 interface ItemsManagerProps {
@@ -41,6 +42,7 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
   const deleteItem = useDeleteItem();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [deleteConfirmItem, setDeleteConfirmItem] = useState<Item | null>(null);
   const [activeTab, setActiveTab] = useState<'products' | 'services'>('products');
@@ -695,9 +697,9 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
             className="fixed right-4 z-[80] sm:hidden"
             style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 7.5rem)' }}
           >
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={setFabOpen}>
               <DropdownMenuTrigger asChild>
-                <Button className="w-14 h-14 rounded-full shadow-lg transition-transform duration-200 active:scale-95">
+                <Button className={cn("w-14 h-14 rounded-full shadow-lg transition-transform duration-200 active:scale-95", fabOpen && "rotate-45")}>
                   <Plus className="w-6 h-6" />
                 </Button>
               </DropdownMenuTrigger>
