@@ -85,10 +85,14 @@ export function JobListCard({
   // Determine which date to show (only one)
   const now = new Date();
   const isCompleted = job.status === 'completed' || job.status === 'invoiced';
+  const isScheduled = job.status === 'scheduled';
   const scheduledPast = job.scheduled_start && new Date(job.scheduled_start) < now;
   let displayDate: string | null = null;
   let dateLabel: 'completed' | 'scheduled' | 'created' = 'created';
-  if (isCompleted || scheduledPast) {
+  if (isScheduled && job.scheduled_start) {
+    displayDate = job.scheduled_start;
+    dateLabel = 'scheduled';
+  } else if (isCompleted || scheduledPast) {
     displayDate = (job as any).actual_end || job.scheduled_start || job.created_at;
     dateLabel = 'completed';
   } else if (job.scheduled_start) {
