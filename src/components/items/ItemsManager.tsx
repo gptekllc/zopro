@@ -693,7 +693,7 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
         createPortal(
           <div
             className="fixed right-4 z-[80] sm:hidden"
-            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
+            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 7.5rem)' }}
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
