@@ -148,8 +148,8 @@ export function UserPermissionsEditor({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground pb-2 border-b">
-        <Shield className="h-4 w-4" />
+      <div className="flex items-start gap-2 text-sm text-muted-foreground pb-2 border-b">
+        <Shield className="h-4 w-4 shrink-0 mt-0.5" />
         <span>
           Editing permissions for <Badge variant="outline" className="ml-1">{userRole}</Badge> role.
           Custom overrides take precedence over role defaults.
@@ -200,14 +200,14 @@ export function UserPermissionsEditor({
                       <div 
                         key={permission.permission_key}
                         className={cn(
-                          "flex items-center justify-between p-3 rounded-md border",
+                          "flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-md border",
                           state.isOverride ? "border-primary/30 bg-primary/5" : "border-border",
                           !canEdit && "opacity-60"
                         )}
                       >
-                        <div className="flex-1 min-w-0 pr-4">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm truncate">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-sm">
                               {permission.display_name}
                             </span>
                             {state.isOverride && (
@@ -222,13 +222,13 @@ export function UserPermissionsEditor({
                             )}
                           </div>
                           {permission.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                            <p className="text-xs text-muted-foreground mt-0.5">
                               {permission.description}
                             </p>
                           )}
                         </div>
                         
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                           {state.isOverride && canEdit && (
                             <Button
                               variant="ghost"
