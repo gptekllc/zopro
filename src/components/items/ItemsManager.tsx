@@ -697,7 +697,7 @@ export const ItemsManager = ({ searchQuery = '', statusFilter = 'all' }: ItemsMa
           >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="lg" className="h-14 w-14 rounded-full shadow-lg">
+                <Button className="w-14 h-14 rounded-full shadow-lg transition-transform duration-200 active:scale-95">
                   <Plus className="w-6 h-6" />
                 </Button>
               </DropdownMenuTrigger>
