@@ -454,7 +454,7 @@ const Customers = () => {
         createPortal(
           <Button
             className="fixed right-4 w-14 h-14 rounded-full shadow-lg sm:hidden z-[80]"
-            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 5rem)' }}
+            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 7.5rem)' }}
             onClick={() => openEditDialog(true)}
           >
             <Plus className="w-6 h-6" />
