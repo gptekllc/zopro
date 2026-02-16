@@ -527,7 +527,7 @@ const Quotes = () => {
                   <Textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} rows={3} />
                 </div>
 
-                <div className="flex flex-row gap-3 pt-4">
+                <div className="flex flex-row gap-3 pt-4 pb-[calc(1rem+10px)]">
                   <Button type="button" variant="outline" className="flex-1" onClick={handleDialogClose}>
                     Cancel
                   </Button>
