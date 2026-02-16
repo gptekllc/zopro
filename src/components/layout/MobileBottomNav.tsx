@@ -84,7 +84,7 @@ const MobileBottomNav = () => {
     <nav 
       className="lg:hidden fixed left-0 right-0 z-[90] mx-4 dark:border-white/15"
       style={{ 
-        bottom: 'max(0.75rem, calc(var(--safe-area-bottom) * 0.5 + 0.75rem))',
+        bottom: 'max(1.25rem, calc(var(--safe-area-bottom) * 0.5 + 1.25rem))',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         borderRadius: '9999px',
