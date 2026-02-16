@@ -1170,6 +1170,9 @@ export function JobDetailDialog({
 
             {/* Mobile: Edit button + Actions dropdown */}
             <div className="flex sm:hidden gap-2 w-full">
+              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+                <X className="w-4 h-4 mr-1" /> Close
+              </Button>
               <Button size="sm" onClick={() => onEdit?.(job.id)} className="flex-1">
                 <Edit className="w-4 h-4 mr-1" /> Edit
               </Button>

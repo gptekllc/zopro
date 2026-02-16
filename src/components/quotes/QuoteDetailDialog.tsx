@@ -433,10 +433,13 @@ export function QuoteDetailDialog({
           </div>
 
           {/* Mobile: Edit button + Actions dropdown */}
-          <div className="flex sm:hidden gap-2 w-full">
-            <Button size="sm" onClick={() => onEdit?.(quote.id)} className="flex-1">
-              <Edit className="w-4 h-4 mr-1" /> Edit
-            </Button>
+            <div className="flex sm:hidden gap-2 w-full">
+              <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+                <X className="w-4 h-4 mr-1" /> Close
+              </Button>
+              <Button size="sm" onClick={() => onEdit?.(quote.id)} className="flex-1">
+                <Edit className="w-4 h-4 mr-1" /> Edit
+              </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
