@@ -658,7 +658,7 @@ const TechniciansContent = () => {
           </form>
             </TabsContent>
             
-            <TabsContent value="permissions" className="py-4">
+            <TabsContent value="permissions" className="py-4 space-y-4">
               {editingUser && currentProfile?.company_id && (
                 <UserPermissionsEditor
                   userId={editingUser}
@@ -666,6 +666,11 @@ const TechniciansContent = () => {
                   userRole={formData.role}
                 />
               )}
+              <div className="flex justify-end pt-2 border-t">
+                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Close
+                </Button>
+              </div>
             </TabsContent>
           </Tabs>
         </DialogContent>
