@@ -267,7 +267,7 @@ const AppLayout = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
-                  <Avatar className="w-8 h-8">
+                  <Avatar className="w-8 h-8 ring-1 ring-border">
                     <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'User'} />
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                       {getInitials(profile?.full_name)}
