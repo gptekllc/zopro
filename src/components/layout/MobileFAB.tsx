@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Plus, X, Briefcase, FileText, Receipt } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -75,16 +76,16 @@ const MobileFAB = () => {
         ))}
 
         {/* Main FAB Button */}
-        <button
+        <Button
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            "w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center transition-transform duration-200 active:scale-95 pointer-events-auto",
+            "w-14 h-14 rounded-full shadow-lg transition-transform duration-200 active:scale-95 pointer-events-auto",
             isOpen && "rotate-45"
           )}
           aria-label={isOpen ? "Close menu" : "Create new"}
         >
           <Plus className="w-6 h-6" />
-        </button>
+        </Button>
       </div>
     </>
   );
